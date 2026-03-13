@@ -67,9 +67,9 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 
 ## Prototype Map
 
-- **Q: Is Web Speech API adequate on mobile?** → Build a single HTML page that reads a set of zh/ja strings aloud using Web Speech API. Test on iOS Safari and Android Chrome. Learn: whether TTS pronunciation is acceptable and the API is reliable enough to depend on.
-- **Q: Is paste-based JSON import usable on mobile?** → Build a single-page import prototype: a textarea, a parse button, and a card count confirmation. Test the full gesture on iPhone. Learn: whether this interaction is acceptable or needs rethinking (e.g., share sheet, file picker).
-- **Q: Furigana ruby text rendering** → Build a minimal HTML page rendering Japanese cards with ruby annotations. Test on iOS Safari and Android Chrome. Learn: whether native ruby rendering is sufficient or a custom component is needed.
+1. **Is Web Speech API adequate on mobile?** → Build a single HTML page that reads a set of zh/ja strings aloud using Web Speech API. Test on iOS Safari and Android Chrome. Learn: whether TTS pronunciation is acceptable and the API is reliable enough to depend on.
+2. **Is paste-based JSON import usable on mobile?** → Build a single-page import prototype: a textarea, a parse button, and a card count confirmation. Test the full gesture on iPhone. Learn: whether this interaction is acceptable or needs rethinking (e.g., share sheet, file picker).
+3. **Furigana ruby text rendering** → Build a minimal HTML page rendering Japanese cards with ruby annotations. Test on iOS Safari and Android Chrome. Learn: whether native ruby rendering is sufficient or a custom component is needed.
 
 ## Technical Notes
 

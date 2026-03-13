@@ -123,8 +123,9 @@ Write `BRIEF.md` in the repo root. Use this exact structure:
 [Things that are genuinely unknown and matter. Each question should be marked with its priority: 🔴 Critical / 🟡 Important / 🟢 Nice to know]
 
 ## Prototype Map
-[For each open question marked 🔴 or 🟡, suggest a prototype or experiment that could answer it. Format:
-- **Q: [question]** → Prototype: [what to build/test and what you'd learn]]
+[For each open question marked 🔴 or 🟡, suggest a prototype or experiment that could answer it. Number each entry sequentially. Format:
+1. **[question]** → Prototype: [what to build/test and what you'd learn]
+2. **[question]** → Prototype: [what to build/test and what you'd learn]]
 
 ## Technical Notes
 [High-level technical shape: platform, key integrations, data model sketch if relevant.]
