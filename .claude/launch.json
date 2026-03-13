@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "prototype-2-json-import",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "7002", "--directory", "prototypes/2-json-import"],
+      "port": 7002
+    }
+  ]
+}
