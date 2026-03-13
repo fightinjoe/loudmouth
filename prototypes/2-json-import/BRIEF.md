@@ -128,6 +128,15 @@ How cards are stored internally after import. The app assigns `id` (UUID v4) and
 
 **Ambiguous:** Works but feels notably worse than desktop — decide whether "acceptable friction for a power-user import flow" is good enough.
 
+## Findings
+
+**Result:** Yes (scoped — schema and tooling validated; mobile paste testing intentionally descoped)
+**Date:** 2026-03-13
+
+Card schema (`front`, `back`, `example`, `lang`, `type`) works correctly. The `/generate-cards` command produces valid card batches. Library schema (with `id` and `importedAt` assigned at import time) is confirmed as the internal storage format. Mobile paste UX testing was removed from scope — paste remains the planned import mechanism with no blocking concerns identified.
+
+**Surprises:** None
+
 ## Status
 
-In progress
+Complete

@@ -50,7 +50,7 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 
 ## Assumptions
 
-- Pasting a JSON blob on mobile is acceptable UX for import (unvalidated — this is the riskiest UX assumption in the brief)
+- Pasting a JSON blob on mobile is acceptable UX for import (untested on mobile — proceeding with paste as the import mechanism)
 - Manual deck assignment after import is acceptable (vs. tagging at import time)
 - Random card order is sufficient for initial review sessions
 - Session tracking without self-rating is valuable on its own
@@ -59,7 +59,7 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 ## Open Questions
 
 - 🔴 **Is Web Speech API adequate for audio on iOS Safari and Android Chrome?** TTS quality and reliability vary significantly by platform.
-- 🔴 **Is paste-based JSON import actually usable on mobile?** Clipboard handling and large text input on phones may be more painful than expected.
+- 🟢 **Is paste-based JSON import actually usable on mobile?** — ✅ Schema and tooling validated. Mobile paste UX untested but unblocked; proceeding with paste as import mechanism. See `prototypes/2-json-import/`.
 - 🟡 **How does spaced repetition get added without a self-rating signal?** The current model has no mechanism for the learner to signal recall quality. SR requires this. The tension between "no scoring" and "SR as a secondary goal" must be resolved before SR can be designed.
 - 🟡 **What does session tracking capture exactly?** At minimum: date, duration, card count, deck/batch reviewed. The data model should be defined before building.
 - 🟡 **Furigana as ruby text** — does `reading` render as plain text below the card, or as ruby annotation above kanji? Ruby rendering is a meaningful UI challenge on mobile, especially cross-browser.
@@ -68,7 +68,7 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 ## Prototype Map
 
 1. **Is Web Speech API adequate on mobile?** → Build a single HTML page that reads a set of zh/ja strings aloud using Web Speech API. Test on iOS Safari and Android Chrome. Learn: whether TTS pronunciation is acceptable and the API is reliable enough to depend on.
-2. **Is paste-based JSON import usable on mobile?** → Build a single-page import prototype: a textarea, a parse button, and a card count confirmation. Test the full gesture on iPhone. Learn: whether this interaction is acceptable or needs rethinking (e.g., share sheet, file picker).
+2. **Is paste-based JSON import usable on mobile?** → ✅ Complete — card schema and `/generate-cards` tooling validated. Mobile paste gesture not tested; proceeding with paste. See `prototypes/2-json-import/`.
 3. **Furigana ruby text rendering** → Build a minimal HTML page rendering Japanese cards with ruby annotations. Test on iOS Safari and Android Chrome. Learn: whether native ruby rendering is sufficient or a custom component is needed.
 
 ## Technical Notes
@@ -78,6 +78,57 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 - **No backend** required in initial version
 - **Library Schema** will need a `reviewHistory` or equivalent field for future SR support — worth designing the extension point now even if unused
 - **Session log** is a separate data structure from the card Library
+
+### Card Batch Schema (import format)
+
+Validated in `prototypes/2-json-import/`. `id` and `importedAt` are never present in the batch — assigned by the app at import time.
+
+```json
+{
+  "cards": [
+    {
+      "lang": "zh | ja",
+      "type": "word | phrase | sentence",
+      "front": {
+        "text": "string",
+        "reading": "string (optional — pinyin for zh, hiragana for ja)"
+      },
+      "back": {
+        "translation": "string",
+        "notes": "string (optional)"
+      },
+      "example": {
+        "text": "string",
+        "reading": "string (optional)",
+        "translation": "string (optional)"
+      }
+    }
+  ]
+}
+```
+
+**Required per card:** `lang`, `front.text`, `back.translation`. All other fields optional.
+
+### Library Schema (internal storage)
+
+```json
+{
+  "version": "1",
+  "cards": [
+    {
+      "id": "uuid-v4",
+      "importedAt": "ISO 8601 timestamp",
+      "lang": "zh | ja",
+      "type": "word | phrase | sentence",
+      "front": { "text": "string", "reading": "string (optional)" },
+      "back": { "translation": "string", "notes": "string (optional)" },
+      "example": { "text": "string", "reading": "string (optional)", "translation": "string (optional)" }
+    }
+  ]
+}
+```
+
+All cards from the same paste share the same `importedAt` — this is how import batches are associated.
 
 ## Out of Scope (for now)
 
