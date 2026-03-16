@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "7002", "--directory", "prototypes/2-json-import"],
       "port": 7002
+    },
+    {
+      "name": "prototype-1-web-speech",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "7001", "--directory", "prototypes/1-web-speech"],
+      "port": 7001
     }
   ]
 }

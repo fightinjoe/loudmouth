@@ -40,11 +40,13 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 ## Reference Apps
 
 **Anki**
+
 - Keep: Full control over card content; import-based workflow; deck organization
 - Reject: Complex setup; desktop-first UX; steep learning curve
 - Expected patterns: Deck selection before review; card flip on tap
 
 **Duolingo / Babbel**
+
 - Keep: Session feels light and bounded; easy to start a review; mobile-first interactions
 - Reject: Fixed curriculum; gamification; no content ownership; no import
 
@@ -58,7 +60,7 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 
 ## Open Questions
 
-- 🔴 **Is Web Speech API adequate for audio on iOS Safari and Android Chrome?** TTS quality and reliability vary significantly by platform.
+- 🟢 **Is Web Speech API adequate for audio on iOS Safari and Android Chrome?** — ✅ Resolved: viable on iOS Safari (quality exceeded expectations). Silent on macOS Safari, poor on Chrome Desktop. Build audio as a mobile-first feature; don't rely on desktop browsers.
 - 🟢 **Is paste-based JSON import actually usable on mobile?** — ✅ Schema and tooling validated. Mobile paste UX untested but unblocked; proceeding with paste as import mechanism. See `prototypes/2-json-import/`.
 - 🟡 **How does spaced repetition get added without a self-rating signal?** The current model has no mechanism for the learner to signal recall quality. SR requires this. The tension between "no scoring" and "SR as a secondary goal" must be resolved before SR can be designed.
 - 🟡 **What does session tracking capture exactly?** At minimum: date, duration, card count, deck/batch reviewed. The data model should be defined before building.
@@ -67,13 +69,14 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 
 ## Prototype Map
 
-1. **Is Web Speech API adequate on mobile?** → Build a single HTML page that reads a set of zh/ja strings aloud using Web Speech API. Test on iOS Safari and Android Chrome. Learn: whether TTS pronunciation is acceptable and the API is reliable enough to depend on.
+1. **Is Web Speech API adequate on mobile?** → ✅ Answered — iOS Safari quality is good. macOS Safari: silent. Chrome Desktop: poor. Audio is viable as a mobile-first feature. See `prototypes/1-web-speech/`.
 2. **Is paste-based JSON import usable on mobile?** → ✅ Complete — card schema and `/generate-cards` tooling validated. Mobile paste gesture not tested; proceeding with paste. See `prototypes/2-json-import/`.
 3. **Furigana ruby text rendering** → Build a minimal HTML page rendering Japanese cards with ruby annotations. Test on iOS Safari and Android Chrome. Learn: whether native ruby rendering is sufficient or a custom component is needed.
 
 ## Technical Notes
 
-- **Platform:** Mobile-first PWA or responsive web app
+- **Platform:** Mobile-first PWA or responsive web app — audio feature is iOS Safari only; desktop audio support is out of scope
+- **Audio:** Web Speech API with `lang="zh-CN"` / `lang="ja-JP"`. Do not attempt to support macOS Safari or Chrome Desktop for audio.
 - **Storage:** Client-side only; IndexedDB likely (localStorage insufficient for library scale)
 - **No backend** required in initial version
 - **Library Schema** will need a `reviewHistory` or equivalent field for future SR support — worth designing the extension point now even if unused
@@ -139,3 +142,4 @@ All cards from the same paste share the same `importedAt` — this is how import
 - Native app
 - In-app card creation
 - Furigana ruby text rendering (prototype candidate, not blocking PRD)
+
