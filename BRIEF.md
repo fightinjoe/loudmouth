@@ -1,40 +1,41 @@
 # Language Flashcards — Product Brief
 
-> A mobile-first web app for a self-directed language learner to import AI-generated flashcards and review them in focused, bounded sessions.
+> A mobile-first travel companion for capturing useful language in context and reviewing it in short bursts throughout the day.
 
 ## Problem
 
-Language learning requires consistent, deliberate exposure to vocabulary and phrases in context. Existing tools either offer too much friction (Anki's complex card management and setup) or too little control (Duolingo's fixed curriculum). There's no lightweight tool that combines learner control over content with the smoothness of modern review UX.
+When traveling, you encounter useful words and phrases constantly — at restaurants, shops, transit. Existing tools are built for long-term study, not rapid capture and same-day recall. Anki is too heavy; Duolingo has a fixed curriculum. There's no lightweight tool optimized for the traveler's rhythm: pick up new language in the moment, review it in 5-minute windows between activities, repeat throughout the day.
 
 ## Solution
 
-A mobile-first web app where cards are generated externally (by AI) and imported as JSON. The learner browses their library, assembles review sessions, and flips through cards. Sessions are bounded by card count or time and loop back to the start of the deck if the end is reached early. No scoring, no curriculum — just deliberate exposure to content the learner chose.
+A mobile-first web app where cards are generated externally (by AI) and imported as JSON. The learner captures vocabulary from the day, then reviews in short, frictionless sessions — optimized for multiple 5-minute check-ins, not hour-long study. Cards can be flipped through in review mode or browsed as a list. No scoring, no curriculum — just the language you're actually encountering.
 
 ## Users
 
-**Primary:** The developer/author — a self-directed language learner studying Chinese (Mandarin) and Japanese for personal enrichment. No external tests or metrics. Success is subjective: feeling more familiar with content over time.
+**Primary:** The developer/author — a traveler studying Chinese (Mandarin) and Japanese who wants to capture and quickly recall useful language during trips. Success is practical: remembering words and phrases when you need them in context.
 
 ## Goals
 
-- Import AI-generated card batches quickly and without friction, even on mobile
-- Review cards in bounded sessions (by count or time), looping when the deck ends early
-- Organize cards into decks and browse by import batch or deck
-- Track study sessions (when, how long, how many cards) — for awareness, not stats
-- Feel as smooth and low-friction as Duolingo or Babbel during review
+- **Import** - Import AI-generated card batches quickly and without friction on mobile
+- **Review** - Review cards in short, frequent sessions (optimized for 5-minute check-ins)
+- **Browse** - Browse the card library as a list, not only by flipping through review mode
+- **Low friction** - Minimum taps to start a review; as smooth as possible
+- **Audio** - Play audio pronunciation for cards (mobile browsers)
 
 ## Non-Goals
 
-- External measurement of progress (tests, scores, pass/fail)
-- AI card generation (done externally, out of scope)
-- User accounts or cloud sync
-- Native app (web only for now)
-- Spaced repetition (deferred — see Open Questions)
-- In-app card creation
+- **Scoring** - No external measurement of progress (tests, scores, pass/fail)
+- **AI generation** - Card generation is done externally; out of scope
+- **Accounts/sync** - No user accounts or cloud sync
+- **Native app** - Web only for now
+- **Spaced repetition** - Deferred — lower priority, see Open Questions
+- **In-app card creation** - No creating cards from scratch inside the app
 
 ## Key Differentiators
 
-- **Content control (Anki-like):** The learner decides exactly what cards exist and how they're organized, via JSON import
-- **Review UX (Duolingo-like):** Sessions are smooth, bounded, and low-friction — no configuration overhead before starting
+- **Travel-first:** Designed for the rhythm of a trip — capture language in the moment, review between activities
+- **Content control (Anki-like):** The learner decides exactly what cards exist, via JSON import
+- **Frictionless review (Duolingo-like):** Minimum taps to start reviewing; optimized for 5-minute windows
 - **No gamification:** No streaks, points, or pressure — just cards
 
 ## Reference Apps
@@ -53,25 +54,39 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 ## Assumptions
 
 - Pasting a JSON blob on mobile is acceptable UX for import (untested on mobile — proceeding with paste as the import mechanism)
-- Manual deck assignment after import is acceptable (vs. tagging at import time)
 - Random card order is sufficient for initial review sessions
-- Session tracking without self-rating is valuable on its own
+- The travel use case is the primary frame — long-term cross-topic study is explicitly not the goal
 - The Library Schema can be extended later to support spaced repetition without a breaking change
 
 ## Open Questions
 
-- 🟢 **Is Web Speech API adequate for audio on iOS Safari and Android Chrome?** — ✅ Resolved: viable on iOS Safari (quality exceeded expectations). Silent on macOS Safari, poor on Chrome Desktop. Build audio as a mobile-first feature; don't rely on desktop browsers.
-- 🟢 **Is paste-based JSON import actually usable on mobile?** — ✅ Schema and tooling validated. Mobile paste UX untested but unblocked; proceeding with paste as import mechanism. See `prototypes/2-json-import/`.
-- 🟡 **How does spaced repetition get added without a self-rating signal?** The current model has no mechanism for the learner to signal recall quality. SR requires this. The tension between "no scoring" and "SR as a secondary goal" must be resolved before SR can be designed.
-- 🟡 **What does session tracking capture exactly?** At minimum: date, duration, card count, deck/batch reviewed. The data model should be defined before building.
-- 🟡 **Furigana as ruby text** — does `reading` render as plain text below the card, or as ruby annotation above kanji? Ruby rendering is a meaningful UI challenge on mobile, especially cross-browser.
-- 🟢 **Does the card schema cover all zh/ja card types?** Hand-write 10–15 real cards across both languages to stress-test edge cases.
+- [x] 🟢 **Is Web Speech API adequate for audio on iOS Safari and Android Chrome?** — ✅ Resolved: viable on iOS Safari (quality exceeded expectations). Silent on macOS Safari, poor on Chrome Desktop. Build audio as a mobile-first feature; don't rely on desktop browsers.
+- [x] 🟢 **Is paste-based JSON import actually usable on mobile?** — ✅ Schema and tooling validated. Mobile paste UX untested but unblocked; proceeding with paste as import mechanism. See `prototypes/2-json-import/`.
+- [ ] 🟡 **What does the list/browse view look like, and how are cards organized?** The app needs a way to peruse cards as a list, not only via flip review. How cards are grouped is unresolved — likely multiple layers (import batch, trip, context/topic). The right grouping model shapes the data structure and UX significantly. Needs PRD.
+- [ ] 🟡 **Should the app support deriving new cards from existing ones?** A card for "soup" could generate "I like soup", "do you have soup?", etc. — natural combinations that expand practice without AI re-involvement. Scope and UX unclear. Is this in-app, or always done externally?
+- [ ] 🟡 **Furigana as ruby text** — does `reading` render as plain text below the card, or as ruby annotation above kanji? Ruby rendering is a meaningful UI challenge on mobile, especially cross-browser.
+- [ ] 🟡 **How does spaced repetition get added without a self-rating signal?** Lower priority — not needed for travel use case. The tension between "no scoring" and "SR as a future goal" must be resolved before SR can be designed. Deferred until core is built.
 
 ## Prototype Map
 
-1. **Is Web Speech API adequate on mobile?** → ✅ Answered — iOS Safari quality is good. macOS Safari: silent. Chrome Desktop: poor. Audio is viable as a mobile-first feature. See `prototypes/1-web-speech/`.
-2. **Is paste-based JSON import usable on mobile?** → ✅ Complete — card schema and `/generate-cards` tooling validated. Mobile paste gesture not tested; proceeding with paste. See `prototypes/2-json-import/`.
-3. **Furigana ruby text rendering** → Build a minimal HTML page rendering Japanese cards with ruby annotations. Test on iOS Safari and Android Chrome. Learn: whether native ruby rendering is sufficient or a custom component is needed.
+- [x] 🟢 **Is Web Speech API adequate on mobile?** → ✅ Answered — iOS Safari quality is good. macOS Safari: silent. Chrome Desktop: poor. Audio is viable as a mobile-first feature. See `prototypes/1-web-speech/`.
+- [x] 🟢 **Is paste-based JSON import usable on mobile?** → ✅ Complete — card schema and `/generate-cards` tooling validated. Mobile paste gesture not tested; proceeding with paste. See `prototypes/2-json-import/`.
+- [ ] 🟡 **Furigana ruby text rendering** → Build a minimal HTML page rendering Japanese cards with ruby annotations. Test on iOS Safari and Android Chrome. Learn: whether native ruby rendering is sufficient or a custom component is needed.
+- [ ] 🟡 **List/browse view and card organization** → Build a minimal list view prototype exploring grouping models (by batch, trip, context). Learn: what grouping structure feels natural and what data model it requires.
+
+## Features & Phases
+
+### Phase 1: Core — Import, review, audio
+- **JSON import** - Paste a card batch JSON blob; app assigns IDs and timestamps on import
+- **Flip review** - Tap-to-flip card review with random order; no scoring
+- **Audio playback** - Web Speech API TTS on mobile (iOS Safari primary target)
+
+### Phase 2: Library — Browse and organize
+- **List/browse view** - Peruse cards as a list, grouped by import batch or context; UX to be prototyped
+- **Furigana ruby text** - Render Japanese readings as ruby annotations above kanji (pending prototype)
+
+### Phase 3: Retention — Smarter review
+- **Spaced repetition** - Deferred; requires resolving the no-self-rating tension before design can begin
 
 ## Technical Notes
 
@@ -135,11 +150,12 @@ All cards from the same paste share the same `importedAt` — this is how import
 
 ## Out of Scope (for now)
 
-- Spaced repetition (deferred pending SR/scoring tension resolution)
+- Spaced repetition (deferred — lower priority, not needed for travel use case)
+- Long-term cross-topic language study (not the goal)
 - OCR / camera input
 - URL import
 - User accounts, cloud sync
 - Native app
-- In-app card creation
+- In-app card creation from scratch
 - Furigana ruby text rendering (prototype candidate, not blocking PRD)
 
