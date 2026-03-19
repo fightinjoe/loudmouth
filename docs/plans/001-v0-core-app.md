@@ -51,14 +51,14 @@ The Dexie.js data layer with the full IndexedDB schema and all CRUD operations. 
 
 ### Acceptance criteria
 
-- [ ] Exports: `importCards(cards, deckId?)`, `getDecks(lang?)`, `getCards(deckId)`, `createDeck(name, lang)`, `getOrCreateAllDeck(lang)`
-- [ ] `importCards` with no secondary deck → `deckIds` contains only the All deck
-- [ ] `importCards` with secondary deck → `deckIds` contains both
-- [ ] `getOrCreateAllDeck` called twice → exactly one system deck exists
-- [ ] Deck slug generation correct; counter increments across calls
-- [ ] `getCards` returns only cards belonging to the given deck
-- [ ] `getDecks` filters by language; excludes system decks from import dropdown results
-- [ ] All behaviour verified by Vitest + `fake-indexeddb`
+- [x] Exports: `importCards(cards, deckId?)`, `getDecks(lang?)`, `getCards(deckId)`, `createDeck(name, lang)`, `getOrCreateAllDeck(lang)`
+- [x] `importCards` with no secondary deck → `deckIds` contains only the All deck
+- [x] `importCards` with secondary deck → `deckIds` contains both
+- [x] `getOrCreateAllDeck` called twice → exactly one system deck exists
+- [x] Deck slug generation correct; counter increments across calls
+- [x] `getCards` returns only cards belonging to the given deck
+- [x] `getDecks` filters by language; excludes system decks from import dropdown results
+- [x] All behaviour verified by Vitest + `fake-indexeddb`
 
 ---
 
