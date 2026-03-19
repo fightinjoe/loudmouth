@@ -57,12 +57,12 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 - Random card order is sufficient for initial review sessions
 - The travel use case is the primary frame — long-term cross-topic study is explicitly not the goal
 - The Library Schema can be extended later to support spaced repetition without a breaking change
+- Decks are homogeneous by language — a deck contains only `zh` or only `ja` cards; mixed-language decks are not supported
 
 ## Open Questions
 
 - [x] 🟢 **Is Web Speech API adequate for audio on iOS Safari and Android Chrome?** — ✅ Resolved: viable on iOS Safari (quality exceeded expectations). Silent on macOS Safari, poor on Chrome Desktop. Build audio as a mobile-first feature; don't rely on desktop browsers.
 - [x] 🟢 **Is paste-based JSON import actually usable on mobile?** — ✅ Schema and tooling validated. Mobile paste UX untested but unblocked; proceeding with paste as import mechanism. See `prototypes/2-json-import/`.
-- [ ] 🟡 **What does the list/browse view look like, and how are cards organized?** The app needs a way to peruse cards as a list, not only via flip review. How cards are grouped is unresolved — likely multiple layers (import batch, trip, context/topic). The right grouping model shapes the data structure and UX significantly. Needs PRD.
 - [ ] 🟡 **Should the app support deriving new cards from existing ones?** A card for "soup" could generate "I like soup", "do you have soup?", etc. — natural combinations that expand practice without AI re-involvement. Scope and UX unclear. Is this in-app, or always done externally?
 - [ ] 🟡 **Furigana as ruby text** — does `reading` render as plain text below the card, or as ruby annotation above kanji? Ruby rendering is a meaningful UI challenge on mobile, especially cross-browser.
 - [ ] 🟡 **How does spaced repetition get added without a self-rating signal?** Lower priority — not needed for travel use case. The tension between "no scoring" and "SR as a future goal" must be resolved before SR can be designed. Deferred until core is built.
@@ -72,17 +72,17 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 - [x] 🟢 **Is Web Speech API adequate on mobile?** → ✅ Answered — iOS Safari quality is good. macOS Safari: silent. Chrome Desktop: poor. Audio is viable as a mobile-first feature. See `prototypes/1-web-speech/`.
 - [x] 🟢 **Is paste-based JSON import usable on mobile?** → ✅ Complete — card schema and `/generate-cards` tooling validated. Mobile paste gesture not tested; proceeding with paste. See `prototypes/2-json-import/`.
 - [ ] 🟡 **Furigana ruby text rendering** → Build a minimal HTML page rendering Japanese cards with ruby annotations. Test on iOS Safari and Android Chrome. Learn: whether native ruby rendering is sufficient or a custom component is needed.
-- [ ] 🟡 **List/browse view and card organization** → Build a minimal list view prototype exploring grouping models (by batch, trip, context). Learn: what grouping structure feels natural and what data model it requires.
 
 ## Features & Phases
 
-### Phase 1: Core — Import, review, audio
-- **JSON import** - Paste a card batch JSON blob; app assigns IDs and timestamps on import
-- **Flip review** - Tap-to-flip card review with random order; no scoring
+### Phase 1: Core — Import, review, audio, browse
+- **Deck management** - Landing page shows decks grouped by language; create/name decks on import; cards can belong to multiple decks
+- **JSON import** - Paste a card batch JSON blob; assign to a deck; app assigns IDs and timestamps on import
+- **Flip review** - Tap-to-flip card review (per deck) with random order; no scoring
 - **Audio playback** - Web Speech API TTS on mobile (iOS Safari primary target)
+- **Browse/search all cards** - Browse the full card library across all decks; searchable list view
 
-### Phase 2: Library — Browse and organize
-- **List/browse view** - Peruse cards as a list, grouped by import batch or context; UX to be prototyped
+### Phase 2: Library — Polish and durability
 - **Furigana ruby text** - Render Japanese readings as ruby annotations above kanji (pending prototype)
 - **Export library** - Export full card library as JSON; insurance against iOS Safari IndexedDB eviction
 
@@ -130,24 +130,33 @@ Validated in `prototypes/2-json-import/`. `id` and `importedAt` are never presen
 
 ### Library Schema (internal storage)
 
+Two IndexedDB tables: `cards` and `decks`. Card-deck membership is stored as `deckIds[]` on each card (IndexedDB has no foreign keys; denormalized array is the standard pattern).
+
+**cards**
 ```json
 {
-  "version": "1",
-  "cards": [
-    {
-      "id": "uuid-v4",
-      "importedAt": "ISO 8601 timestamp",
-      "lang": "zh | ja",
-      "type": "word | phrase | sentence",
-      "front": { "text": "string", "reading": "string (optional)" },
-      "back": { "translation": "string", "notes": "string (optional)" },
-      "example": { "text": "string", "reading": "string (optional)", "translation": "string (optional)" }
-    }
-  ]
+  "id": "uuid-v4",
+  "createdAt": "ISO 8601 timestamp",
+  "lang": "zh | ja",
+  "type": "word | phrase | sentence",
+  "deckIds": ["uuid-v4"],
+  "front": { "text": "string", "reading": "string (optional)" },
+  "back": { "translation": "string", "notes": "string (optional)" },
+  "example": { "text": "string", "reading": "string (optional)", "translation": "string (optional)" }
 }
 ```
 
-All cards from the same paste share the same `importedAt` — this is how import batches are associated.
+**decks**
+```json
+{
+  "id": "uuid-v4",
+  "name": "string",
+  "lang": "zh | ja",
+  "createdAt": "ISO 8601 timestamp"
+}
+```
+
+`createdAt` remains as audit metadata. Decks are the primary organizational unit. All cards in a deck share the same `lang`. A deck is created (or selected) at import time and assigned to each imported card via `deckIds`.
 
 ## Out of Scope (for now)
 
