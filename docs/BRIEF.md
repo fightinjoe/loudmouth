@@ -84,6 +84,7 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 ### Phase 2: Library — Browse and organize
 - **List/browse view** - Peruse cards as a list, grouped by import batch or context; UX to be prototyped
 - **Furigana ruby text** - Render Japanese readings as ruby annotations above kanji (pending prototype)
+- **Export library** - Export full card library as JSON; insurance against iOS Safari IndexedDB eviction
 
 ### Phase 3: Retention — Smarter review
 - **Spaced repetition** - Deferred; requires resolving the no-self-rating tension before design can begin
