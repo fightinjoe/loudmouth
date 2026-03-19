@@ -139,7 +139,7 @@ Two IndexedDB tables: `cards` and `decks`. Card-deck membership is stored as `de
   "createdAt": "ISO 8601 timestamp",
   "lang": "zh | ja",
   "type": "word | phrase | sentence",
-  "deckIds": ["uuid-v4"],
+  "deckIds": ["NNN-slug"],
   "front": { "text": "string", "reading": "string (optional)" },
   "back": { "translation": "string", "notes": "string (optional)" },
   "example": { "text": "string", "reading": "string (optional)", "translation": "string (optional)" }
@@ -149,12 +149,14 @@ Two IndexedDB tables: `cards` and `decks`. Card-deck membership is stored as `de
 **decks**
 ```json
 {
-  "id": "uuid-v4",
+  "id": "NNN-slug",
   "name": "string",
   "lang": "zh | ja",
   "createdAt": "ISO 8601 timestamp"
 }
 ```
+
+`id` is a human-readable string composed of a zero-padded auto-incrementing counter and a slug derived from `name` (e.g. `001-restaurant-words`). The counter is global across all decks and assigned at import time. Slug generation: lowercase, spaces → hyphens, non-alphanumeric stripped.
 
 `createdAt` remains as audit metadata. Decks are the primary organizational unit. All cards in a deck share the same `lang`. A deck is created (or selected) at import time and assigned to each imported card via `deckIds`.
 
