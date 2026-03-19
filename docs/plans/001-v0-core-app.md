@@ -73,12 +73,12 @@ A pure function `parseCardBatch(jsonString) → { cards, errors }` with no side 
 
 ### Acceptance criteria
 
-- [ ] Valid JSON → correct card array, empty errors
-- [ ] Missing `lang`, `front.text`, or `back.translation` → card skipped, error reported
-- [ ] Invalid JSON string → empty cards, parse error
-- [ ] Mixed valid/invalid → valid returned, skip count correct
-- [ ] Optional fields absent → card returned without them, no error
-- [ ] All cases covered by Vitest tests
+- [x] Valid JSON → correct card array, empty errors
+- [x] Missing `lang`, `front.text`, or `back.translation` → card skipped, error reported
+- [x] Invalid JSON string → empty cards, parse error
+- [x] Mixed valid/invalid → valid returned, skip count correct
+- [x] Optional fields absent → card returned without them, no error
+- [x] All cases covered by Vitest tests
 
 ---
 
