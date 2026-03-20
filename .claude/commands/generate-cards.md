@@ -41,7 +41,25 @@ Produce cards that are **genuinely useful for language learning**. Follow these 
 - `back.notes` — optional. Use for: grammatical notes (e.g., "takes を particle"), register (e.g., "polite form"), common collocations, or disambiguation. Keep brief.
 - `example` — optional but encouraged for phrases and sentences. Use natural, context-appropriate example sentences. Include reading and translation.
 
-## Step 3: Output
+## Step 3: Preview and approval
+
+Present a numbered preview list — only `front.text` and `back.translation` — like this:
+
+```
+1. 菜单 — menu
+2. 我想点菜 — I'd like to order
+3. ...
+```
+
+Ask the user: **"Any changes? (or type 'ok' to generate)"**
+
+The user may:
+- Approve all cards ("ok", "looks good", "generate", etc.) → proceed to Step 4
+- Request changes to specific cards ("swap #3 for X", "drop #5", "add a card for Y") → apply changes, re-display the updated preview, and ask again
+
+Repeat this loop until the user approves.
+
+## Step 4: Output
 
 Output **only** the JSON — no surrounding explanation, no markdown fences, no commentary. The output should be directly pasteable.
 

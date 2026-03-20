@@ -1,0 +1,192 @@
+/* ── Review screen container ── */
+
+.review-screen {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+/* ── Review header ── */
+
+.review-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.review-back {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  width: 2rem;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+
+.review-back:active { opacity: 0.6; }
+
+.review-counter {
+  flex: 1;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.review-header-spacer { width: 2rem; }
+
+/* ── 3D flip card ── */
+
+.card-scene {
+  flex: 1;
+  min-height: 0;
+  perspective: 1000px;
+  cursor: pointer;
+}
+
+.card-flip {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.4s ease;
+}
+
+.card-flip.flipped { transform: rotateY(180deg); }
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  gap: 0.75rem;
+  overflow-y: auto;
+}
+
+.card-face-back { transform: rotateY(180deg); }
+
+/* ── Card front content ── */
+
+.card-type-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  text-transform: capitalize;
+}
+
+.card-front-text {
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.card-front-reading {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+/* ── Card back content ── */
+
+.card-back-translation {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.card-back-notes {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.card-example {
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.card-example-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 0.2rem;
+}
+
+.card-example-text { font-size: 1rem; font-weight: 500; }
+
+.card-example-reading,
+.card-example-translation {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.card-example-translation { font-style: italic; }
+
+/* ── Bottom controls ── */
+
+.review-tap-hint {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin-top: 0.5rem;
+}
+
+.review-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.review-nav {
+  flex: 1;
+  padding: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 1.25rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+
+.review-nav:disabled { opacity: 0.35; cursor: default; }
+.review-nav:not(:disabled):active { opacity: 0.7; }
+
+.review-play {
+  flex: 2;
+  padding: 0.875rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+
+.review-play:active { opacity: 0.75; }

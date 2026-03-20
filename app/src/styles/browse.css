@@ -1,0 +1,59 @@
+/* ── Browse header ── */
+
+.browse-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.browse-back {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  width: 2rem;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+
+.browse-back:active { opacity: 0.6; }
+
+.browse-title {
+  flex: 1;
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.browse-header-spacer { width: 2rem; }
+
+/* ── Card list ── */
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.card-row {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.card-row-front {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.card-row-translation {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}

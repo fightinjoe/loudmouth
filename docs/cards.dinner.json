@@ -1,0 +1,169 @@
+{                                                                                                                                     
+    "cards": [                                                                                                                          
+      {                                                                                                                                 
+        "lang": "zh",                                                                                                                   
+        "type": "phrase",                                                                                                               
+        "front": {                                                                                                                      
+          "text": "吃饭了",                                                                                                             
+          "reading": "chī fàn le"                                                                                                       
+        },                                                                                                                              
+        "back": {                                                                                                                       
+          "translation": "time to eat / dinner's ready",                                                                                
+          "notes": "Called out to gather the family to the table"                                                                       
+        },                                                                                                                              
+        "example": {                                                                                                                    
+          "text": "妈妈说吃饭了。",                                                                                                     
+          "reading": "Māma shuō chī fàn le.",                                                                                           
+          "translation": "Mom said it's time to eat."                                                                                   
+        }                                                                                                                               
+      },                                                                                                                                
+      {                                                                                                                                 
+        "lang": "zh",                                                                                                                   
+        "type": "word",                                                                                                                 
+        "front": {                                                                                                                      
+          "text": "好吃",                                                                                                               
+          "reading": "hǎo chī"                                                                                                          
+        },                                                                                                                              
+        "back": {                                                                                                                       
+          "translation": "delicious",                                                                                                   
+          "notes": "Literal: 'good to eat'; common compliment at the table"                                                             
+        },                                                                                                                              
+        "example": {                                                                                                                    
+          "text": "这个菜真好吃！",                                                                                                     
+          "reading": "Zhège cài zhēn hǎo chī!",                                                                                         
+          "translation": "This dish is really delicious!"                                                                               
+        }                                                                                                                               
+      },                                                                                                                                
+      {                                                                                                                               
+        "lang": "zh",                                                                                                                   
+        "type": "phrase",                                                                                                             
+        "front": {
+          "text": "我吃饱了",
+          "reading": "wǒ chī bǎo le"
+        },
+        "back": {                                                                                                                       
+          "translation": "I'm full",
+          "notes": "饱 means full/satiated; use after a meal to decline more food"                                                      
+        },                                                                                                                              
+        "example": {
+          "text": "不用了，我吃饱了，谢谢。",                                                                                           
+          "reading": "Bùyòng le, wǒ chī bǎo le, xièxie.",                                                                               
+          "translation": "No need, I'm full, thank you."                                                                                
+        }                                                                                                                               
+      },                                                                                                                                
+      {                                                                                                                               
+        "lang": "zh",
+        "type": "phrase",
+        "front": {                                                                                                                      
+          "text": "再来一碗",
+          "reading": "zài lái yī wǎn"                                                                                                   
+        },                                                                                                                            
+        "back": {
+          "translation": "one more bowl please",
+          "notes": "碗 is the measure word for bowls; swap for 盘 (pán) for plates"                                                     
+        },                                                                                                                              
+        "example": {                                                                                                                    
+          "text": "饭太好吃了，再来一碗！",                                                                                             
+          "reading": "Fàn tài hǎo chī le, zài lái yī wǎn!",                                                                           
+          "translation": "The rice is so good, one more bowl!"                                                                          
+        }
+      },                                                                                                                                
+      {                                                                                                                               
+        "lang": "zh",
+        "type": "phrase",                                                                                                               
+        "front": {
+          "text": "慢慢吃",                                                                                                             
+          "reading": "màn màn chī"                                                                                                    
+        },
+        "back": {                                                                                                                       
+          "translation": "take your time eating",
+          "notes": "Said as a warm send-off when leaving the table before others finish"                                                
+        }                                                                                                                               
+      },                                                                                                                                
+      {                                                                                                                                 
+        "lang": "zh",                                                                                                                 
+        "type": "phrase",
+        "front": {
+          "text": "多吃点",                                                                                                             
+          "reading": "duō chī diǎn"
+        },                                                                                                                              
+        "back": {                                                                                                                     
+          "translation": "eat more / have more",
+          "notes": "Common hospitable urging from a host or parent"
+        },                                                                                                                              
+        "example": {                                                                                                                    
+          "text": "别客气，多吃点！",                                                                                                   
+          "reading": "Bié kèqi, duō chī diǎn!",                                                                                         
+          "translation": "Don't be shy, have more!"                                                                                     
+        }                                                                                                                               
+      },                                                                                                                                
+      {                                                                                                                                 
+        "lang": "zh",                                                                                                                 
+        "type": "word",
+        "front": {
+          "text": "干杯",                                                                                                               
+          "reading": "gān bēi"
+        },                                                                                                                              
+        "back": {                                                                                                                     
+          "translation": "cheers",
+          "notes": "Literal: 'dry the cup'; used when toasting drinks"
+        },                                                                                                                              
+        "example": {
+          "text": "大家举杯，干杯！",                                                                                                   
+          "reading": "Dàjiā jǔ bēi, gān bēi!",                                                                                          
+          "translation": "Everyone raise your glasses — cheers!"
+        }                                                                                                                               
+      },                                                                                                                              
+      {                                                                                                                                 
+        "lang": "zh",                                                                                                                 
+        "type": "phrase",
+        "front": {                                                                                                                      
+          "text": "帮我传一下",
+          "reading": "bāng wǒ chuán yīxià"                                                                                              
+        },                                                                                                                            
+        "back": {
+          "translation": "please pass it to me",                                                                                        
+          "notes": "传 means to pass/hand along; 一下 softens the request"
+        },                                                                                                                              
+        "example": {                                                                                                                  
+          "text": "能帮我传一下酱油吗？",                                                                                               
+          "reading": "Néng bāng wǒ chuán yīxià jiàngyóu ma?",                                                                           
+          "translation": "Could you pass me the soy sauce?"                                                                             
+        }                                                                                                                               
+      },                                                                                                                                
+      {                                                                                                                               
+        "lang": "zh",
+        "type": "phrase",
+        "front": {
+          "text": "我来盛饭",                                                                                                           
+          "reading": "wǒ lái chéng fàn"
+        },                                                                                                                              
+        "back": {                                                                                                                     
+          "translation": "I'll serve the rice",
+          "notes": "盛饭 means to scoop rice into bowls; offering this is polite"                                                       
+        },                                                                                                                              
+        "example": {                                                                                                                    
+          "text": "你坐着，我来盛饭。",                                                                                                 
+          "reading": "Nǐ zuòzhe, wǒ lái chéng fàn.",                                                                                    
+          "translation": "You sit, I'll serve the rice."                                                                                
+        }                                                                                                                               
+      },                                                                                                                                
+      {                                                                                                                               
+        "lang": "zh",
+        "type": "phrase",
+        "front": {
+          "text": "请坐",
+          "reading": "qǐng zuò"                                                                                                         
+        },
+        "back": {                                                                                                                       
+          "translation": "please sit down",                                                                                           
+          "notes": "General polite invitation; said when welcoming guests to the table"
+        },                                                                                                                              
+        "example": {
+          "text": "请坐，马上就开饭。",                                                                                                 
+          "reading": "Qǐng zuò, mǎshàng jiù kāi fàn.",                                                                                  
+          "translation": "Please sit down, we're about to eat."
+        }                                                                                                                               
+      }                                                                                                                               
+    ]                                                                                                                                   
+  } 

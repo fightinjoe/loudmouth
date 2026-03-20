@@ -153,13 +153,13 @@ The tap-to-flip review screen for a given deck. Cards in random order, 3D flip a
 
 ### Acceptance criteria
 
-- [ ] Renders at `#review?deckId=<id>` with cards from that deck in random order
-- [ ] Tap flips card (3D CSS animation, front ↔ back)
-- [ ] Counter shows position (e.g. "3 / 12")
-- [ ] Prev/Next navigate; Prev disabled on first card, Next on last
-- [ ] Card front: type badge, target text, reading if present
-- [ ] Card back: translation, notes if present, example (text + reading + translation) if present
-- [ ] Keyboard shortcuts: ← prev, → next, Space/Enter flip, `p` (placeholder for audio)
+- [x] Renders at `#review?deckId=<id>` with cards from that deck in random order
+- [x] Tap flips card (3D CSS animation, front ↔ back)
+- [x] Counter shows position (e.g. "3 / 12")
+- [x] Prev/Next navigate; Prev disabled on first card, Next on last
+- [x] Card front: type badge, target text, reading if present
+- [x] Card back: translation, notes if present, example (text + reading + translation) if present
+- [x] Keyboard shortcuts: ← prev, → next, Space/Enter flip, `p` (placeholder for audio)
 
 ---
 
@@ -174,11 +174,11 @@ A TTS wrapper module exposing `speak(text, lang)`, `cancel()`, and `ttsAvailable
 
 ### Acceptance criteria
 
-- [ ] zh cards speak at `zh-CN`; ja cards speak at `ja-JP`
-- [ ] Button shows "Playing…" while speaking; resets on end or error
-- [ ] Navigating to a new card cancels in-progress speech
-- [ ] `p` keyboard shortcut triggers Play
-- [ ] Play button hidden when Web Speech API unavailable
+- [x] zh cards speak at `zh-CN`; ja cards speak at `ja-JP`
+- [x] Button shows "Playing…" while speaking; resets on end or error
+- [x] Navigating to a new card cancels in-progress speech
+- [x] `p` keyboard shortcut triggers Play
+- [x] Play button hidden when Web Speech API unavailable
 
 ---
 
@@ -193,8 +193,8 @@ A flat scrollable list of all cards in a deck, reached via the chevron tap on ho
 
 ### Acceptance criteria
 
-- [ ] Renders at `#browse?deckId=<id>`
-- [ ] All cards for the deck shown in a scrollable list
-- [ ] Each row shows front text and translation
-- [ ] Deck name shown as header
-- [ ] Back control navigates to `#home`
+- [x] Renders at `#browse?deckId=<id>`
+- [x] All cards for the deck shown in a scrollable list
+- [x] Each row shows front text and translation
+- [x] Deck name shown as header
+- [x] Back control navigates to `#home`

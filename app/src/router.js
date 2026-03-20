@@ -17,8 +17,8 @@ export function navigate(hash) {
 export function initRouter(appEl) {
   function route() {
     const raw = window.location.hash.slice(1) || 'home'
-    const [name] = raw.split('?')
-    const params = Object.fromEntries(new URLSearchParams(raw.split('?')[1] || ''))
+    const [name, qparams] = raw.split('?')
+    const params = Object.fromEntries(new URLSearchParams(qparams || ''))
     const render = routes[name] || routes.home
     render(appEl, params)
   }

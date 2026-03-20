@@ -123,8 +123,15 @@ export function renderImport(el, params) {
         deckId = deck.id
       }
 
-      await importCards(parsedCards, deckId)
-      navigate('home')
+      try {
+        await importCards(parsedCards, deckId)
+        navigate('home')
+      } catch (err) {
+        const btn = el.querySelector('#btn-import')
+        btn.textContent = 'Import failed — try again'
+        btn.disabled = true
+        console.error('Import failed:', err)
+      }
     })
   }
 
