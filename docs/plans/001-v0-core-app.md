@@ -93,10 +93,10 @@ The home screen with language tabs (zh / ja), swipe-to-switch gesture, and an em
 
 ### Acceptance criteria
 
-- [ ] Renders at `#home` (default route)
-- [ ] Language tabs switch active language on tap
-- [ ] Swipe left/right (50px threshold, no library) switches active language
-- [ ] Empty state shown with explanatory copy and a link to `#import` when no decks exist
+- [x] Renders at `#home` (default route)
+- [x] Language tabs switch active language on tap
+- [x] Swipe left/right (50px threshold, no library) switches active language
+- [x] Empty state shown with explanatory copy and a link to `#import` when no decks exist
 
 ---
 
@@ -111,14 +111,14 @@ The 3-step import flow: paste JSON → confirm parsed card count + errors → as
 
 ### Acceptance criteria
 
-- [ ] Renders at `#import`
-- [ ] Valid JSON paste shows card count; invalid shows errors and blocks progress
-- [ ] Skipped-card count shown when some cards are invalid
-- [ ] Deck dropdown lists user-created decks for the detected language; system decks excluded
-- [ ] "New deck…" option reveals name input; creates deck on submit
-- [ ] Successful import redirects to `#home`
-- [ ] Every imported card has `deckIds` containing the All deck (+ optional secondary)
-- [ ] Import with no secondary deck selected succeeds (All deck only)
+- [x] Renders at `#import`
+- [x] Valid JSON paste shows card count; invalid shows errors and blocks progress
+- [x] Skipped-card count shown when some cards are invalid
+- [x] Deck dropdown lists user-created decks for the detected language; system decks excluded
+- [x] "New deck…" option reveals name input; creates deck on submit
+- [x] Successful import redirects to `#home`
+- [x] Every imported card has `deckIds` containing the All deck (+ optional secondary)
+- [x] Import with no secondary deck selected succeeds (All deck only)
 
 ---
 
@@ -133,12 +133,12 @@ Extend the home screen to show deck cards once cards have been imported. Each ca
 
 ### Acceptance criteria
 
-- [ ] Deck cards appear after import, showing name and card count
-- [ ] "All [Language] Cards" deck shown first
-- [ ] Tapping deck body navigates to `#review?deckId=<id>`
-- [ ] Tapping chevron navigates to `#browse?deckId=<id>`
-- [ ] Language tab switch shows only decks for that language
-- [ ] Empty state no longer shown when decks exist
+- [x] Deck cards appear after import, showing name and card count
+- [x] "All [Language] Cards" deck shown first
+- [x] Tapping deck body navigates to `#review?deckId=<id>`
+- [x] Tapping chevron navigates to `#browse?deckId=<id>`
+- [x] Language tab switch shows only decks for that language
+- [x] Empty state no longer shown when decks exist
 
 ---
 

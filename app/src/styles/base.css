@@ -31,3 +31,35 @@ body {
   width: 100%;
   margin: 0 auto;
 }
+
+/* ── Shared buttons ── */
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+
+.btn:active { opacity: 0.75; }
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn + .btn { margin-top: 0.75rem; }
