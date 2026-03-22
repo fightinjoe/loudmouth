@@ -1,39 +1,61 @@
 import '../styles/home.css'
-import { getDecks, getCards } from '../db.js'
+import { getDecks, getCards, getLangs } from '../db.js'
 
-const LANGS = ['zh', 'ja']
 const LANG_LABELS = { zh: 'Chinese', ja: 'Japanese' }
 
+function langLabel(lang) {
+  return LANG_LABELS[lang] || lang.toUpperCase()
+}
+
 export function renderHome(el, params) {
-  let lang = 'zh'
+  let lang = null
+  let langs = []
 
   async function render() {
-    const allDecks = await getDecks(lang, { includeSystem: true })
-    const isEmpty = allDecks.length === 0
+    langs = await getLangs()
 
-    // Sort: system (All) deck first, then user decks
-    const sorted = [
-      ...allDecks.filter(d => d.system),
-      ...allDecks.filter(d => !d.system),
-    ]
+    if (langs.length === 0) {
+      // No cards at all — empty state
+      el.innerHTML = `
+        <div class="screen" id="home-screen">
+          <div class="home-content">
+            <div class="empty-state">
+              <div class="empty-icon">📚</div>
+              <h2>No decks yet</h2>
+              <p>Import a card batch to get started.</p>
+            </div>
+          </div>
+          <a class="home-fab" href="#import" aria-label="Import cards">+</a>
+        </div>
+      `
+      return
+    }
 
-    // Fetch card counts in parallel
-    const counts = await Promise.all(sorted.map(d => getCards(d.id).then(c => c.length)))
+    if (!lang || !langs.includes(lang)) lang = langs[0]
+
+    const userDecks = await getDecks(lang)
+
+    // Virtual All Cards deck for this language
+    const allVirtual = { id: `all-${lang}`, name: `All ${langLabel(lang)} Cards`, system: true }
+
+    const allCards = await getCards(allVirtual.id)
+    const sorted = [allVirtual, ...userDecks]
+    const counts = [allCards.length, ...await Promise.all(userDecks.map(d => getCards(d.id).then(c => c.length)))]
 
     el.innerHTML = `
       <div class="screen" id="home-screen">
         <div class="lang-tabs">
-          ${LANGS.map(l => `
+          ${langs.map(l => `
             <button class="lang-tab${l === lang ? ' active' : ''}" data-lang="${l}">
-              ${LANG_LABELS[l]}
+              ${langLabel(l)}
             </button>
           `).join('')}
         </div>
         <div class="home-content">
-          ${isEmpty ? `
+          ${sorted.length === 0 ? `
             <div class="empty-state">
               <div class="empty-icon">📚</div>
-              <h2>No ${LANG_LABELS[lang]} decks yet</h2>
+              <h2>No ${langLabel(lang)} decks yet</h2>
               <p>Import a card batch to get started.</p>
             </div>
           ` : `
@@ -62,7 +84,7 @@ export function renderHome(el, params) {
       })
     })
 
-    // Chevron → browse (stop propagation so body click doesn't also fire)
+    // Chevron → browse
     el.querySelectorAll('.deck-chevron').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation()
@@ -85,9 +107,9 @@ export function renderHome(el, params) {
     screen.addEventListener('touchend', e => {
       const delta = e.changedTouches[0].clientX - touchStartX
       if (Math.abs(delta) < 50) return
-      const idx = LANGS.indexOf(lang)
-      if (delta < 0 && idx < LANGS.length - 1) lang = LANGS[idx + 1]
-      else if (delta > 0 && idx > 0) lang = LANGS[idx - 1]
+      const idx = langs.indexOf(lang)
+      if (delta < 0 && idx < langs.length - 1) lang = langs[idx + 1]
+      else if (delta > 0 && idx > 0) lang = langs[idx - 1]
       render()
     }, { passive: true })
   }

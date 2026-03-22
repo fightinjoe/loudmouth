@@ -233,7 +233,7 @@
         "deckId param is preserved and passed correctly from browse so subsequent actions have context"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -249,7 +249,7 @@
         "db.js gains deleteCard(cardId) which permanently removes the card from IndexedDB"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -266,7 +266,7 @@
         "db.js gains deleteDeck(deckId)"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -295,7 +295,7 @@
         "All Cards virtual deck cannot be deleted (no delete button shown in browse for it)"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": ""
     }
   ]

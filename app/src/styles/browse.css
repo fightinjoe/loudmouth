@@ -30,6 +30,19 @@
 
 .browse-header-spacer { width: 2rem; }
 
+.browse-delete-btn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  width: 2rem;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+
+.browse-delete-btn:active { opacity: 0.6; }
+
 /* ── Card list ── */
 
 .card-list {

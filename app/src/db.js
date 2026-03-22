@@ -115,4 +115,36 @@ export async function importCards(cards, deckId = null, store = db) {
   }
 }
 
+/**
+ * Returns distinct lang values that have at least one card.
+ */
+export async function getLangs(store = db) {
+  const cards = await store.cards.toArray();
+  return [...new Set(cards.map(c => c.lang))].sort();
+}
+
+/**
+ * Removes a deckId from a card's deckIds array without deleting the card.
+ */
+export async function removeCardFromDeck(cardId, deckId, store = db) {
+  const card = await store.cards.get(cardId);
+  if (!card) return;
+  const deckIds = card.deckIds.filter(id => id !== deckId);
+  await store.cards.update(cardId, { deckIds });
+}
+
+/**
+ * Permanently deletes a card from IndexedDB.
+ */
+export async function deleteCard(cardId, store = db) {
+  await store.cards.delete(cardId);
+}
+
+/**
+ * Deletes a deck record (cards are untouched).
+ */
+export async function deleteDeck(deckId, store = db) {
+  await store.decks.delete(deckId);
+}
+
 export { createDb };

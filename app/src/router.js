@@ -2,12 +2,14 @@ import { renderHome } from './screens/home.js'
 import { renderImport } from './screens/import.js'
 import { renderReview } from './screens/review.js'
 import { renderBrowse } from './screens/browse.js'
+import { renderCard } from './screens/card.js'
 
 const routes = {
   home: renderHome,
   import: renderImport,
   review: renderReview,
   browse: renderBrowse,
+  card: renderCard,
 }
 
 export function navigate(hash) {
