@@ -1,5 +1,6 @@
 import '../styles/card.css'
 import { db, removeCardFromDeck, deleteCard } from '../db.js'
+import { speak, ttsAvailable } from '../tts.js'
 
 function isVirtualDeck(deckId) {
   return /^all-/.test(deckId)
@@ -27,7 +28,7 @@ export function renderCard(el, params) {
         <div class="card-detail-header">
           <button class="browse-back" id="btn-back">←</button>
           <h1 class="browse-title">Card Detail</h1>
-          <div class="browse-header-spacer"></div>
+          ${ttsAvailable ? `<button class="btn-play" id="btn-play" aria-label="Play audio">▶</button>` : '<div class="browse-header-spacer"></div>'}
         </div>
 
         <div class="card-detail-body">
@@ -64,6 +65,17 @@ export function renderCard(el, params) {
     el.querySelector('#btn-back').addEventListener('click', () => {
       window.location.hash = `browse?deckId=${deckId}`
     })
+
+    if (ttsAvailable) {
+      const btnPlay = el.querySelector('#btn-play')
+      btnPlay.addEventListener('click', () => {
+        btnPlay.classList.add('playing')
+        speak(f.text, card.lang, {
+          onEnd: () => btnPlay.classList.remove('playing'),
+          onError: () => btnPlay.classList.remove('playing'),
+        })
+      })
+    }
 
     el.querySelector('#btn-action').addEventListener('click', async () => {
       const msg = isAll

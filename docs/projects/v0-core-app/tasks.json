@@ -297,6 +297,21 @@
       "priority": 1,
       "passes": true,
       "notes": ""
+    },
+    {
+      "id": "VA-019",
+      "title": "Add TTS play button to card detail screen",
+      "description": "As a learner, I want to hear the front text of a card read aloud from the card detail screen so that I can check pronunciation without entering review mode.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "A play/speak button is visible on #card?id=…",
+        "Tapping it calls tts.speak(card.front.text, card.lang)",
+        "Button shows an active state while speech is in progress and resets when done or on error",
+        "Button is hidden or disabled when ttsAvailable is false"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
     }
   ]
 }

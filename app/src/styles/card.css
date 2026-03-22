@@ -83,6 +83,30 @@
   margin-top: 0.25rem;
 }
 
+/* ── Play button ── */
+
+.btn-play {
+  background: none;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  border-radius: 50%;
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.btn-play.playing {
+  background: var(--accent);
+  color: #fff;
+}
+
 /* ── Actions ── */
 
 .card-detail-actions {
