@@ -35,7 +35,6 @@ export function renderHome(el, params) {
               <div class="empty-icon">📚</div>
               <h2>No ${LANG_LABELS[lang]} decks yet</h2>
               <p>Import a card batch to get started.</p>
-              <a class="btn btn-primary" href="#import">Import Cards</a>
             </div>
           ` : `
             <div class="deck-list">
@@ -51,6 +50,7 @@ export function renderHome(el, params) {
             </div>
           `}
         </div>
+        <a class="home-fab" href="#import" aria-label="Import cards">+</a>
       </div>
     `
 

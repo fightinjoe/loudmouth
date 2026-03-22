@@ -280,7 +280,7 @@
         "FAB does not obscure deck cards when scrolling"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
