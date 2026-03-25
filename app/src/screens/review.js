@@ -1,6 +1,7 @@
 import '../styles/review.css'
-import { getCards } from '../db.js'
+import { getCards, db } from '../db.js'
 import { speak, cancel, ttsAvailable } from '../tts.js'
+import { applyMode, STUDY_MODES } from '../study-modes.js'
 
 function shuffle(arr) {
   const a = [...arr]
@@ -19,20 +20,22 @@ export function renderReview(el, params) {
   let index = 0
   let flipped = false
   let speaking = false
+  let mode = STUDY_MODES.TARGET_LANG
 
   function frontHTML(card) {
+    const { front } = applyMode(card, mode)
     return `
       ${card.type ? `<div class="card-type-badge">${card.type}</div>` : ''}
-      <div class="card-front-text">${card.front.text}</div>
-      ${card.front.reading ? `<div class="card-front-reading">${card.front.reading}</div>` : ''}
+      <div class="card-front-text">${front}</div>
     `
   }
 
   function backHTML(card) {
+    const { back } = applyMode(card, mode)
     const ex = card.example
     return `
-      <div class="card-back-translation">${card.back.translation}</div>
-      ${card.back.notes ? `<div class="card-back-notes">${card.back.notes}</div>` : ''}
+      <div class="card-back-translation">${back}</div>
+      ${card.notes ? `<div class="card-back-notes">${card.notes}</div>` : ''}
       ${ex ? `
         <div class="card-example">
           <div class="card-example-label">Example</div>
@@ -99,7 +102,7 @@ export function renderReview(el, params) {
     speaking = true
     const btn = el.querySelector('#btn-play')
     if (btn) btn.textContent = 'Playing…'
-    speak(card.front.text, card.lang, {
+    speak(card.text, card.lang, {
       onEnd: () => {
         speaking = false
         const b = el.querySelector('#btn-play')
@@ -131,6 +134,9 @@ export function renderReview(el, params) {
   }, { once: true })
 
   async function init() {
+    const deck = await db.decks.get(deckId)
+    mode = deck?.mode || STUDY_MODES.TARGET_LANG
+
     const rawCards = await getCards(deckId)
     cards = shuffle(rawCards)
 

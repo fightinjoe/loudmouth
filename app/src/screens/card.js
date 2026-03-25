@@ -19,9 +19,7 @@ export function renderCard(el, params) {
     const actionLabel = isAll ? 'Delete card' : 'Remove from deck'
     const actionClass = isAll ? 'btn-danger' : 'btn-danger'
 
-    const f = card.front
-    const b = card.back
-    const ex = b.example || {}
+    const ex = card.example || {}
 
     el.innerHTML = `
       <div class="screen">
@@ -33,16 +31,16 @@ export function renderCard(el, params) {
 
         <div class="card-detail-body">
           <div class="card-detail-section">
-            ${f.type ? `<span class="card-type-badge">${f.type}</span>` : ''}
-            <div class="card-detail-front">${f.text}</div>
-            ${f.reading ? `<div class="card-detail-reading">${f.reading}</div>` : ''}
+            ${card.type ? `<span class="card-type-badge">${card.type}</span>` : ''}
+            <div class="card-detail-front">${card.text}</div>
+            ${card.reading ? `<div class="card-detail-reading">${card.reading}</div>` : ''}
           </div>
 
           <div class="card-detail-divider"></div>
 
           <div class="card-detail-section">
-            <div class="card-detail-translation">${b.translation}</div>
-            ${b.notes ? `<div class="card-detail-notes">${b.notes}</div>` : ''}
+            <div class="card-detail-translation">${card.translation}</div>
+            ${card.notes ? `<div class="card-detail-notes">${card.notes}</div>` : ''}
           </div>
 
           ${(ex.text || ex.reading || ex.translation) ? `
@@ -70,7 +68,7 @@ export function renderCard(el, params) {
       const btnPlay = el.querySelector('#btn-play')
       btnPlay.addEventListener('click', () => {
         btnPlay.classList.add('playing')
-        speak(f.text, card.lang, {
+        speak(card.text, card.lang, {
           onEnd: () => btnPlay.classList.remove('playing'),
           onError: () => btnPlay.classList.remove('playing'),
         })

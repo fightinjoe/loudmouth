@@ -1,10 +1,22 @@
 import Dexie from 'dexie';
+import { normalizeCard } from './import-parser.js';
 
 function createDb(options = {}) {
   const instance = new Dexie('loudmouth', options);
   instance.version(1).stores({
     cards: 'id, lang, *deckIds, createdAt',
     decks: 'id, lang, createdAt',
+  });
+  instance.version(2).stores({
+    cards: 'id, lang, *deckIds, createdAt',
+    decks: 'id, lang, createdAt',
+  }).upgrade(tx => {
+    return tx.cards.toCollection().modify(card => {
+      if (!card.text) {
+        const normalized = normalizeCard(card)
+        Object.assign(card, normalized)
+      }
+    })
   });
   return instance;
 }
@@ -45,6 +57,7 @@ export async function getOrCreateAllDeck(lang, store = db) {
     lang,
     createdAt: isoNow(),
     system: true,
+    mode: 'target-lang',
   };
   await store.decks.add(deck);
   return deck;
@@ -69,9 +82,16 @@ async function nextDeckCounter(store) {
 export async function createDeck(name, lang, store = db) {
   const counter = await nextDeckCounter(store);
   const id = `${counter}-${slugify(name)}`;
-  const deck = { id, name, lang, createdAt: isoNow(), system: false };
+  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: 'target-lang' };
   await store.decks.add(deck);
   return deck;
+}
+
+/**
+ * Updates the study mode for a deck.
+ */
+export async function updateDeckMode(deckId, mode, store = db) {
+  await store.decks.update(deckId, { mode });
 }
 
 /**
@@ -159,7 +179,7 @@ export async function exportAllData(store = db) {
 
 /**
  * Restores a full export. Existing data is cleared first.
- * Cards are inserted as-is (preserving IDs/timestamps).
+ * Cards are normalized to flat schema before insert.
  * User decks are inserted as-is; system decks are re-created on demand.
  */
 export async function restoreAllData(data, store = db) {
@@ -179,9 +199,9 @@ export async function restoreAllData(data, store = db) {
     await getOrCreateAllDeck(lang, store);
   }
 
-  // Restore cards (preserve original IDs and deckIds)
+  // Normalize and restore cards (preserve original IDs and deckIds)
   for (const card of cards) {
-    await store.cards.add(card);
+    await store.cards.add(normalizeCard(card));
   }
 }
 
