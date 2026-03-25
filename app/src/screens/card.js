@@ -68,7 +68,7 @@ export function renderCard(el, params) {
       const btnPlay = el.querySelector('#btn-play')
       btnPlay.addEventListener('click', () => {
         btnPlay.classList.add('playing')
-        speak(card.text, card.lang, {
+        speak(card.reading || card.text, card.lang, {
           onEnd: () => btnPlay.classList.remove('playing'),
           onError: () => btnPlay.classList.remove('playing'),
         })

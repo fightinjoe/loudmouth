@@ -102,7 +102,7 @@ export function renderReview(el, params) {
     speaking = true
     const btn = el.querySelector('#btn-play')
     if (btn) btn.textContent = 'Playing…'
-    speak(card.text, card.lang, {
+    speak(card.reading || card.text, card.lang, {
       onEnd: () => {
         speaking = false
         const b = el.querySelector('#btn-play')

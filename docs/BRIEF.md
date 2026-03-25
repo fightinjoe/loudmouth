@@ -108,14 +108,10 @@ Validated in `prototypes/2-json-import/`. `id` and `importedAt` are never presen
     {
       "lang": "zh | ja",
       "type": "word | phrase | sentence",
-      "front": {
-        "text": "string",
-        "reading": "string (optional — pinyin for zh, hiragana for ja)"
-      },
-      "back": {
-        "translation": "string",
-        "notes": "string (optional)"
-      },
+      "text": "string",
+      "reading": "string (optional — pinyin for zh, hiragana for ja)",
+      "translation": "string",
+      "notes": "string (optional)",
       "example": {
         "text": "string",
         "reading": "string (optional)",
@@ -126,7 +122,7 @@ Validated in `prototypes/2-json-import/`. `id` and `importedAt` are never presen
 }
 ```
 
-**Required per card:** `lang`, `front.text`, `back.translation`. All other fields optional.
+**Required per card:** `lang`, `text`, `translation`. All other fields optional.
 
 ### Library Schema (internal storage)
 
@@ -140,8 +136,10 @@ Two IndexedDB tables: `cards` and `decks`. Card-deck membership is stored as `de
   "lang": "zh | ja",
   "type": "word | phrase | sentence",
   "deckIds": ["NNN-slug"],
-  "front": { "text": "string", "reading": "string (optional)" },
-  "back": { "translation": "string", "notes": "string (optional)" },
+  "text": "string",
+  "reading": "string (optional)",
+  "translation": "string",
+  "notes": "string (optional)",
   "example": { "text": "string", "reading": "string (optional)", "translation": "string (optional)" }
 }
 ```
