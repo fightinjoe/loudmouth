@@ -3,6 +3,7 @@ import { renderImport } from './screens/import.js'
 import { renderReview } from './screens/review.js'
 import { renderBrowse } from './screens/browse.js'
 import { renderCard } from './screens/card.js'
+import { renderExport } from './screens/export.js'
 
 const routes = {
   home: renderHome,
@@ -10,6 +11,7 @@ const routes = {
   review: renderReview,
   browse: renderBrowse,
   card: renderCard,
+  export: renderExport,
 }
 
 export function navigate(hash) {

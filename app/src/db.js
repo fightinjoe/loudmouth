@@ -147,4 +147,42 @@ export async function deleteDeck(deckId, store = db) {
   await store.decks.delete(deckId);
 }
 
+/**
+ * Exports all cards and user decks as a plain JS object suitable for JSON serialization.
+ * System decks are excluded — they are re-created automatically on import.
+ */
+export async function exportAllData(store = db) {
+  const cards = await store.cards.toArray();
+  const decks = await store.decks.filter(d => !d.system).toArray();
+  return { cards, decks };
+}
+
+/**
+ * Restores a full export. Existing data is cleared first.
+ * Cards are inserted as-is (preserving IDs/timestamps).
+ * User decks are inserted as-is; system decks are re-created on demand.
+ */
+export async function restoreAllData(data, store = db) {
+  await store.cards.clear();
+  await store.decks.clear();
+
+  const { cards = [], decks = [] } = data;
+
+  // Restore user decks first
+  for (const deck of decks) {
+    await store.decks.add(deck);
+  }
+
+  // Re-create system All decks referenced by cards
+  const langs = [...new Set(cards.map(c => c.lang))];
+  for (const lang of langs) {
+    await getOrCreateAllDeck(lang, store);
+  }
+
+  // Restore cards (preserve original IDs and deckIds)
+  for (const card of cards) {
+    await store.cards.add(card);
+  }
+}
+
 export { createDb };

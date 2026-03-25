@@ -26,6 +26,7 @@ export function renderHome(el, params) {
             </div>
           </div>
           <a class="home-fab" href="#import" aria-label="Import cards">+</a>
+          <a class="home-fab home-fab-export" href="#export" aria-label="Export and restore">↓</a>
         </div>
       `
       return
@@ -73,6 +74,7 @@ export function renderHome(el, params) {
           `}
         </div>
         <a class="home-fab" href="#import" aria-label="Import cards">+</a>
+        <a class="home-fab home-fab-export" href="#export" aria-label="Export and restore">↓</a>
       </div>
     `
 

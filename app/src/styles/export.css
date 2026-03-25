@@ -1,0 +1,50 @@
+.export-back {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 1.25rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#export-screen h1 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin-bottom: 1.75rem;
+}
+
+.export-section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.export-section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.export-section p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.restore-status {
+  display: none;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.restore-status.visible {
+  display: block;
+}
+
+.restore-status.error {
+  color: #c0392b;
+}
