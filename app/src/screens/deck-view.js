@@ -24,13 +24,13 @@ export function renderDeckView(el, params) {
     }
 
     if (!deckId) {
-      el.innerHTML = `<div class="screen"><div class="empty-state"><p>No decks yet. Import cards to get started.</p></div></div>`
+      el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p>No decks yet. Import cards to get started.</p></div></div>`
       return
     }
 
     const deck = await db.decks.get(deckId)
     if (!deck) {
-      el.innerHTML = `<div class="screen"><div class="empty-state"><p>Deck not found.</p></div></div>`
+      el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p>Deck not found.</p></div></div>`
       return
     }
 
@@ -44,7 +44,7 @@ export function renderDeckView(el, params) {
         </div>
         <div class="deck-view-list">
           ${cards.length === 0 ? `
-            <div class="empty-state"><p>No cards in this deck.</p></div>
+            <div class="deck-view-empty"><p>No cards in this deck.</p></div>
           ` : cards.map(card => `
             <div class="card-row" data-card-id="${card.id}">
               <div class="card-row-body">
