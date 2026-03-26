@@ -149,6 +149,7 @@
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
+  overflow: hidden;
 }
 
 .review-card {

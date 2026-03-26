@@ -214,14 +214,42 @@ function openCardReview(appEl, cards, deck, startIndex) {
     if (touchStartX === null) return
     const dx = e.changedTouches[0].clientX - touchStartX
     touchStartX = null
-    cardEl.style.transform = ''
-    if (Math.abs(dx) < 50) return
-    if (dx < 0 && currentIndex < cards.length - 1) {
-      currentIndex++
-      renderCurrent()
-    } else if (dx > 0 && currentIndex > 0) {
-      currentIndex--
-      renderCurrent()
+
+    if (Math.abs(dx) < 50) {
+      // Snap back
+      cardEl.style.transition = 'transform 200ms ease'
+      cardEl.style.transform = ''
+      cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
+      return
     }
+
+    let nextIndex = -1
+    if (dx < 0 && currentIndex < cards.length - 1) nextIndex = currentIndex + 1
+    else if (dx > 0 && currentIndex > 0) nextIndex = currentIndex - 1
+
+    if (nextIndex === -1) {
+      // At boundary — snap back
+      cardEl.style.transition = 'transform 200ms ease'
+      cardEl.style.transform = ''
+      cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
+      return
+    }
+
+    // Slide out, then update and slide in
+    const exitX = dx < 0 ? '-110%' : '110%'
+    const enterX = dx < 0 ? '110%' : '-110%'
+    cardEl.style.transition = 'transform 200ms ease'
+    cardEl.style.transform = `translateX(${exitX})`
+    cardEl.addEventListener('transitionend', () => {
+      currentIndex = nextIndex
+      renderCurrent()
+      cardEl.style.transition = ''
+      cardEl.style.transform = `translateX(${enterX})`
+      // Force reflow then animate in
+      cardEl.getBoundingClientRect()
+      cardEl.style.transition = 'transform 200ms ease'
+      cardEl.style.transform = ''
+      cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
+    }, { once: true })
   }, { passive: true })
 }
