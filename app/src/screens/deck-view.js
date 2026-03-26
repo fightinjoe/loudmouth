@@ -1,4 +1,5 @@
 import { db, getCards, getRecentDecks } from '../db.js'
+import { speak } from '../tts.js'
 
 function renderCardRow(card, mode) {
   let body
@@ -74,6 +75,16 @@ export function renderDeckView(el, params) {
         </div>
       </div>
     `
+
+    el.querySelector('.deck-view-list').addEventListener('click', e => {
+      const playBtn = e.target.closest('.card-row-play')
+      if (!playBtn) return
+      e.stopPropagation()
+      const cardId = playBtn.dataset.cardId
+      const card = cards.find(c => String(c.id) === cardId)
+      if (!card) return
+      speak(card.reading || card.text, deck.lang)
+    })
   }
 
   init()
