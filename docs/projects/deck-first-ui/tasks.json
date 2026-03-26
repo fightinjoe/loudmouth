@@ -124,7 +124,7 @@
         "Swiping left on the last card is ignored; swiping right on the first card is ignored"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-006. Swipe detection uses touchstart/touchend delta."
     },
     {
@@ -137,7 +137,7 @@
         "The card list is visible again after dismissal"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-006."
     },
     {
