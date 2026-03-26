@@ -107,6 +107,20 @@ function renderReviewCardContent(card, mode) {
   `
 }
 
+function renderTranslationArea(card, mode) {
+  if (mode === 'reverse') return ''
+  if (mode === 'review') {
+    return `<div class="review-translation review-translation--visible">${card.translation || ''}</div>`
+  }
+  // comprehension: skeleton by default, reveal on press
+  return `
+    <div class="review-translation review-translation--skeleton" data-translation="${(card.translation || '').replace(/"/g, '&quot;')}">
+      <div class="review-translation-skeleton-line"></div>
+      <div class="review-translation-skeleton-line review-translation-skeleton-line--short"></div>
+    </div>
+  `
+}
+
 function openCardReview(appEl, cards, deck, startIndex) {
   let currentIndex = startIndex
 
@@ -119,7 +133,10 @@ function openCardReview(appEl, cards, deck, startIndex) {
       <span class="card-review-header-spacer"></span>
     </div>
     <div class="card-review-body">
-      <div class="review-card" id="review-card-el"></div>
+      <div class="card-review-content">
+        <div class="review-card" id="review-card-el"></div>
+        <div id="review-translation-el"></div>
+      </div>
     </div>
   `
   appEl.appendChild(panel)
@@ -127,7 +144,36 @@ function openCardReview(appEl, cards, deck, startIndex) {
   const cardEl = panel.querySelector('#review-card-el')
 
   function renderCurrent() {
+    const transContainer = panel.querySelector('#review-translation-el')
     cardEl.innerHTML = renderReviewCardContent(cards[currentIndex], deck.mode)
+    transContainer.innerHTML = renderTranslationArea(cards[currentIndex], deck.mode)
+    wireTranslationReveal(transContainer, deck.mode)
+  }
+
+  function wireTranslationReveal(el, mode) {
+    if (mode !== 'comprehension') return
+    const area = el.querySelector('.review-translation--skeleton')
+    if (!area) return
+    const translation = area.dataset.translation
+
+    function reveal() {
+      area.classList.add('review-translation--revealed')
+      area.innerHTML = translation
+    }
+    function hide() {
+      area.classList.remove('review-translation--revealed')
+      area.innerHTML = `
+        <div class="review-translation-skeleton-line"></div>
+        <div class="review-translation-skeleton-line review-translation-skeleton-line--short"></div>
+      `
+    }
+
+    area.addEventListener('mousedown', reveal)
+    area.addEventListener('touchstart', reveal, { passive: true })
+    area.addEventListener('mouseup', hide)
+    area.addEventListener('mouseleave', hide)
+    area.addEventListener('touchend', hide)
+    area.addEventListener('touchcancel', hide)
   }
 
   renderCurrent()

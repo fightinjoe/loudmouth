@@ -180,3 +180,63 @@
   text-align: center;
   margin-top: 0.5rem;
 }
+
+/* ── Card Review: content wrapper ── */
+
+.card-review-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 320px;
+}
+
+/* ── Translation area ── */
+
+.review-translation {
+  width: 100%;
+  min-height: 48px;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+}
+
+.review-translation--skeleton {
+  background: transparent;
+}
+
+.review-translation--visible {
+  background: var(--surface);
+  font-size: 1rem;
+  color: var(--text);
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  cursor: default;
+}
+
+.review-translation--revealed {
+  background: var(--surface);
+  font-size: 1rem;
+  color: var(--text);
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+}
+
+.review-translation-skeleton-line {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--surface);
+  width: 100%;
+}
+
+.review-translation-skeleton-line--short {
+  width: 60%;
+}
