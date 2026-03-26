@@ -1,4 +1,4 @@
-import { db, getCards, getDecks, getRecentDecks } from '../db.js'
+import { db, getCards, getDecks, getRecentDecks, updateDeckAccessTime } from '../db.js'
 import { speak } from '../tts.js'
 
 function renderCardRow(card, mode) {
@@ -196,7 +196,9 @@ export function renderDeckView(el, params) {
     })
 
     el.querySelector('#btn-deck-title').addEventListener('click', () => {
-      openDeckPicker(el, (selectedDeckId) => {
+      openDeckPicker(el, async (selectedDeckId) => {
+        setLastDeckId(selectedDeckId)
+        await updateDeckAccessTime(selectedDeckId)
         renderDeckView(el, { id: selectedDeckId })
       })
     })
