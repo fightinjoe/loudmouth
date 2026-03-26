@@ -78,14 +78,104 @@ export function renderDeckView(el, params) {
 
     el.querySelector('.deck-view-list').addEventListener('click', e => {
       const playBtn = e.target.closest('.card-row-play')
-      if (!playBtn) return
-      e.stopPropagation()
-      const cardId = playBtn.dataset.cardId
-      const card = cards.find(c => String(c.id) === cardId)
-      if (!card) return
-      speak(card.reading || card.text, deck.lang)
+      if (playBtn) {
+        e.stopPropagation()
+        const cardId = playBtn.dataset.cardId
+        const card = cards.find(c => String(c.id) === cardId)
+        if (card) speak(card.reading || card.text, deck.lang)
+        return
+      }
+      const row = e.target.closest('.card-row')
+      if (!row) return
+      const cardId = row.dataset.cardId
+      const idx = cards.findIndex(c => String(c.id) === cardId)
+      openCardReview(el, cards, deck, idx < 0 ? 0 : idx)
     })
   }
 
   init()
+}
+
+function renderReviewCardContent(card, mode) {
+  if (mode === 'reverse') {
+    return `<div class="review-card-text">${card.translation || ''}</div>`
+  }
+  // comprehension and review
+  return `
+    <div class="review-card-text">${card.text || ''}</div>
+    ${card.reading ? `<div class="review-card-reading">${card.reading}</div>` : ''}
+  `
+}
+
+function openCardReview(appEl, cards, deck, startIndex) {
+  let currentIndex = startIndex
+
+  const panel = document.createElement('div')
+  panel.className = 'card-review-panel'
+  panel.innerHTML = `
+    <div class="card-review-header">
+      <button class="card-review-back" aria-label="Back">‹ Back</button>
+      <span class="card-review-title">${deck.name}</span>
+      <span class="card-review-header-spacer"></span>
+    </div>
+    <div class="card-review-body">
+      <div class="review-card" id="review-card-el"></div>
+    </div>
+  `
+  appEl.appendChild(panel)
+
+  const cardEl = panel.querySelector('#review-card-el')
+
+  function renderCurrent() {
+    cardEl.innerHTML = renderReviewCardContent(cards[currentIndex], deck.mode)
+  }
+
+  renderCurrent()
+
+  // Slide in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      panel.classList.add('card-review-panel--visible')
+    })
+  })
+
+  // TTS on card tap
+  cardEl.addEventListener('click', () => {
+    const card = cards[currentIndex]
+    speak(card.reading || card.text, deck.lang)
+  })
+
+  // Back button
+  panel.querySelector('.card-review-back').addEventListener('click', () => {
+    panel.classList.remove('card-review-panel--visible')
+    panel.addEventListener('transitionend', () => panel.remove(), { once: true })
+  })
+
+  // Swipe left/right
+  let touchStartX = null
+
+  cardEl.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX
+  }, { passive: true })
+
+  cardEl.addEventListener('touchmove', e => {
+    if (touchStartX === null) return
+    const dx = e.touches[0].clientX - touchStartX
+    cardEl.style.transform = `translateX(${dx}px)`
+  }, { passive: true })
+
+  cardEl.addEventListener('touchend', e => {
+    if (touchStartX === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX
+    touchStartX = null
+    cardEl.style.transform = ''
+    if (Math.abs(dx) < 50) return
+    if (dx < 0 && currentIndex < cards.length - 1) {
+      currentIndex++
+      renderCurrent()
+    } else if (dx > 0 && currentIndex > 0) {
+      currentIndex--
+      renderCurrent()
+    }
+  }, { passive: true })
 }

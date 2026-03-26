@@ -92,7 +92,7 @@
         "Panel uses shared panel animation class (translateY 100%→0, 300ms ease)"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-004. Replaces review.js and card.js."
     },
     {

@@ -96,3 +96,87 @@
   text-align: center;
   color: var(--text-secondary);
 }
+
+/* ── Card Review Panel ── */
+
+.card-review-panel {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 300ms ease;
+  z-index: 100;
+}
+
+.card-review-panel--visible {
+  transform: translateY(0);
+}
+
+.card-review-header {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem 0.75rem;
+}
+
+.card-review-back {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 60px;
+}
+
+.card-review-title {
+  flex: 1;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.card-review-header-spacer {
+  min-width: 60px;
+}
+
+.card-review-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.review-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 320px;
+  height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+
+.review-card-text {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+}
+
+.review-card-reading {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 0.5rem;
+}

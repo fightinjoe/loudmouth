@@ -1,3 +1,11 @@
+## DU-006 — DONE
+- openCardReview() added to deck-view.js; appended panel div to appEl
+- Slide-up via translateY(100%)→0, 300ms ease; .card-review-panel--visible class
+- renderReviewCardContent(): comprehension/review → text bold + reading; reverse → translation
+- Card tap → speak(reading||text, lang); back button → slide out + remove from DOM
+- Touch swipe (50px threshold) advances/retreats currentIndex, no wrap-around
+- 46 tests pass; build clean
+
 ## DU-005 — DONE (commit 5c06181)
 - Added `speak` import from tts.js in deck-view.js
 - Delegated click on .deck-view-list; matches .card-row-play via closest()
