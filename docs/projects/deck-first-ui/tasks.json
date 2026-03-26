@@ -29,7 +29,7 @@
         "localStorage key loudmouth.lastDeckId is read on startup and written on deck selection"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -45,7 +45,7 @@
         "Design tokens (colors, typography) are applied via CSS variables or updated stylesheet"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-001 (mode values) and DU-002 (router). Replaces home.js and browse.js."
     },
     {
@@ -61,7 +61,7 @@
         "Template is read from the deck record's mode field (using new value names from DU-001)"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-003."
     },
     {
@@ -75,7 +75,7 @@
         "Play button tap does not open the Card Review panel"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-004. TTS module requires no changes."
     },
     {
