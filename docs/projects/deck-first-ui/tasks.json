@@ -155,7 +155,7 @@
         "Section headers use small-caps 13px caption style"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-001 and DU-003. Relative timestamp computed from lastAccessedAt (falling back to createdAt); no external library needed."
     },
     {
@@ -171,7 +171,7 @@
         "Relaunching the app after switching returns to the last-selected deck"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-010."
     },
     {
@@ -188,7 +188,7 @@
         "The old #import and #export routes redirect to #deck (handled by DU-002)"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-010. This is a reorganization of existing import.js and export.js functionality into a panel — no new parsing or export logic needed."
     }
   ]

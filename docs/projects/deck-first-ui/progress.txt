@@ -1,3 +1,35 @@
+## DU-012 — DONE (commit bc66504)
+- openAddCardsPanel(appEl, closePicker, onImportDone): slide-up panel (z-index 200, above picker)
+- Step 1: textarea + parse button; backup section with download + restore file input
+- Step 2: count summary + deck select/create + import button
+- On success: close add panel, call closePicker(), call onImportDone(deckId) → renderDeckView
+- detectLang() ported from import.js
+- CSS: .add-cards-panel, --visible, sections, textarea, select, inputs
+- 46 tests pass
+
+## DU-011 — DONE (commit 42e2e16)
+- openDeckPicker callback: setLastDeckId + updateDeckAccessTime + renderDeckView
+- 46 tests pass
+
+## DU-010 — DONE (commit a24b0e7)
+- openDeckPicker(appEl, onSelectDeck, onAddCards): async, loads all decks + card counts
+- relativeTime(isoStr): mins/hrs/days/months
+- Most recent section (top 2 by getRecentDecks), remaining grouped by lang
+- CSS: .deck-picker-panel, section headers (small-caps 13px), rows
+- 46 tests pass
+
+## DU-009 — DONE (commit c010831, implementation from DU-006)
+- Back button already implemented in DU-006: removes .card-review-panel--visible, listens for transitionend, calls panel.remove()
+- Panel is fixed overlay; removal reveals the card list beneath
+- 46 tests pass
+
+## DU-008 — DONE (commit 896a1c4)
+- touchend: if |dx| < 50 → snap back with 200ms ease transition
+- If at boundary → snap back
+- Otherwise: slide card out (200ms), update currentIndex + renderCurrent(), slide new card in from opposite side (200ms)
+- CSS: overflow: hidden on .card-review-body clips sliding card
+- 46 tests pass
+
 ## DU-007 — DONE (commit 4c289d7)
 - renderTranslationArea(card, mode): comprehension→skeleton divs with data-translation attr; review→visible text; reverse→empty
 - wireTranslationReveal(): mousedown/touchstart reveals, mouseup/mouseleave/touchend/touchcancel restores skeleton
