@@ -108,7 +108,7 @@
         "Reverse template has no translation area below the card"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on DU-006."
     },
     {

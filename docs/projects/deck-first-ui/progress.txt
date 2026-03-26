@@ -1,3 +1,10 @@
+## DU-007 — DONE (commit 4c289d7)
+- renderTranslationArea(card, mode): comprehension→skeleton divs with data-translation attr; review→visible text; reverse→empty
+- wireTranslationReveal(): mousedown/touchstart reveals, mouseup/mouseleave/touchend/touchcancel restores skeleton
+- card-review-content wrapper div groups review-card + translation container
+- CSS: .review-translation--skeleton, --visible, --revealed, skeleton-line styles
+- 46 tests pass
+
 ## DU-006 — DONE
 - openCardReview() added to deck-view.js; appended panel div to appEl
 - Slide-up via translateY(100%)→0, 300ms ease; .card-review-panel--visible class
