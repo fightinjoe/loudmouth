@@ -1,0 +1,195 @@
+{
+  "project": "Deck-First UI Redesign",
+  "description": "Redesign navigation and UI to match Figma prototype: deck view as home, panel-based navigation, swipe review, new card templates.",
+  "tasks": [
+    {
+      "id": "DU-001",
+      "title": "DB schema: lastAccessedAt, mode migration, getRecentDecks",
+      "description": "Add lastAccessedAt field to decks table, migrate mode values (target-lang→comprehension, reading→comprehension, native-lang→reverse; add review), bump Dexie version, implement updateDeckAccessTime and getRecentDecks(n) methods.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Existing decks with old mode values (target-lang, reading, native-lang) are migrated to new values on DB open",
+        "updateDeckAccessTime(deckId) stores an ISO 8601 timestamp on the deck record",
+        "getRecentDecks(2) returns the 2 decks with the most recent lastAccessedAt (falling back to createdAt), sorted newest first",
+        "Decks without lastAccessedAt are valid (null is acceptable for existing records)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "DU-002",
+      "title": "Router: simplify to #deck as primary route",
+      "description": "Replace the existing route map with #deck?id=... as the primary route. #deck with no id falls back to localStorage lastDeckId or first available deck. Legacy routes (#home, #browse, #review, #card, #import, #export) redirect to #deck.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Navigating to #deck loads the Deck View for the last-used deck (or first deck if none stored)",
+        "Navigating to #deck?id=X loads the Deck View for deck X",
+        "All legacy routes redirect to #deck without error",
+        "localStorage key loudmouth.lastDeckId is read on startup and written on deck selection"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "DU-003",
+      "title": "Deck View screen: card list with design tokens",
+      "description": "New deck-view screen replacing home/browse. Shows scrollable card list for active deck. Header: tappable deck title (opens Deck Picker) + gear icon. Background #f5f5f0, card rows white, 64px tall, rounded corners, 6px gap. Inter typography.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "App opens to Deck View (not home/browse) showing the last-used deck's cards",
+        "Background is #f5f5f0; card rows are white with rounded corners and 6px gap",
+        "Header shows the active deck name; tapping it will open the Deck Picker (wired in DU-010)",
+        "Empty state is handled gracefully when no decks or no cards exist",
+        "Design tokens (colors, typography) are applied via CSS variables or updated stylesheet"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Depends on DU-001 (mode values) and DU-002 (router). Replaces home.js and browse.js."
+    },
+    {
+      "id": "DU-004",
+      "title": "Card row rendering per template",
+      "description": "Render each card row in the Deck View according to the deck's active template. Comprehension: target text (18px bold) + reading (13px caption) left, play button right. Review: target text + reading inline + translation caption below, play button right. Reverse: translation text only left, play button right.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Comprehension rows show target text bold + reading caption on left",
+        "Review rows show target text + reading on same line + translation caption below",
+        "Reverse rows show translation text only on left",
+        "All three templates show a play button on the right",
+        "Template is read from the deck record's mode field (using new value names from DU-001)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on DU-003."
+    },
+    {
+      "id": "DU-005",
+      "title": "Play button on card rows: TTS from list",
+      "description": "Tapping the play button on a card row calls TTS with the card's reading field (falling back to text). Tap on the row body (not play button) is reserved for opening Card Review.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Tapping the play button speaks the card's reading field (or text if reading is absent)",
+        "Tapping the row body does not trigger TTS",
+        "Play button tap does not open the Card Review panel"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on DU-004. TTS module requires no changes."
+    },
+    {
+      "id": "DU-006",
+      "title": "Card Review panel: slide-up, card by template, TTS on tap",
+      "description": "New card-review panel that slides up from the bottom when a card row is tapped. Shows a single card (white, 240px, rounded) centered, rendered per the deck's template. Tapping the card triggers TTS. Panel starts at the tapped card's index.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Tapping a card row opens the Card Review panel sliding up from the bottom (translateY animation)",
+        "Panel header shows deck name (center) and back button (left)",
+        "Card content matches the deck's template: Comprehension shows target text (40px bold) + reading (16px caption); Review shows same; Reverse shows translation (40px bold)",
+        "Tapping the card speaks its reading (falling back to text)",
+        "Review panel opens at the index of the tapped card, not always card 0",
+        "Panel uses shared panel animation class (translateY 100%→0, 300ms ease)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on DU-004. Replaces review.js and card.js."
+    },
+    {
+      "id": "DU-007",
+      "title": "Press-to-reveal translation in Card Review (Comprehension template)",
+      "description": "In the Card Review panel for Comprehension decks, the translation area below the card shows two gray skeleton rectangles by default. On mousedown/touchstart the actual translation text replaces the skeleton. On mouseup/touchend the skeleton returns.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Translation area shows skeleton rectangles by default in Comprehension template",
+        "Holding down (mousedown or touchstart) on translation area reveals the translation text",
+        "Releasing (mouseup or touchend) hides the translation and restores the skeleton",
+        "Review template shows translation always visible with no skeleton",
+        "Reverse template has no translation area below the card"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on DU-006."
+    },
+    {
+      "id": "DU-008",
+      "title": "Swipe left/right to navigate cards in Card Review",
+      "description": "In the Card Review panel, swiping left advances to the next card and swiping right goes to the previous card. The card moves with the finger in real time before animating away. Minimum swipe threshold ~50px. No wrap-around at first/last card.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Swiping left on the card navigates to the next card with a leftward slide animation",
+        "Swiping right on the card navigates to the previous card with a rightward slide animation",
+        "Card translates with the finger during the swipe gesture before completing",
+        "Swipes shorter than ~50px snap the card back to center",
+        "Swiping left on the last card is ignored; swiping right on the first card is ignored"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on DU-006. Swipe detection uses touchstart/touchend delta."
+    },
+    {
+      "id": "DU-009",
+      "title": "Back button in Card Review panel",
+      "description": "The back button in the Card Review panel header dismisses the panel (slides out to bottom) and returns focus to the card list at the same scroll position.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Tapping back slides the Card Review panel out to the bottom and removes it from the DOM after transition",
+        "The card list is visible again after dismissal"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on DU-006."
+    },
+    {
+      "id": "DU-010",
+      "title": "Deck Picker panel: slide-up with Most Recent + by-language sections",
+      "description": "Tapping the deck title in the Deck View header opens the Deck Picker panel sliding up from the bottom. Header: back button (left), 'Language decks' title (center), add button (right). Content: 'Most recent' section (top 2 by lastAccessedAt/createdAt), then one section per language with remaining decks. Each row shows name, relative timestamp, flag emoji, card count.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Tapping the deck title opens the Deck Picker panel with slide-up animation",
+        "Panel header shows 'Language decks' title, back button (left), add button (right)",
+        "Most recent section shows the 2 decks with most recent lastAccessedAt (or createdAt fallback)",
+        "Remaining decks are grouped by language in labeled sections",
+        "Each deck row shows: name, relative timestamp (e.g. '2 days ago'), flag emoji, card count",
+        "Back button closes the picker (slides out to bottom) without switching decks",
+        "Section headers use small-caps 13px caption style"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on DU-001 and DU-003. Relative timestamp computed from lastAccessedAt (falling back to createdAt); no external library needed."
+    },
+    {
+      "id": "DU-011",
+      "title": "Deck switching: tap deck → update access time, persist, reload list",
+      "description": "Tapping a deck row in the Deck Picker closes the picker, calls updateDeckAccessTime, stores the deck ID in localStorage (loudmouth.lastDeckId), and reloads the Deck View for the selected deck.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Tapping a deck row closes the Deck Picker with slide-out animation",
+        "The Deck View updates to show the selected deck's card list",
+        "updateDeckAccessTime is called for the selected deck",
+        "localStorage loudmouth.lastDeckId is updated to the selected deck's ID",
+        "Relaunching the app after switching returns to the last-selected deck"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on DU-010."
+    },
+    {
+      "id": "DU-012",
+      "title": "Add Cards panel: JSON import + backup download/restore",
+      "description": "The add button in the Deck Picker header opens the Add Cards panel. Consolidates existing import (#import) and export (#export) screens into a single slide-up panel. Contains: JSON paste textarea + import button, deck select/create, download backup button, import backup file input. After successful import, both panels dismiss and Deck View reloads for the updated deck.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Tapping the add button in the Deck Picker header opens the Add Cards panel with slide-up animation",
+        "JSON paste + import flow works as it did in the old #import screen",
+        "Download backup and import backup file input work as they did in the old #export screen",
+        "After successful card import, Add Cards panel and Deck Picker both dismiss",
+        "Deck View reloads showing the updated (or newly created) deck's cards",
+        "The old #import and #export routes redirect to #deck (handled by DU-002)"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Depends on DU-010. This is a reorganization of existing import.js and export.js functionality into a panel — no new parsing or export logic needed."
+    }
+  ]
+}
