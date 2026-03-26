@@ -14,7 +14,7 @@
         "Decks without lastAccessedAt are valid (null is acceptable for existing records)"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {

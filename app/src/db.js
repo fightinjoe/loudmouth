@@ -18,6 +18,21 @@ function createDb(options = {}) {
       }
     })
   });
+  instance.version(3).stores({
+    cards: 'id, lang, *deckIds, createdAt',
+    decks: 'id, lang, createdAt, lastAccessedAt',
+  }).upgrade(tx => {
+    const modeMap = {
+      'target-lang': 'comprehension',
+      'reading': 'comprehension',
+      'native-lang': 'reverse',
+    };
+    return tx.decks.toCollection().modify(deck => {
+      if (modeMap[deck.mode]) {
+        deck.mode = modeMap[deck.mode];
+      }
+    });
+  });
   return instance;
 }
 
@@ -57,7 +72,7 @@ export async function getOrCreateAllDeck(lang, store = db) {
     lang,
     createdAt: isoNow(),
     system: true,
-    mode: 'target-lang',
+    mode: 'comprehension',
   };
   await store.decks.add(deck);
   return deck;
@@ -82,7 +97,7 @@ async function nextDeckCounter(store) {
 export async function createDeck(name, lang, store = db) {
   const counter = await nextDeckCounter(store);
   const id = `${counter}-${slugify(name)}`;
-  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: 'target-lang' };
+  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: 'comprehension' };
   await store.decks.add(deck);
   return deck;
 }
@@ -92,6 +107,28 @@ export async function createDeck(name, lang, store = db) {
  */
 export async function updateDeckMode(deckId, mode, store = db) {
   await store.decks.update(deckId, { mode });
+}
+
+/**
+ * Stamps the current time as lastAccessedAt on the given deck.
+ */
+export async function updateDeckAccessTime(deckId, store = db) {
+  await store.decks.update(deckId, { lastAccessedAt: isoNow() });
+}
+
+/**
+ * Returns the n most recently accessed decks, sorted newest first.
+ * Falls back to createdAt for decks without lastAccessedAt.
+ */
+export async function getRecentDecks(n, store = db) {
+  const all = await store.decks.toArray();
+  return all
+    .sort((a, b) => {
+      const ta = a.lastAccessedAt ?? a.createdAt;
+      const tb = b.lastAccessedAt ?? b.createdAt;
+      return tb < ta ? -1 : tb > ta ? 1 : 0;
+    })
+    .slice(0, n);
 }
 
 /**

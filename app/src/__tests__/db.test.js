@@ -3,7 +3,7 @@ import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import Dexie from 'dexie';
 import {
   getOrCreateAllDeck, createDeck, getDecks, getCards, importCards,
-  updateDeckMode, restoreAllData, createDb,
+  updateDeckMode, updateDeckAccessTime, getRecentDecks, restoreAllData, createDb,
 } from '../db.js';
 
 let store;
@@ -40,7 +40,7 @@ describe('getOrCreateAllDeck', () => {
 
   it('sets default mode on system deck', async () => {
     const deck = await getOrCreateAllDeck('zh', store);
-    expect(deck.mode).toBe('target-lang');
+    expect(deck.mode).toBe('comprehension');
   });
 });
 
@@ -64,7 +64,7 @@ describe('createDeck', () => {
 
   it('sets default mode on created deck', async () => {
     const deck = await createDeck('My Deck', 'zh', store);
-    expect(deck.mode).toBe('target-lang');
+    expect(deck.mode).toBe('comprehension');
   });
 });
 
@@ -100,9 +100,55 @@ describe('getDecks', () => {
 describe('updateDeckMode', () => {
   it('updates deck mode', async () => {
     const deck = await createDeck('My Deck', 'zh', store);
-    await updateDeckMode(deck.id, 'native-lang', store);
+    await updateDeckMode(deck.id, 'reverse', store);
     const updated = await store.decks.get(deck.id);
-    expect(updated.mode).toBe('native-lang');
+    expect(updated.mode).toBe('reverse');
+  });
+});
+
+// --- updateDeckAccessTime ---
+
+describe('updateDeckAccessTime', () => {
+  it('stores an ISO 8601 timestamp on the deck record', async () => {
+    const deck = await createDeck('My Deck', 'zh', store);
+    await updateDeckAccessTime(deck.id, store);
+    const updated = await store.decks.get(deck.id);
+    expect(updated.lastAccessedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+});
+
+// --- getRecentDecks ---
+
+describe('getRecentDecks', () => {
+  it('returns n decks sorted by lastAccessedAt newest first', async () => {
+    const d1 = await createDeck('Alpha', 'zh', store);
+    const d2 = await createDeck('Beta', 'zh', store);
+    const d3 = await createDeck('Gamma', 'zh', store);
+    await store.decks.update(d1.id, { lastAccessedAt: '2026-01-01T00:00:00.000Z' });
+    await store.decks.update(d2.id, { lastAccessedAt: '2026-03-01T00:00:00.000Z' });
+    await store.decks.update(d3.id, { lastAccessedAt: '2026-02-01T00:00:00.000Z' });
+    const recent = await getRecentDecks(2, store);
+    expect(recent).toHaveLength(2);
+    expect(recent[0].id).toBe(d2.id);
+    expect(recent[1].id).toBe(d3.id);
+  });
+
+  it('falls back to createdAt when lastAccessedAt is absent', async () => {
+    const d1 = await createDeck('Older', 'zh', store);
+    // small delay to ensure different createdAt
+    await new Promise(r => setTimeout(r, 2));
+    const d2 = await createDeck('Newer', 'zh', store);
+    const recent = await getRecentDecks(1, store);
+    expect(recent[0].id).toBe(d2.id);
+  });
+
+  it('decks without lastAccessedAt are valid (null is acceptable)', async () => {
+    const deck = await createDeck('No Access', 'zh', store);
+    const updated = await store.decks.get(deck.id);
+    expect(updated.lastAccessedAt).toBeUndefined();
+    // getRecentDecks should still work without error
+    const recent = await getRecentDecks(5, store);
+    expect(recent).toHaveLength(1);
   });
 });
 
