@@ -1,5 +1,30 @@
 import { db, getCards, getRecentDecks } from '../db.js'
 
+function renderCardRow(card, mode) {
+  let body
+  if (mode === 'reverse') {
+    body = `<div class="card-row-text">${card.translation || ''}</div>`
+  } else if (mode === 'review') {
+    const inline = [card.text, card.reading].filter(Boolean).join(' · ')
+    body = `
+      <div class="card-row-text">${inline}</div>
+      ${card.translation ? `<div class="card-row-reading">${card.translation}</div>` : ''}
+    `
+  } else {
+    // comprehension (default)
+    body = `
+      <div class="card-row-text">${card.text || ''}</div>
+      ${card.reading ? `<div class="card-row-reading">${card.reading}</div>` : ''}
+    `
+  }
+  return `
+    <div class="card-row" data-card-id="${card.id}">
+      <div class="card-row-body">${body}</div>
+      <button class="card-row-play" data-card-id="${card.id}" aria-label="Play">▶</button>
+    </div>
+  `
+}
+
 const LAST_DECK_KEY = 'loudmouth.lastDeckId'
 
 export function getLastDeckId() {
@@ -45,15 +70,7 @@ export function renderDeckView(el, params) {
         <div class="deck-view-list">
           ${cards.length === 0 ? `
             <div class="deck-view-empty"><p>No cards in this deck.</p></div>
-          ` : cards.map(card => `
-            <div class="card-row" data-card-id="${card.id}">
-              <div class="card-row-body">
-                <div class="card-row-text">${card.text || ''}</div>
-                ${card.reading ? `<div class="card-row-reading">${card.reading}</div>` : ''}
-              </div>
-              <button class="card-row-play" data-card-id="${card.id}" aria-label="Play">▶</button>
-            </div>
-          `).join('')}
+          ` : cards.map(card => renderCardRow(card, deck.mode)).join('')}
         </div>
       </div>
     `
