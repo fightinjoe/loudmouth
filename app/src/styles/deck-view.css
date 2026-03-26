@@ -202,6 +202,161 @@
   padding: 2rem 0;
 }
 
+/* ── Add Cards Panel ── */
+
+.add-cards-panel {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 300ms ease;
+  z-index: 200;
+  overflow-y: auto;
+}
+
+.add-cards-panel--visible {
+  transform: translateY(0);
+}
+
+.add-cards-header {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem 0.75rem;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+}
+
+.add-cards-back {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  min-width: 60px;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.add-cards-title {
+  flex: 1;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.add-cards-header-spacer {
+  min-width: 60px;
+}
+
+.add-cards-body {
+  padding: 0 1.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.add-cards-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.add-cards-section-title {
+  font-size: 0.8125rem;
+  font-variant: small-caps;
+  color: var(--text-secondary);
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.add-cards-textarea {
+  width: 100%;
+  height: 160px;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  resize: vertical;
+  box-sizing: border-box;
+  font-family: monospace;
+}
+
+.add-cards-error {
+  font-size: 0.8125rem;
+  color: #e74c3c;
+  min-height: 1rem;
+}
+
+.add-cards-summary {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.add-cards-count {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.add-cards-count-label {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.add-cards-skipped {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.add-cards-deck-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.add-cards-deck-selector label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.add-cards-select {
+  width: 100%;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  font-size: 1rem;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.add-cards-new-deck {
+  display: none;
+}
+
+.add-cards-new-deck.visible {
+  display: block;
+}
+
+.add-cards-input {
+  width: 100%;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  font-size: 1rem;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
 /* ── Card Review Panel ── */
 
 .card-review-panel {
