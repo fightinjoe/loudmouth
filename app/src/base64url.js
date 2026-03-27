@@ -10,7 +10,10 @@
  * @returns {string}
  */
 export function encode(str) {
-  return btoa(unescape(encodeURIComponent(str)))
+  const bytes = new TextEncoder().encode(str)
+  let binary = ''
+  for (const b of bytes) binary += String.fromCharCode(b)
+  return btoa(binary)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '')
@@ -23,10 +26,11 @@ export function encode(str) {
  */
 export function decode(str) {
   try {
-    // Restore standard base64 alphabet and padding
     const b64 = str.replace(/-/g, '+').replace(/_/g, '/')
     const padded = b64 + '='.repeat((4 - b64.length % 4) % 4)
-    return decodeURIComponent(escape(atob(padded)))
+    const binary = atob(padded)
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0))
+    return new TextDecoder().decode(bytes)
   } catch {
     return null
   }

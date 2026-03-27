@@ -41,6 +41,7 @@ Mobile-first PWA. Web only — no native app. PWA manifest + service worker enab
 
 ## Key Integrations
 - **Web Speech API** — TTS audio playback. `lang="zh-CN"` for Mandarin, `lang="ja-JP"` for Japanese. iOS Safari only; do not attempt to support macOS Safari or Chrome Desktop for audio.
+- **URI import** — Cards can be imported via a `#deck?cards=<base64url-encoded-JSON>` hash URL. The payload is the standard card batch JSON schema. No server is involved; the `#` fragment is never sent over the network. Browser URL buffer limits (~2MB) are the only practical size constraint, sufficient for thousands of cards. A small pure `base64url` utility module handles encode/decode.
 
 ## Constraints
 Every feature and future PRD must respect these:

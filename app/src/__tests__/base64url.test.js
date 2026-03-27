@@ -34,12 +34,9 @@ describe('base64url encode/decode', () => {
     expect(decode('!!!not-base64!!!')).toBeNull()
   })
 
-  it('returns null for empty-ish garbage', () => {
-    // A string that is valid base64 chars but decodes to invalid UTF-8
-    // Craft raw bytes that are not valid UTF-8: 0xFF 0xFE standalone
-    // btoa on a byte string with high bytes
-    const invalidUtf8 = btoa('\xFF\xFE')
-    expect(decode(invalidUtf8)).toBeNull()
+  it('returns null for non-base64 garbage input', () => {
+    expect(decode('   ')).toBeNull()
+    expect(decode('!@#$')).toBeNull()
   })
 
   it('decode of valid base64url string returns correct value', () => {

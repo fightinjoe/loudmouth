@@ -61,7 +61,29 @@ Repeat this loop until the user approves.
 
 ## Step 4: Output
 
-Output **only** the JSON — no surrounding explanation, no markdown fences, no commentary. The output should be directly pasteable.
+Produce the final JSON, then generate two import links and display the raw JSON for troubleshooting.
+
+### 4a: Build the import links
+
+1. Serialize the card batch JSON to a compact string (no extra whitespace).
+2. Base64url-encode it: standard base64, then replace `+` with `-`, `/` with `_`, and strip trailing `=` padding.
+3. Produce two links:
+
+```
+**Import (production):**
+https://loudmouth-gilt.verce.app/#deck?cards=<encoded>
+
+**Import (local):**
+http://localhost:8000/#deck?cards=<encoded>
+```
+
+### 4b: Show the raw JSON
+
+After the links, display the full JSON in a fenced code block for troubleshooting:
+
+```json
+{ ... }
+```
 
 ### Schema
 
@@ -99,14 +121,10 @@ Do not include `id` or `importedAt` — those are assigned by the app at import 
     {
       "lang": "zh",
       "type": "phrase",
-      "front": {
-        "text": "我想点菜",
-        "reading": "wǒ xiǎng diǎn cài"
-      },
-      "back": {
-        "translation": "I'd like to order",
-        "notes": "Standard phrase to get a waiter's attention when ordering"
-      },
+      "text": "我想点菜",
+      "reading": "wǒ xiǎng diǎn cài",
+      "translation": "I'd like to order",
+      "notes": "Standard phrase to get a waiter's attention when ordering",
       "example": {
         "text": "服务员，我想点菜。",
         "reading": "Fúwùyuán, wǒ xiǎng diǎn cài.",
@@ -116,12 +134,9 @@ Do not include `id` or `importedAt` — those are assigned by the app at import 
     {
       "lang": "zh",
       "type": "word",
-      "front": {
-        "text": "菜单",
-        "reading": "càidān"
-      },
-      "back": {
-        "translation": "menu"
+      "text": "菜单",
+      "reading": "càidān",
+      "translation": "menu"
       }
     }
   ]
@@ -136,14 +151,10 @@ Do not include `id` or `importedAt` — those are assigned by the app at import 
     {
       "lang": "ja",
       "type": "phrase",
-      "front": {
-        "text": "注文してもいいですか",
-        "reading": "ちゅうもんしてもいいですか"
-      },
-      "back": {
-        "translation": "May I order?",
-        "notes": "Polite request form; use in restaurants"
-      },
+      "text": "注文してもいいですか",
+      "reading": "ちゅうもんしてもいいですか",
+      "translation": "May I order?",
+      "notes": "Polite request form; use in restaurants",
       "example": {
         "text": "すみません、注文してもいいですか。",
         "reading": "すみません、ちゅうもんしてもいいですか。",
@@ -153,14 +164,10 @@ Do not include `id` or `importedAt` — those are assigned by the app at import 
     {
       "lang": "ja",
       "type": "word",
-      "front": {
-        "text": "おすすめ",
-        "reading": "おすすめ"
-      },
-      "back": {
-        "translation": "recommendation; recommended dish",
-        "notes": "Often seen on menus as おすすめ料理"
-      }
+      "text": "おすすめ",
+      "reading": "おすすめ",
+      "translation": "recommendation; recommended dish",
+      "notes": "Often seen on menus as おすすめ料理"
     }
   ]
 }
