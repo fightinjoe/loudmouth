@@ -6,10 +6,12 @@ function renderCardRow(card, mode) {
   let body
   if (mode === 'reverse') {
     body = `<div class="card-row-text">${card.translation || ''}</div>`
-  } else if (mode === 'review') {
-    const inline = [card.text, card.reading].filter(Boolean).join(' · ')
+  } else if (mode === 'reading') {
     body = `
-      <div class="card-row-text">${inline}</div>
+      <div class="card-row-text">
+        ${card.text || ''}
+        ${card.reading ? `<span class="card-row-reading-inline">${card.reading}</span>` : ''}
+      </div>
       ${card.translation ? `<div class="card-row-reading">${card.translation}</div>` : ''}
     `
   } else {
@@ -494,7 +496,7 @@ function renderReviewCardContent(card, mode) {
 
 function renderTranslationArea(card, mode) {
   if (mode === 'reverse') return ''
-  if (mode === 'review') {
+  if (mode === 'reading') {
     return `<div class="review-translation review-translation--visible">${card.translation || ''}</div>`
   }
   // comprehension: skeleton by default, reveal on press
