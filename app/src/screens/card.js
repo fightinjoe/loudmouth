@@ -1,6 +1,6 @@
 import '../styles/card.css'
 import { db, removeCardFromDeck, deleteCard } from '../db.js'
-import { speak, ttsAvailable } from '../tts.js'
+import { speak, ttsAvailable, ttsText } from '../tts.js'
 
 function isVirtualDeck(deckId) {
   return /^all-/.test(deckId)
@@ -68,7 +68,7 @@ export function renderCard(el, params) {
       const btnPlay = el.querySelector('#btn-play')
       btnPlay.addEventListener('click', () => {
         btnPlay.classList.add('playing')
-        speak(card.reading || card.text, card.lang, {
+        speak(ttsText(card), card.lang, {
           onEnd: () => btnPlay.classList.remove('playing'),
           onError: () => btnPlay.classList.remove('playing'),
         })

@@ -1,6 +1,6 @@
-import { db, getCards, getDecks, getRecentDecks, updateDeckAccessTime, createDeck, importCards, exportAllData, restoreAllData } from '../db.js'
+import { db, getCards, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, createDeck, importCards, exportAllData, restoreAllData } from '../db.js'
 import { parseCardBatch } from '../import-parser.js'
-import { speak } from '../tts.js'
+import { speak, ttsText } from '../tts.js'
 
 function renderCardRow(card, mode) {
   let body
@@ -325,6 +325,74 @@ function openAddCardsPanel(appEl, closePicker, onImportDone) {
   renderStep1()
 }
 
+const MODES = ['comprehension', 'reading', 'reverse']
+const MODE_LABELS = { comprehension: 'Comprehension', reading: 'Reading', reverse: 'Reverse' }
+
+function openDeckSettings(appEl, deck, onChanged) {
+  const scrim = document.createElement('div')
+  scrim.className = 'deck-settings-scrim'
+  appEl.appendChild(scrim)
+
+  const panel = document.createElement('div')
+  panel.className = 'deck-settings-panel'
+  appEl.appendChild(panel)
+
+  let currentMode = deck.mode || 'comprehension'
+  let currentName = deck.name
+
+  function render() {
+    panel.innerHTML = `
+      <div class="deck-settings-handle"></div>
+      <div class="deck-settings-section-header">General</div>
+      <div class="deck-settings-row" id="ds-name-row">
+        <span class="deck-settings-label">Name</span>
+        <span class="deck-settings-value" id="ds-name-value">${currentName}</span>
+      </div>
+      <div class="deck-settings-row" id="ds-mode-row">
+        <span class="deck-settings-label">Card template</span>
+        <span class="deck-settings-value deck-settings-value--accent" id="ds-mode-value">
+          ${MODE_LABELS[currentMode]}
+          <span class="deck-settings-chevron">⌃</span>
+        </span>
+      </div>
+    `
+
+    panel.querySelector('#ds-name-row').addEventListener('click', async () => {
+      const newName = prompt('Rename deck', currentName)
+      if (!newName || newName.trim() === currentName) return
+      currentName = newName.trim()
+      await updateDeckName(deck.id, currentName)
+      onChanged({ name: currentName })
+      render()
+    })
+
+    panel.querySelector('#ds-mode-row').addEventListener('click', async () => {
+      const idx = MODES.indexOf(currentMode)
+      currentMode = MODES[(idx + 1) % MODES.length]
+      await updateDeckMode(deck.id, currentMode)
+      onChanged({ mode: currentMode })
+      render()
+    })
+  }
+
+  render()
+
+  function close() {
+    panel.classList.remove('deck-settings-panel--visible')
+    scrim.classList.remove('deck-settings-scrim--visible')
+    panel.addEventListener('transitionend', () => { panel.remove(); scrim.remove() }, { once: true })
+  }
+
+  scrim.addEventListener('click', close)
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      panel.classList.add('deck-settings-panel--visible')
+      scrim.classList.add('deck-settings-scrim--visible')
+    })
+  })
+}
+
 export function renderDeckView(el, params) {
   async function init() {
     let deckId = params.id
@@ -371,7 +439,7 @@ export function renderDeckView(el, params) {
         e.stopPropagation()
         const cardId = playBtn.dataset.cardId
         const card = cards.find(c => String(c.id) === cardId)
-        if (card) speak(card.reading || card.text, deck.lang)
+        if (card) speak(ttsText(card), card.lang)
         return
       }
       const row = e.target.closest('.card-row')
@@ -379,6 +447,18 @@ export function renderDeckView(el, params) {
       const cardId = row.dataset.cardId
       const idx = cards.findIndex(c => String(c.id) === cardId)
       openCardReview(el, cards, deck, idx < 0 ? 0 : idx)
+    })
+
+    el.querySelector('#btn-deck-settings').addEventListener('click', () => {
+      openDeckSettings(el, deck, (changes) => {
+        if (changes.name) {
+          el.querySelector('#btn-deck-title').textContent = changes.name
+          deck.name = changes.name
+        }
+        if (changes.mode) {
+          deck.mode = changes.mode
+        }
+      })
     })
 
     el.querySelector('#btn-deck-title').addEventListener('click', () => {
@@ -440,7 +520,7 @@ function openCardReview(appEl, cards, deck, startIndex) {
     <div class="card-review-body">
       <div class="card-review-content">
         <div class="review-card" id="review-card-el"></div>
-        <div id="review-translation-el"></div>
+        <div id="review-translation-el" style="width:100%"></div>
       </div>
     </div>
   `
@@ -456,7 +536,7 @@ function openCardReview(appEl, cards, deck, startIndex) {
   }
 
   function wireTranslationReveal(el, mode) {
-    if (mode !== 'comprehension') return
+    if ((mode || 'comprehension') !== 'comprehension') return
     const area = el.querySelector('.review-translation--skeleton')
     if (!area) return
     const translation = area.dataset.translation
@@ -493,7 +573,7 @@ function openCardReview(appEl, cards, deck, startIndex) {
   // TTS on card tap
   cardEl.addEventListener('click', () => {
     const card = cards[currentIndex]
-    speak(card.reading || card.text, deck.lang)
+    speak(ttsText(card), card.lang)
   })
 
   // Back button

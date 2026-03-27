@@ -109,6 +109,10 @@ export async function updateDeckMode(deckId, mode, store = db) {
   await store.decks.update(deckId, { mode });
 }
 
+export async function updateDeckName(deckId, name, store = db) {
+  await store.decks.update(deckId, { name });
+}
+
 /**
  * Stamps the current time as lastAccessedAt on the given deck.
  */

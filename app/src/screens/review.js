@@ -1,6 +1,6 @@
 import '../styles/review.css'
 import { getCards, db } from '../db.js'
-import { speak, cancel, ttsAvailable } from '../tts.js'
+import { speak, cancel, ttsAvailable, ttsText } from '../tts.js'
 import { applyMode, STUDY_MODES } from '../study-modes.js'
 
 function shuffle(arr) {
@@ -102,7 +102,7 @@ export function renderReview(el, params) {
     speaking = true
     const btn = el.querySelector('#btn-play')
     if (btn) btn.textContent = 'Playing…'
-    speak(card.reading || card.text, card.lang, {
+    speak(ttsText(card), card.lang, {
       onEnd: () => {
         speaking = false
         const b = el.querySelector('#btn-play')

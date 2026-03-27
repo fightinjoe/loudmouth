@@ -12,6 +12,11 @@ export function speak(text, lang, { onEnd, onError } = {}) {
   window.speechSynthesis.speak(utt)
 }
 
+// Japanese uses reading (hiragana) to avoid kanji ambiguity; Chinese uses text (not pinyin)
+export function ttsText(card) {
+  return card.lang === 'ja' ? (card.reading || card.text) : card.text
+}
+
 export function cancel() {
   if (ttsAvailable) window.speechSynthesis.cancel()
 }
