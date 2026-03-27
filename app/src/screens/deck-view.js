@@ -1,5 +1,6 @@
 import { db, getCards, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, createDeck, importCards, exportAllData, restoreAllData } from '../db.js'
 import { parseCardBatch } from '../import-parser.js'
+import { decode as base64urlDecode } from '../base64url.js'
 import { speak, ttsText } from '../tts.js'
 
 function renderCardRow(card, mode) {
@@ -152,9 +153,9 @@ function detectLang(cards) {
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]
 }
 
-function openAddCardsPanel(appEl, closePicker, onImportDone) {
-  let parsedCards = []
-  let parseErrors = []
+function openAddCardsPanel(appEl, closePicker, onImportDone, { initialCards, initialErrors, fromUri } = {}) {
+  let parsedCards = initialCards || []
+  let parseErrors = initialErrors || []
 
   const panel = document.createElement('div')
   panel.className = 'add-cards-panel'
@@ -164,9 +165,25 @@ function openAddCardsPanel(appEl, closePicker, onImportDone) {
     requestAnimationFrame(() => panel.classList.add('add-cards-panel--visible'))
   })
 
+  function stripCardsParam() {
+    // Remove cards param from hash so the import doesn't re-trigger on back/refresh
+    const raw = window.location.hash.slice(1) || 'deck'
+    const [route, qstring] = raw.split('?')
+    const p = new URLSearchParams(qstring || '')
+    p.delete('cards')
+    const remaining = p.toString()
+    window.location.hash = remaining ? `${route}?${remaining}` : route
+  }
+
   function close() {
     panel.classList.remove('add-cards-panel--visible')
     panel.addEventListener('transitionend', () => panel.remove(), { once: true })
+  }
+
+  // Used by cancel/back buttons when triggered via URI import
+  function cancelFromUri() {
+    if (fromUri) stripCardsParam()
+    close()
   }
 
   function renderStep1() {
@@ -293,8 +310,8 @@ function openAddCardsPanel(appEl, closePicker, onImportDone) {
       </div>
     `
 
-    panel.querySelector('.add-cards-back').addEventListener('click', close)
-    panel.querySelector('#btn-step-back').addEventListener('click', renderStep1)
+    panel.querySelector('.add-cards-back').addEventListener('click', fromUri ? cancelFromUri : close)
+    panel.querySelector('#btn-step-back').addEventListener('click', fromUri ? cancelFromUri : renderStep1)
 
     const select = panel.querySelector('#deck-select')
     const newDeckWrap = panel.querySelector('#new-deck-wrap')
@@ -324,7 +341,11 @@ function openAddCardsPanel(appEl, closePicker, onImportDone) {
     })
   }
 
-  renderStep1()
+  if (initialCards) {
+    renderStep2()
+  } else {
+    renderStep1()
+  }
 }
 
 const MODES = ['comprehension', 'reading', 'reverse']
@@ -397,6 +418,53 @@ function openDeckSettings(appEl, deck, onChanged) {
 
 export function renderDeckView(el, params) {
   async function init() {
+    // --- URI import: params.cards triggers direct-to-confirm flow ---
+    if (params.cards) {
+      const jsonStr = base64urlDecode(params.cards)
+      if (jsonStr === null) {
+        el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p class="uri-import-error">Import link is invalid — could not decode the card data.</p></div></div>`
+        // Strip the bad param so the user isn't stuck
+        const raw = window.location.hash.slice(1)
+        const [route, qstring] = raw.split('?')
+        const p = new URLSearchParams(qstring || '')
+        p.delete('cards')
+        const remaining = p.toString()
+        window.location.hash = remaining ? `${route}?${remaining}` : route
+        return
+      }
+      const result = parseCardBatch(jsonStr)
+      if (result.cards.length === 0) {
+        el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p class="uri-import-error">Import link contained no valid cards.</p></div></div>`
+        const raw = window.location.hash.slice(1)
+        const [route, qstring] = raw.split('?')
+        const p = new URLSearchParams(qstring || '')
+        p.delete('cards')
+        const remaining = p.toString()
+        window.location.hash = remaining ? `${route}?${remaining}` : route
+        return
+      }
+      // Render normal deck view underneath, then open confirm panel directly
+      // (We need something rendered for the panel to sit on top of)
+      let deckId = params.id || getLastDeckId()
+      if (!deckId) {
+        const recent = await getRecentDecks(1)
+        deckId = recent[0]?.id ?? null
+      }
+      // Minimal shell if no deck yet
+      el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p>Review your cards below before importing.</p></div></div>`
+      openAddCardsPanel(
+        el,
+        () => {},
+        (importedDeckId) => {
+          // Navigate to the imported deck; hashchange drives the re-render
+          const dest = importedDeckId || deckId
+          window.location.hash = dest ? `deck?id=${dest}` : 'deck'
+        },
+        { initialCards: result.cards, initialErrors: result.errors, fromUri: true }
+      )
+      return
+    }
+
     let deckId = params.id
 
     if (!deckId) {

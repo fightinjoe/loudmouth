@@ -34,7 +34,7 @@
         "No regression: absence of cards param renders the normal deck view as before"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on UI-001. Reuses existing parseCardBatch() and the confirm panel (renderStep2). No new UI panel needed."
     },
     {
@@ -49,7 +49,7 @@
         "After cancel, the user lands on the normal deck view (last opened deck or default)"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on UI-002. May be a small addition to the existing cancel/close behavior in the confirm panel."
     },
     {
@@ -63,7 +63,7 @@
         "When all cards are valid, no skipped count is shown (same as paste flow)"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on UI-002. Likely zero new UI work if the existing renderStep2() already surfaces parseErrors — just needs verification."
     }
   ]
