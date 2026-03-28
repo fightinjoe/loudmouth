@@ -1,0 +1,60 @@
+/*-- Text / font styling --*/
+
+.text-h1 {
+  font-size: 40px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.text-h2 {
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+}
+
+.text-h3 {
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  text-transform: uppercase;
+}
+
+.text-body1 {
+  font-family: Inter;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.text-body2 {
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.text-caption {
+  color: hsl(var(--text-caption));
+}
+
+/*-- Display and positioning --*/
+
+.flex { display: flex; }
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.gap-auto { justify-content: space-between; }
+
+.gap-sm { gap: 4px; }

@@ -1,0 +1,31 @@
+/*-- Primitive variables --*/
+:root {
+  --beige-100: 60 20 95;
+  --beige-400: 60 10 75;
+
+  --gray-500: 220 16 47;
+  --gray-600: 220 19 35;
+  --gray-900: 220 47 11;
+
+  --green-600: 153 40 30;
+  --green-100: 153 40 80;
+
+  --font-family: Inter, Roboto, sans-serif;
+}
+
+/*-- Semantic variables --*/
+:root, [data-theme="light"] {
+  --text-body: hsl(var(--gray-900));
+  --text-caption: hsl(var(--gray-500));
+
+  --fg-primary: hsl(var(--green-600));
+
+  --bg-primary: hsl(var(--beige-100));
+  --bg-secondary: hsl(var(--beige-400));
+  --bg-accent: hsl(var(--green-100));
+}
+
+/*-- Defaults --*/
+:root {
+  font-family: var(--font-family);
+}

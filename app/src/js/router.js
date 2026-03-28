@@ -1,4 +1,4 @@
-import { renderDeckView } from './screens/deck-view.js'
+import { renderDeckView } from '../screens/deck-view.js'
 
 export function initRouter(appEl) {
   function route() {

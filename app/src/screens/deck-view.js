@@ -1,34 +1,36 @@
-import { db, getCards, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, createDeck, importCards, exportAllData, restoreAllData } from '../db.js'
-import { parseCardBatch } from '../import-parser.js'
-import { decode as base64urlDecode } from '../base64url.js'
-import { speak, ttsText } from '../tts.js'
+import { db, getCards, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, createDeck, importCards, exportAllData, restoreAllData } from '../js/db.js'
+import { parseCardBatch } from '../js/import-parser.js'
+import { decode as base64urlDecode } from '../js/base64url.js'
+import { speak, ttsText } from '../js/tts.js'
 
-function renderCardRow(card, mode) {
-  let body
-  if (mode === 'reverse') {
-    body = `<div class="card-row-text">${card.translation || ''}</div>`
-  } else if (mode === 'reading') {
-    body = `
-      <div class="card-row-text">
-        ${card.text || ''}
-        ${card.reading ? `<span class="card-row-reading-inline">${card.reading}</span>` : ''}
-      </div>
-      ${card.translation ? `<div class="card-row-reading">${card.translation}</div>` : ''}
-    `
-  } else {
-    // comprehension (default)
-    body = `
-      <div class="card-row-text">${card.text || ''}</div>
-      ${card.reading ? `<div class="card-row-reading">${card.reading}</div>` : ''}
-    `
-  }
-  return `
-    <div class="card-row" data-card-id="${card.id}">
-      <div class="card-row-body">${body}</div>
-      <button class="card-row-play" data-card-id="${card.id}" aria-label="Play">▶</button>
-    </div>
-  `
-}
+import { renderCardRow } from '../components/card.js';
+
+// function renderCardRow(card, mode) {
+//   let body
+//   if (mode === 'reverse') {
+//     body = `<div class="card-row-text">${card.translation || ''}</div>`
+//   } else if (mode === 'reading') {
+//     body = `
+//       <div class="card-row-text">
+//         ${card.text || ''}
+//         ${card.reading ? `<span class="card-row-reading-inline">${card.reading}</span>` : ''}
+//       </div>
+//       ${card.translation ? `<div class="card-row-reading">${card.translation}</div>` : ''}
+//     `
+//   } else {
+//     // comprehension (default)
+//     body = `
+//       <div class="card-row-text">${card.text || ''}</div>
+//       ${card.reading ? `<div class="card-row-reading">${card.reading}</div>` : ''}
+//     `
+//   }
+//   return `
+//     <div class="card-row" data-card-id="${card.id}">
+//       <div class="card-row-body">${body}</div>
+//       <button class="card-row-play" data-card-id="${card.id}" aria-label="Play">▶</button>
+//     </div>
+//   `
+// }
 
 const LAST_DECK_KEY = 'loudmouth.lastDeckId'
 
@@ -495,7 +497,7 @@ export function renderDeckView(el, params) {
           <button class="deck-title-btn" id="btn-deck-title">${deck.name}</button>
           <button class="deck-settings-btn" id="btn-deck-settings" aria-label="Settings">⚙</button>
         </div>
-        <div class="deck-view-list">
+        <div class="deck-view-list" data-deck-mode="${ deck.mode }">
           ${cards.length === 0 ? `
             <div class="deck-view-empty"><p>No cards in this deck.</p></div>
           ` : cards.map(card => renderCardRow(card, deck.mode)).join('')}

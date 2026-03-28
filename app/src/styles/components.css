@@ -43,6 +43,32 @@
   flex: 1;
 }
 
+/*-- Cards --*/
+
+.deck-view-list {
+  &[data-deck-mode="reading"] {
+    .card-row .card-primary .card-translation,
+    .card-row .card-secondary .card-translation {
+      display: none;
+    }
+  }
+
+  &[data-deck-mode="comprehension"] {
+    .card-row .card-primary .card-translation,
+    .card-row .card-secondary .card-reading {
+      display: none;
+    }
+  }
+
+  &[data-deck-mode="reverse"] {
+    .card-row .card-primary .card-text,
+    .card-row .card-secondary .card-reading,
+    .card-row .card-secondary .card-translation {
+      display: none;
+    }
+  }
+}
+
 .card-row {
   display: flex;
   align-items: center;
