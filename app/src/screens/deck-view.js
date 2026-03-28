@@ -118,7 +118,10 @@ export function renderDeckView(el, params) {
           el.querySelector('#btn-deck-title').textContent = changes.name
           deck.name = changes.name
         }
-        if (changes.mode) deck.mode = changes.mode
+        if (changes.mode) {
+          deck.mode = changes.mode
+          el.querySelector('.deck-view-list')?.setAttribute('data-deck-mode', changes.mode)
+        }
       })
     })
 
