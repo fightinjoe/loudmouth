@@ -36,13 +36,29 @@ export function renderDeckView(el, params) {
     if (params.cards) {
       const jsonStr = base64urlDecode(params.cards)
       if (jsonStr === null) {
-        el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p class="uri-import-error">Import link is invalid — could not decode the card data.</p></div></div>`
+        el.innerHTML = `
+          <div class="screen" id="deck-view-screen">
+            <div class="deck-view-empty">
+              <p class="uri-import-error">
+                Import link is invalid — could not decode the card data.
+              </p>
+            </div>
+          </div>
+        `;
         stripHashParam('cards')
         return
       }
       const result = parseCardBatch(jsonStr)
       if (result.cards.length === 0) {
-        el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p class="uri-import-error">Import link contained no valid cards.</p></div></div>`
+        el.innerHTML = `
+          <div class="screen" id="deck-view-screen">
+            <div class="deck-view-empty">
+              <p class="uri-import-error">
+                Import link contained no valid cards.
+              </p>
+            </div>
+          </div>
+        `;
         stripHashParam('cards')
         return
       }
@@ -51,7 +67,13 @@ export function renderDeckView(el, params) {
         const recent = await getRecentDecks(1)
         deckId = recent[0]?.id ?? null
       }
-      el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p>Review your cards below before importing.</p></div></div>`
+      el.innerHTML = `
+        <div class="screen" id="deck-view-screen">
+          <div class="deck-view-empty">
+            <p>Review your cards below before importing.</p>
+          </div>
+        </div>
+      `;
       openAddCardsPanel(
         el,
         () => {},
@@ -72,13 +94,23 @@ export function renderDeckView(el, params) {
     }
 
     if (!deckId) {
-      el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p>No decks yet. Import cards to get started.</p></div></div>`
+      el.innerHTML = `
+        <div class="screen" id="deck-view-screen">
+          <div class="deck-view-empty">
+            <p>No decks yet. Import cards to get started.</p>
+          </div>
+        </div>
+      `;
       return
     }
 
     const deck = await db.decks.get(deckId)
     if (!deck) {
-      el.innerHTML = `<div class="screen" id="deck-view-screen"><div class="deck-view-empty"><p>Deck not found.</p></div></div>`
+      el.innerHTML = `
+        <div class="screen" id="deck-view-screen">
+          <div class="deck-view-empty"><p>Deck not found.</p></div>
+        </div>
+      `;
       return
     }
 
@@ -99,6 +131,7 @@ export function renderDeckView(el, params) {
     `
 
     el.querySelector('.deck-view-list').addEventListener('click', e => {
+      // Play the audio for the card when clicked
       const playBtn = e.target.closest('.card-row-play')
       if (playBtn) {
         e.stopPropagation()
@@ -106,12 +139,15 @@ export function renderDeckView(el, params) {
         if (card) speak(ttsText(card), card.lang)
         return
       }
+
+      // Otherwise, show the card full screen
       const row = e.target.closest('.card-row')
       if (!row) return
       const idx = cards.findIndex(c => String(c.id) === row.dataset.cardId)
       openCardReview(el, cards, deck, idx < 0 ? 0 : idx)
     })
 
+    
     el.querySelector('#btn-deck-settings').addEventListener('click', () => {
       openDeckSettings(el, deck, settingsOps, (changes) => {
         if (changes.name) {

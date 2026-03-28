@@ -1,5 +1,10 @@
-const MODES = ['comprehension', 'reading', 'reverse']
-const MODE_LABELS = { comprehension: 'Comprehension', reading: 'Reading', reverse: 'Reverse' }
+const MODES = [
+  'study',
+  'review',
+  'reverse'
+]
+
+const MODE_LABELS = { study: 'Study', review: 'Review', reverse: 'Reverse' }
 
 export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName }, onChanged) {
   const scrim = document.createElement('div')
