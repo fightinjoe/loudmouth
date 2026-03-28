@@ -14,6 +14,14 @@ Mobile-first PWA. Web only — no native app. PWA manifest + service worker enab
 **Tooling:** Plain HTML/JS + Vite
 **Why:** The app is a focused single-purpose tool with no SEO requirement and no server. A framework adds bundle weight and abstraction overhead with no payoff here. Vite provides fast dev builds, ES module bundling, and static output for Vercel. Files should be small and modular — one concern per file.
 
+**Source layout:**
+- `src/js/` — generic utilities and app logic (router, db, tts, import-parser, base64url)
+- `src/screens/` — full-page views (one file per route/screen)
+- `src/components/` — reusable rendering functions for specific UI components (template-literal renderers)
+- `src/styles/` — CSS split by concern: `variables.css` (design tokens), `utilities.css` (layout/typography utility classes), `base.css` (global resets/defaults), `components.css` (component-specific styles)
+
+**CSS approach:** Display logic is handled via CSS (`data-*` attribute selectors), not JS DOM manipulation. Mode-specific visibility (e.g. card faces in review vs. browse) is toggled by setting `data-card-mode` on the element and using CSS selectors to show/hide the appropriate content. Utility classes follow a Tailwind-like naming convention (e.g. `.flex-row`, `.gap-sm`, `.text-h2`).
+
 ## Backend
 **Approach:** None — fully client-side
 **Why:** No user accounts, no cross-device sync, no server-side secrets. Everything runs in the browser. This is a deliberate constraint from the brief and should not be relaxed without a concrete forcing function (see Constraints).
