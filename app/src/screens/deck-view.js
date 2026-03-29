@@ -1,4 +1,5 @@
-import { db, getCards, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, deleteDeck, createDeck, importCards, exportAllData, restoreAllData } from '../js/db.js'
+import { db, getCards, getCardsByLang, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, deleteDeck, createDeck, importCards, exportAllData, restoreAllData } from '../js/db.js'
+import { DEFAULT_MODE } from '../js/modes.js'
 import { decode as base64urlDecode } from '../js/base64url.js'
 import { parseCardBatch } from '../js/import-parser.js'
 import { speak, ttsText } from '../js/tts.js'
@@ -19,7 +20,7 @@ export function setLastDeckId(deckId) {
   localStorage.setItem(LAST_DECK_KEY, deckId)
 }
 
-const dbOps = { db, getDecks, getRecentDecks, createDeck, importCards, exportAllData, restoreAllData }
+const dbOps = { db, getDecks, getRecentDecks, getCardsByLang, createDeck, importCards, exportAllData, restoreAllData }
 const settingsOps = { updateDeckMode, updateDeckName, deleteDeck }
 
 function stripHashParam(param) {
@@ -104,24 +105,33 @@ export function renderDeckView(el, params) {
       return
     }
 
-    const deck = await db.decks.get(deckId)
-    if (!deck) {
-      el.innerHTML = `
-        <div class="screen" id="deck-view-screen">
-          <div class="deck-view-empty"><p>Deck not found.</p></div>
-        </div>
-      `;
-      return
+    let deck, cards
+    if (deckId.startsWith('lang:')) {
+      const lang = deckId.slice(5)
+      cards = await getCardsByLang(lang)
+      const langName = lang === 'zh' ? 'Chinese' : lang === 'ja' ? 'Japanese' : lang.toUpperCase()
+      deck = { id: deckId, name: `All ${langName} Cards`, lang, mode: DEFAULT_MODE, system: true }
+    } else {
+      deck = await db.decks.get(deckId)
+      if (!deck) {
+        el.innerHTML = `
+          <div class="screen" id="deck-view-screen">
+            <div class="deck-view-empty"><p>Deck not found.</p></div>
+          </div>
+        `;
+        return
+      }
+      cards = await getCards(deckId)
     }
 
-    const cards = await getCards(deckId)
+    const isLangView = deckId.startsWith('lang:')
 
     el.innerHTML = `
       <div class="screen" id="deck-view-screen">
         <div class="panel-header">
           <span class="panel-header-spacer"></span>
           <button class="panel-header-title" id="btn-deck-title">${deck.name}</button>
-          <button class="panel-header-right" id="btn-deck-settings" aria-label="Settings">⚙</button>
+          ${isLangView ? '<span class="panel-header-spacer"></span>' : '<button class="panel-header-right" id="btn-deck-settings" aria-label="Settings">⚙</button>'}
         </div>
         <div class="deck-view-list" data-deck-mode="${deck.mode}">
           ${cards.length === 0
@@ -148,23 +158,24 @@ export function renderDeckView(el, params) {
       openCardReview(el, cards, deck, idx < 0 ? 0 : idx)
     })
 
-    
-    el.querySelector('#btn-deck-settings').addEventListener('click', () => {
-      openDeckSettings(el, deck, settingsOps, (changes) => {
-        if (changes.deleted) {
-          window.location.hash = 'deck'
-          return
-        }
-        if (changes.name) {
-          el.querySelector('#btn-deck-title').textContent = changes.name
-          deck.name = changes.name
-        }
-        if (changes.mode) {
-          deck.mode = changes.mode
-          el.querySelector('.deck-view-list')?.setAttribute('data-deck-mode', changes.mode)
-        }
+    if (!isLangView) {
+      el.querySelector('#btn-deck-settings').addEventListener('click', () => {
+        openDeckSettings(el, deck, settingsOps, (changes) => {
+          if (changes.deleted) {
+            window.location.hash = 'deck'
+            return
+          }
+          if (changes.name) {
+            el.querySelector('#btn-deck-title').textContent = changes.name
+            deck.name = changes.name
+          }
+          if (changes.mode) {
+            deck.mode = changes.mode
+            el.querySelector('.deck-view-list')?.setAttribute('data-deck-mode', changes.mode)
+          }
+        })
       })
-    })
+    }
 
     el.querySelector('#btn-deck-title').addEventListener('click', () => {
       openDeckPicker(
@@ -172,7 +183,9 @@ export function renderDeckView(el, params) {
         dbOps,
         async (selectedDeckId) => {
           setLastDeckId(selectedDeckId)
-          await updateDeckAccessTime(selectedDeckId)
+          if (!selectedDeckId.startsWith('lang:')) {
+            await updateDeckAccessTime(selectedDeckId)
+          }
           renderDeckView(el, { id: selectedDeckId })
         },
         (closePicker) => {

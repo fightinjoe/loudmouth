@@ -34,6 +34,18 @@ function createDb(options = {}) {
       }
     });
   });
+  instance.version(4).stores({
+    cards: 'id, lang, *deckIds, createdAt',
+    decks: 'id, lang, createdAt, lastAccessedAt',
+  }).upgrade(async tx => {
+    await tx.table('cards').toCollection().modify(card => {
+      card.deckIds = (card.deckIds || []).filter(id => !id.startsWith('all-'));
+    });
+    const systemDecks = await tx.table('decks').filter(d => d.system).toArray();
+    for (const d of systemDecks) {
+      await tx.table('decks').delete(d.id);
+    }
+  });
   return instance;
 }
 
@@ -56,27 +68,6 @@ function isoNow() {
 
 function slugify(name) {
   return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-}
-
-/**
- * Returns the system deck for the given language, creating it if absent.
- * System deck IDs: 'all-zh' | 'all-ja'
- */
-export async function getOrCreateAllDeck(lang, store = db) {
-  const id = `all-${lang}`;
-  const existing = await store.decks.get(id);
-  if (existing) return existing;
-
-  const deck = {
-    id,
-    name: `All ${lang === 'zh' ? 'Chinese' : 'Japanese'} Cards`,
-    lang,
-    createdAt: isoNow(),
-    system: true,
-    mode: DEFAULT_MODE,
-  };
-  await store.decks.add(deck);
-  return deck;
 }
 
 /**
@@ -154,26 +145,23 @@ export async function getCards(deckId, store = db) {
 }
 
 /**
+ * Returns all cards for the given language, regardless of deck.
+ */
+export async function getCardsByLang(lang, store = db) {
+  return store.cards.where('lang').equals(lang).toArray();
+}
+
+/**
  * Imports an array of parsed card objects into the DB.
  */
 export async function importCards(cards, deckId = null, store = db) {
-  const langGroups = {};
   for (const card of cards) {
-    (langGroups[card.lang] ??= []).push(card);
-  }
-
-  for (const [lang, group] of Object.entries(langGroups)) {
-    const allDeck = await getOrCreateAllDeck(lang, store);
-    for (const card of group) {
-      const deckIds = [allDeck.id];
-      if (deckId) deckIds.push(deckId);
-      await store.cards.add({
-        id: uuid(),
-        createdAt: isoNow(),
-        ...card,
-        deckIds,
-      });
-    }
+    await store.cards.add({
+      id: uuid(),
+      createdAt: isoNow(),
+      ...card,
+      deckIds: deckId ? [deckId] : [],
+    });
   }
 }
 
@@ -209,11 +197,7 @@ export async function deleteCard(cardId, store = db) {
 export async function deleteDeck(deckId, store = db) {
   const cards = await store.cards.where('deckIds').equals(deckId).toArray();
   for (const card of cards) {
-    if (card.deckIds.length <= 1) {
-      await store.cards.delete(card.id);
-    } else {
-      await store.cards.update(card.id, { deckIds: card.deckIds.filter(id => id !== deckId) });
-    }
+    await store.cards.delete(card.id);
   }
   await store.decks.delete(deckId);
 }
@@ -244,16 +228,13 @@ export async function restoreAllData(data, store = db) {
     await store.decks.add(deck);
   }
 
-  // Re-create system All decks referenced by cards
-  const langs = [...new Set(cards.map(c => c.lang))];
-  for (const lang of langs) {
-    await getOrCreateAllDeck(lang, store);
-  }
-
-  // Normalize and restore cards (preserve original IDs and deckIds)
+  // Normalize and restore cards, stripping any legacy all-{lang} deckIds
   for (const card of cards) {
-    await store.cards.add(normalizeCard(card));
+    const normalized = normalizeCard(card);
+    normalized.deckIds = (normalized.deckIds || []).filter(id => !id.startsWith('all-'));
+    await store.cards.add(normalized);
   }
 }
 
 export { createDb };
+

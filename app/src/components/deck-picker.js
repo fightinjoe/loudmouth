@@ -27,7 +27,7 @@ function renderDeckPickerRow(deck, cardCount) {
   `
 }
 
-export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks }, onSelectDeck, onAddCards) {
+export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getCardsByLang }, onSelectDeck, onAddCards) {
   const allDecks = await getDecks(null, { includeSystem: false })
   const recentDecks = await getRecentDecks(2)
   const allCards = await db.cards.toArray()
@@ -43,6 +43,25 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks }, on
     ;(byLang[deck.lang] ??= []).push(deck)
   }
 
+  // Collect all langs that have cards (including those without decks)
+  const allLangs = [...new Set(allCards.map(c => c.lang))].sort()
+  for (const lang of allLangs) {
+    if (!byLang[lang]) byLang[lang] = []
+  }
+
+  // Also include langs from remaining decks already added above
+  const langCardCounts = {}
+  if (getCardsByLang) {
+    for (const lang of Object.keys(byLang)) {
+      const langCards = await getCardsByLang(lang)
+      langCardCounts[lang] = langCards.length
+    }
+  } else {
+    for (const lang of Object.keys(byLang)) {
+      langCardCounts[lang] = allCards.filter(c => c.lang === lang).length
+    }
+  }
+
   let mostRecentHTML = ''
   if (recentDecks.length > 0) {
     mostRecentHTML = `
@@ -54,8 +73,14 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks }, on
   let byLangHTML = ''
   for (const [lang, decks] of Object.entries(byLang)) {
     const flag = LANG_FLAGS[lang] ?? ''
+    const total = langCardCounts[lang] ?? 0
     byLangHTML += `
-      <div class="deck-picker-section-header">${flag} ${lang.toUpperCase()}</div>
+      <div class="deck-picker-lang-header deck-picker-row" data-deck-id="lang:${lang}">
+        <div class="deck-picker-row-info">
+          <span class="deck-picker-row-name">${flag} ${lang.toUpperCase()}</span>
+          <span class="deck-picker-row-meta">${total} card${total === 1 ? '' : 's'} total</span>
+        </div>
+      </div>
       ${decks.map(d => renderDeckPickerRow(d, cardCount(d.id))).join('')}
     `
   }
@@ -71,7 +96,7 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks }, on
     <div class="deck-picker-list">
       ${mostRecentHTML}
       ${byLangHTML}
-      ${allDecks.length === 0 ? '<p class="deck-picker-empty">No decks yet.</p>' : ''}
+      ${allDecks.length === 0 && allLangs.length === 0 ? '<p class="deck-picker-empty">No decks yet.</p>' : ''}
     </div>
   `
   appEl.appendChild(panel)
@@ -97,7 +122,7 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks }, on
     onSelectDeck(deckId)
   })
 
-  panel.querySelector('.deck-picker-add').addEventListener('click', () => {
+  panel.querySelector('.panel-header-right').addEventListener('click', () => {
     if (onAddCards) onAddCards(close)
   })
 }

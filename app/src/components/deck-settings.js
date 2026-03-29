@@ -54,7 +54,7 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
     })
 
     panel.querySelector('#ds-delete-row')?.addEventListener('click', async () => {
-      if (!confirm(`Delete "${currentName}"? Cards will not be deleted.`)) return
+      if (!confirm(`Delete "${currentName}"? All cards in this deck will be deleted.`)) return
       await deleteDeck(deck.id)
       onChanged({ deleted: true })
       close()

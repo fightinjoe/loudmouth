@@ -132,6 +132,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
   async function renderStep2() {
     const lang = detectLang(parsedCards)
     const userDecks = await getDecks(lang)
+    const autoNew = userDecks.length === 0
 
     panel.innerHTML = `
       <div class="panel-header">
@@ -146,15 +147,15 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
           ${parseErrors.length > 0 ? `<div class="add-cards-skipped">${parseErrors.length} skipped</div>` : ''}
         </div>
         <div class="add-cards-deck-selector">
-          <label for="deck-select">Add to deck (optional)</label>
+          <label for="deck-select">Add to deck</label>
           <select id="deck-select" class="add-cards-select">
-            <option value="">None — All deck only</option>
             ${userDecks.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
-            <option value="__new__">New deck…</option>
+            <option value="__new__"${autoNew ? ' selected' : ''}>New deck…</option>
           </select>
-          <div class="add-cards-new-deck" id="new-deck-wrap">
+          <div class="add-cards-new-deck${autoNew ? ' visible' : ''}" id="new-deck-wrap">
             <input id="new-deck-input" class="add-cards-input" type="text" placeholder="Deck name" autocorrect="off" />
           </div>
+          <div id="deck-error" class="add-cards-error"></div>
         </div>
         <button id="btn-import" class="btn btn-primary">Import</button>
         <button id="btn-step-back" class="btn btn-secondary">Back</button>
@@ -171,13 +172,15 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
     })
 
     panel.querySelector('#btn-import').addEventListener('click', async () => {
-      let deckId = select.value === '' ? null : select.value
-      if (select.value === '__new__') {
+      const errEl = panel.querySelector('#deck-error')
+      let deckId = select.value
+      if (deckId === '__new__') {
         const name = panel.querySelector('#new-deck-input').value.trim()
         if (!name) { panel.querySelector('#new-deck-input').focus(); return }
         const deck = await createDeck(name, lang)
         deckId = deck.id
       }
+      if (!deckId) { errEl.textContent = 'Please select a deck.'; return }
       try {
         await importCards(parsedCards, deckId)
         close()
