@@ -1,13 +1,14 @@
 import { speak, ttsText } from '../js/tts.js'
 import { MODES } from '../js/modes.js'
 
-function renderReviewCardContent(card, mode) {
+function renderReviewCardContent(card, mode, readingDisplay = 'reading') {
   if (mode === MODES.REVERSE) {
     return `<div class="review-card-text">${card.translation || ''}</div>`
   }
+  const reading = card[readingDisplay] || ''
   return `
     <div class="review-card-text">${card.text || ''}</div>
-    ${card.reading ? `<div class="review-card-reading">${card.reading}</div>` : ''}
+    ${reading ? `<div class="review-card-reading">${reading}</div>` : ''}
   `
 }
 
@@ -71,7 +72,7 @@ export function openCardReview(appEl, cards, deck, startIndex) {
 
   function renderCurrent() {
     const transContainer = panel.querySelector('#review-translation-el')
-    cardEl.innerHTML = renderReviewCardContent(cards[currentIndex], deck.mode)
+    cardEl.innerHTML = renderReviewCardContent(cards[currentIndex], deck.mode, deck.readingDisplay)
     transContainer.innerHTML = renderTranslationArea(cards[currentIndex], deck.mode)
     wireTranslationReveal(transContainer, deck.mode)
   }

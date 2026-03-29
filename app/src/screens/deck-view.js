@@ -1,4 +1,4 @@
-import { db, getCards, getCardsByLang, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, updateDeckOrder, deleteDeck, createDeck, importCards, exportAllData, restoreAllData, applyCardOrder } from '../js/db.js'
+import { db, getCards, getCardsByLang, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, createDeck, importCards, exportAllData, restoreAllData, applyCardOrder } from '../js/db.js'
 import { DEFAULT_MODE } from '../js/modes.js'
 import { decode as base64urlDecode } from '../js/base64url.js'
 import { parseCardBatch } from '../js/import-parser.js'
@@ -21,7 +21,7 @@ export function setLastDeckId(deckId) {
 }
 
 const dbOps = { db, getDecks, getRecentDecks, getCardsByLang, createDeck, importCards, exportAllData, restoreAllData }
-const settingsOps = { updateDeckMode, updateDeckName, updateDeckOrder, deleteDeck }
+const settingsOps = { updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck }
 
 function stripHashParam(param) {
   const raw = window.location.hash.slice(1) || 'deck'
@@ -138,7 +138,7 @@ export function renderDeckView(el, params) {
         <div class="deck-view-list" data-deck-mode="${deck.mode}">
           ${cards.length === 0
             ? `<div class="deck-view-empty"><p>No cards in this deck.</p></div>`
-            : cards.map(card => renderCardRow(card)).join('')}
+            : cards.map(card => renderCardRow(card, deck.readingDisplay)).join('')}
         </div>
       </div>
     `
@@ -182,7 +182,16 @@ export function renderDeckView(el, params) {
             if (list) {
               list.innerHTML = cards.length === 0
                 ? `<div class="deck-view-empty"><p>No cards in this deck.</p></div>`
-                : cards.map(card => renderCardRow(card)).join('')
+                : cards.map(card => renderCardRow(card, deck.readingDisplay)).join('')
+            }
+          }
+          if (changes.readingDisplay) {
+            deck.readingDisplay = changes.readingDisplay
+            const list = el.querySelector('.deck-view-list')
+            if (list) {
+              list.innerHTML = cards.length === 0
+                ? `<div class="deck-view-empty"><p>No cards in this deck.</p></div>`
+                : cards.map(card => renderCardRow(card, deck.readingDisplay)).join('')
             }
           }
         })

@@ -5,7 +5,10 @@ const MODES = Object.values(MODES_MAP)
 const ORDERS = ['default', 'random', 'reverse']
 const ORDER_LABELS = { default: 'Default', random: 'Random', reverse: 'Reverse' }
 
-export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, updateDeckOrder, deleteDeck }, onChanged) {
+const READING_DISPLAYS = ['reading', 'romanization']
+const READING_DISPLAY_LABELS = { reading: 'Native', romanization: 'Romanized' }
+
+export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck }, onChanged) {
   const scrim = document.createElement('div')
   scrim.className = 'deck-settings-scrim'
   appEl.appendChild(scrim)
@@ -17,6 +20,7 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
   let currentMode = deck.mode || DEFAULT_MODE
   let currentName = deck.name
   let currentOrder = deck.order || 'default'
+  let currentReadingDisplay = deck.readingDisplay || 'reading'
 
   function render() {
     panel.innerHTML = `
@@ -37,6 +41,13 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
         <span class="deck-settings-label">Card order</span>
         <span class="deck-settings-value deck-settings-value--accent" id="ds-order-value">
           ${ORDER_LABELS[currentOrder]}
+          <span class="deck-settings-chevron">⌃</span>
+        </span>
+      </div>
+      <div class="deck-settings-row" id="ds-reading-display-row">
+        <span class="deck-settings-label">Reading</span>
+        <span class="deck-settings-value deck-settings-value--accent" id="ds-reading-display-value">
+          ${READING_DISPLAY_LABELS[currentReadingDisplay]}
           <span class="deck-settings-chevron">⌃</span>
         </span>
       </div>
@@ -69,6 +80,14 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
       currentOrder = ORDERS[(idx + 1) % ORDERS.length]
       await updateDeckOrder(deck.id, currentOrder)
       onChanged({ order: currentOrder })
+      render()
+    })
+
+    panel.querySelector('#ds-reading-display-row').addEventListener('click', async () => {
+      const idx = READING_DISPLAYS.indexOf(currentReadingDisplay)
+      currentReadingDisplay = READING_DISPLAYS[(idx + 1) % READING_DISPLAYS.length]
+      await updateDeckReadingDisplay(deck.id, currentReadingDisplay)
+      onChanged({ readingDisplay: currentReadingDisplay })
       render()
     })
 

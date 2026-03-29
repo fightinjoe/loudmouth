@@ -54,6 +54,14 @@ function createDb(options = {}) {
       if (!deck.order) deck.order = 'default';
     });
   });
+  instance.version(6).stores({
+    cards: 'id, lang, *deckIds, createdAt',
+    decks: 'id, lang, createdAt, lastAccessedAt',
+  }).upgrade(tx => {
+    return tx.table('decks').toCollection().modify(deck => {
+      if (!deck.readingDisplay) deck.readingDisplay = 'reading';
+    });
+  });
   return instance;
 }
 
@@ -97,7 +105,7 @@ async function nextDeckCounter(store) {
 export async function createDeck(name, lang, store = db) {
   const counter = await nextDeckCounter(store);
   const id = `${counter}-${slugify(name)}`;
-  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: DEFAULT_MODE, order: 'default' };
+  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: DEFAULT_MODE, order: 'default', readingDisplay: 'reading' };
   await store.decks.add(deck);
   return deck;
 }
@@ -118,6 +126,13 @@ export async function updateDeckOrder(deckId, order, store = db) {
 
 export async function updateDeckName(deckId, name, store = db) {
   await store.decks.update(deckId, { name });
+}
+
+/**
+ * Updates the reading display setting for a deck ('reading' or 'romanization').
+ */
+export async function updateDeckReadingDisplay(deckId, readingDisplay, store = db) {
+  await store.decks.update(deckId, { readingDisplay });
 }
 
 /**

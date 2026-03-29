@@ -111,6 +111,7 @@ Validated in `prototypes/2-json-import/`. `id` and `importedAt` are never presen
       "type": "word | phrase | sentence",
       "text": "string",
       "reading": "string (optional — pinyin for zh, hiragana for ja)",
+      "romanization": "string (optional — romaji for ja; Latin-alphabet transcription for other scripts)",
       "translation": "string",
       "notes": "string (optional)",
       "example": {
@@ -123,7 +124,7 @@ Validated in `prototypes/2-json-import/`. `id` and `importedAt` are never presen
 }
 ```
 
-**Required per card:** `lang`, `text`, `translation`. All other fields optional.
+**Required per card:** `lang`, `text`, `translation`. All other fields optional. `romanization` is a Latin-alphabet transcription (e.g. romaji for Japanese) distinct from `reading` (hiragana/pinyin); both are optional and independent.
 
 ### Library Schema (internal storage)
 
@@ -139,6 +140,7 @@ Two IndexedDB tables: `cards` and `decks`. Card-deck membership is stored as `de
   "deckIds": ["NNN-slug"],
   "text": "string",
   "reading": "string (optional)",
+  "romanization": "string (optional — romaji or other Latin-alphabet transcription)",
   "translation": "string",
   "notes": "string (optional)",
   "example": { "text": "string", "reading": "string (optional)", "translation": "string (optional)" }
@@ -151,7 +153,8 @@ Two IndexedDB tables: `cards` and `decks`. Card-deck membership is stored as `de
   "id": "NNN-slug",
   "name": "string",
   "lang": "zh | ja",
-  "createdAt": "ISO 8601 timestamp"
+  "createdAt": "ISO 8601 timestamp",
+  "readingDisplay": "reading | romanization (default: reading)"
 }
 ```
 

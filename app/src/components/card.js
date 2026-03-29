@@ -1,12 +1,12 @@
-export function renderCard(card, mode) {
+export function renderCard(card, mode, readingDisplay = 'reading') {
   return `
     <div
       class="card"
       data-card-id="${card.id}"
       data-card-mode="${mode}"
     >
-      ${ renderCardContent(card) }
-      
+      ${ renderCardContent(card, readingDisplay) }
+
       <div class="answer">
         <div class="skeleton"></div>
         <div class="translation">${ card.translation }</div>
@@ -16,14 +16,14 @@ export function renderCard(card, mode) {
   `;
 }
 
-export function renderCardRow(card) {
+export function renderCardRow(card, readingDisplay = 'reading') {
   return `
     <div
       class="card-row flex-row gap-auto"
       data-card-id="${card.id}"
     >
-      ${ renderCardContent(card) }
-      
+      ${ renderCardContent(card, readingDisplay) }
+
       <button
         class="card-row-play"
         data-card-id="${card.id}"
@@ -35,7 +35,8 @@ export function renderCardRow(card) {
   `;
 }
 
-function renderCardContent(card) {
+function renderCardContent(card, readingDisplay = 'reading') {
+  const reading = card[readingDisplay] || ''
   return `
     <div class="card-content flex-col gap-sm">
       <div class="card-primary text-h2">
@@ -43,7 +44,7 @@ function renderCardContent(card) {
         <span class="card-translation">${card.translation}</span>
       </div>
       <div class="card-secondary text-body2 text-caption">
-        <span class="card-reading">${card.reading}</span>
+        <span class="card-reading">${reading}</span>
         <span class="card-translation">${card.translation}</span>
       </div>
     </div>

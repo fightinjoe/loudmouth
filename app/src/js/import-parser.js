@@ -67,6 +67,7 @@ export function parseCardBatch(jsonString) {
 
     if (c.type !== undefined) card.type = c.type
     if (c.reading !== undefined) card.reading = c.reading
+    if (c.romanization !== undefined) card.romanization = c.romanization
     if (c.notes !== undefined) card.notes = c.notes
     if (c.example?.text !== undefined) {
       card.example = { text: c.example.text }
