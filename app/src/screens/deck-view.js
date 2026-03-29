@@ -98,10 +98,19 @@ export function renderDeckView(el, params) {
       el.innerHTML = `
         <div class="screen" id="deck-view-screen">
           <div class="deck-view-empty">
-            <p>No decks yet. Import cards to get started.</p>
+            <p>No decks yet.</p>
+            <button id="btn-import-cards" class="btn btn-primary">Import cards</button>
           </div>
         </div>
       `;
+      el.querySelector('#btn-import-cards').addEventListener('click', () => {
+        openAddCardsPanel(el, () => {}, (importedDeckId) => {
+          if (importedDeckId) {
+            setLastDeckId(importedDeckId)
+            renderDeckView(el, { id: importedDeckId })
+          }
+        }, dbOps)
+      })
       return
     }
 
