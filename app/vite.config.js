@@ -16,6 +16,8 @@ export default defineConfig({
         background_color: '#f5f5f0',
         theme_color: '#2d6a4f',
         start_url: '/',
+        handle_links: 'preferred',
+        scope_extensions: [{ origin: 'https://loudmouth-gilt.vercel.app' }],
         icons: [
           {
             src: '/icon.svg',
