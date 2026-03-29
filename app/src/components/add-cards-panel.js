@@ -40,7 +40,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
   function renderStep1() {
     panel.innerHTML = `
       <div class="panel-header">
-        <button class="panel-header-back" aria-label="Back">‹ Back</button>
+        <button class="panel-header-back" aria-label="Back">‹</button>
         <span class="panel-header-title">Add Cards</span>
         <span class="panel-header-spacer"></span>
       </div>
@@ -135,7 +135,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
 
     panel.innerHTML = `
       <div class="panel-header">
-        <button class="panel-header-back" aria-label="Back">‹ Back</button>
+        <button class="panel-header-back" aria-label="Back">‹</button>
         <span class="panel-header-title">Confirm Import</span>
         <span class="panel-header-spacer"></span>
       </div>

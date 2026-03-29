@@ -5,34 +5,6 @@
   background: var(--bg);
 }
 
-.deck-view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.25rem 0.75rem;
-}
-
-.deck-title-btn {
-  background: none;
-  border: none;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.deck-settings-btn {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0.25rem;
-  line-height: 1;
-  -webkit-tap-highlight-color: transparent;
-}
 
 .deck-view-list {
   display: flex;
@@ -149,17 +121,6 @@
   overflow-y: auto;
 }
 
-.deck-picker-add {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  color: var(--accent);
-  cursor: pointer;
-  padding: 0;
-  min-width: 60px;
-  text-align: right;
-  -webkit-tap-highlight-color: transparent;
-}
 
 .deck-picker-list {
   flex: 1;

@@ -64,9 +64,9 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks }, on
   panel.className = 'deck-picker-panel panel-screen'
   panel.innerHTML = `
     <div class="panel-header">
-      <button class="panel-header-back" aria-label="Back">‹ Back</button>
+      <button class="panel-header-back" aria-label="Back">‹</button>
       <span class="panel-header-title">Language decks</span>
-      <button class="deck-picker-add" aria-label="Add">＋</button>
+      <button class="panel-header-right" aria-label="Add">＋</button>
     </div>
     <div class="deck-picker-list">
       ${mostRecentHTML}

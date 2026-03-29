@@ -56,7 +56,7 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   panel.className = 'card-review-panel panel-screen'
   panel.innerHTML = `
     <div class="panel-header">
-      <button class="panel-header-back" aria-label="Back">‹ Back</button>
+      <button class="panel-header-back" aria-label="Back">‹</button>
       <span class="panel-header-title">${deck.name}</span>
       <span class="panel-header-spacer"></span>
     </div>

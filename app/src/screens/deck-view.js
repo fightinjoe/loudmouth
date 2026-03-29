@@ -118,9 +118,10 @@ export function renderDeckView(el, params) {
 
     el.innerHTML = `
       <div class="screen" id="deck-view-screen">
-        <div class="deck-view-header">
-          <button class="deck-title-btn" id="btn-deck-title">${deck.name}</button>
-          <button class="deck-settings-btn" id="btn-deck-settings" aria-label="Settings">⚙</button>
+        <div class="panel-header">
+          <span class="panel-header-spacer"></span>
+          <button class="panel-header-title" id="btn-deck-title">${deck.name}</button>
+          <button class="panel-header-right" id="btn-deck-settings" aria-label="Settings">⚙</button>
         </div>
         <div class="deck-view-list" data-deck-mode="${deck.mode}">
           ${cards.length === 0
