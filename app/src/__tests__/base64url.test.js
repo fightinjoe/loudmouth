@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { encode, decode } from '../base64url.js'
+import { encode, decode } from '../js/base64url.js'
 
 describe('base64url encode/decode', () => {
   it('round-trips a simple JSON string', () => {

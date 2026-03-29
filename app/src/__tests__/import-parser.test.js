@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCardBatch, normalizeCard } from '../import-parser.js';
+import { parseCardBatch, normalizeCard } from '../js/import-parser.js';
 
 // New flat schema fixture
 const valid = (overrides = {}) => ({
@@ -165,6 +165,7 @@ describe('optional fields', () => {
     const card = result.cards[0];
     expect(card.type).toBeUndefined();
     expect(card.reading).toBeUndefined();
+    expect(card.romanization).toBeUndefined();
     expect(card.notes).toBeUndefined();
     expect(card.example).toBeUndefined();
   });
@@ -177,6 +178,18 @@ describe('optional fields', () => {
   it('preserves reading when present', () => {
     const result = parseCardBatch(batch([valid()]));
     expect(result.cards[0].reading).toBe('nǐ hǎo');
+  });
+
+  it('preserves romanization when present', () => {
+    const result = parseCardBatch(batch([valid({ romanization: 'ni hao' })]));
+    expect(result.cards[0].romanization).toBe('ni hao');
+  });
+
+  it('romanization is independent of reading — card can have both', () => {
+    const card = valid({ reading: 'nǐ hǎo', romanization: 'ni hao' });
+    const result = parseCardBatch(batch([card]));
+    expect(result.cards[0].reading).toBe('nǐ hǎo');
+    expect(result.cards[0].romanization).toBe('ni hao');
   });
 
   it('preserves notes when present', () => {

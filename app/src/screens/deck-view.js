@@ -164,6 +164,7 @@ export function renderDeckView(el, params) {
       el.querySelector('#btn-deck-settings').addEventListener('click', () => {
         openDeckSettings(el, deck, settingsOps, (changes) => {
           if (changes.deleted) {
+            localStorage.removeItem(LAST_DECK_KEY)
             window.location.hash = 'deck'
             return
           }
