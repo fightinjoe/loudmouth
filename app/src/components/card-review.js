@@ -1,7 +1,8 @@
 import { speak, ttsText } from '../js/tts.js'
+import { MODES } from '../js/modes.js'
 
 function renderReviewCardContent(card, mode) {
-  if (mode === 'reverse') {
+  if (mode === MODES.REVERSE) {
     return `<div class="review-card-text">${card.translation || ''}</div>`
   }
   return `
@@ -11,10 +12,8 @@ function renderReviewCardContent(card, mode) {
 }
 
 function renderTranslationArea(card, mode) {
-  if (mode === 'reverse') return ''
-  if (mode === 'reading') {
-    return `<div class="review-translation review-translation--visible">${card.translation || ''}</div>`
-  }
+  if (mode === MODES.REVERSE) return ''
+  
   return `
     <div class="review-translation review-translation--skeleton" data-translation="${(card.translation || '').replace(/"/g, '&quot;')}">
       <div class="review-translation-skeleton-line"></div>
@@ -24,7 +23,6 @@ function renderTranslationArea(card, mode) {
 }
 
 function wireTranslationReveal(el, mode) {
-  if ((mode || 'comprehension') !== 'comprehension') return
   const area = el.querySelector('.review-translation--skeleton')
   if (!area) return
   const translation = area.dataset.translation

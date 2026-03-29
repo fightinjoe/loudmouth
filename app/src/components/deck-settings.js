@@ -1,12 +1,8 @@
-const MODES = [
-  'study',
-  'review',
-  'reverse'
-]
+import { MODES as MODES_MAP, MODE_LABELS, DEFAULT_MODE } from '../js/modes.js'
 
-const MODE_LABELS = { study: 'Study', review: 'Review', reverse: 'Reverse' }
+const MODES = Object.values(MODES_MAP)
 
-export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName }, onChanged) {
+export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, deleteDeck }, onChanged) {
   const scrim = document.createElement('div')
   scrim.className = 'deck-settings-scrim'
   appEl.appendChild(scrim)
@@ -15,7 +11,7 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName }
   panel.className = 'deck-settings-panel'
   appEl.appendChild(panel)
 
-  let currentMode = deck.mode || 'comprehension'
+  let currentMode = deck.mode || DEFAULT_MODE
   let currentName = deck.name
 
   function render() {
@@ -33,6 +29,11 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName }
           <span class="deck-settings-chevron">⌃</span>
         </span>
       </div>
+      ${!deck.system ? `
+      <div class="deck-settings-section-header">Danger zone</div>
+      <div class="deck-settings-row deck-settings-row--destructive" id="ds-delete-row">
+        <span class="deck-settings-label">Delete deck</span>
+      </div>` : ''}
     `
 
     panel.querySelector('#ds-name-row').addEventListener('click', async () => {
@@ -50,6 +51,13 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName }
       await updateDeckMode(deck.id, currentMode)
       onChanged({ mode: currentMode })
       render()
+    })
+
+    panel.querySelector('#ds-delete-row')?.addEventListener('click', async () => {
+      if (!confirm(`Delete "${currentName}"? Cards will not be deleted.`)) return
+      await deleteDeck(deck.id)
+      onChanged({ deleted: true })
+      close()
     })
   }
 

@@ -1,5 +1,6 @@
 import Dexie from 'dexie';
 import { normalizeCard } from './import-parser.js';
+import { DEFAULT_MODE, MODES } from './modes.js';
 
 function createDb(options = {}) {
   const instance = new Dexie('loudmouth', options);
@@ -72,7 +73,7 @@ export async function getOrCreateAllDeck(lang, store = db) {
     lang,
     createdAt: isoNow(),
     system: true,
-    mode: 'comprehension',
+    mode: DEFAULT_MODE,
   };
   await store.decks.add(deck);
   return deck;
@@ -97,7 +98,7 @@ async function nextDeckCounter(store) {
 export async function createDeck(name, lang, store = db) {
   const counter = await nextDeckCounter(store);
   const id = `${counter}-${slugify(name)}`;
-  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: 'comprehension' };
+  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: DEFAULT_MODE };
   await store.decks.add(deck);
   return deck;
 }
@@ -202,9 +203,18 @@ export async function deleteCard(cardId, store = db) {
 }
 
 /**
- * Deletes a deck record (cards are untouched).
+ * Deletes a deck and all cards that belong to it.
+ * Cards shared with other decks have the deckId removed instead of being deleted.
  */
 export async function deleteDeck(deckId, store = db) {
+  const cards = await store.cards.where('deckIds').equals(deckId).toArray();
+  for (const card of cards) {
+    if (card.deckIds.length <= 1) {
+      await store.cards.delete(card.id);
+    } else {
+      await store.cards.update(card.id, { deckIds: card.deckIds.filter(id => id !== deckId) });
+    }
+  }
   await store.decks.delete(deckId);
 }
 

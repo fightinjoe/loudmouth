@@ -337,6 +337,10 @@
   border-bottom: none;
 }
 
+.deck-settings-row--destructive .deck-settings-label {
+  color: var(--danger, #e53e3e);
+}
+
 .deck-settings-label {
   font-size: 1rem;
   font-weight: 500;

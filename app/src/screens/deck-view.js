@@ -1,4 +1,4 @@
-import { db, getCards, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, createDeck, importCards, exportAllData, restoreAllData } from '../js/db.js'
+import { db, getCards, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, deleteDeck, createDeck, importCards, exportAllData, restoreAllData } from '../js/db.js'
 import { decode as base64urlDecode } from '../js/base64url.js'
 import { parseCardBatch } from '../js/import-parser.js'
 import { speak, ttsText } from '../js/tts.js'
@@ -20,7 +20,7 @@ export function setLastDeckId(deckId) {
 }
 
 const dbOps = { db, getDecks, getRecentDecks, createDeck, importCards, exportAllData, restoreAllData }
-const settingsOps = { updateDeckMode, updateDeckName }
+const settingsOps = { updateDeckMode, updateDeckName, deleteDeck }
 
 function stripHashParam(param) {
   const raw = window.location.hash.slice(1) || 'deck'
@@ -151,6 +151,10 @@ export function renderDeckView(el, params) {
     
     el.querySelector('#btn-deck-settings').addEventListener('click', () => {
       openDeckSettings(el, deck, settingsOps, (changes) => {
+        if (changes.deleted) {
+          window.location.hash = 'deck'
+          return
+        }
         if (changes.name) {
           el.querySelector('#btn-deck-title').textContent = changes.name
           deck.name = changes.name

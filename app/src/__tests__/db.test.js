@@ -5,6 +5,7 @@ import {
   getOrCreateAllDeck, createDeck, getDecks, getCards, importCards,
   updateDeckMode, updateDeckAccessTime, getRecentDecks, restoreAllData, createDb,
 } from '../db.js';
+import { DEFAULT_MODE, MODES } from '../js/modes.js';
 
 let store;
 
@@ -40,7 +41,7 @@ describe('getOrCreateAllDeck', () => {
 
   it('sets default mode on system deck', async () => {
     const deck = await getOrCreateAllDeck('zh', store);
-    expect(deck.mode).toBe('comprehension');
+    expect(deck.mode).toBe(DEFAULT_MODE);
   });
 });
 
@@ -64,7 +65,7 @@ describe('createDeck', () => {
 
   it('sets default mode on created deck', async () => {
     const deck = await createDeck('My Deck', 'zh', store);
-    expect(deck.mode).toBe('comprehension');
+    expect(deck.mode).toBe(DEFAULT_MODE);
   });
 });
 
@@ -100,9 +101,9 @@ describe('getDecks', () => {
 describe('updateDeckMode', () => {
   it('updates deck mode', async () => {
     const deck = await createDeck('My Deck', 'zh', store);
-    await updateDeckMode(deck.id, 'reverse', store);
+    await updateDeckMode(deck.id, MODES.REVERSE, store);
     const updated = await store.decks.get(deck.id);
-    expect(updated.mode).toBe('reverse');
+    expect(updated.mode).toBe(MODES.REVERSE);
   });
 });
 
