@@ -1,4 +1,4 @@
-import { db, getCards, getCardsByLang, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, deleteDeck, createDeck, importCards, exportAllData, restoreAllData } from '../js/db.js'
+import { db, getCards, getCardsByLang, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, updateDeckOrder, deleteDeck, createDeck, importCards, exportAllData, restoreAllData, applyCardOrder } from '../js/db.js'
 import { DEFAULT_MODE } from '../js/modes.js'
 import { decode as base64urlDecode } from '../js/base64url.js'
 import { parseCardBatch } from '../js/import-parser.js'
@@ -21,7 +21,7 @@ export function setLastDeckId(deckId) {
 }
 
 const dbOps = { db, getDecks, getRecentDecks, getCardsByLang, createDeck, importCards, exportAllData, restoreAllData }
-const settingsOps = { updateDeckMode, updateDeckName, deleteDeck }
+const settingsOps = { updateDeckMode, updateDeckName, updateDeckOrder, deleteDeck }
 
 function stripHashParam(param) {
   const raw = window.location.hash.slice(1) || 'deck'
@@ -110,7 +110,7 @@ export function renderDeckView(el, params) {
       const lang = deckId.slice(5)
       cards = await getCardsByLang(lang)
       const langName = lang === 'zh' ? 'Chinese' : lang === 'ja' ? 'Japanese' : lang.toUpperCase()
-      deck = { id: deckId, name: `All ${langName} Cards`, lang, mode: DEFAULT_MODE, system: true }
+      deck = { id: deckId, name: `All ${langName} Cards`, lang, mode: DEFAULT_MODE, order: 'default', system: true }
     } else {
       deck = await db.decks.get(deckId)
       if (!deck) {
@@ -123,6 +123,8 @@ export function renderDeckView(el, params) {
       }
       cards = await getCards(deckId)
     }
+
+    cards = applyCardOrder(cards, deck.order || 'default')
 
     const isLangView = deckId.startsWith('lang:')
 
@@ -172,6 +174,16 @@ export function renderDeckView(el, params) {
           if (changes.mode) {
             deck.mode = changes.mode
             el.querySelector('.deck-view-list')?.setAttribute('data-deck-mode', changes.mode)
+          }
+          if (changes.order) {
+            deck.order = changes.order
+            cards = applyCardOrder(cards, changes.order)
+            const list = el.querySelector('.deck-view-list')
+            if (list) {
+              list.innerHTML = cards.length === 0
+                ? `<div class="deck-view-empty"><p>No cards in this deck.</p></div>`
+                : cards.map(card => renderCardRow(card)).join('')
+            }
           }
         })
       })

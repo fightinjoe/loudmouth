@@ -46,6 +46,14 @@ function createDb(options = {}) {
       await tx.table('decks').delete(d.id);
     }
   });
+  instance.version(5).stores({
+    cards: 'id, lang, *deckIds, createdAt',
+    decks: 'id, lang, createdAt, lastAccessedAt',
+  }).upgrade(tx => {
+    return tx.table('decks').toCollection().modify(deck => {
+      if (!deck.order) deck.order = 'default';
+    });
+  });
   return instance;
 }
 
@@ -89,7 +97,7 @@ async function nextDeckCounter(store) {
 export async function createDeck(name, lang, store = db) {
   const counter = await nextDeckCounter(store);
   const id = `${counter}-${slugify(name)}`;
-  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: DEFAULT_MODE };
+  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: DEFAULT_MODE, order: 'default' };
   await store.decks.add(deck);
   return deck;
 }
@@ -99,6 +107,13 @@ export async function createDeck(name, lang, store = db) {
  */
 export async function updateDeckMode(deckId, mode, store = db) {
   await store.decks.update(deckId, { mode });
+}
+
+/**
+ * Updates the card order setting for a deck ('default', 'random', or 'reverse').
+ */
+export async function updateDeckOrder(deckId, order, store = db) {
+  await store.decks.update(deckId, { order });
 }
 
 export async function updateDeckName(deckId, name, store = db) {
@@ -152,14 +167,37 @@ export async function getCardsByLang(lang, store = db) {
 }
 
 /**
+ * Applies a deck's order setting to an array of cards.
+ * 'default' preserves createdAt insertion order, 'reverse' reverses it, 'random' shuffles.
+ */
+export function applyCardOrder(cards, order) {
+  const sorted = [...cards].sort((a, b) => {
+    if (a.createdAt < b.createdAt) return -1;
+    if (a.createdAt > b.createdAt) return 1;
+    return (a.importIndex ?? 0) - (b.importIndex ?? 0);
+  });
+  if (order === 'reverse') return sorted.reverse();
+  if (order === 'random') {
+    for (let i = sorted.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
+    }
+    return sorted;
+  }
+  return sorted;
+}
+
+/**
  * Imports an array of parsed card objects into the DB.
  */
 export async function importCards(cards, deckId = null, store = db) {
-  for (const card of cards) {
+  const now = isoNow();
+  for (let i = 0; i < cards.length; i++) {
     await store.cards.add({
       id: uuid(),
-      createdAt: isoNow(),
-      ...card,
+      createdAt: now,
+      importIndex: i,
+      ...cards[i],
       deckIds: deckId ? [deckId] : [],
     });
   }

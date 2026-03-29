@@ -3,7 +3,7 @@ import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import Dexie from 'dexie';
 import {
   createDeck, getDecks, getCards, getCardsByLang, importCards,
-  updateDeckMode, updateDeckAccessTime, getRecentDecks, restoreAllData, createDb,
+  updateDeckMode, updateDeckOrder, updateDeckAccessTime, getRecentDecks, restoreAllData, createDb, applyCardOrder,
 } from '../js/db.js';
 import { DEFAULT_MODE, MODES } from '../js/modes.js';
 
@@ -37,6 +37,11 @@ describe('createDeck', () => {
     const deck = await createDeck('My Deck', 'zh', store);
     expect(deck.mode).toBe(DEFAULT_MODE);
   });
+
+  it('sets default order on created deck', async () => {
+    const deck = await createDeck('My Deck', 'zh', store);
+    expect(deck.order).toBe('default');
+  });
 });
 
 // --- getDecks ---
@@ -66,6 +71,49 @@ describe('updateDeckMode', () => {
     await updateDeckMode(deck.id, MODES.REVERSE, store);
     const updated = await store.decks.get(deck.id);
     expect(updated.mode).toBe(MODES.REVERSE);
+  });
+});
+
+// --- updateDeckOrder ---
+
+describe('updateDeckOrder', () => {
+  it('updates deck order', async () => {
+    const deck = await createDeck('My Deck', 'zh', store);
+    await updateDeckOrder(deck.id, 'random', store);
+    const updated = await store.decks.get(deck.id);
+    expect(updated.order).toBe('random');
+  });
+});
+
+// --- applyCardOrder ---
+
+describe('applyCardOrder', () => {
+  const makeCards = () => [
+    { id: '1', createdAt: '2026-01-01T00:00:00.000Z', text: 'A' },
+    { id: '2', createdAt: '2026-01-02T00:00:00.000Z', text: 'B' },
+    { id: '3', createdAt: '2026-01-03T00:00:00.000Z', text: 'C' },
+  ];
+
+  it('default returns createdAt ascending order', () => {
+    const result = applyCardOrder(makeCards(), 'default');
+    expect(result.map(c => c.text)).toEqual(['A', 'B', 'C']);
+  });
+
+  it('reverse returns createdAt descending order', () => {
+    const result = applyCardOrder(makeCards(), 'reverse');
+    expect(result.map(c => c.text)).toEqual(['C', 'B', 'A']);
+  });
+
+  it('random returns all cards in some order', () => {
+    const result = applyCardOrder(makeCards(), 'random');
+    expect(result).toHaveLength(3);
+    expect(result.map(c => c.text).sort()).toEqual(['A', 'B', 'C']);
+  });
+
+  it('does not mutate the input array', () => {
+    const cards = makeCards();
+    applyCardOrder(cards, 'reverse');
+    expect(cards[0].text).toBe('A');
   });
 });
 

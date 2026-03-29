@@ -2,7 +2,10 @@ import { MODES as MODES_MAP, MODE_LABELS, DEFAULT_MODE } from '../js/modes.js'
 
 const MODES = Object.values(MODES_MAP)
 
-export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, deleteDeck }, onChanged) {
+const ORDERS = ['default', 'random', 'reverse']
+const ORDER_LABELS = { default: 'Default', random: 'Random', reverse: 'Reverse' }
+
+export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, updateDeckOrder, deleteDeck }, onChanged) {
   const scrim = document.createElement('div')
   scrim.className = 'deck-settings-scrim'
   appEl.appendChild(scrim)
@@ -13,6 +16,7 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
 
   let currentMode = deck.mode || DEFAULT_MODE
   let currentName = deck.name
+  let currentOrder = deck.order || 'default'
 
   function render() {
     panel.innerHTML = `
@@ -26,6 +30,13 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
         <span class="deck-settings-label">Card template</span>
         <span class="deck-settings-value deck-settings-value--accent" id="ds-mode-value">
           ${MODE_LABELS[currentMode]}
+          <span class="deck-settings-chevron">⌃</span>
+        </span>
+      </div>
+      <div class="deck-settings-row" id="ds-order-row">
+        <span class="deck-settings-label">Card order</span>
+        <span class="deck-settings-value deck-settings-value--accent" id="ds-order-value">
+          ${ORDER_LABELS[currentOrder]}
           <span class="deck-settings-chevron">⌃</span>
         </span>
       </div>
@@ -50,6 +61,14 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
       currentMode = MODES[(idx + 1) % MODES.length]
       await updateDeckMode(deck.id, currentMode)
       onChanged({ mode: currentMode })
+      render()
+    })
+
+    panel.querySelector('#ds-order-row').addEventListener('click', async () => {
+      const idx = ORDERS.indexOf(currentOrder)
+      currentOrder = ORDERS[(idx + 1) % ORDERS.length]
+      await updateDeckOrder(deck.id, currentOrder)
+      onChanged({ order: currentOrder })
       render()
     })
 
