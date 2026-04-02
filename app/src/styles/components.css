@@ -17,38 +17,36 @@
 
 /*-- Cards --*/
 
-.deck-view-list {
-  &[data-deck-mode="study"] {
-    .card-row .card-primary {
-      .card-text { display: auto; }
-      .card-translation { display: none; }
-    }
-    .card-row .card-secondary {
-      .card-reading { display: auto; }
-      .card-translation { display: none; }
-    }
+[data-mode="study"] .deck-view-list {
+  .card-row .card-primary {
+    .card-text { display: auto; }
+    .card-translation { display: none; }
   }
-
-  &[data-deck-mode="review"] {
-    .card-row .card-primary {
-      .card-text { display: auto; }
-      .card-translation { display: none; }
-    }
-    .card-row .card-secondary {
-      .card-reading { display: none; }
-      .card-translation { display: auto; }
-    }
+  .card-row .card-secondary {
+    .card-reading { display: auto; }
+    .card-translation { display: none; }
   }
+}
 
-  &[data-deck-mode="reverse"] {
-    .card-row .card-primary {
-      .card-text { display: auto; }
-      .card-translation { display: none; }
-    }
-    .card-row .card-secondary {
-      .card-reading { display: none; }
-      .card-translation { display: none; }
-    }
+[data-mode="review"] .deck-view-list {
+  .card-row .card-primary {
+    .card-text { display: auto; }
+    .card-translation { display: none; }
+  }
+  .card-row .card-secondary {
+    .card-reading { display: auto; }
+    .card-translation { display: auto; }
+  }
+}
+
+[data-mode="reverse"] .deck-view-list {
+  .card-row .card-primary {
+    .card-text { display: auto; }
+    .card-translation { display: none; }
+  }
+  .card-row .card-secondary {
+    .card-reading { display: none; }
+    .card-translation { display: none; }
   }
 }
 
@@ -408,6 +406,10 @@
   margin-top: 0.5rem;
 }
 
+.review-card-reverse {
+  display: none;
+}
+
 .card-review-content {
   display: flex;
   flex-direction: column;
@@ -432,27 +434,50 @@
   cursor: pointer;
 }
 
-.review-translation--skeleton {
-  background: transparent;
+.review-translation-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.review-translation--visible {
-  background: var(--surface);
+.review-translation-text {
+  display: none;
   font-size: 1rem;
   color: var(--text);
   text-align: center;
-  justify-content: center;
-  align-items: center;
-  cursor: default;
 }
 
-.review-translation--revealed {
-  background: var(--surface);
-  font-size: 1rem;
-  color: var(--text);
-  text-align: center;
-  justify-content: center;
-  align-items: center;
+/* Reverse mode */
+[data-mode="reverse"] .card-review-content {
+  .review-card-text { display: none; }
+  .review-card-reading { display: none; }
+  .review-card-reverse {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text);
+    text-align: center;
+  }
+  .review-translation { display: none; }
+}
+
+/* Study mode: show skeleton; reveal on press */
+[data-mode="study"] .card-review-content {
+  .review-translation-skeleton { display: flex; }
+  .review-translation-text { display: none; }
+
+  &.review--revealed {
+    .review-translation { background: var(--surface); cursor: default; }
+    .review-translation-skeleton { display: none; }
+    .review-translation-text { display: block; }
+  }
+}
+
+/* Review mode: always show translation */
+[data-mode="review"] .card-review-content {
+  .review-translation { background: var(--surface); cursor: default; }
+  .review-translation-skeleton { display: none; }
+  .review-translation-text { display: block; }
 }
 
 .review-translation-skeleton-line {

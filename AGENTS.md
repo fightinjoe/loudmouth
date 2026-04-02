@@ -30,6 +30,22 @@ New files go in the appropriate folder. Do not create new top-level folders with
 
 Display logic belongs in CSS, not JS. Use `data-*` attributes on elements and CSS attribute selectors to control visibility based on mode/state. Do not toggle `display` or `visibility` via JS DOM manipulation.
 
+**Always render all elements unconditionally.** Do not conditionally omit elements from HTML based on mode or state — render them all, and let CSS show/hide them.
+
+**Mode attribute belongs on the ancestor.** The deck mode (`study`, `review`, `reverse`) is set as `data-mode` on the top-level app container (`el`), not on individual child components. All descendants pick it up via CSS ancestor selectors:
+
+```css
+[data-mode="review"] .card-review-content { ... }
+[data-mode="reverse"] .deck-view-list .card-row { ... }
+```
+
+**Use CSS class toggles for transient state.** When UI state changes (e.g. revealing a hidden translation), add/remove a class on a stable container element — do not swap `innerHTML`:
+
+```js
+contentEl.classList.add('review--revealed')   // show
+contentEl.classList.remove('review--revealed') // hide
+```
+
 ## Rendering pattern
 
 Components in `src/components/` are pure functions that return HTML strings (template literals). They receive data, return markup — no side effects, no DOM queries.

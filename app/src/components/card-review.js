@@ -1,51 +1,20 @@
 import { speak, ttsText } from '../js/tts.js'
-import { MODES } from '../js/modes.js'
 
-function renderReviewCardContent(card, mode, readingDisplay = 'reading') {
-  if (mode === MODES.REVERSE) {
-    return `<div class="review-card-text">${card.translation || ''}</div>`
-  }
-  const reading = card[readingDisplay] || ''
+function renderReviewCard(card, readingDisplay = 'reading') {
   return `
-    <div class="review-card-text">${card.text || ''}</div>
-    ${reading ? `<div class="review-card-reading">${reading}</div>` : ''}
-  `
-}
-
-function renderTranslationArea(card, mode) {
-  if (mode === MODES.REVERSE) return ''
-  
-  return `
-    <div class="review-translation review-translation--skeleton" data-translation="${(card.translation || '').replace(/"/g, '&quot;')}">
-      <div class="review-translation-skeleton-line"></div>
-      <div class="review-translation-skeleton-line review-translation-skeleton-line--short"></div>
+    <div class="review-card">
+      <div class="review-card-text">${card.text || ''}</div>
+      <div class="review-card-reading">${card[readingDisplay] || ''}</div>
+      <div class="review-card-reverse">${card.translation || ''}</div>
+    </div>
+    <div class="review-translation">
+      <div class="review-translation-skeleton">
+        <div class="review-translation-skeleton-line"></div>
+        <div class="review-translation-skeleton-line review-translation-skeleton-line--short"></div>
+      </div>
+      <div class="review-translation-text">${card.translation || ''}</div>
     </div>
   `
-}
-
-function wireTranslationReveal(el, mode) {
-  const area = el.querySelector('.review-translation--skeleton')
-  if (!area) return
-  const translation = area.dataset.translation
-
-  function reveal() {
-    area.classList.add('review-translation--revealed')
-    area.innerHTML = translation
-  }
-  function hide() {
-    area.classList.remove('review-translation--revealed')
-    area.innerHTML = `
-      <div class="review-translation-skeleton-line"></div>
-      <div class="review-translation-skeleton-line review-translation-skeleton-line--short"></div>
-    `
-  }
-
-  area.addEventListener('mousedown', reveal)
-  area.addEventListener('touchstart', reveal, { passive: true })
-  area.addEventListener('mouseup', hide)
-  area.addEventListener('mouseleave', hide)
-  area.addEventListener('touchend', hide)
-  area.addEventListener('touchcancel', hide)
 }
 
 export function openCardReview(appEl, cards, deck, startIndex) {
@@ -60,21 +29,69 @@ export function openCardReview(appEl, cards, deck, startIndex) {
       <span class="panel-header-spacer"></span>
     </div>
     <div class="card-review-body">
-      <div class="card-review-content">
-        <div class="review-card" id="review-card-el"></div>
-        <div id="review-translation-el" style="width:100%"></div>
-      </div>
+      <div class="card-review-content"></div>
     </div>
   `
   appEl.appendChild(panel)
 
-  const cardEl = panel.querySelector('#review-card-el')
+  const contentEl = panel.querySelector('.card-review-content')
 
   function renderCurrent() {
-    const transContainer = panel.querySelector('#review-translation-el')
-    cardEl.innerHTML = renderReviewCardContent(cards[currentIndex], deck.mode, deck.readingDisplay)
-    transContainer.innerHTML = renderTranslationArea(cards[currentIndex], deck.mode)
-    wireTranslationReveal(transContainer, deck.mode)
+    contentEl.innerHTML = renderReviewCard(cards[currentIndex], deck.readingDisplay)
+    contentEl.classList.remove('review--revealed')
+    wireSwipe(contentEl.querySelector('.review-card'))
+  }
+
+  function wireSwipe(cardEl) {
+    let touchStartX = null
+
+    cardEl.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX
+    }, { passive: true })
+
+    cardEl.addEventListener('touchmove', e => {
+      if (touchStartX === null) return
+      cardEl.style.transform = `translateX(${e.touches[0].clientX - touchStartX}px)`
+    }, { passive: true })
+
+    cardEl.addEventListener('touchend', e => {
+      if (touchStartX === null) return
+      const dx = e.changedTouches[0].clientX - touchStartX
+      touchStartX = null
+
+      if (Math.abs(dx) < 50) {
+        cardEl.style.transition = 'transform 200ms ease'
+        cardEl.style.transform = ''
+        cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
+        return
+      }
+
+      let nextIndex = -1
+      if (dx < 0 && currentIndex < cards.length - 1) nextIndex = currentIndex + 1
+      else if (dx > 0 && currentIndex > 0) nextIndex = currentIndex - 1
+
+      if (nextIndex === -1) {
+        cardEl.style.transition = 'transform 200ms ease'
+        cardEl.style.transform = ''
+        cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
+        return
+      }
+
+      const exitX = dx < 0 ? '-110%' : '110%'
+      const enterX = dx < 0 ? '110%' : '-110%'
+      cardEl.style.transition = 'transform 200ms ease'
+      cardEl.style.transform = `translateX(${exitX})`
+      cardEl.addEventListener('transitionend', () => {
+        currentIndex = nextIndex
+        renderCurrent()
+        const newCardEl = contentEl.querySelector('.review-card')
+        newCardEl.style.transform = `translateX(${enterX})`
+        newCardEl.getBoundingClientRect()
+        newCardEl.style.transition = 'transform 200ms ease'
+        newCardEl.style.transform = ''
+        newCardEl.addEventListener('transitionend', () => { newCardEl.style.transition = '' }, { once: true })
+      }, { once: true })
+    }, { passive: true })
   }
 
   renderCurrent()
@@ -85,64 +102,26 @@ export function openCardReview(appEl, cards, deck, startIndex) {
     })
   })
 
-  cardEl.addEventListener('click', () => {
-    const card = cards[currentIndex]
-    speak(ttsText(card), card.lang)
+  contentEl.addEventListener('click', e => {
+    if (e.target.closest('.review-card')) {
+      const card = cards[currentIndex]
+      speak(ttsText(card), card.lang)
+    }
   })
+
+  contentEl.addEventListener('mousedown', e => {
+    if (e.target.closest('.review-translation')) contentEl.classList.add('review--revealed')
+  })
+  contentEl.addEventListener('touchstart', e => {
+    if (e.target.closest('.review-translation')) contentEl.classList.add('review--revealed')
+  }, { passive: true })
+  contentEl.addEventListener('mouseup', () => contentEl.classList.remove('review--revealed'))
+  contentEl.addEventListener('mouseleave', () => contentEl.classList.remove('review--revealed'))
+  contentEl.addEventListener('touchend', () => contentEl.classList.remove('review--revealed'))
+  contentEl.addEventListener('touchcancel', () => contentEl.classList.remove('review--revealed'))
 
   panel.querySelector('.panel-header-back').addEventListener('click', () => {
     panel.classList.remove('panel-screen--visible')
     panel.addEventListener('transitionend', () => panel.remove(), { once: true })
   })
-
-  let touchStartX = null
-
-  cardEl.addEventListener('touchstart', e => {
-    touchStartX = e.touches[0].clientX
-  }, { passive: true })
-
-  cardEl.addEventListener('touchmove', e => {
-    if (touchStartX === null) return
-    const dx = e.touches[0].clientX - touchStartX
-    cardEl.style.transform = `translateX(${dx}px)`
-  }, { passive: true })
-
-  cardEl.addEventListener('touchend', e => {
-    if (touchStartX === null) return
-    const dx = e.changedTouches[0].clientX - touchStartX
-    touchStartX = null
-
-    if (Math.abs(dx) < 50) {
-      cardEl.style.transition = 'transform 200ms ease'
-      cardEl.style.transform = ''
-      cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
-      return
-    }
-
-    let nextIndex = -1
-    if (dx < 0 && currentIndex < cards.length - 1) nextIndex = currentIndex + 1
-    else if (dx > 0 && currentIndex > 0) nextIndex = currentIndex - 1
-
-    if (nextIndex === -1) {
-      cardEl.style.transition = 'transform 200ms ease'
-      cardEl.style.transform = ''
-      cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
-      return
-    }
-
-    const exitX = dx < 0 ? '-110%' : '110%'
-    const enterX = dx < 0 ? '110%' : '-110%'
-    cardEl.style.transition = 'transform 200ms ease'
-    cardEl.style.transform = `translateX(${exitX})`
-    cardEl.addEventListener('transitionend', () => {
-      currentIndex = nextIndex
-      renderCurrent()
-      cardEl.style.transition = ''
-      cardEl.style.transform = `translateX(${enterX})`
-      cardEl.getBoundingClientRect()
-      cardEl.style.transition = 'transform 200ms ease'
-      cardEl.style.transform = ''
-      cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
-    }, { once: true })
-  }, { passive: true })
 }

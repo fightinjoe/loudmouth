@@ -137,6 +137,7 @@ export function renderDeckView(el, params) {
 
     const isLangView = deckId.startsWith('lang:')
 
+    el.dataset.mode = deck.mode
     el.innerHTML = `
       <div class="screen" id="deck-view-screen">
         <div class="panel-header">
@@ -144,7 +145,7 @@ export function renderDeckView(el, params) {
           <button class="panel-header-title" id="btn-deck-title">${deck.name}</button>
           ${isLangView ? '<span class="panel-header-spacer"></span>' : '<button class="panel-header-right" id="btn-deck-settings" aria-label="Settings">⚙</button>'}
         </div>
-        <div class="deck-view-list" data-deck-mode="${deck.mode}">
+        <div class="deck-view-list">
           ${cards.length === 0
             ? `<div class="deck-view-empty"><p>No cards in this deck.</p></div>`
             : cards.map(card => renderCardRow(card, deck.readingDisplay)).join('')}
@@ -183,7 +184,7 @@ export function renderDeckView(el, params) {
           }
           if (changes.mode) {
             deck.mode = changes.mode
-            el.querySelector('.deck-view-list')?.setAttribute('data-deck-mode', changes.mode)
+            el.dataset.mode = changes.mode
           }
           if (changes.order) {
             deck.order = changes.order
