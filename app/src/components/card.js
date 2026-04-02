@@ -43,7 +43,7 @@ function renderCardContent(card, readingDisplay = 'reading') {
         <span class="card-text">${card.text}</span>
         <span class="card-translation">${card.translation}</span>
       </div>
-      <div class="card-secondary text-body2 text-caption">
+      <div class="card-secondary flex-col text-body2 text-caption">
         <span class="card-reading">${reading}</span>
         <span class="card-translation">${card.translation}</span>
       </div>
