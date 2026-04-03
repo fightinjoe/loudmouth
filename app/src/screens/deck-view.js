@@ -125,9 +125,30 @@ export function renderDeckView(el, params) {
       if (!deck) {
         el.innerHTML = `
           <div class="screen" id="deck-view-screen">
-            <div class="deck-view-empty"><p>Deck not found.</p></div>
+            <div class="deck-view-empty">
+              <p>Deck not found.</p>
+              <button id="btn-choose-deck">Choose a deck</button>
+            </div>
           </div>
         `;
+        el.querySelector('#btn-choose-deck').addEventListener('click', () => {
+          openDeckPicker(
+            el,
+            dbOps,
+            async (selectedDeckId) => {
+              setLastDeckId(selectedDeckId)
+              if (!selectedDeckId.startsWith('lang:')) {
+                await updateDeckAccessTime(selectedDeckId)
+              }
+              renderDeckView(el, { id: selectedDeckId })
+            },
+            (closePicker) => {
+              openAddCardsPanel(el, closePicker, (importedDeckId) => {
+                renderDeckView(el, { id: importedDeckId })
+              }, dbOps)
+            }
+          )
+        })
         return
       }
       cards = await getCards(deckId)
