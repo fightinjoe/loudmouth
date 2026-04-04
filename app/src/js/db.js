@@ -244,6 +244,18 @@ export async function deleteCard(cardId, store = db) {
 }
 
 /**
+ * Updates editable fields of a card.
+ */
+export async function updateCard(cardId, fields, store = db) {
+  const allowed = ['text', 'translation', 'reading', 'romanization', 'notes', 'example', 'lang'];
+  const update = {};
+  for (const key of allowed) {
+    if (key in fields) update[key] = fields[key];
+  }
+  await store.cards.update(cardId, update);
+}
+
+/**
  * Deletes a deck and all cards that belong to it.
  * Cards shared with other decks have the deckId removed instead of being deleted.
  */

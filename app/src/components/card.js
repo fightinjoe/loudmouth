@@ -18,19 +18,26 @@ export function renderCard(card, mode, readingDisplay = 'reading') {
 
 export function renderCardRow(card, readingDisplay = 'reading') {
   return `
-    <div
-      class="card-row flex-row gap-auto"
-      data-card-id="${card.id}"
-    >
-      ${ renderCardContent(card, readingDisplay) }
-
+    <div class="card-row-wrapper" data-card-id="${card.id}">
       <button
-        class="card-row-play"
+        class="card-row-edit-btn"
         data-card-id="${card.id}"
-        aria-label="Play"
+        aria-label="Edit"
+      >Edit</button>
+      <div
+        class="card-row flex-row gap-auto"
+        data-card-id="${card.id}"
       >
-        ▶
-      </button>
+        ${ renderCardContent(card, readingDisplay) }
+
+        <button
+          class="card-row-play"
+          data-card-id="${card.id}"
+          aria-label="Play"
+        >
+          ▶
+        </button>
+      </div>
     </div>
   `;
 }

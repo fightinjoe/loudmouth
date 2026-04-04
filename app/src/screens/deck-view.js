@@ -1,4 +1,4 @@
-import { db, getCards, getCardsByLang, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, createDeck, importCards, exportAllData, restoreAllData, applyCardOrder } from '../js/db.js'
+import { db, getCards, getCardsByLang, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, createDeck, importCards, exportAllData, restoreAllData, applyCardOrder, updateCard, deleteCard } from '../js/db.js'
 import { DEFAULT_MODE } from '../js/modes.js'
 import { decode as base64urlDecode } from '../js/base64url.js'
 import { parseCardBatch } from '../js/import-parser.js'
@@ -9,6 +9,7 @@ import { openDeckPicker } from '../components/deck-picker.js'
 import { openAddCardsPanel } from '../components/add-cards-panel.js'
 import { openDeckSettings } from '../components/deck-settings.js'
 import { openCardReview } from '../components/card-review.js'
+import { openCardEditPanel } from '../components/card-edit-panel.js'
 
 const LAST_DECK_KEY = 'loudmouth.lastDeckId'
 
@@ -174,7 +175,54 @@ export function renderDeckView(el, params) {
       </div>
     `
 
-    el.querySelector('.deck-view-list').addEventListener('click', e => {
+    const listEl = el.querySelector('.deck-view-list')
+    const editOps = { updateCard, deleteCard }
+    let activeSwiped = null
+
+    function onSaveCard(updatedCard) {
+      const idx = cards.findIndex(c => String(c.id) === String(updatedCard.id))
+      if (idx >= 0) cards[idx] = updatedCard
+      const wrapperEl = el.querySelector(`.card-row-wrapper[data-card-id="${updatedCard.id}"]`)
+      if (wrapperEl) {
+        const tmp = document.createElement('div')
+        tmp.innerHTML = renderCardRow(updatedCard, deck.readingDisplay)
+        wrapperEl.replaceWith(tmp.firstElementChild)
+      }
+    }
+
+    function onDeleteCard(cardId) {
+      const idx = cards.findIndex(c => String(c.id) === String(cardId))
+      if (idx >= 0) cards.splice(idx, 1)
+      const wrapperEl = el.querySelector(`.card-row-wrapper[data-card-id="${cardId}"]`)
+      if (wrapperEl) wrapperEl.remove()
+      if (cards.length === 0) {
+        const list = el.querySelector('.deck-view-list')
+        if (list) list.innerHTML = `<div class="deck-view-empty"><p>No cards in this deck.</p></div>`
+      }
+    }
+
+    listEl.addEventListener('click', e => {
+      // Open edit panel
+      const editBtn = e.target.closest('.card-row-edit-btn')
+      if (editBtn) {
+        const wrapper = editBtn.closest('.card-row-wrapper')
+        if (wrapper) {
+          wrapper.classList.remove('card-row-wrapper--swiped')
+          activeSwiped = null
+        }
+        const card = cards.find(c => String(c.id) === editBtn.dataset.cardId)
+        if (card) openCardEditPanel(el, card, editOps, onSaveCard, onDeleteCard)
+        return
+      }
+
+      // Snap back a swiped card when tapping its body
+      const wrapper = e.target.closest('.card-row-wrapper')
+      if (wrapper && wrapper.classList.contains('card-row-wrapper--swiped')) {
+        wrapper.classList.remove('card-row-wrapper--swiped')
+        activeSwiped = null
+        return
+      }
+
       // Play the audio for the card when clicked
       const playBtn = e.target.closest('.card-row-play')
       if (playBtn) {
@@ -189,6 +237,47 @@ export function renderDeckView(el, params) {
       if (!row) return
       const idx = cards.findIndex(c => String(c.id) === row.dataset.cardId)
       openCardReview(el, cards, deck, idx < 0 ? 0 : idx)
+    })
+
+    // Swipe-to-reveal edit button
+    let swipeStartX = 0
+    let swipeStartY = 0
+    let swipeTarget = null
+
+    listEl.addEventListener('touchstart', e => {
+      const wrapper = e.target.closest('.card-row-wrapper')
+      if (!wrapper) return
+      swipeStartX = e.touches[0].clientX
+      swipeStartY = e.touches[0].clientY
+      swipeTarget = wrapper
+    }, { passive: true })
+
+    listEl.addEventListener('touchmove', e => {
+      if (!swipeTarget) return
+      const dx = e.touches[0].clientX - swipeStartX
+      const dy = e.touches[0].clientY - swipeStartY
+      if (Math.abs(dx) > Math.abs(dy)) {
+        e.preventDefault()
+      }
+    }, { passive: false })
+
+    listEl.addEventListener('touchend', e => {
+      if (!swipeTarget) return
+      const dx = e.changedTouches[0].clientX - swipeStartX
+      const isSwiped = swipeTarget.classList.contains('card-row-wrapper--swiped')
+
+      if (!isSwiped && dx < -40) {
+        if (activeSwiped && activeSwiped !== swipeTarget) {
+          activeSwiped.classList.remove('card-row-wrapper--swiped')
+        }
+        swipeTarget.classList.add('card-row-wrapper--swiped')
+        activeSwiped = swipeTarget
+      } else if (isSwiped && dx > 20) {
+        swipeTarget.classList.remove('card-row-wrapper--swiped')
+        activeSwiped = null
+      }
+
+      swipeTarget = null
     })
 
     if (!isLangView) {
