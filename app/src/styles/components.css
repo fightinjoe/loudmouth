@@ -58,6 +58,20 @@
   border-radius: var(--radius-sm);
 }
 
+.card-row-star-btn {
+  position: absolute;
+  right: 80px;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  background: var(--accent-star);
+  color: #fff;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .card-row-edit-btn {
   position: absolute;
   right: 0;
@@ -88,7 +102,7 @@
 }
 
 .card-row-wrapper--swiped .card-row {
-  transform: translateX(-80px);
+  transform: translateX(-160px);
 }
 
 .card-row-body {

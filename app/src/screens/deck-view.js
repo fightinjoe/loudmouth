@@ -1,4 +1,4 @@
-import { db, getCards, getCardsByLang, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, createDeck, importCards, exportAllData, restoreAllData, applyCardOrder, updateCard, deleteCard } from '../js/db.js'
+import { db, getCards, getCardsByLang, getStarredCards, toggleCardStar, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, createDeck, importCards, exportAllData, restoreAllData, applyCardOrder, updateCard, deleteCard } from '../js/db.js'
 import { DEFAULT_MODE } from '../js/modes.js'
 import { decode as base64urlDecode } from '../js/base64url.js'
 import { parseCardBatch } from '../js/import-parser.js'
@@ -116,12 +116,20 @@ export function renderDeckView(el, params) {
       return
     }
 
-    let deck, cards
+    const LANG_NAMES = { zh: 'Chinese', ja: 'Japanese', ko: 'Korean', es: 'Spanish', fr: 'French', de: 'German', pt: 'Portuguese', it: 'Italian', ru: 'Russian' }
+
+    let deck, cards, isStarredView = false
     if (deckId.startsWith('lang:')) {
       const lang = deckId.slice(5)
       cards = await getCardsByLang(lang)
-      const langName = lang === 'zh' ? 'Chinese' : lang === 'ja' ? 'Japanese' : lang.toUpperCase()
+      const langName = LANG_NAMES[lang] ?? lang.toUpperCase()
       deck = { id: deckId, name: `All ${langName} Cards`, lang, mode: DEFAULT_MODE, order: 'default', system: true }
+    } else if (deckId.startsWith('starred-')) {
+      isStarredView = true
+      const lang = deckId.slice(8)
+      cards = await getStarredCards(lang)
+      const langName = LANG_NAMES[lang] ?? lang.toUpperCase()
+      deck = { id: deckId, name: `★ Starred ${langName}`, lang, mode: DEFAULT_MODE, order: 'default', system: true }
     } else {
       deck = await db.decks.get(deckId)
       if (!deck) {
@@ -139,7 +147,7 @@ export function renderDeckView(el, params) {
             dbOps,
             async (selectedDeckId) => {
               setLastDeckId(selectedDeckId)
-              if (!selectedDeckId.startsWith('lang:')) {
+              if (!selectedDeckId.startsWith('lang:') && !selectedDeckId.startsWith('starred-')) {
                 await updateDeckAccessTime(selectedDeckId)
               }
               renderDeckView(el, { id: selectedDeckId })
@@ -156,9 +164,11 @@ export function renderDeckView(el, params) {
       cards = await getCards(deckId)
     }
 
-    cards = applyCardOrder(cards, deck.order || 'default')
+    if (!isStarredView) {
+      cards = applyCardOrder(cards, deck.order || 'default')
+    }
 
-    const isLangView = deckId.startsWith('lang:')
+    const isLangView = deckId.startsWith('lang:') || isStarredView
 
     el.dataset.mode = deck.mode
     el.innerHTML = `
@@ -202,7 +212,29 @@ export function renderDeckView(el, params) {
       }
     }
 
-    listEl.addEventListener('click', e => {
+    listEl.addEventListener('click', async e => {
+      // Toggle star
+      const starBtn = e.target.closest('.card-row-star-btn')
+      if (starBtn) {
+        const wrapper = starBtn.closest('.card-row-wrapper')
+        if (wrapper) {
+          wrapper.classList.remove('card-row-wrapper--swiped')
+          activeSwiped = null
+        }
+        const cardId = starBtn.dataset.cardId
+        const cardIdx = cards.findIndex(c => String(c.id) === cardId)
+        if (cardIdx >= 0) {
+          const nowStarred = await toggleCardStar(cardId)
+          const updatedCard = { ...cards[cardIdx], state: { ...(cards[cardIdx].state || {}), starredAt: nowStarred ? new Date().toISOString() : null } }
+          if (isStarredView && !nowStarred) {
+            onDeleteCard(cardId)
+          } else {
+            onSaveCard(updatedCard)
+          }
+        }
+        return
+      }
+
       // Open edit panel
       const editBtn = e.target.closest('.card-row-edit-btn')
       if (editBtn) {
@@ -327,7 +359,7 @@ export function renderDeckView(el, params) {
         dbOps,
         async (selectedDeckId) => {
           setLastDeckId(selectedDeckId)
-          if (!selectedDeckId.startsWith('lang:')) {
+          if (!selectedDeckId.startsWith('lang:') && !selectedDeckId.startsWith('starred-')) {
             await updateDeckAccessTime(selectedDeckId)
           }
           renderDeckView(el, { id: selectedDeckId })

@@ -52,14 +52,17 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
 
   // Also include langs from remaining decks already added above
   const langCardCounts = {}
+  const starredCounts = {}
   if (getCardsByLang) {
     for (const lang of Object.keys(byLang)) {
       const langCards = await getCardsByLang(lang)
       langCardCounts[lang] = langCards.length
+      starredCounts[lang] = langCards.filter(c => c.state?.starredAt).length
     }
   } else {
     for (const lang of Object.keys(byLang)) {
       langCardCounts[lang] = allCards.filter(c => c.lang === lang).length
+      starredCounts[lang] = allCards.filter(c => c.lang === lang && c.state?.starredAt).length
     }
   }
 
@@ -76,12 +79,17 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
     const flag = LANG_FLAGS[lang] ?? ''
     const name = LANG_NAMES[lang] ?? lang.toUpperCase()
     const total = langCardCounts[lang] ?? 0
+    const starredCount = starredCounts[lang] ?? 0
+    const starredRow = starredCount > 0
+      ? renderDeckPickerRow({ id: `starred-${lang}`, name: '★ Starred', lang, lastAccessedAt: null, createdAt: null }, starredCount)
+      : ''
     byLangHTML += `
       <div class="deck-picker-section-header">
         <span>${flag} ${name}</span>
         <span class="deck-picker-section-header-link" data-deck-id="lang:${lang}">All ${total} cards</span>
       </div>
       <div class="deck-picker-lang-group">
+        ${starredRow}
         ${decks.map(d => renderDeckPickerRow(d, cardCount(d.id))).join('')}
       </div>
     `

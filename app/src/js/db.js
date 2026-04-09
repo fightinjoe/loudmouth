@@ -182,6 +182,31 @@ export async function getCardsByLang(lang, store = db) {
 }
 
 /**
+ * Returns all starred cards for a language, sorted by starredAt descending (most recently starred first).
+ */
+export async function getStarredCards(lang, store = db) {
+  const cards = await store.cards.where('lang').equals(lang).toArray();
+  return cards
+    .filter(c => c.state?.starredAt)
+    .sort((a, b) => (b.state.starredAt > a.state.starredAt ? 1 : -1));
+}
+
+/**
+ * Toggles the starred state of a card.
+ * Sets state.starredAt to the current ISO time if not starred, null if already starred.
+ * Returns true if the card is now starred, false if now unstarred.
+ */
+export async function toggleCardStar(cardId, store = db) {
+  const card = await store.cards.get(cardId);
+  if (!card) return false;
+  const nowStarred = !card.state?.starredAt;
+  await store.cards.update(cardId, {
+    state: { ...(card.state || {}), starredAt: nowStarred ? isoNow() : null },
+  });
+  return nowStarred;
+}
+
+/**
  * Applies a deck's order setting to an array of cards.
  * 'default' preserves createdAt insertion order, 'reverse' reverses it, 'random' shuffles.
  */

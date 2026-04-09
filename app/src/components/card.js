@@ -17,8 +17,15 @@ export function renderCard(card, mode, readingDisplay = 'reading') {
 }
 
 export function renderCardRow(card, readingDisplay = 'reading') {
+  const isStarred = !!card.state?.starredAt;
   return `
     <div class="card-row-wrapper" data-card-id="${card.id}">
+      <button
+        class="card-row-star-btn"
+        data-card-id="${card.id}"
+        aria-label="${isStarred ? 'Unstar' : 'Star'}"
+        data-starred="${isStarred}"
+      >${isStarred ? '★' : '☆'}</button>
       <button
         class="card-row-edit-btn"
         data-card-id="${card.id}"
@@ -44,10 +51,11 @@ export function renderCardRow(card, readingDisplay = 'reading') {
 
 function renderCardContent(card, readingDisplay = 'reading') {
   const reading = card[readingDisplay] || ''
+  const displayText = card.state?.starredAt ? `★ ${card.text}` : card.text;
   return `
     <div class="card-content flex-col gap-sm">
       <div class="card-primary text-h2">
-        <span class="card-text">${card.text}</span>
+        <span class="card-text">${displayText}</span>
         <span class="card-translation">${card.translation}</span>
       </div>
       <div class="card-secondary flex-col text-body2 text-caption">
