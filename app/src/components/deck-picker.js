@@ -1,4 +1,5 @@
 const LANG_FLAGS = { zh: '🇨🇳', ja: '🇯🇵', ko: '🇰🇷', es: '🇪🇸', fr: '🇫🇷', de: '🇩🇪', pt: '🇵🇹', it: '🇮🇹', ru: '🇷🇺' }
+const LANG_NAMES = { zh: 'Chinese', ja: 'Japanese', ko: 'Korean', es: 'Spanish', fr: 'French', de: 'German', pt: 'Portuguese', it: 'Italian', ru: 'Russian' }
 
 function relativeTime(isoStr) {
   if (!isoStr) return ''
@@ -21,7 +22,7 @@ function renderDeckPickerRow(deck, cardCount) {
     <div class="deck-picker-row" data-deck-id="${deck.id}">
       <div class="deck-picker-row-info">
         <span class="deck-picker-row-name">${deck.name}</span>
-        <span class="deck-picker-row-meta">${ts} · ${flag} · ${cardCount} cards</span>
+        <span class="deck-picker-row-meta">${ts} · <span class="deck-picker-row-flag">${flag} ·</span> ${cardCount} cards</span>
       </div>
     </div>
   `
@@ -29,18 +30,18 @@ function renderDeckPickerRow(deck, cardCount) {
 
 export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getCardsByLang }, onSelectDeck, onAddCards) {
   const allDecks = await getDecks(null, { includeSystem: false })
-  const recentDecks = await getRecentDecks(2)
+  const recentDecks = await getRecentDecks(3)
   const allCards = await db.cards.toArray()
   function cardCount(deckId) {
     return allCards.filter(c => c.deckIds && c.deckIds.includes(deckId)).length
   }
 
-  const recentIds = new Set(recentDecks.map(d => d.id))
-  const remaining = allDecks.filter(d => !recentIds.has(d.id))
-
   const byLang = {}
-  for (const deck of remaining) {
+  for (const deck of allDecks) {
     ;(byLang[deck.lang] ??= []).push(deck)
+  }
+  for (const lang of Object.keys(byLang)) {
+    byLang[lang].sort((a, b) => a.name.localeCompare(b.name))
   }
 
   // Collect all langs that have cards (including those without decks)
@@ -71,17 +72,18 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
   }
 
   let byLangHTML = ''
-  for (const [lang, decks] of Object.entries(byLang)) {
+  for (const [lang, decks] of Object.entries(byLang).sort(([a], [b]) => a.localeCompare(b))) {
     const flag = LANG_FLAGS[lang] ?? ''
+    const name = LANG_NAMES[lang] ?? lang.toUpperCase()
     const total = langCardCounts[lang] ?? 0
     byLangHTML += `
-      <div class="deck-picker-lang-header deck-picker-row" data-deck-id="lang:${lang}">
-        <div class="deck-picker-row-info">
-          <span class="deck-picker-row-name">${flag} ${lang.toUpperCase()}</span>
-          <span class="deck-picker-row-meta">${total} card${total === 1 ? '' : 's'} total</span>
-        </div>
+      <div class="deck-picker-section-header">
+        <span>${flag} ${name}</span>
+        <span class="deck-picker-section-header-link" data-deck-id="lang:${lang}">All ${total} cards</span>
       </div>
-      ${decks.map(d => renderDeckPickerRow(d, cardCount(d.id))).join('')}
+      <div class="deck-picker-lang-group">
+        ${decks.map(d => renderDeckPickerRow(d, cardCount(d.id))).join('')}
+      </div>
     `
   }
 
@@ -115,7 +117,7 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
   panel.querySelector('.panel-header-back').addEventListener('click', close)
 
   panel.querySelector('.deck-picker-list').addEventListener('click', e => {
-    const row = e.target.closest('.deck-picker-row')
+    const row = e.target.closest('[data-deck-id]')
     if (!row) return
     const deckId = row.dataset.deckId
     close()
