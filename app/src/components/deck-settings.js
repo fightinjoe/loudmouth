@@ -51,6 +51,9 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
           <span class="deck-settings-chevron">⌃</span>
         </span>
       </div>
+      <div class="deck-settings-row" id="ds-export-row">
+        <span class="deck-settings-label">Export JSON</span>
+      </div>
       ${!deck.system ? `
       <div class="deck-settings-section-header">Danger zone</div>
       <div class="deck-settings-row deck-settings-row--destructive" id="ds-delete-row">
@@ -89,6 +92,10 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
       await updateDeckReadingDisplay(deck.id, currentReadingDisplay)
       onChanged({ readingDisplay: currentReadingDisplay })
       render()
+    })
+
+    panel.querySelector('#ds-export-row').addEventListener('click', () => {
+      ops.exportJson()
     })
 
     panel.querySelector('#ds-delete-row')?.addEventListener('click', async () => {

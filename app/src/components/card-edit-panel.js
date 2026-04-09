@@ -1,3 +1,5 @@
+import { openJsonPanel, toImportJson } from './json-panel.js'
+
 function esc(str) {
   return String(str || '')
     .replace(/&/g, '&amp;')
@@ -57,6 +59,9 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
         <textarea class="card-edit-input card-edit-textarea" id="edit-example"
           autocorrect="off">${esc(card.example)}</textarea>
       </div>
+      <div class="card-edit-export">
+        <button class="btn btn-secondary" id="btn-view-json">View JSON</button>
+      </div>
       <div class="card-edit-danger">
         <p class="section-label card-edit-danger-label">Danger zone</p>
         <button class="btn card-edit-delete-btn" id="btn-delete-card">Delete Card</button>
@@ -65,6 +70,10 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
   `
 
   panel.querySelector('.panel-header-back').addEventListener('click', close)
+
+  panel.querySelector('#btn-view-json').addEventListener('click', () => {
+    openJsonPanel(appEl, 'Card JSON', toImportJson([card]))
+  })
 
   panel.querySelector('#btn-save-card').addEventListener('click', async () => {
     const text = panel.querySelector('#edit-text').value.trim()

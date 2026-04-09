@@ -10,6 +10,7 @@ import { openAddCardsPanel } from '../components/add-cards-panel.js'
 import { openDeckSettings } from '../components/deck-settings.js'
 import { openCardReview } from '../components/card-review.js'
 import { openCardEditPanel } from '../components/card-edit-panel.js'
+import { openJsonPanel, toImportJson } from '../components/json-panel.js'
 
 const LAST_DECK_KEY = 'loudmouth.lastDeckId'
 
@@ -282,7 +283,8 @@ export function renderDeckView(el, params) {
 
     if (!isLangView) {
       el.querySelector('#btn-deck-settings').addEventListener('click', () => {
-        openDeckSettings(el, deck, settingsOps, (changes) => {
+        const deckSettingsOps = { ...settingsOps, exportJson: () => openJsonPanel(el, 'Deck JSON', toImportJson(cards)) }
+        openDeckSettings(el, deck, deckSettingsOps, (changes) => {
           if (changes.deleted) {
             localStorage.removeItem(LAST_DECK_KEY)
             window.location.hash = 'deck'
