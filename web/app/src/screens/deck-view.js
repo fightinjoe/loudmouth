@@ -273,9 +273,12 @@ export function renderDeckView(el, params) {
     })
 
     // Swipe-to-reveal edit button
+    const SWIPE_REVEAL_WIDTH = 160
+    const SWIPE_COMMIT_THRESHOLD = 80
     let swipeStartX = 0
     let swipeStartY = 0
     let swipeTarget = null
+    let swipeAxis = null // 'h' | 'v' | null
 
     listEl.addEventListener('touchstart', e => {
       const wrapper = e.target.closest('.card-row-wrapper')
@@ -283,34 +286,69 @@ export function renderDeckView(el, params) {
       swipeStartX = e.touches[0].clientX
       swipeStartY = e.touches[0].clientY
       swipeTarget = wrapper
+      swipeAxis = null
+      const row = wrapper.querySelector('.card-row')
+      row.dataset.dragging = ''
     }, { passive: true })
 
     listEl.addEventListener('touchmove', e => {
       if (!swipeTarget) return
       const dx = e.touches[0].clientX - swipeStartX
       const dy = e.touches[0].clientY - swipeStartY
-      if (Math.abs(dx) > Math.abs(dy)) {
-        e.preventDefault()
+
+      if (!swipeAxis) {
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+        swipeAxis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
       }
+
+      if (swipeAxis !== 'h') return
+      e.preventDefault()
+
+      const isSwiped = swipeTarget.classList.contains('card-row-wrapper--swiped')
+      const base = isSwiped ? -SWIPE_REVEAL_WIDTH : 0
+      const raw = base + dx
+      const clamped = Math.max(-SWIPE_REVEAL_WIDTH, Math.min(0, raw))
+      swipeTarget.querySelector('.card-row').style.transform = `translateX(${clamped}px)`
     }, { passive: false })
 
     listEl.addEventListener('touchend', e => {
       if (!swipeTarget) return
-      const dx = e.changedTouches[0].clientX - swipeStartX
-      const isSwiped = swipeTarget.classList.contains('card-row-wrapper--swiped')
+      const row = swipeTarget.querySelector('.card-row')
+      delete row.dataset.dragging
 
-      if (!isSwiped && dx < -40) {
-        if (activeSwiped && activeSwiped !== swipeTarget) {
-          activeSwiped.classList.remove('card-row-wrapper--swiped')
+      if (swipeAxis === 'h') {
+        const dx = e.changedTouches[0].clientX - swipeStartX
+        const isSwiped = swipeTarget.classList.contains('card-row-wrapper--swiped')
+        const base = isSwiped ? -SWIPE_REVEAL_WIDTH : 0
+        const net = base + dx
+
+        if (net < -SWIPE_COMMIT_THRESHOLD) {
+          // Commit to swiped state
+          if (activeSwiped && activeSwiped !== swipeTarget) {
+            activeSwiped.classList.remove('card-row-wrapper--swiped')
+            activeSwiped.querySelector('.card-row').style.transform = ''
+          }
+          swipeTarget.classList.add('card-row-wrapper--swiped')
+          activeSwiped = swipeTarget
+        } else {
+          // Snap back
+          swipeTarget.classList.remove('card-row-wrapper--swiped')
+          if (activeSwiped === swipeTarget) activeSwiped = null
         }
-        swipeTarget.classList.add('card-row-wrapper--swiped')
-        activeSwiped = swipeTarget
-      } else if (isSwiped && dx > 20) {
-        swipeTarget.classList.remove('card-row-wrapper--swiped')
-        activeSwiped = null
+        row.style.transform = ''
       }
 
       swipeTarget = null
+      swipeAxis = null
+    })
+
+    listEl.addEventListener('touchcancel', () => {
+      if (!swipeTarget) return
+      const row = swipeTarget.querySelector('.card-row')
+      delete row.dataset.dragging
+      row.style.transform = ''
+      swipeTarget = null
+      swipeAxis = null
     })
 
     if (!isLangView) {

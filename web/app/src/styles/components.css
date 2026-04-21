@@ -101,6 +101,10 @@
   transition: transform 250ms ease;
 }
 
+.card-row[data-dragging] {
+  transition: none;
+}
+
 .card-row-wrapper--swiped .card-row {
   transform: translateX(-160px);
 }

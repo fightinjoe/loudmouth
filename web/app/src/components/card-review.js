@@ -43,26 +43,57 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   }
 
   function wireSwipe(cardEl) {
+    const COMMIT_THRESHOLD = 80
     let touchStartX = null
+    let touchStartY = null
+    let axis = null
+
+    function applyDragStyle(dx) {
+      const maxW = window.innerWidth
+      const progress = Math.min(Math.abs(dx) / COMMIT_THRESHOLD, 1)
+      const opacity = 1 - progress * 0.3
+      const rotate = (dx / maxW) * 12
+      cardEl.style.transform = `translateX(${dx}px) rotate(${rotate}deg)`
+      cardEl.style.opacity = opacity
+    }
+
+    function snapBack() {
+      delete cardEl.dataset.dragging
+      cardEl.style.transition = 'transform 200ms ease, opacity 200ms ease'
+      cardEl.style.transform = ''
+      cardEl.style.opacity = ''
+      cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
+    }
 
     cardEl.addEventListener('touchstart', e => {
       touchStartX = e.touches[0].clientX
+      touchStartY = e.touches[0].clientY
+      axis = null
+      cardEl.dataset.dragging = ''
     }, { passive: true })
 
     cardEl.addEventListener('touchmove', e => {
       if (touchStartX === null) return
-      cardEl.style.transform = `translateX(${e.touches[0].clientX - touchStartX}px)`
+      const dx = e.touches[0].clientX - touchStartX
+      const dy = e.touches[0].clientY - touchStartY
+
+      if (!axis) {
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+        axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+      }
+
+      if (axis !== 'h') return
+      applyDragStyle(dx)
     }, { passive: true })
 
     cardEl.addEventListener('touchend', e => {
       if (touchStartX === null) return
       const dx = e.changedTouches[0].clientX - touchStartX
       touchStartX = null
+      delete cardEl.dataset.dragging
 
-      if (Math.abs(dx) < 50) {
-        cardEl.style.transition = 'transform 200ms ease'
-        cardEl.style.transform = ''
-        cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
+      if (axis !== 'h' || Math.abs(dx) < COMMIT_THRESHOLD) {
+        snapBack()
         return
       }
 
@@ -71,26 +102,32 @@ export function openCardReview(appEl, cards, deck, startIndex) {
       else if (dx > 0 && currentIndex > 0) nextIndex = currentIndex - 1
 
       if (nextIndex === -1) {
-        cardEl.style.transition = 'transform 200ms ease'
-        cardEl.style.transform = ''
-        cardEl.addEventListener('transitionend', () => { cardEl.style.transition = '' }, { once: true })
+        snapBack()
         return
       }
 
       const exitX = dx < 0 ? '-110%' : '110%'
       const enterX = dx < 0 ? '110%' : '-110%'
-      cardEl.style.transition = 'transform 200ms ease'
+      cardEl.style.transition = 'transform 200ms ease, opacity 200ms ease'
       cardEl.style.transform = `translateX(${exitX})`
+      cardEl.style.opacity = '0'
       cardEl.addEventListener('transitionend', () => {
         currentIndex = nextIndex
         renderCurrent()
         const newCardEl = contentEl.querySelector('.review-card')
         newCardEl.style.transform = `translateX(${enterX})`
+        newCardEl.style.opacity = '0'
         newCardEl.getBoundingClientRect()
-        newCardEl.style.transition = 'transform 200ms ease'
+        newCardEl.style.transition = 'transform 200ms ease, opacity 200ms ease'
         newCardEl.style.transform = ''
+        newCardEl.style.opacity = ''
         newCardEl.addEventListener('transitionend', () => { newCardEl.style.transition = '' }, { once: true })
       }, { once: true })
+    }, { passive: true })
+
+    cardEl.addEventListener('touchcancel', () => {
+      touchStartX = null
+      snapBack()
     }, { passive: true })
   }
 

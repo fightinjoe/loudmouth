@@ -83,6 +83,44 @@ See `docs/BRIEF.md` — Library Schema section. Key points:
 - Required per card: `lang`, `text`, `translation`
 - All other fields optional: `type`, `reading`, `notes`, `example`
 
+## Swipe gesture pattern
+
+Swipe gestures must track the user's finger in real time. Never wait until `touchend` to move an element.
+
+**Axis lock:** On `touchstart`, record both `clientX` and `clientY`. On the first `touchmove` where displacement exceeds 4px, determine the axis (`Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'`). Only respond to horizontal swipes; ignore the gesture if the axis is vertical so that scroll is not disrupted.
+
+**Real-time tracking:** On every horizontal `touchmove`, apply `transform: translateX(dx)` directly to the element. Do not use `classList` changes during the drag.
+
+**Suppress transitions during drag:** Set `data-dragging` on the element during `touchstart` and remove it on `touchend`/`touchcancel`. Use a CSS rule to disable the transition while that attribute is present:
+
+```css
+.my-element { transition: transform 250ms ease; }
+.my-element[data-dragging] { transition: none; }
+```
+
+**Commit or snap back on `touchend`:** Compare the final displacement against a threshold. If it exceeds the threshold, commit the action (animate to final position or trigger the next state). If it falls short, animate back to the original position using the transition.
+
+```js
+// touchstart
+el.dataset.dragging = ''
+
+// touchmove (horizontal axis only)
+el.style.transform = `translateX(${dx}px)`
+
+// touchend
+delete el.dataset.dragging
+if (Math.abs(dx) >= THRESHOLD) {
+  // commit
+} else {
+  // snap back — transition is now active again
+  el.style.transform = ''
+}
+```
+
+**Always handle `touchcancel`:** Treat it the same as a below-threshold `touchend` — snap back and clean up state.
+
+**Clamping:** For reveal gestures (swipe to expose buttons), clamp the transform so the element cannot be dragged further than the revealed width: `Math.max(-REVEAL_WIDTH, Math.min(0, dx))`.
+
 ## Testing
 
 Tests live in `src/__tests__/`. Use Vitest. Run with `npm test`.
