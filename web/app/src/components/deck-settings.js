@@ -8,7 +8,7 @@ const ORDER_LABELS = { default: 'Default', random: 'Random', reverse: 'Reverse' 
 const READING_DISPLAYS = ['reading', 'romanization']
 const READING_DISPLAY_LABELS = { reading: 'Native', romanization: 'Romanized' }
 
-export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck }, onChanged) {
+export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, exportJson }, onChanged) {
   const scrim = document.createElement('div')
   scrim.className = 'deck-settings-scrim'
   appEl.appendChild(scrim)
@@ -95,7 +95,7 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
     })
 
     panel.querySelector('#ds-export-row').addEventListener('click', () => {
-      ops.exportJson()
+      exportJson()
     })
 
     panel.querySelector('#ds-delete-row')?.addEventListener('click', async () => {

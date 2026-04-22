@@ -115,7 +115,7 @@ export function openCardReview(appEl, cards, deck, startIndex) {
       cardEl.style.transition = 'transform 200ms ease, opacity 200ms ease'
       cardEl.style.transform = `translateX(${exitX})`
       cardEl.style.opacity = '0'
-      cardEl.addEventListener('transitionend', () => {
+      const onExitEnd = () => {
         currentIndex = nextIndex
         renderCurrent()
         const newCardEl = contentEl.querySelector('.review-card')
@@ -125,8 +125,12 @@ export function openCardReview(appEl, cards, deck, startIndex) {
         newCardEl.style.transition = 'transform 200ms ease, opacity 200ms ease'
         newCardEl.style.transform = ''
         newCardEl.style.opacity = ''
-        newCardEl.addEventListener('transitionend', () => { newCardEl.style.transition = '' }, { once: true })
-      }, { once: true })
+        const onEnterEnd = () => { newCardEl.style.transition = '' }
+        newCardEl.addEventListener('transitionend', onEnterEnd, { once: true })
+        setTimeout(onEnterEnd, 250)
+      }
+      cardEl.addEventListener('transitionend', onExitEnd, { once: true })
+      setTimeout(onExitEnd, 250)
     }, { passive: true })
 
     cardEl.addEventListener('touchcancel', () => {
@@ -183,11 +187,15 @@ export function openCardReview(appEl, cards, deck, startIndex) {
       scrim.classList.remove('card-review-scrim--visible')
       panel.style.transition = 'transform 250ms ease'
       panel.style.transform = 'translateY(100%)'
-      panel.addEventListener('transitionend', () => { panel.remove(); scrim.remove() }, { once: true })
+      const cleanup = () => { panel.remove(); scrim.remove() }
+      panel.addEventListener('transitionend', cleanup, { once: true })
+      setTimeout(cleanup, 300)
     } else {
       panel.style.transition = 'transform 250ms ease'
       panel.style.transform = ''
-      panel.addEventListener('transitionend', () => { panel.style.transition = '' }, { once: true })
+      const clearTransition = () => { panel.style.transition = '' }
+      panel.addEventListener('transitionend', clearTransition, { once: true })
+      setTimeout(clearTransition, 300)
     }
     dismissAxis = null
   }, { passive: true })
@@ -200,7 +208,9 @@ export function openCardReview(appEl, cards, deck, startIndex) {
     dismissAxis = null
     panel.style.transition = 'transform 250ms ease'
     panel.style.transform = ''
-    panel.addEventListener('transitionend', () => { panel.style.transition = '' }, { once: true })
+    const clearTransition = () => { panel.style.transition = '' }
+    panel.addEventListener('transitionend', clearTransition, { once: true })
+    setTimeout(clearTransition, 300)
   }, { passive: true })
 
   contentEl.addEventListener('click', e => {
@@ -224,10 +234,9 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   function dismiss() {
     scrim.classList.remove('card-review-scrim--visible')
     panel.classList.remove('panel-screen--visible')
-    panel.addEventListener('transitionend', () => {
-      panel.remove()
-      scrim.remove()
-    }, { once: true })
+    const cleanup = () => { panel.remove(); scrim.remove() }
+    panel.addEventListener('transitionend', cleanup, { once: true })
+    setTimeout(cleanup, 350)
   }
 
   panel.querySelector('.panel-header-back').addEventListener('click', dismiss)

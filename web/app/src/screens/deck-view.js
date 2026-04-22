@@ -15,11 +15,11 @@ import { openJsonPanel, toImportJson } from '../components/json-panel.js'
 const LAST_DECK_KEY = 'loudmouth.lastDeckId'
 
 export function getLastDeckId() {
-  return localStorage.getItem(LAST_DECK_KEY)
+  try { return localStorage.getItem(LAST_DECK_KEY) } catch { return null }
 }
 
 export function setLastDeckId(deckId) {
-  localStorage.setItem(LAST_DECK_KEY, deckId)
+  try { localStorage.setItem(LAST_DECK_KEY, deckId) } catch { /* ignore */ }
 }
 
 const dbOps = { db, getDecks, getRecentDecks, getCardsByLang, createDeck, importCards, exportAllData, restoreAllData }
