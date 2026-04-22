@@ -4,8 +4,10 @@ import { decode as base64urlDecode } from '../js/base64url.js'
 import { parseCardBatch } from '../js/import-parser.js'
 import { speak, ttsText } from '../js/tts.js'
 
+import { LANG_FLAGS, LANG_NAMES } from '../js/lang.js'
+import { stripHashParam } from '../js/utils.js'
+import { wireDrawerGesture, wireRevealGesture } from '../js/gestures.js'
 import { renderCardRow } from '../components/card.js'
-import { LANG_FLAGS, LANG_NAMES } from '../components/deck-picker.js'
 import { openAddCardsPanel } from '../components/add-cards-panel.js'
 import { openDeckSettings } from '../components/deck-settings.js'
 import { openCardReview } from '../components/card-review.js'
@@ -24,15 +26,6 @@ export function setLastDeckId(deckId) {
 
 const dbOps = { db, getDecks, getRecentDecks, getCardsByLang, createDeck, importCards, exportAllData, restoreAllData }
 const settingsOps = { updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck }
-
-function stripHashParam(param) {
-  const raw = window.location.hash.slice(1) || 'deck'
-  const [route, qstring] = raw.split('?')
-  const p = new URLSearchParams(qstring || '')
-  p.delete(param)
-  const remaining = p.toString()
-  window.location.hash = remaining ? `${route}?${remaining}` : route
-}
 
 // ── Drawer HTML builder ──────────────────────────────────────────────────────
 
@@ -121,102 +114,6 @@ async function buildDrawerContent() {
       ${isEmpty ? '<p class="deck-picker-empty">No decks yet.</p>' : ''}
     </div>
   `
-}
-
-// ── Nav shell gesture (swipe-right to open drawer) ───────────────────────────
-
-function wireDrawerGesture(navMainEl, onOpen, onClose) {
-  const DRAWER_WIDTH = 280
-  const OPEN_THRESHOLD = 100
-  let startX = null
-  let startY = null
-  let axis = null
-  let isOpen = false
-
-  function setOpen(open, animate = true) {
-    isOpen = open
-    if (!animate) navMainEl.dataset.dragging = ''
-    if (open) {
-      navMainEl.classList.add('nav-main--open')
-      onOpen()
-    } else {
-      navMainEl.classList.remove('nav-main--open')
-      onClose()
-    }
-    if (!animate) {
-      requestAnimationFrame(() => delete navMainEl.dataset.dragging)
-    }
-  }
-
-  navMainEl.addEventListener('touchstart', e => {
-    // Don't capture if a panel or the scrim is the target
-    if (e.target.closest('.panel-screen') || e.target.closest('.nav-main-scrim')) return
-    // Don't start a new gesture if the drawer is open (scrim handles closing)
-    if (isOpen) return
-    startX = e.touches[0].clientX
-    startY = e.touches[0].clientY
-    axis = null
-  }, { passive: true })
-
-  navMainEl.addEventListener('touchmove', e => {
-    if (startX === null) return
-    const dx = e.touches[0].clientX - startX
-    const dy = e.touches[0].clientY - startY
-
-    if (!axis) {
-      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
-      axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
-    }
-    if (axis !== 'h') return
-
-    // Only swipe-right to open (dx > 0) or swipe-left to close (dx < 0 when open)
-    if (!isOpen && dx < 0) return
-    if (isOpen && dx > 0) return
-
-    const base = isOpen ? DRAWER_WIDTH : 0
-    const raw = base + dx
-    const clamped = Math.max(0, Math.min(DRAWER_WIDTH, raw))
-    navMainEl.dataset.dragging = ''
-    navMainEl.style.transform = `translateX(${clamped}px)`
-    // Sync scrim opacity
-    const scrim = navMainEl.querySelector('.nav-main-scrim')
-    if (scrim) scrim.style.opacity = clamped / DRAWER_WIDTH
-  }, { passive: false })
-
-  navMainEl.addEventListener('touchend', e => {
-    if (startX === null) return
-    const dx = e.changedTouches[0].clientX - startX
-    delete navMainEl.dataset.dragging
-    navMainEl.style.transform = ''
-    const scrim = navMainEl.querySelector('.nav-main-scrim')
-    if (scrim) scrim.style.opacity = ''
-    startX = null
-
-    if (axis !== 'h') return
-
-    if (!isOpen && dx >= OPEN_THRESHOLD) {
-      setOpen(true)
-    } else if (isOpen && dx <= -OPEN_THRESHOLD) {
-      setOpen(false)
-    }
-    // else stays in current state — CSS class drives final position
-    axis = null
-  }, { passive: true })
-
-  navMainEl.addEventListener('touchcancel', () => {
-    if (startX === null) return
-    delete navMainEl.dataset.dragging
-    navMainEl.style.transform = ''
-    const scrim = navMainEl.querySelector('.nav-main-scrim')
-    if (scrim) scrim.style.opacity = ''
-    startX = null
-    axis = null
-  }, { passive: true })
-
-  return {
-    open: () => setOpen(true),
-    close: () => setOpen(false),
-  }
 }
 
 // ── Main render ──────────────────────────────────────────────────────────────
@@ -357,19 +254,17 @@ export function renderDeckView(el, params) {
         return
       }
 
-      const LANG_NAMES_LOCAL = { zh: 'Chinese', ja: 'Japanese', ko: 'Korean', es: 'Spanish', fr: 'French', de: 'German', pt: 'Portuguese', it: 'Italian', ru: 'Russian' }
-
       let deck, cards, isStarredView = false
       if (deckId.startsWith('lang:')) {
         const lang = deckId.slice(5)
         cards = await getCardsByLang(lang)
-        const langName = LANG_NAMES_LOCAL[lang] ?? lang.toUpperCase()
+        const langName = LANG_NAMES[lang] ?? lang.toUpperCase()
         deck = { id: deckId, name: `All ${langName} Cards`, lang, mode: DEFAULT_MODE, order: 'default', system: true }
       } else if (deckId.startsWith('starred-')) {
         isStarredView = true
         const lang = deckId.slice(8)
         cards = await getStarredCards(lang)
-        const langName = LANG_NAMES_LOCAL[lang] ?? lang.toUpperCase()
+        const langName = LANG_NAMES[lang] ?? lang.toUpperCase()
         deck = { id: deckId, name: `★ Starred ${langName}`, lang, mode: DEFAULT_MODE, order: 'default', system: true }
       } else {
         deck = await db.decks.get(deckId)
@@ -406,7 +301,7 @@ export function renderDeckView(el, params) {
 
       const listEl = screenEl.querySelector('.deck-view-list')
       const editOps = { updateCard, deleteCard }
-      let activeSwiped = null
+      const reveal = wireRevealGesture(listEl, '.card-row-wrapper', '.card-row')
 
       function onSaveCard(updatedCard) {
         const idx = cards.findIndex(c => String(c.id) === String(updatedCard.id))
@@ -433,11 +328,7 @@ export function renderDeckView(el, params) {
       listEl.addEventListener('click', async e => {
         const starBtn = e.target.closest('.card-row-star-btn')
         if (starBtn) {
-          const wrapper = starBtn.closest('.card-row-wrapper')
-          if (wrapper) {
-            wrapper.classList.remove('card-row-wrapper--swiped')
-            activeSwiped = null
-          }
+          reveal.reset()
           const cardId = starBtn.dataset.cardId
           const cardIdx = cards.findIndex(c => String(c.id) === cardId)
           if (cardIdx >= 0) {
@@ -454,11 +345,7 @@ export function renderDeckView(el, params) {
 
         const editBtn = e.target.closest('.card-row-edit-btn')
         if (editBtn) {
-          const wrapper = editBtn.closest('.card-row-wrapper')
-          if (wrapper) {
-            wrapper.classList.remove('card-row-wrapper--swiped')
-            activeSwiped = null
-          }
+          reveal.reset()
           const card = cards.find(c => String(c.id) === editBtn.dataset.cardId)
           if (card) openCardEditPanel(el, card, editOps, onSaveCard, onDeleteCard)
           return
@@ -483,83 +370,6 @@ export function renderDeckView(el, params) {
         if (!row) return
         const idx = cards.findIndex(c => String(c.id) === row.dataset.cardId)
         openCardReview(el, cards, deck, idx < 0 ? 0 : idx)
-      })
-
-      // Swipe-to-reveal edit button
-      const SWIPE_REVEAL_WIDTH = 160
-      const SWIPE_COMMIT_THRESHOLD = 80
-      let swipeStartX = 0
-      let swipeStartY = 0
-      let swipeTarget = null
-      let swipeAxis = null
-
-      listEl.addEventListener('touchstart', e => {
-        const wrapper = e.target.closest('.card-row-wrapper')
-        if (!wrapper) return
-        swipeStartX = e.touches[0].clientX
-        swipeStartY = e.touches[0].clientY
-        swipeTarget = wrapper
-        swipeAxis = null
-        const row = wrapper.querySelector('.card-row')
-        row.dataset.dragging = ''
-      }, { passive: true })
-
-      listEl.addEventListener('touchmove', e => {
-        if (!swipeTarget) return
-        const dx = e.touches[0].clientX - swipeStartX
-        const dy = e.touches[0].clientY - swipeStartY
-
-        if (!swipeAxis) {
-          if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
-          swipeAxis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
-        }
-
-        if (swipeAxis !== 'h') return
-        e.preventDefault()
-
-        const isSwiped = swipeTarget.classList.contains('card-row-wrapper--swiped')
-        const base = isSwiped ? -SWIPE_REVEAL_WIDTH : 0
-        const raw = base + dx
-        const clamped = Math.max(-SWIPE_REVEAL_WIDTH, Math.min(0, raw))
-        swipeTarget.querySelector('.card-row').style.transform = `translateX(${clamped}px)`
-      }, { passive: false })
-
-      listEl.addEventListener('touchend', e => {
-        if (!swipeTarget) return
-        const row = swipeTarget.querySelector('.card-row')
-        delete row.dataset.dragging
-
-        if (swipeAxis === 'h') {
-          const dx = e.changedTouches[0].clientX - swipeStartX
-          const isSwiped = swipeTarget.classList.contains('card-row-wrapper--swiped')
-          const base = isSwiped ? -SWIPE_REVEAL_WIDTH : 0
-          const net = base + dx
-
-          if (net < -SWIPE_COMMIT_THRESHOLD) {
-            if (activeSwiped && activeSwiped !== swipeTarget) {
-              activeSwiped.classList.remove('card-row-wrapper--swiped')
-              activeSwiped.querySelector('.card-row').style.transform = ''
-            }
-            swipeTarget.classList.add('card-row-wrapper--swiped')
-            activeSwiped = swipeTarget
-          } else {
-            swipeTarget.classList.remove('card-row-wrapper--swiped')
-            if (activeSwiped === swipeTarget) activeSwiped = null
-          }
-          row.style.transform = ''
-        }
-
-        swipeTarget = null
-        swipeAxis = null
-      })
-
-      listEl.addEventListener('touchcancel', () => {
-        if (!swipeTarget) return
-        const row = swipeTarget.querySelector('.card-row')
-        delete row.dataset.dragging
-        row.style.transform = ''
-        swipeTarget = null
-        swipeAxis = null
       })
 
       screenEl.querySelector('#btn-menu').addEventListener('click', () => drawer.open())

@@ -1,18 +1,10 @@
 import { parseCardBatch } from '../js/import-parser.js'
+import { stripHashParam } from '../js/utils.js'
 
 function detectLang(cards) {
   const counts = {}
   for (const c of cards) counts[c.lang] = (counts[c.lang] || 0) + 1
   return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]
-}
-
-function stripCardsParam() {
-  const raw = window.location.hash.slice(1) || 'deck'
-  const [route, qstring] = raw.split('?')
-  const p = new URLSearchParams(qstring || '')
-  p.delete('cards')
-  const remaining = p.toString()
-  window.location.hash = remaining ? `${route}?${remaining}` : route
 }
 
 export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, createDeck, importCards, exportAllData, restoreAllData }, { initialCards, initialErrors, fromUri } = {}) {
@@ -33,7 +25,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
   }
 
   function cancelFromUri() {
-    if (fromUri) stripCardsParam()
+    if (fromUri) stripHashParam('cards')
     close()
   }
 

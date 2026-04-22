@@ -12,7 +12,7 @@
 
 #deck-view-screen {
   padding: 0;
-  background: var(--bg);
+  background: var(--bg-primary);
   flex: 1;
   height: 0;
   display: flex;
@@ -110,7 +110,7 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  background: var(--surface);
+  background: var(--bg-surface);
   border-radius: var(--radius-sm);
   min-height: 64px;
   padding: 0.5rem 0.75rem 0.5rem 1rem;
@@ -124,7 +124,7 @@
 }
 
 .card-row-wrapper--swiped .card-row {
-  transform: translateX(-160px);
+  transform: translateX(calc(-1 * var(--swipe-reveal-width)));
 }
 
 .card-row-body {
@@ -138,7 +138,7 @@
 .card-row-text {
   font-size: 1.125rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-body);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -214,7 +214,7 @@
 .deck-picker-row {
   display: flex;
   align-items: center;
-  background: var(--surface);
+  background: var(--bg-surface);
   border-radius: var(--radius-sm);
   height: 64px;
   padding: 0 1rem;
@@ -233,7 +233,7 @@
 .deck-picker-row-name {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-body);
 }
 
 .deck-picker-row-meta {
@@ -275,12 +275,12 @@
 .add-cards-textarea {
   width: 100%;
   height: 160px;
-  background: var(--surface);
+  background: var(--bg-surface);
   border: none;
   border-radius: var(--radius-sm);
   padding: 0.75rem;
   font-size: 0.875rem;
-  color: var(--text);
+  color: var(--text-body);
   resize: vertical;
   box-sizing: border-box;
   font-family: monospace;
@@ -300,7 +300,7 @@
 .add-cards-count {
   font-size: 3rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-body);
 }
 
 .add-cards-count-label {
@@ -327,12 +327,12 @@
 
 .add-cards-select {
   width: 100%;
-  background: var(--surface);
+  background: var(--bg-surface);
   border: none;
   border-radius: var(--radius-sm);
   padding: 0.75rem;
   font-size: 1rem;
-  color: var(--text);
+  color: var(--text-body);
   box-sizing: border-box;
 }
 
@@ -346,12 +346,12 @@
 
 .add-cards-input {
   width: 100%;
-  background: var(--surface);
+  background: var(--bg-surface);
   border: none;
   border-radius: var(--radius-sm);
   padding: 0.75rem;
   font-size: 1rem;
-  color: var(--text);
+  color: var(--text-body);
   box-sizing: border-box;
 }
 
@@ -374,7 +374,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: var(--bg);
+  background: var(--bg-primary);
   border-radius: 20px 20px 0 0;
   padding: 12px 20px 40px;
   z-index: 151;
@@ -392,7 +392,7 @@
   width: 36px;
   height: 4px;
   border-radius: 2px;
-  background: var(--border);
+  background: var(--border-default);
   margin: 0 auto 20px;
 }
 
@@ -406,7 +406,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -416,19 +416,19 @@
 }
 
 .deck-settings-row--destructive .deck-settings-label {
-  color: var(--danger, #e53e3e);
+  color: var(--danger);
 }
 
 .deck-settings-label {
   font-size: 1rem;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text-body);
 }
 
 .deck-settings-value {
   font-size: 1rem;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text-body);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -462,7 +462,7 @@
 }
 
 .card-review-panel {
-  top: 68px !important;
+  top: 68px;
   border-radius: 20px 20px 0 0;
   z-index: 100;
 }
@@ -481,7 +481,7 @@
 }
 
 .review-card {
-  background: var(--surface);
+  background: var(--bg-surface);
   border-radius: var(--radius);
   width: 100%;
   max-width: 320px;
@@ -499,7 +499,7 @@
 .review-card-text {
   font-size: 2.5rem;
   font-weight: 700;
-  color: var(--text);
+  color: var(--text-body);
   text-align: center;
 }
 
@@ -547,7 +547,7 @@
 .review-translation-text {
   display: none;
   font-size: 1rem;
-  color: var(--text);
+  color: var(--text-body);
   text-align: center;
 }
 
@@ -559,7 +559,7 @@
     display: block;
     font-size: 2.5rem;
     font-weight: 700;
-    color: var(--text);
+    color: var(--text-body);
     text-align: center;
   }
   .review-translation { display: none; }
@@ -571,7 +571,7 @@
   .review-translation-text { display: none; }
 
   &.review--revealed {
-    .review-translation { background: var(--surface); cursor: default; }
+    .review-translation { background: var(--bg-surface); cursor: default; }
     .review-translation-skeleton { display: none; }
     .review-translation-text { display: block; }
   }
@@ -579,7 +579,7 @@
 
 /* Review mode: always show translation */
 [data-mode="review"] .card-review-content {
-  .review-translation { background: var(--surface); cursor: default; }
+  .review-translation { background: var(--bg-surface); cursor: default; }
   .review-translation-skeleton { display: none; }
   .review-translation-text { display: block; }
 }
@@ -587,7 +587,7 @@
 .review-translation-skeleton-line {
   height: 14px;
   border-radius: 7px;
-  background: var(--surface);
+  background: var(--bg-surface);
   width: 100%;
 }
 
@@ -628,12 +628,12 @@
 
 .card-edit-input {
   width: 100%;
-  background: var(--surface);
+  background: var(--bg-surface);
   border: none;
   border-radius: var(--radius-sm);
   padding: 0.75rem;
   font-size: 1rem;
-  color: var(--text);
+  color: var(--text-body);
   box-sizing: border-box;
   font-family: inherit;
 }
@@ -660,9 +660,9 @@
 }
 
 .card-edit-delete-btn {
-  color: var(--danger, #e53e3e);
+  color: var(--danger);
   background: transparent;
-  border: 1px solid var(--danger, #e53e3e);
+  border: 1px solid var(--danger);
 }
 
 .card-edit-export {
@@ -692,12 +692,12 @@
 .json-panel-textarea {
   flex: 1;
   width: 100%;
-  background: var(--surface);
+  background: var(--bg-surface);
   border: none;
   border-radius: var(--radius-sm);
   padding: 0.75rem;
   font-size: 0.8125rem;
-  color: var(--text);
+  color: var(--text-body);
   font-family: monospace;
   resize: none;
   box-sizing: border-box;

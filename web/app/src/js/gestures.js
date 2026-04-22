@@ -1,0 +1,188 @@
+/**
+ * wireDrawerGesture — swipe-right-to-open / swipe-left-to-close for a slide-in drawer.
+ *
+ * @param {HTMLElement} navMainEl  The element that slides (wraps drawer + content).
+ * @param {Function}    onOpen     Called when the drawer opens.
+ * @param {Function}    onClose    Called when the drawer closes.
+ * @param {number}      drawerWidth  Width of the drawer in px (default 280).
+ * @param {number}      openThreshold  Swipe distance needed to commit open/close (default 100).
+ * @returns {{ open: Function, close: Function }}
+ */
+export function wireDrawerGesture(navMainEl, onOpen, onClose, drawerWidth = 280, openThreshold = 100) {
+  let startX = null
+  let startY = null
+  let axis = null
+  let isOpen = false
+
+  function setOpen(open, animate = true) {
+    isOpen = open
+    if (!animate) navMainEl.dataset.dragging = ''
+    if (open) {
+      navMainEl.classList.add('nav-main--open')
+      onOpen()
+    } else {
+      navMainEl.classList.remove('nav-main--open')
+      onClose()
+    }
+    if (!animate) {
+      requestAnimationFrame(() => delete navMainEl.dataset.dragging)
+    }
+  }
+
+  navMainEl.addEventListener('touchstart', e => {
+    if (e.target.closest('.panel-screen') || e.target.closest('.nav-main-scrim')) return
+    if (isOpen) return
+    startX = e.touches[0].clientX
+    startY = e.touches[0].clientY
+    axis = null
+  }, { passive: true })
+
+  navMainEl.addEventListener('touchmove', e => {
+    if (startX === null) return
+    const dx = e.touches[0].clientX - startX
+    const dy = e.touches[0].clientY - startY
+
+    if (!axis) {
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+      axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+    }
+    if (axis !== 'h') return
+    if (!isOpen && dx < 0) return
+    if (isOpen && dx > 0) return
+
+    const base = isOpen ? drawerWidth : 0
+    const clamped = Math.max(0, Math.min(drawerWidth, base + dx))
+    navMainEl.dataset.dragging = ''
+    navMainEl.style.transform = `translateX(${clamped}px)`
+    const scrim = navMainEl.querySelector('.nav-main-scrim')
+    if (scrim) scrim.style.opacity = clamped / drawerWidth
+  }, { passive: false })
+
+  navMainEl.addEventListener('touchend', e => {
+    if (startX === null) return
+    const dx = e.changedTouches[0].clientX - startX
+    delete navMainEl.dataset.dragging
+    navMainEl.style.transform = ''
+    const scrim = navMainEl.querySelector('.nav-main-scrim')
+    if (scrim) scrim.style.opacity = ''
+    startX = null
+
+    if (axis !== 'h') return
+    if (!isOpen && dx >= openThreshold) setOpen(true)
+    else if (isOpen && dx <= -openThreshold) setOpen(false)
+    axis = null
+  }, { passive: true })
+
+  navMainEl.addEventListener('touchcancel', () => {
+    if (startX === null) return
+    delete navMainEl.dataset.dragging
+    navMainEl.style.transform = ''
+    const scrim = navMainEl.querySelector('.nav-main-scrim')
+    if (scrim) scrim.style.opacity = ''
+    startX = null
+    axis = null
+  }, { passive: true })
+
+  return {
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+  }
+}
+
+/**
+ * wireRevealGesture — swipe-left on a list item to reveal action buttons behind it.
+ *
+ * The gesture tracks real-time finger position and applies transform directly.
+ * On release, commits (reveals) or snaps back based on threshold.
+ *
+ * @param {HTMLElement} listEl          The scrollable list container.
+ * @param {string}      wrapperSelector CSS selector for each swipeable row wrapper.
+ * @param {string}      rowSelector     CSS selector for the inner row element that slides.
+ * @param {number}      revealWidth     How far (px) the row slides to reveal buttons (default 160).
+ * @param {number}      commitThreshold Swipe distance needed to commit reveal (default 80).
+ * @returns {{ reset: Function }}  reset() closes any currently-open row.
+ */
+export function wireRevealGesture(listEl, wrapperSelector, rowSelector, revealWidth = 160, commitThreshold = 80) {
+  let startX = 0
+  let startY = 0
+  let target = null   // wrapper element
+  let axis = null
+  let activeSwiped = null
+
+  listEl.addEventListener('touchstart', e => {
+    const wrapper = e.target.closest(wrapperSelector)
+    if (!wrapper) return
+    startX = e.touches[0].clientX
+    startY = e.touches[0].clientY
+    target = wrapper
+    axis = null
+    wrapper.querySelector(rowSelector).dataset.dragging = ''
+  }, { passive: true })
+
+  listEl.addEventListener('touchmove', e => {
+    if (!target) return
+    const dx = e.touches[0].clientX - startX
+    const dy = e.touches[0].clientY - startY
+
+    if (!axis) {
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+      axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+    }
+    if (axis !== 'h') return
+    e.preventDefault()
+
+    const isSwiped = target.classList.contains(`${wrapperSelector.slice(1)}--swiped`)
+    const base = isSwiped ? -revealWidth : 0
+    const clamped = Math.max(-revealWidth, Math.min(0, base + dx))
+    target.querySelector(rowSelector).style.transform = `translateX(${clamped}px)`
+  }, { passive: false })
+
+  listEl.addEventListener('touchend', e => {
+    if (!target) return
+    const row = target.querySelector(rowSelector)
+    delete row.dataset.dragging
+
+    if (axis === 'h') {
+      const dx = e.changedTouches[0].clientX - startX
+      const swipedClass = `${wrapperSelector.slice(1)}--swiped`
+      const isSwiped = target.classList.contains(swipedClass)
+      const net = (isSwiped ? -revealWidth : 0) + dx
+
+      if (net < -commitThreshold) {
+        if (activeSwiped && activeSwiped !== target) {
+          activeSwiped.classList.remove(swipedClass)
+          activeSwiped.querySelector(rowSelector).style.transform = ''
+        }
+        target.classList.add(swipedClass)
+        activeSwiped = target
+      } else {
+        target.classList.remove(swipedClass)
+        if (activeSwiped === target) activeSwiped = null
+      }
+      row.style.transform = ''
+    }
+
+    target = null
+    axis = null
+  })
+
+  listEl.addEventListener('touchcancel', () => {
+    if (!target) return
+    const row = target.querySelector(rowSelector)
+    delete row.dataset.dragging
+    row.style.transform = ''
+    target = null
+    axis = null
+  })
+
+  return {
+    reset() {
+      if (activeSwiped) {
+        const swipedClass = `${wrapperSelector.slice(1)}--swiped`
+        activeSwiped.classList.remove(swipedClass)
+        activeSwiped.querySelector(rowSelector).style.transform = ''
+        activeSwiped = null
+      }
+    }
+  }
+}

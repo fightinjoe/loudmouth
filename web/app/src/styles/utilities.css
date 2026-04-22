@@ -84,7 +84,7 @@
   width: 280px;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: var(--bg-primary);
   overflow-y: auto;
   z-index: 0;
 }
@@ -96,7 +96,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: var(--bg-primary);
   transform: translateX(0);
   transition: transform 300ms ease;
   z-index: 1;
@@ -131,7 +131,7 @@
 .panel-screen {
   position: fixed;
   inset: 0;
-  background: var(--bg);
+  background: var(--bg-primary);
   display: flex;
   flex-direction: column;
   transform: translateY(100%);
@@ -173,7 +173,7 @@
   text-align: center;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--text-body);
   background: none;
   border: none;
   padding: 0;

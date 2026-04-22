@@ -1,19 +1,6 @@
-export const LANG_FLAGS = { zh: '🇨🇳', ja: '🇯🇵', ko: '🇰🇷', es: '🇪🇸', fr: '🇫🇷', de: '🇩🇪', pt: '🇵🇹', it: '🇮🇹', ru: '🇷🇺' }
-export const LANG_NAMES = { zh: 'Chinese', ja: 'Japanese', ko: 'Korean', es: 'Spanish', fr: 'French', de: 'German', pt: 'Portuguese', it: 'Italian', ru: 'Russian' }
-
-function relativeTime(isoStr) {
-  if (!isoStr) return ''
-  const diff = Date.now() - new Date(isoStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
-  return `${months}mo ago`
-}
+import { LANG_FLAGS, LANG_NAMES } from '../js/lang.js'
+import { relativeTime } from '../js/utils.js'
+export { LANG_FLAGS, LANG_NAMES }
 
 function renderDeckPickerRow(deck, cardCount) {
   const ts = relativeTime(deck.lastAccessedAt ?? deck.createdAt)

@@ -3,6 +3,10 @@
   --beige-100: 60 20 95;
   --beige-400: 60 10 75;
 
+  --white: 0 0 100;
+
+  --gray-300: 0 0 88;
+  --gray-400: 0 0 75;
   --gray-500: 220 16 47;
   --gray-600: 220 19 35;
   --gray-900: 220 47 11;
@@ -10,19 +14,37 @@
   --green-600: 153 40 30;
   --green-100: 153 40 80;
 
+  --amber-500: 38 71 49;
+
+  --red-500: 4 86 58;
+
   --font-family: Inter, Roboto, sans-serif;
 }
 
 /*-- Semantic variables --*/
 :root, [data-theme="light"] {
   --text-body: hsl(var(--gray-900));
+  --text-secondary: hsl(var(--gray-500));
+  --text-tertiary: hsl(var(--gray-400));
   --text-caption: hsl(var(--gray-500));
 
   --fg-primary: hsl(var(--green-600));
 
   --bg-primary: hsl(var(--beige-100));
   --bg-secondary: hsl(var(--beige-400));
+  --bg-surface: hsl(var(--white));
   --bg-accent: hsl(var(--green-100));
+
+  --border-default: hsl(var(--gray-300));
+
+  --accent: hsl(var(--green-600));
+  --accent-star: hsl(var(--amber-500));
+  --danger: hsl(var(--red-500));
+
+  --radius: 16px;
+  --radius-sm: 8px;
+
+  --swipe-reveal-width: 160px;
 }
 
 /*-- Defaults --*/
