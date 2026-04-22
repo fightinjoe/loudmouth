@@ -96,7 +96,10 @@ export function wireDrawerGesture(navMainEl, onOpen, onClose, drawerWidth = 280,
  * On release, commits (reveals) or snaps back based on threshold.
  *
  * @param {HTMLElement} listEl          The scrollable list container.
- * @param {string}      wrapperSelector CSS selector for each swipeable row wrapper.
+ * @param {string}      wrapperSelector CSS class selector for each swipeable row wrapper,
+ *                                      e.g. '.card-row-wrapper'. MUST be a single class
+ *                                      with a leading dot — the function derives the
+ *                                      committed state class by appending '--swiped'.
  * @param {string}      rowSelector     CSS selector for the inner row element that slides.
  * @param {number}      revealWidth     How far (px) the row slides to reveal buttons (default 160).
  * @param {number}      commitThreshold Swipe distance needed to commit reveal (default 80).

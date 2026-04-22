@@ -353,8 +353,7 @@ export function renderDeckView(el, params) {
 
         const wrapper = e.target.closest('.card-row-wrapper')
         if (wrapper && wrapper.classList.contains('card-row-wrapper--swiped')) {
-          wrapper.classList.remove('card-row-wrapper--swiped')
-          activeSwiped = null
+          reveal.reset()
           return
         }
 

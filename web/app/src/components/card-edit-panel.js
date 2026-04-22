@@ -57,7 +57,7 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
       <div class="card-edit-field">
         <label class="section-label card-edit-label" for="edit-example">Example</label>
         <textarea class="card-edit-input card-edit-textarea" id="edit-example"
-          autocorrect="off">${esc(card.example)}</textarea>
+          autocorrect="off">${esc(card.example?.text ?? card.example)}</textarea>
       </div>
       <div class="card-edit-export">
         <button class="btn btn-secondary" id="btn-view-json">View JSON</button>
@@ -82,13 +82,19 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
     if (!text) { panel.querySelector('#edit-text').focus(); return }
     if (!translation) { panel.querySelector('#edit-translation').focus(); return }
 
+    const exampleText = panel.querySelector('#edit-example').value.trim()
+    // Preserve any existing example subfields (reading, translation) while
+    // updating only the text. If example was a plain string, upgrade to object.
+    const existingExample = typeof card.example === 'object' && card.example !== null ? card.example : {}
+    const example = exampleText ? { ...existingExample, text: exampleText } : undefined
+
     const fields = {
       text,
       translation,
       reading: panel.querySelector('#edit-reading').value.trim(),
       romanization: panel.querySelector('#edit-romanization').value.trim(),
       notes: panel.querySelector('#edit-notes').value.trim(),
-      example: panel.querySelector('#edit-example').value.trim(),
+      example,
     }
 
     await updateCard(card.id, fields)

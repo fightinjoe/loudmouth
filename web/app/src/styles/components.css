@@ -288,7 +288,7 @@
 
 .add-cards-error {
   font-size: 0.8125rem;
-  color: #e74c3c;
+  color: var(--danger);
   min-height: 1rem;
 }
 
