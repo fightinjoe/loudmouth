@@ -8,7 +8,7 @@ When traveling, you encounter useful words and phrases constantly — at restaur
 
 ## Solution
 
-A mobile-first web app where cards are generated externally (by AI) and imported as JSON. The learner captures vocabulary from the day, then reviews in short, frictionless sessions — optimized for multiple 5-minute check-ins, not hour-long study. Cards can be flipped through in review mode or browsed as a list. No scoring, no curriculum — just the language you're actually encountering.
+A mobile-first app (PWA and native iOS) where cards are generated externally (by AI) and imported as JSON. The learner captures vocabulary from the day, then reviews in short, frictionless sessions — optimized for multiple 5-minute check-ins, not hour-long study. Cards can be flipped through in review mode or browsed as a list. No scoring, no curriculum — just the language you're actually encountering.
 
 ## Users
 
@@ -27,7 +27,6 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 - **Scoring** - No external measurement of progress (tests, scores, pass/fail)
 - **AI generation** - Card generation is done externally; out of scope
 - **Accounts/sync** - No user accounts or cloud sync
-- **Native app** - Web only for now
 - **Spaced repetition** - Deferred — lower priority, see Open Questions
 - **In-app card creation** - No creating cards from scratch inside the app
 
@@ -92,7 +91,7 @@ A mobile-first web app where cards are generated externally (by AI) and imported
 
 ## Technical Notes
 
-- **Platform:** Mobile-first PWA or responsive web app — audio feature is iOS Safari only; desktop audio support is out of scope
+- **Platform:** Mobile-first PWA (web) and native iOS app — maintained in parallel in a monorepo. Audio on web is iOS Safari only; desktop audio support is out of scope.
 - **Audio:** Web Speech API with `lang="zh-CN"` / `lang="ja-JP"`. Do not attempt to support macOS Safari or Chrome Desktop for audio.
 - **Storage:** Client-side only; IndexedDB likely (localStorage insufficient for library scale)
 - **No backend** required in initial version
@@ -169,7 +168,6 @@ Two IndexedDB tables: `cards` and `decks`. Card-deck membership is stored as `de
 - OCR / camera input
 - URL import
 - User accounts, cloud sync
-- Native app
 - In-app card creation from scratch
 - Furigana ruby text rendering (prototype candidate, not blocking PRD)
 

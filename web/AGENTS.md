@@ -78,7 +78,7 @@ Always use semantic variables (`--text-body`, `--bg-primary`) in component style
 
 ## Card schema
 
-See `docs/BRIEF.md` — Library Schema section. Key points:
+See `../docs/BRIEF.md` — Library Schema section. Key points:
 - `id` (UUID v4) and `createdAt` (ISO 8601) are assigned at import time, never in the batch JSON
 - Required per card: `lang`, `text`, `translation`
 - All other fields optional: `type`, `reading`, `notes`, `example`
@@ -138,6 +138,6 @@ Tests live in `src/__tests__/`. Use Vitest. Run with `npm test`.
 
 ## Docs to keep current
 
-- `docs/BRIEF.md` — product decisions and schema. Update when schema or feature scope changes.
+- `../docs/BRIEF.md` — product decisions and schema (monorepo root). Update when schema or feature scope changes.
 - `docs/ARCH.md` — technical decisions. Update when stack, folder structure, or key patterns change.
 - `AGENTS.md` (this file) — coding rules. Update when a new pattern is established.
