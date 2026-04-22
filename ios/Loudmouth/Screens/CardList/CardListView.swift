@@ -4,6 +4,7 @@ import SwiftData
 struct CardListView: View {
     var deck: Deck?
     var lang: String?
+    var onBack: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var modelContext
     @Query private var allCards: [Card]
@@ -21,9 +22,7 @@ struct CardListView: View {
         return "Cards"
     }
 
-    private var readingDisplay: String {
-        deck?.readingDisplay ?? "reading"
-    }
+    private var readingDisplay: String { deck?.readingDisplay ?? "reading" }
 
     private var cards: [Card] {
         let base: [Card]
@@ -50,63 +49,85 @@ struct CardListView: View {
         }
     }
 
-    private var isSystemView: Bool {
-        deck == nil || lang != nil
-    }
-
     var body: some View {
-        Group {
-            if cards.isEmpty {
-                ContentUnavailableView(
-                    "No cards",
-                    systemImage: "rectangle.stack",
-                    description: Text(deck != nil ? "Import cards to get started" : "No cards here yet")
-                )
-            } else {
-                List {
-                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
-                        CardRowView(
-                            card: card,
-                            readingDisplay: readingDisplay,
-                            onPlay: { playCard(card) },
-                            onStar: { toggleStar(card) },
-                            onEdit: { editingCard = card }
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture { reviewStartIndex = index }
+        NavigationStack {
+            ZStack(alignment: .top) {
+                Theme.bgPrimary.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    // Header
+                    HStack {
+                        Button(action: { onBack?() }) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Theme.textBody)
+                                .frame(width: 44, height: 44)
+                                .background(Circle().fill(Theme.bgSurface))
+                        }
+                        Spacer()
+                        Text(title)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(Theme.textBody)
+                        Spacer()
+                        if deck != nil {
+                            Button { showSettings = true } label: {
+                                Image(systemName: "gearshape")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(Theme.textBody)
+                                    .frame(width: 44, height: 44)
+                                    .background(Circle().fill(Theme.bgSurface))
+                            }
+                        } else {
+                            Color.clear.frame(width: 44, height: 44)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+
+                    if cards.isEmpty {
+                        Spacer()
+                        Text("No cards here yet.")
+                            .foregroundStyle(Theme.textSecondary)
+                        Spacer()
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 6) {
+                                ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                                    CardRowView(
+                                        card: card,
+                                        readingDisplay: readingDisplay,
+                                        onPlay: { playCard(card) },
+                                        onStar: { toggleStar(card) },
+                                        onEdit: { editingCard = card }
+                                    )
+                                    .background(Theme.bgSurface)
+                                    .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+                                    .onTapGesture { reviewStartIndex = index }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
+                            .padding(.bottom, 40)
+                        }
                     }
                 }
-                .listStyle(.plain)
+            }
+            .navigationBarHidden(true)
+            .navigationDestination(item: $reviewStartIndex) { startIndex in
+                CardReviewView(deck: deck, cards: cards, startIndex: startIndex)
+            }
+            .sheet(item: $editingCard) { card in
+                CardEditView(card: card)
+            }
+            .sheet(isPresented: $showSettings) {
+                if let deck { DeckSettingsView(deck: deck) }
             }
         }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let deck, !isSystemView {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { showSettings = true } label: {
-                        Image(systemName: "gearshape")
-                    }
-                }
-            }
-        }
-        .navigationDestination(item: $reviewStartIndex) { startIndex in
-            CardReviewView(deck: deck, cards: cards, startIndex: startIndex)
-        }
-        .sheet(item: $editingCard) { card in
-            CardEditView(card: card)
-        }
-        .sheet(isPresented: $showSettings) {
-            if let deck {
-                DeckSettingsView(deck: deck)
-            }
-        }
+        .tint(Theme.accent)
     }
 
     private func playCard(_ card: Card) {
         TTSService.shared.speak(
-            card.text,
-            lang: card.lang,
+            card.text, lang: card.lang,
             readingDisplay: readingDisplay,
             reading: card.reading,
             romanization: card.romanization
@@ -120,16 +141,4 @@ struct CardListView: View {
 
 extension Int: @retroactive Identifiable {
     public var id: Int { self }
-}
-
-private func langName(_ lang: String) -> String {
-    switch lang {
-    case "zh": return "Chinese"
-    case "ja": return "Japanese"
-    case "ko": return "Korean"
-    case "es": return "Spanish"
-    case "fr": return "French"
-    case "de": return "German"
-    default: return lang.uppercased()
-    }
 }

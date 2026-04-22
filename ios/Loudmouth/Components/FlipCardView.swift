@@ -43,20 +43,21 @@ struct FlipCardView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     Text(frontText)
-                        .font(.system(size: 40, weight: .medium))
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(Theme.textBody)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
                     if !frontReading.isEmpty {
                         Text(frontReading)
                             .font(.title3)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.textSecondary)
                             .multilineTextAlignment(.center)
                     }
                 }
                 .padding(32)
                 .frame(maxWidth: .infinity, minHeight: 200)
-                .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .background(Theme.bgSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
             }
             .buttonStyle(.plain)
 
@@ -96,7 +97,7 @@ struct FlipCardView: View {
             }
             .padding(24)
             .frame(maxWidth: .infinity, minHeight: 100)
-            .background(Color(.secondarySystemBackground))
+            .background(Theme.bgSurface)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .animation(.easeInOut(duration: 0.15), value: isRevealed)
             .simultaneousGesture(
@@ -118,7 +119,7 @@ struct FlipCardView: View {
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.tertiarySystemBackground))
+                .background(Theme.bgPrimary)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }

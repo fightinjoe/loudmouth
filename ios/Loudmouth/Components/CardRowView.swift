@@ -8,54 +8,52 @@ struct CardRowView: View {
     let onEdit: () -> Void
 
     private var reading: String {
-        if readingDisplay == "romanization" {
-            return card.romanization ?? card.reading ?? ""
-        }
+        if readingDisplay == "romanization" { return card.romanization ?? card.reading ?? "" }
         return card.reading ?? ""
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
+        HStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
                     if card.starredAt != nil {
                         Text("★")
-                            .foregroundStyle(.yellow)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Theme.accentStar)
                     }
                     Text(card.text)
-                        .font(.body)
-                        .fontWeight(.medium)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Theme.textBody)
                 }
-                if !reading.isEmpty {
-                    Text(reading)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Text(card.translation)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(reading.isEmpty ? card.translation : reading)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.textSecondary)
             }
             Spacer()
             Button(action: onPlay) {
-                Image(systemName: "play.circle")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+                Image(systemName: "play.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Theme.textTertiary)
+                    .padding(8)
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
-        .swipeActions(edge: .leading) {
+        .padding(.leading, 16)
+        .padding(.trailing, 4)
+        .frame(height: 64)
+        .contentShape(Rectangle())
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button(action: onStar) {
                 Label(card.starredAt != nil ? "Unstar" : "Star",
-                      systemImage: card.starredAt != nil ? "star.slash" : "star")
+                      systemImage: card.starredAt != nil ? "star.slash.fill" : "star.fill")
             }
-            .tint(.yellow)
+            .tint(Theme.accentStar)
         }
-        .swipeActions(edge: .trailing) {
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(action: onEdit) {
                 Label("Edit", systemImage: "pencil")
             }
-            .tint(.blue)
+            .tint(Theme.accent)
         }
     }
 }

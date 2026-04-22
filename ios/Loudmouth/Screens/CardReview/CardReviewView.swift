@@ -78,15 +78,21 @@ struct CardReviewView: View {
                 ContentUnavailableView("No cards", systemImage: "rectangle.stack")
             }
         }
+        .background(Theme.bgPrimary.ignoresSafeArea())
         .navigationTitle(deck?.name ?? "Review")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                BackButton()
+            }
             ToolbarItem(placement: .primaryAction) {
                 Text("\(viewModel.currentIndex + 1) / \(cards.count)")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textSecondary)
             }
         }
+        .tint(Theme.accent)
     }
 
     private func playCard(_ card: Card) {
