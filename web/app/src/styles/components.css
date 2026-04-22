@@ -1,8 +1,25 @@
+/* ── Nav Shell ── */
+
+.nav-main > .screen {
+  flex: 1;
+  height: 0; /* force flex child to shrink, overflow handles the rest */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* ── Deck View ── */
 
 #deck-view-screen {
   padding: 0;
   background: var(--bg);
+  flex: 1;
+  height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-width: none;
+  margin: 0;
 }
 
 
@@ -13,6 +30,7 @@
   padding: 0 1.25rem 1.25rem;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 /*-- Cards --*/
@@ -428,6 +446,30 @@
 }
 
 /* ── Card Review Panel ── */
+
+.card-review-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+  z-index: 99;
+}
+
+.card-review-scrim--visible {
+  opacity: 1;
+}
+
+.card-review-panel {
+  top: 68px !important;
+  border-radius: 20px 20px 0 0;
+  z-index: 100;
+}
+
+.card-review-panel[data-dragging] {
+  transition: none;
+}
 
 .card-review-body {
   flex: 1;

@@ -20,6 +20,10 @@ function renderReviewCard(card, readingDisplay = 'reading') {
 export function openCardReview(appEl, cards, deck, startIndex) {
   let currentIndex = startIndex
 
+  const scrim = document.createElement('div')
+  scrim.className = 'card-review-scrim'
+  appEl.appendChild(scrim)
+
   const panel = document.createElement('div')
   panel.className = 'card-review-panel panel-screen'
   panel.innerHTML = `
@@ -136,8 +140,68 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       panel.classList.add('panel-screen--visible')
+      scrim.classList.add('card-review-scrim--visible')
     })
   })
+
+  // Drag-down-to-dismiss
+  const DISMISS_THRESHOLD = 100
+  let dismissStartX = null
+  let dismissStartY = null
+  let dismissAxis = null
+
+  panel.addEventListener('touchstart', e => {
+    // Don't intercept touches on the card itself (handled by card swipe)
+    if (e.target.closest('.review-card')) return
+    dismissStartX = e.touches[0].clientX
+    dismissStartY = e.touches[0].clientY
+    dismissAxis = null
+    panel.dataset.dragging = ''
+  }, { passive: true })
+
+  panel.addEventListener('touchmove', e => {
+    if (dismissStartY === null) return
+    const dx = e.touches[0].clientX - dismissStartX
+    const dy = e.touches[0].clientY - dismissStartY
+
+    if (!dismissAxis) {
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return
+      dismissAxis = Math.abs(dy) > Math.abs(dx) ? 'v' : 'h'
+    }
+    if (dismissAxis !== 'v' || dy < 0) return
+    panel.style.transform = `translateY(${dy}px)`
+  }, { passive: true })
+
+  panel.addEventListener('touchend', e => {
+    if (dismissStartY === null) return
+    const dy = e.changedTouches[0].clientY - dismissStartY
+    delete panel.dataset.dragging
+    dismissStartX = null
+    dismissStartY = null
+
+    if (dismissAxis === 'v' && dy >= DISMISS_THRESHOLD) {
+      scrim.classList.remove('card-review-scrim--visible')
+      panel.style.transition = 'transform 250ms ease'
+      panel.style.transform = 'translateY(100%)'
+      panel.addEventListener('transitionend', () => { panel.remove(); scrim.remove() }, { once: true })
+    } else {
+      panel.style.transition = 'transform 250ms ease'
+      panel.style.transform = ''
+      panel.addEventListener('transitionend', () => { panel.style.transition = '' }, { once: true })
+    }
+    dismissAxis = null
+  }, { passive: true })
+
+  panel.addEventListener('touchcancel', () => {
+    if (dismissStartY === null) return
+    delete panel.dataset.dragging
+    dismissStartX = null
+    dismissStartY = null
+    dismissAxis = null
+    panel.style.transition = 'transform 250ms ease'
+    panel.style.transform = ''
+    panel.addEventListener('transitionend', () => { panel.style.transition = '' }, { once: true })
+  }, { passive: true })
 
   contentEl.addEventListener('click', e => {
     if (e.target.closest('.review-card')) {
@@ -157,8 +221,14 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   contentEl.addEventListener('touchend', () => contentEl.classList.remove('review--revealed'))
   contentEl.addEventListener('touchcancel', () => contentEl.classList.remove('review--revealed'))
 
-  panel.querySelector('.panel-header-back').addEventListener('click', () => {
+  function dismiss() {
+    scrim.classList.remove('card-review-scrim--visible')
     panel.classList.remove('panel-screen--visible')
-    panel.addEventListener('transitionend', () => panel.remove(), { once: true })
-  })
+    panel.addEventListener('transitionend', () => {
+      panel.remove()
+      scrim.remove()
+    }, { once: true })
+  }
+
+  panel.querySelector('.panel-header-back').addEventListener('click', dismiss)
 }

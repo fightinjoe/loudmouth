@@ -22,6 +22,12 @@ body {
   flex-direction: column;
 }
 
+#app {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
 .screen {
   display: flex;
   flex-direction: column;
