@@ -15,12 +15,14 @@ Mobile-first PWA. Web only — no native app. PWA manifest + service worker enab
 **Why:** The app is a focused single-purpose tool with no SEO requirement and no server. A framework adds bundle weight and abstraction overhead with no payoff here. Vite provides fast dev builds, ES module bundling, and static output for Vercel. Files should be small and modular — one concern per file.
 
 **Source layout:**
-- `src/js/` — generic utilities and app logic (router, db, tts, import-parser, base64url)
+- `src/js/` — generic utilities and app logic: `router`, `db`, `tts`, `import-parser`, `base64url`, `modes`, `gestures` (touch gesture factories), `lang` (language name/flag constants), `utils` (shared utilities: `relativeTime`, `stripHashParam`)
 - `src/screens/` — full-page views (one file per route/screen)
 - `src/components/` — reusable rendering functions for specific UI components (template-literal renderers)
-- `src/styles/` — CSS split by concern: `variables.css` (design tokens), `utilities.css` (layout/typography utility classes), `base.css` (global resets/defaults), `components.css` (component-specific styles)
+- `src/styles/` — CSS split by concern: `variables.css` (all design tokens — primitive HSL channels + semantic variables), `utilities.css` (layout/typography utility classes), `base.css` (global resets/defaults), `components.css` (component-specific styles)
 
 **CSS approach:** Display logic is handled via CSS (`data-*` attribute selectors), not JS DOM manipulation. Mode-specific visibility (e.g. card faces in review vs. browse) is toggled by setting `data-card-mode` on the element and using CSS selectors to show/hide the appropriate content. Utility classes follow a Tailwind-like naming convention (e.g. `.flex-row`, `.gap-sm`, `.text-h2`).
+
+**Gesture handling:** All touch gesture logic is centralised in `src/js/gestures.js` as reusable factories (`wireDrawerGesture`, `wireRevealGesture`). Screens and components call these factories rather than implementing gesture state machines inline. See `AGENTS.md` for the canonical swipe gesture pattern.
 
 ## Backend
 **Approach:** None — fully client-side

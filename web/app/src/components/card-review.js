@@ -55,7 +55,11 @@ export function openCardReview(appEl, cards, deck, startIndex) {
     function applyDragStyle(dx) {
       const maxW = window.innerWidth
       const progress = Math.min(Math.abs(dx) / COMMIT_THRESHOLD, 1)
+      // Fade to 70% opacity at full drag displacement (progress=1).
       const opacity = 1 - progress * 0.3
+      // Rotate up to ±12° based on how far the card has travelled across the screen.
+      // Dividing by screen width (not a fixed px value) keeps the feel consistent
+      // across device sizes.
       const rotate = (dx / maxW) * 12
       cardEl.style.transform = `translateX(${dx}px) rotate(${rotate}deg)`
       cardEl.style.opacity = opacity
@@ -141,6 +145,10 @@ export function openCardReview(appEl, cards, deck, startIndex) {
 
   renderCurrent()
 
+  // Two rAF calls are required: the first lets the browser register the initial
+  // (off-screen) state after appendChild; the second triggers the transition by
+  // adding the visible class. A single rAF is not enough — the browser may batch
+  // the append and the class toggle into the same paint, skipping the transition.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       panel.classList.add('panel-screen--visible')

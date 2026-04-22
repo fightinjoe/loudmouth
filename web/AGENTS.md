@@ -13,7 +13,7 @@
 ## Source layout
 
 ```
-src/js/          Generic utilities and app logic (router, db, tts, import-parser, base64url)
+src/js/          Generic utilities and app logic (router, db, tts, import-parser, base64url, gestures, lang, utils)
 src/screens/     Full-page views — one file per route/screen
 src/components/  Reusable rendering functions for specific UI components
 src/styles/      CSS split by concern (see below)
@@ -120,6 +120,17 @@ if (Math.abs(dx) >= THRESHOLD) {
 **Always handle `touchcancel`:** Treat it the same as a below-threshold `touchend` — snap back and clean up state.
 
 **Clamping:** For reveal gestures (swipe to expose buttons), clamp the transform so the element cannot be dragged further than the revealed width: `Math.max(-REVEAL_WIDTH, Math.min(0, dx))`.
+
+## Gesture implementation
+
+All touch gesture logic lives in `src/js/gestures.js`. Do not embed gesture code in screens or components — add to the module and call it from there.
+
+Two factories are available:
+
+- **`wireDrawerGesture(navMainEl, onOpen, onClose)`** — swipe-right to open / swipe-left to close a side drawer. Returns `{ open, close }`.
+- **`wireRevealGesture(listEl, wrapperSelector, rowSelector)`** — swipe-left on a list row to reveal buttons behind it. Returns `{ reset }`.
+
+Both follow the axis-lock, real-time tracking, and `data-dragging` suppression patterns described in the Swipe gesture pattern section above.
 
 ## Testing
 

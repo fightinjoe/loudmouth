@@ -4,10 +4,14 @@ import { DEFAULT_MODE, MODES } from './modes.js';
 
 function createDb(options = {}) {
   const instance = new Dexie('loudmouth', options);
+
+  // v1 — initial schema
   instance.version(1).stores({
     cards: 'id, lang, *deckIds, createdAt',
     decks: 'id, lang, createdAt',
   });
+
+  // v2 — card schema migration: legacy front/back shape → flat text/translation shape
   instance.version(2).stores({
     cards: 'id, lang, *deckIds, createdAt',
     decks: 'id, lang, createdAt',
@@ -19,6 +23,9 @@ function createDb(options = {}) {
       }
     })
   });
+
+  // v3 — deck mode rename: old mode names → study/review/reverse vocabulary;
+  //      added lastAccessedAt index on decks for recents ordering
   instance.version(3).stores({
     cards: 'id, lang, *deckIds, createdAt',
     decks: 'id, lang, createdAt, lastAccessedAt',
@@ -34,6 +41,8 @@ function createDb(options = {}) {
       }
     });
   });
+
+  // v4 — removed virtual all-{lang} system decks; strip orphaned all-* deckIds from cards
   instance.version(4).stores({
     cards: 'id, lang, *deckIds, createdAt',
     decks: 'id, lang, createdAt, lastAccessedAt',
@@ -46,6 +55,8 @@ function createDb(options = {}) {
       await tx.table('decks').delete(d.id);
     }
   });
+
+  // v5 — added deck.order field ('default' | 'random' | 'reverse')
   instance.version(5).stores({
     cards: 'id, lang, *deckIds, createdAt',
     decks: 'id, lang, createdAt, lastAccessedAt',
@@ -54,6 +65,8 @@ function createDb(options = {}) {
       if (!deck.order) deck.order = 'default';
     });
   });
+
+  // v6 — added deck.readingDisplay field ('reading' | 'romanization')
   instance.version(6).stores({
     cards: 'id, lang, *deckIds, createdAt',
     decks: 'id, lang, createdAt, lastAccessedAt',
@@ -62,6 +75,7 @@ function createDb(options = {}) {
       if (!deck.readingDisplay) deck.readingDisplay = 'reading';
     });
   });
+
   return instance;
 }
 
@@ -282,7 +296,12 @@ export async function updateCard(cardId, fields, store = db) {
 
 /**
  * Deletes a deck and all cards that belong to it.
- * Cards shared with other decks have the deckId removed instead of being deleted.
+ *
+ * NOTE: This is not atomic. If an error occurs mid-loop, some cards will have
+ * been deleted while others remain, leaving the deck record intact. Dexie does
+ * not provide a transaction API that spans the full operation here. In practice
+ * this is acceptable: orphaned cards cause no visible harm and are excluded from
+ * all UI queries (which filter by deckIds). A future migration can sweep them.
  */
 export async function deleteDeck(deckId, store = db) {
   const cards = await store.cards.where('deckIds').equals(deckId).toArray();
