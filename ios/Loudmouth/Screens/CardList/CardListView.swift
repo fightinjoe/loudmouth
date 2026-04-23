@@ -1,6 +1,12 @@
 import SwiftUI
 import SwiftData
 
+private var deviceSafeTop: CGFloat {
+    UIApplication.shared.connectedScenes
+        .compactMap { $0 as? UIWindowScene }
+        .first?.windows.first?.safeAreaInsets.top ?? 0
+}
+
 struct CardListView: View {
     var deck: Deck?
     var lang: String?
@@ -50,7 +56,8 @@ struct CardListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        ZStack {
+            // Main content
             ZStack(alignment: .top) {
                 Theme.bgPrimary.ignoresSafeArea()
                 VStack(spacing: 0) {
@@ -81,7 +88,7 @@ struct CardListView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 8)
+                    .padding(.top, deviceSafeTop + 8)
 
                     if cards.isEmpty {
                         Spacer()
@@ -111,18 +118,27 @@ struct CardListView: View {
                     }
                 }
             }
-            .navigationBarHidden(true)
-            .navigationDestination(item: $reviewStartIndex) { startIndex in
-                CardReviewView(deck: deck, cards: cards, startIndex: startIndex)
-            }
             .sheet(item: $editingCard) { card in
                 CardEditView(card: card)
             }
             .sheet(isPresented: $showSettings) {
                 if let deck { DeckSettingsView(deck: deck) }
             }
+            .tint(Theme.accent)
+
+            // Card review bottom sheet overlay
+            if let startIndex = reviewStartIndex {
+                CardReviewView(
+                    deck: deck,
+                    cards: cards,
+                    startIndex: startIndex,
+                    onDismiss: { reviewStartIndex = nil }
+                )
+                .transition(.move(edge: .bottom))
+                .zIndex(10)
+            }
         }
-        .tint(Theme.accent)
+        .animation(.easeOut(duration: 0.3), value: reviewStartIndex != nil)
     }
 
     private func playCard(_ card: Card) {
@@ -137,8 +153,4 @@ struct CardListView: View {
     private func toggleStar(_ card: Card) {
         card.starredAt = card.starredAt == nil ? .now : nil
     }
-}
-
-extension Int: @retroactive Identifiable {
-    public var id: Int { self }
 }
