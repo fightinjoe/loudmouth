@@ -26,9 +26,8 @@ Produce structured translation output from an input string and a target language
 - **input**: The text to translate — may be in English or already in the target language
 ## Output format
  
-Respond with a JSON object (or render it clearly in the conversation). Schema:
+Respond with only the JSON object. Do not render it in a conversation.  Schema:
  
-${"```json"}
 {
   "translations": [
     {
@@ -39,7 +38,6 @@ ${"```json"}
     }
   ]
 }
-${"```"}
  
 If the context is conversational (not a programmatic API call), you may present the output as a
 nicely formatted response rather than raw JSON, but always include all the fields.
@@ -59,8 +57,8 @@ If the input language is unambiguous, produce only one translation in that direc
 **Romanized loanwords**: When the input is a romanized word borrowed from the target language
 (e.g. "kawaii" for Japanese, "schadenfreude" for German), treat each translation as a **dictionary
 entry** rather than a directional translation. For the "English input" interpretation, set
-\`english_meaning\` to the word itself as used in English (e.g. \`"kawaii"\`). For the "target language"
-interpretation, set \`english_meaning\` to a full English gloss (e.g. \`"Cute, adorable, charming"\`).
+\`translation\` to the word itself as used in English (e.g. \`"kawaii"\`). For the "target language"
+interpretation, set \`translation\` to a full English gloss (e.g. \`"Cute, adorable, charming"\`).
  
 ### 2. Ambiguous word sense
  
@@ -81,17 +79,20 @@ Both rules can apply simultaneously (e.g. ambiguous language × ambiguous sense 
  
 ## Ruby markup rules (Japanese and Chinese only)
  
-When \`target_language\` is **Japanese** or **Chinese** (Mandarin, Cantonese, etc.), include a
+When \`lang\` is **Japanese** or **Chinese** (Mandarin, Cantonese, etc.), include a
 \`ruby_markup\` field with full HTML5 \`<ruby>\` annotations for all kanji/hanzi:
  
 ### Japanese
 - Annotate every kanji (and kanji compound) with hiragana reading
+- Do not annotate hirigana or katakana
 - Kana-only words do not need ruby
-- Example: \`<ruby>日本語<rt>にほんご</rt></ruby>\`
+- Example: \`<ruby>日<rt>に</rt>本<rt>ほん</rt>語<rt>ご</rt></ruby>\`
+- Example: \`<ruby>食<rt>た</rt>べる</ruby>\`
+- Example: \`<ruby>こんにちは</ruby>\`
 - For mixed strings: \`<ruby>食<rt>た</rt></ruby>べる\`
 ### Chinese
 - Annotate every character with its pinyin (with tone marks)
-- Example: \`<ruby>你好<rt>nǐ hǎo</rt></ruby>\`
+- Example: \`<ruby>你<rt>nǐ</rt>好<rt>hǎo</rt></ruby>\`
 - Use simplified or traditional characters as appropriate to the dialect/context
 For all other languages, set \`ruby_markup\` to \`null\`.
  
@@ -107,15 +108,15 @@ ${"```json"}
 {
   "translations": [
     {
-      "english_meaning": "A switch (device for toggling or controlling something)",
-      "target_language": "Japanese",
-      "target_text": "スイッチ",
+      "translation": "A switch (device for toggling or controlling something)",
+      "lang": "Japanese",
+      "text": "スイッチ",
       "ruby_markup": "スイッチ"
     },
     {
-      "english_meaning": "To switch / change / swap",
-      "target_language": "Japanese",
-      "target_text": "切り替える",
+      "translation": "To switch / change / swap",
+      "lang": "Japanese",
+      "text": "切り替える",
       "ruby_markup": "<ruby>切<rt>き</rt></ruby>り<ruby>替<rt>か</rt></ruby>える"
     }
   ]
@@ -130,15 +131,15 @@ ${"```json"}
 {
   "translations": [
     {
-      "english_meaning": "kawaii",
-      "target_language": "Japanese",
-      "target_text": "かわいい",
+      "translation": "kawaii",
+      "lang": "Japanese",
+      "text": "かわいい",
       "ruby_markup": "かわいい"
     },
     {
-      "english_meaning": "Cute, adorable, charming",
-      "target_language": "Japanese",
-      "target_text": "かわいい",
+      "translation": "Cute, adorable, charming",
+      "lang": "Japanese",
+      "text": "かわいい",
       "ruby_markup": null
     }
   ]
@@ -151,9 +152,9 @@ ${"```json"}
 {
   "translations": [
     {
-      "english_meaning": "Hello / Hi",
-      "target_language": "English",
-      "target_text": "Hello",
+      "translation": "Hello / Hi",
+      "lang": "English",
+      "text": "Hello",
       "ruby_markup": null
     }
   ]
@@ -164,8 +165,8 @@ ${"```"}
  
 ## Notes
  
-- Always include \`english_meaning\` even when translating from English (restate the specific sense being translated).
-- \`target_language\` is always the value passed as input to the skill, repeated verbatim in every translation object.
+- Always include \`translation\` even when translating from English (restate the specific sense being translated).
+- \`lang\` is always the value passed as input to the skill, repeated verbatim in every translation object.
 - For \`ruby_markup\`, set to \`null\` for non-CJK languages rather than omitting the key, for consistent schema.
 - Prioritise natural, idiomatic translations over literal ones. If a literal and idiomatic form differ substantially, you may include both as separate translations.
 

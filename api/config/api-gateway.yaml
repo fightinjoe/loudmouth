@@ -55,11 +55,11 @@ paths:
                 items:
                   type: object
                   properties:
-                    english_meaning:
+                    translation:
                       type: string
-                    target_language:
+                    lang:
                       type: string
-                    target_text:
+                    text:
                       type: string
                     ruby_markup:
                       type: string

@@ -30,14 +30,14 @@ function validateResponse(raw) {
   translations.forEach((item, i) => {
     const prefix = `translations[${i}]`;
 
-    if (typeof item.english_meaning !== 'string' || !item.english_meaning.trim()) {
-      throw new Error(`${prefix}.english_meaning must be a non-empty string`);
+    if (typeof item.translation !== 'string' || !item.translation.trim()) {
+      throw new Error(`${prefix}.translation must be a non-empty string`);
     }
-    if (typeof item.target_language !== 'string' || !item.target_language.trim()) {
-      throw new Error(`${prefix}.target_language must be a non-empty string`);
+    if (typeof item.lang !== 'string' || !item.lang.trim()) {
+      throw new Error(`${prefix}.lang must be a non-empty string`);
     }
-    if (typeof item.target_text !== 'string' || !item.target_text.trim()) {
-      throw new Error(`${prefix}.target_text must be a non-empty string`);
+    if (typeof item.text !== 'string' || !item.text.trim()) {
+      throw new Error(`${prefix}.text must be a non-empty string`);
     }
     if (!('ruby_markup' in item)) {
       throw new Error(`${prefix}.ruby_markup key must be present`);

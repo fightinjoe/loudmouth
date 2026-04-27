@@ -3,11 +3,12 @@ const { validateResponse } = require('./validate');
 const { callVertexAI } = require('./llms/vertex');
 const { callAnthropic } = require('./llms/anthropic');
 const { callOpenAI } = require('./llms/openai');
+const { callGenAI } = require('./llms/genai');
 
 const LLM_REGISTRY = {
-  'gemma-4': callVertexAI,
-  'claude-sonnet': callAnthropic,
-  'gpt-4o': callOpenAI,
+  'google': callGenAI,
+  'claude': callAnthropic,
+  'chatgpt': callOpenAI,
 };
 
 exports.translate = async (req, res) => {
