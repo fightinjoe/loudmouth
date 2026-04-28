@@ -1,6 +1,5 @@
 const { buildPrompt } = require('./prompt');
 const { validateResponse } = require('./validate');
-const { callVertexAI } = require('./llms/vertex');
 const { callAnthropic } = require('./llms/anthropic');
 const { callOpenAI } = require('./llms/openai');
 const { callGenAI } = require('./llms/genai');

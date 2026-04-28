@@ -83,6 +83,12 @@ for SECRET in anthropic-api-key openai-api-key; do
     --project="${PROJECT_ID}"
 done
 
+gcloud run services add-iam-policy-binding "${SERVICE_NAME}" \
+  --region="${REGION}" \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/run.invoker" \
+  --project="${PROJECT_ID}"
+
 # ---------------------------------------------------------------------------
 # 4. Deploy Cloud Run function
 # ---------------------------------------------------------------------------
@@ -180,6 +186,6 @@ echo " Test command:"
 echo ""
 echo "   curl -X POST https://${GATEWAY_URL}/translate \\"
 echo "     -H 'Content-Type: application/json' \\"
-echo "     -d '{\"text\": \"switch\", \"targetLanguage\": \"Japanese\", \"llm\": \"gemma-4\"}'"
+echo "     -d '{\"text\": \"switch\", \"targetLanguage\": \"Japanese\", \"llm\": \"google\"}'"
 echo ""
 echo "====================================================="

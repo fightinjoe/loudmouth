@@ -95,6 +95,74 @@ For Anthropic and OpenAI locally, set the env vars directly:
 ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... npm run dev
 ```
 
+## Testing the deployed service
+
+After `deploy.sh` completes, it prints the gateway URL. Export it and run a smoke test:
+
+```bash
+export GATEWAY_URL=https://YOUR_GATEWAY_HOST
+
+curl -X POST $GATEWAY_URL/translate \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "hello", "targetLanguage": "Japanese", "llm": "claude"}'
+```
+
+A successful response looks like:
+
+```json
+{
+  "translations": [
+    {
+      "translation": "こんにちは",
+      "lang": "ja",
+      "text": "hello",
+      "ruby_markup": null
+    }
+  ]
+}
+```
+
+Test each LLM backend:
+
+```bash
+# Google
+curl -s -X POST $GATEWAY_URL/translate \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "google"}' | jq .
+
+# Claude
+curl -s -X POST $GATEWAY_URL/translate \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "claude"}' | jq .
+
+# ChatGPT
+curl -s -X POST $GATEWAY_URL/translate \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "chatgpt"}' | jq .
+```
+
+Test error handling:
+
+```bash
+# Unknown LLM → 400
+curl -s -X POST $GATEWAY_URL/translate \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "gpt-5"}' | jq .
+
+# Missing field → 400
+curl -s -X POST $GATEWAY_URL/translate \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "hello", "llm": "claude"}' | jq .
+```
+
+View live logs in Cloud Logging:
+
+```bash
+gcloud logging read \
+  'resource.type="cloud_run_revision" AND resource.labels.service_name="translation-api"' \
+  --limit=50 --project=$GCP_PROJECT_ID --format=json | jq '.[].jsonPayload'
+```
+
 ## Adding a new LLM provider
 
 1. Create `src/llms/your-provider.js` — export a `callYourProvider(prompt)` function that returns a string.

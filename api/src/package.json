@@ -7,11 +7,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@google-cloud/functions-framework": "^3.4.5",
     "@google/genai": "^1.50.1",
     "openai": "^4.85.0"
-  },
-  "devDependencies": {
-    "@google-cloud/functions-framework": "^3.4.5"
   },
   "engines": {
     "node": ">=20"

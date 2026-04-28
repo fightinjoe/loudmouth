@@ -4,7 +4,7 @@ info:
   description: Routes translation requests to multiple LLM backends
   version: "1.0"
 
-host: "YOUR_GATEWAY_HOST"
+host: "translation-api-gateway-2qqw247r.uc.gateway.dev"
 schemes:
   - https
 
@@ -41,9 +41,9 @@ paths:
                 type: string
                 description: The LLM to use for translation
                 enum:
-                  - gemma-4
-                  - claude-sonnet
-                  - gpt-4o
+                  - google
+                  - claude
+                  - chatgpt
       responses:
         200:
           description: Successful translation
@@ -68,20 +68,3 @@ paths:
           description: Bad request (missing fields or unknown LLM)
         502:
           description: LLM or validation error
-      x-google-quota:
-        metricCosts:
-          translate-requests: 1
-
-x-google-management:
-  metrics:
-    - name: translate-requests
-      displayName: Translate Requests
-      valueType: INT64
-      metricKind: GAUGE
-  quota:
-    limits:
-      - name: translate-requests-limit
-        metric: translate-requests
-        unit: "1/min/{project}"
-        values:
-          STANDARD: 60
