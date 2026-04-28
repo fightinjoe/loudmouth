@@ -13,13 +13,13 @@ function getClient() {
   return client;
 }
 
-async function callOpenAI(prompt) {
+async function callOpenAI(prompt, { maxOutputTokens = 1024 } = {}) {
   const openai = getClient();
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
     temperature: 0.2,
-    max_tokens: 1024,
+    max_tokens: maxOutputTokens,
     messages: [{ role: 'user', content: prompt }],
   });
 

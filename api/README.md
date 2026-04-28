@@ -1,6 +1,6 @@
 # Translation API
 
-A Node.js Cloud Run function that translates text via multiple LLM backends, with an API Gateway handling rate limiting.
+A Node.js Cloud Run function that translates text and generates language flashcards via multiple LLM backends, with an API Gateway handling rate limiting.
 
 ## Project structure
 
@@ -9,17 +9,86 @@ translation-api/
 ├── config/
 │   └── api-gateway.yaml      # OpenAPI 2.0 spec + rate limiting (60 req/min)
 ├── src/
-│   ├── index.js              # Cloud Run entry point, request routing
-│   ├── prompt.js             # Shared prompt builder (all LLMs use this)
-│   ├── validate.js           # Response shape validation
+│   ├── index.js              # Cloud Run entry point, path routing
+│   ├── prompt.js             # Prompt builder for /translate
+│   ├── validate.js           # Response validator for /translate
+│   ├── cards-prompt.js       # Prompt builder for /generate-cards
+│   ├── cards-validate.js     # Response validator for /generate-cards
 │   ├── package.json
 │   └── llms/
-│       ├── vertex.js         # Gemma via Vertex AI (no API key needed)
 │       ├── anthropic.js      # Claude via Anthropic SDK
-│       └── openai.js         # GPT-4o via OpenAI SDK
+│       ├── openai.js         # GPT-4o via OpenAI SDK
+│       └── genai.js          # Gemini via Google GenAI SDK
 ├── deploy.sh                 # Idempotent GCP deploy script
 └── README.md
 ```
+
+## Endpoints
+
+Both endpoints are served from the same Cloud Run function, routed by path.
+
+### `POST /translate`
+
+Translates text into a target language.
+
+**Request:**
+```json
+{
+  "text": "hello",
+  "targetLanguage": "Japanese",
+  "llm": "claude"
+}
+```
+
+**Response:**
+```json
+{
+  "translations": [
+    {
+      "translation": "Hello / Hi",
+      "lang": "Japanese",
+      "text": "こんにちは",
+      "ruby_markup": "<ruby>こんにちは</ruby>"
+    }
+  ]
+}
+```
+
+### `POST /generate-cards`
+
+Generates language flashcards in the Loudmouth card batch schema (see `docs/card-batch-schema.md`).
+
+**Request:**
+```json
+{
+  "lang": "zh",
+  "topic": "ordering food at a restaurant",
+  "count": 15,
+  "llm": "google"
+}
+```
+
+- `lang` — required, `"zh"` or `"ja"`
+- `topic` — required, freeform description of card content
+- `count` — optional, integer 1–50 (default: 15)
+- `llm` — optional, `"google"` | `"claude"` | `"chatgpt"` (default: `"google"`)
+
+**Response:**
+```json
+{
+  "cards": [
+    {
+      "lang": "zh",
+      "type": "word",
+      "text": "菜单",
+      "reading": "càidān",
+      "translation": "menu"
+    }
+  ]
+}
+```
+
+See `docs/card-batch-schema.md` for the full schema reference.
 
 ## First-time setup
 
@@ -82,12 +151,14 @@ npm run dev
 The function will be available at `http://localhost:8080`. Test it:
 
 ```bash
-curl -X POST http://localhost:8080 \
+curl -X POST http://localhost:8080/translate \
   -H 'Content-Type: application/json' \
-  -d '{"text": "hello", "targetLanguage": "Japanese", "llm": "claude-sonnet"}'
-```
+  -d '{"text": "hello", "targetLanguage": "Japanese", "llm": "claude"}'
 
-For Vertex AI locally, `gcloud auth application-default login` provides the credentials automatically — no service account key file needed.
+curl -X POST http://localhost:8080/generate-cards \
+  -H 'Content-Type: application/json' \
+  -d '{"lang": "zh", "topic": "ordering food at a restaurant"}'
+```
 
 For Anthropic and OpenAI locally, set the env vars directly:
 
@@ -97,51 +168,43 @@ ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... npm run dev
 
 ## Testing the deployed service
 
-After `deploy.sh` completes, it prints the gateway URL. Export it and run a smoke test:
+After `deploy.sh` completes, it prints the gateway URL. Export it and run smoke tests:
 
 ```bash
 export GATEWAY_URL=https://YOUR_GATEWAY_HOST
-
-curl -X POST $GATEWAY_URL/translate \
-  -H 'Content-Type: application/json' \
-  -d '{"text": "hello", "targetLanguage": "Japanese", "llm": "claude"}'
 ```
 
-A successful response looks like:
-
-```json
-{
-  "translations": [
-    {
-      "translation": "こんにちは",
-      "lang": "ja",
-      "text": "hello",
-      "ruby_markup": null
-    }
-  ]
-}
-```
-
-Test each LLM backend:
+### `/translate`
 
 ```bash
-# Google
+curl -s -X POST $GATEWAY_URL/translate \
+  -H 'Content-Type: application/json' \
+  -d '{"text": "hello", "targetLanguage": "Japanese", "llm": "claude"}' | jq .
+
 curl -s -X POST $GATEWAY_URL/translate \
   -H 'Content-Type: application/json' \
   -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "google"}' | jq .
 
-# Claude
-curl -s -X POST $GATEWAY_URL/translate \
-  -H 'Content-Type: application/json' \
-  -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "claude"}' | jq .
-
-# ChatGPT
 curl -s -X POST $GATEWAY_URL/translate \
   -H 'Content-Type: application/json' \
   -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "chatgpt"}' | jq .
 ```
 
-Test error handling:
+### `/generate-cards`
+
+```bash
+# Default (google, 15 cards)
+curl -s -X POST $GATEWAY_URL/generate-cards \
+  -H 'Content-Type: application/json' \
+  -d '{"lang": "zh", "topic": "ordering food at a restaurant"}' | jq .
+
+# Japanese, 10 cards, Claude
+curl -s -X POST $GATEWAY_URL/generate-cards \
+  -H 'Content-Type: application/json' \
+  -d '{"lang": "ja", "topic": "common verbs for daily routines", "count": 10, "llm": "claude"}' | jq .
+```
+
+### Error handling
 
 ```bash
 # Unknown LLM → 400
@@ -153,9 +216,19 @@ curl -s -X POST $GATEWAY_URL/translate \
 curl -s -X POST $GATEWAY_URL/translate \
   -H 'Content-Type: application/json' \
   -d '{"text": "hello", "llm": "claude"}' | jq .
+
+# Invalid lang → 400
+curl -s -X POST $GATEWAY_URL/generate-cards \
+  -H 'Content-Type: application/json' \
+  -d '{"lang": "fr", "topic": "food"}' | jq .
+
+# Missing topic → 400
+curl -s -X POST $GATEWAY_URL/generate-cards \
+  -H 'Content-Type: application/json' \
+  -d '{"lang": "zh"}' | jq .
 ```
 
-View live logs in Cloud Logging:
+View live logs:
 
 ```bash
 gcloud logging read \
@@ -170,7 +243,7 @@ gcloud logging read \
    ```js
    'your-model-name': callYourProvider,
    ```
-3. Add the new model name to the `enum` list in `config/api-gateway.yaml`.
+3. Add the new model name to the `enum` lists in `config/api-gateway.yaml`.
 4. Re-run `./deploy.sh`.
 
 No other files change.
@@ -184,4 +257,4 @@ values:
   STANDARD: 120
 ```
 
-Then re-run `./deploy.sh` to deploy a new gateway config. No code changes required.
+Then re-run `./deploy.sh`. No code changes required.

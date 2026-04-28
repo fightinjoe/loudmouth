@@ -13,13 +13,13 @@ function getClient() {
   return client;
 }
 
-async function callAnthropic(prompt) {
+async function callAnthropic(prompt, { maxOutputTokens = 1024 } = {}) {
   const anthropic = getClient();
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     temperature: 0.2,
-    max_tokens: 1024,
+    max_tokens: maxOutputTokens,
     messages: [{ role: 'user', content: prompt }],
   });
 

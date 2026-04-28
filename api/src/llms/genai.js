@@ -18,14 +18,14 @@ function getClient() {
   return client;
 }
 
-async function callGenAI(prompt) {
+async function callGenAI(prompt, { maxOutputTokens = 1024 } = {}) {
   const ai = getClient();
   const result = await ai.models.generateContent({
     model: 'gemini-2.5-flash-lite',
     contents: prompt,
     config: {
       temperature: 0.2,
-      maxOutputTokens: 1024,
+      maxOutputTokens,
     },
   });
 
