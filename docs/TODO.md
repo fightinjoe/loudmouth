@@ -4,6 +4,7 @@
 
 - [ ] **iOS card schema is defined in multiple places** — `Card.swift` (SwiftData model), `ImportService.swift` (`CardInput`/`CardInputExample`), and `BackupService.swift` (`CardBackup`) each independently declare the card shape. A single canonical definition should be the source of truth.
 - [ ] **`example` storage shape differs between iOS and web** — The web app stores `example` as a nested object `{ text, reading, translation }` on the card. iOS flattens it into three top-level fields on the `Card` model: `exampleText`, `exampleReading`, `exampleTranslation`. These should be reconciled so both platforms use the same shape (nested object preferred, matching the batch schema).
+- [ ] **LLM:** make sure that `google` is the default LLM for all API requests
 
 ## Design migration
 
@@ -12,8 +13,8 @@ The items below track gaps between `DESIGN.md` and the current web/iOS implement
 ### Information Architecture
 
 - [x] **Web: content pane slides right to reveal nav pane** — Current web impl uses a left drawer that overlays the content. DESIGN.md specifies the content pane slides *off to the right*, revealing the nav pane underneath (not an overlay). Refactor `deck-view.js` drawer animation so the main content translates right instead of a side drawer sliding over it.
-- [ ] **Web: nav pane ADD FAB (bottom-left)** — DESIGN.md calls for a `+` FAB pinned to the bottom-left of the navigation pane that creates a new deck and immediately opens the Generate Cards action pane. The current web `+` button in the drawer opens the paste-JSON import sheet instead. Replace with a FAB that calls `/generate-cards` (see `api/README.md`) and creates a deck from the result.
-- [ ] **iOS: ADD FAB on nav pane (bottom-left)** — Same as above; the iOS nav pane `+` button currently opens `AddCardsView` (paste JSON). Replace with a FAB that opens the Generate Cards sheet (not the paste-JSON import).
+- [x] **Web: nav pane ADD FAB (bottom-left)** — DESIGN.md calls for a `+` FAB pinned to the bottom-left of the navigation pane that creates a new deck and immediately opens the Generate Cards action pane. The current web `+` button in the drawer opens the paste-JSON import sheet instead. Replace with a FAB that calls `/generate-cards` (see `api/README.md`) and creates a deck from the result.
+- [x] **iOS: ADD FAB on nav pane (bottom-left)** — Same as above; the iOS nav pane `+` button currently opens `AddCardsView` (paste JSON). Replace with a FAB that opens the Generate Cards sheet (not the paste-JSON import).
 - [ ] **Web: deck title tap menu ("Settings" / "Edit cards")** — DESIGN.md specifies tapping the deck title in the header reveals a two-item menu: "Settings" (slides up deck-settings action pane) and "Edit cards" (enters reorder mode). Not present in current web implementation.
 - [ ] **iOS: deck title tap menu** — Same as above; not present in current iOS implementation.
 - [ ] **Web: "All ${language} decks" overflow link** — When a language section has more than 5 decks, show an "All Japanese decks" (etc.) link. Tapping it shows a full deck-list pane for that language. Current web nav drawer shows all decks; add the 5-deck cap + overflow link.

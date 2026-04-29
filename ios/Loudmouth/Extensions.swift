@@ -14,6 +14,6 @@ func flatReading(_ tokens: [[String?]]?) -> String {
         if token.count > 1, let annotation = token[1] {
             return annotation
         }
-        return token.first ?? ""
+        return token.first.flatMap { $0 } ?? ""
     }.joined()
 }

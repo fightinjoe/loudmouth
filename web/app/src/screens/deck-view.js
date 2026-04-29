@@ -13,6 +13,7 @@ import { openDeckSettings } from '../components/deck-settings.js'
 import { openCardReview } from '../components/card-review.js'
 import { openCardEditPanel } from '../components/card-edit-panel.js'
 import { openJsonPanel, toImportJson } from '../components/json-panel.js'
+import { openGenerateCardsPanel } from '../components/generate-cards-panel.js'
 
 const LAST_DECK_KEY = 'loudmouth.lastDeckId'
 
@@ -106,13 +107,14 @@ async function buildNavPaneContent() {
     <div class="panel-header">
       <span class="panel-header-spacer"></span>
       <span class="panel-header-title">Decks</span>
-      <button class="panel-header-right nav-pane-add-btn" aria-label="Add">＋</button>
+      <span class="panel-header-spacer"></span>
     </div>
     <div class="deck-picker-list">
       ${mostRecentHTML}
       ${byLangHTML}
       ${isEmpty ? '<p class="deck-picker-empty">No decks yet.</p>' : ''}
     </div>
+    <button class="nav-pane-add-fab" aria-label="Add deck">＋</button>
   `
 }
 
@@ -214,7 +216,7 @@ export function renderDeckView(el, params) {
       await selectDeck(row.dataset.deckId)
     })
 
-    navPaneEl.querySelector('.nav-pane-add-btn').addEventListener('click', () => openAdd())
+    navPaneEl.querySelector('.nav-pane-add-fab').addEventListener('click', () => openGenerateCards())
 
     // ── Load deck content ────────────────────────────────────────────────────
 
@@ -227,19 +229,23 @@ export function renderDeckView(el, params) {
       await loadDeck()
     }
 
-    function openAdd() {
-      openAddCardsPanel(el, () => {}, async (importedDeckId) => {
-        if (importedDeckId) await selectDeck(importedDeckId)
-        // Refresh nav pane
-        navPaneEl.innerHTML = await buildNavPaneContent()
-        navPaneEl.querySelector('.deck-picker-list').addEventListener('click', async e => {
-          const row = e.target.closest('[data-deck-id]')
-          if (!row) return
-          navPane.close()
-          await selectDeck(row.dataset.deckId)
-        })
-        navPaneEl.querySelector('.nav-pane-add-btn').addEventListener('click', () => openAdd())
-      }, dbOps)
+    async function refreshNavPane() {
+      navPaneEl.innerHTML = await buildNavPaneContent()
+      navPaneEl.querySelector('.deck-picker-list').addEventListener('click', async e => {
+        const row = e.target.closest('[data-deck-id]')
+        if (!row) return
+        navPane.close()
+        await selectDeck(row.dataset.deckId)
+      })
+      navPaneEl.querySelector('.nav-pane-add-fab').addEventListener('click', () => openGenerateCards())
+    }
+
+    function openGenerateCards() {
+      openGenerateCardsPanel(el, { createDeck, importCards }, async (newDeckId) => {
+        await refreshNavPane()
+        navPane.close()
+        await selectDeck(newDeckId)
+      })
     }
 
     async function loadDeck() {
@@ -250,7 +256,7 @@ export function renderDeckView(el, params) {
             <button id="btn-import-cards" class="btn btn-primary">Import cards</button>
           </div>
         `
-        screenEl.querySelector('#btn-import-cards').addEventListener('click', () => openAdd())
+        screenEl.querySelector('#btn-import-cards').addEventListener('click', () => openGenerateCards())
         return
       }
 

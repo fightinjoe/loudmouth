@@ -13,6 +13,13 @@ x-google-backend:
 
 paths:
   /translate:
+    options:
+      summary: CORS preflight
+      operationId: translateOptions
+      parameters: []
+      responses:
+        204:
+          description: CORS preflight response
     post:
       summary: Translate text using a specified LLM
       operationId: translate
@@ -70,6 +77,13 @@ paths:
           description: LLM or validation error
 
   /generate-cards:
+    options:
+      summary: CORS preflight
+      operationId: generateCardsOptions
+      parameters: []
+      responses:
+        204:
+          description: CORS preflight response
     post:
       summary: Generate language flashcards using a specified LLM
       operationId: generateCards

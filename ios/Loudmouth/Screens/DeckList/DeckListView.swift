@@ -74,12 +74,19 @@ struct DeckListView: View {
         .sheet(isPresented: $viewModel.showAddCards) {
             AddCardsView()
         }
+        .sheet(isPresented: $viewModel.showGenerateCards) {
+            GenerateCardsView { deck in
+                selectDeck(deck)
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.hidden)
+        }
     }
 
     // MARK: - Deck list pane
 
     private var deckListPane: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .bottomLeading) {
             Theme.bgPrimary.ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -136,22 +143,22 @@ struct DeckListView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 40)
+                .padding(.bottom, 100) // clear FAB
             }
-            // + button top right
             .toolbar(.hidden, for: .navigationBar)
-            .safeAreaInset(edge: .top) {
-                HStack {
-                    Spacer()
-                    Button { viewModel.showAddCards = true } label: {
-                        Image(systemName: "plus")
-                            .font(.title3)
-                            .foregroundStyle(Theme.textBody)
-                            .padding(12)
-                    }
-                }
-                .background(Theme.bgPrimary)
+
+            // ADD FAB — bottom-left
+            Button { viewModel.showGenerateCards = true } label: {
+                Image(systemName: "plus")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 52, height: 52)
+                    .background(Theme.accent)
+                    .clipShape(Circle())
+                    .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 4)
             }
+            .padding(.leading, 20)
+            .padding(.bottom, 24)
         }
     }
 

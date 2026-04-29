@@ -2,6 +2,29 @@
  * Validates and parses the raw string returned by any LLM for card generation.
  * Throws a descriptive Error if the response does not match the card batch schema.
  */
+
+/**
+ * Validates a ReadingToken array: must be a non-empty array of [base, annotation|null] pairs.
+ * base must be a non-empty string; annotation must be a non-empty string or null.
+ */
+function validateReadingTokens(value, prefix) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error(`${prefix} must be a non-empty ReadingToken array (e.g. [["菜","cài"],["单","dān"]])`);
+  }
+  for (let i = 0; i < value.length; i++) {
+    const token = value[i];
+    if (!Array.isArray(token) || token.length < 2) {
+      throw new Error(`${prefix}[${i}] must be a [base, annotation|null] pair`);
+    }
+    if (typeof token[0] !== 'string' || !token[0]) {
+      throw new Error(`${prefix}[${i}][0] (base) must be a non-empty string`);
+    }
+    if (token[1] !== null && (typeof token[1] !== 'string' || !token[1])) {
+      throw new Error(`${prefix}[${i}][1] (annotation) must be a non-empty string or null`);
+    }
+  }
+}
+
 function validateCardsResponse(raw) {
   if (typeof raw !== 'string') {
     throw new Error(`Expected string from LLM, got ${typeof raw}`);
@@ -38,9 +61,7 @@ function validateCardsResponse(raw) {
     if (typeof card.translation !== 'string' || !card.translation.trim()) {
       throw new Error(`${prefix}.translation must be a non-empty string`);
     }
-    if (typeof card.reading !== 'string' || !card.reading.trim()) {
-      throw new Error(`${prefix}.reading must be a non-empty string`);
-    }
+    validateReadingTokens(card.reading, `${prefix}.reading`);
 
     if (card.type !== undefined && !['word', 'phrase', 'sentence'].includes(card.type)) {
       throw new Error(`${prefix}.type must be "word", "phrase", or "sentence" if present`);
@@ -54,6 +75,9 @@ function validateCardsResponse(raw) {
       }
       if (typeof card.example.text !== 'string' || !card.example.text.trim()) {
         throw new Error(`${prefix}.example.text must be a non-empty string`);
+      }
+      if (card.example.reading !== undefined) {
+        validateReadingTokens(card.example.reading, `${prefix}.example.reading`);
       }
     }
   });

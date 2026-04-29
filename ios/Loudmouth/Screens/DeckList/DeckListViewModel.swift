@@ -4,6 +4,7 @@ import SwiftData
 @MainActor
 final class DeckListViewModel: ObservableObject {
     @Published var showAddCards = false
+    @Published var showGenerateCards = false
 
     func recentDecks(_ decks: [Deck], limit: Int = 3) -> [Deck] {
         decks
