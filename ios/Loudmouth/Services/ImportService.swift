@@ -6,14 +6,14 @@ struct CardBatch: Decodable {
 
 struct CardInputExample: Decodable {
     let text: String
-    let reading: String?
+    let reading: [[String?]]?
     let translation: String?
 }
 
 struct CardInput: Decodable {
     let lang: String
     let text: String
-    let reading: String?
+    let reading: [[String?]]?
     let romanization: String?
     let translation: String
     let type: String?

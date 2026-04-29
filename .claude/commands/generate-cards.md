@@ -5,7 +5,7 @@ description: Generates language flashcards in the Loudmouth card schema JSON for
 
 # Generate Cards
 
-Generate a set of language flashcards in the Loudmouth card schema JSON format.
+Generate a set of language flashcards in the Loudmouth card batch schema. See [`docs/CARD_SCHEMA.md`](../../../docs/CARD_SCHEMA.md) for the full schema reference.
 
 ## Step 1: Gather parameters
 
@@ -28,22 +28,23 @@ Produce cards that are **genuinely useful for language learning**. Follow these 
 
 - **Favor high-frequency vocabulary.** For Japanese, target JLPT N5–N3 range unless the topic demands otherwise. For Chinese, target HSK 1–4.
 - **Favor nouns, verbs, adjectives, and adverbs.** These are the words learners need most.
-- **Avoid function words** — particles (は, が, で…), conjunctions (but, and, because), pronouns (he, she, they), prepositions — unless the user specifically asks for grammar cards or the topic demands it.
+- **Avoid function words** — particles (は, が, で…), conjunctions, pronouns, prepositions — unless the user specifically asks for grammar cards or the topic demands it.
 - **Match the topic closely.** If the instruction is "ordering food," every card should be directly useful in that context. Do not pad with tangentially related words.
 - **Avoid redundancy.** Do not include both a verb and its nominal form unless they're meaningfully distinct.
-- **For extraction prompts:** Read the source text carefully and select the words or phrases most worth learning — the ones a learner would actually want to look up. Skip words that are obvious cognates, proper nouns, or already common in English.
+- **For extraction prompts:** Read the source text carefully and select the words or phrases most worth learning. Skip obvious cognates, proper nouns, or words already common in English.
 
 ### Card content
 
-- `front.text` — the word or phrase as it would appear in text. Use standard simplified characters for zh; use kanji+kana as appropriate for ja.
-- `front.reading` — always include for zh (pinyin with tone marks) and ja (hiragana). Do not omit.
-- `back.translation` — clear, natural English. For words with multiple senses, give the 1–2 most common. Do not list every possible meaning.
-- `back.notes` — optional. Use for: grammatical notes (e.g., "takes を particle"), register (e.g., "polite form"), common collocations, or disambiguation. Keep brief.
-- `example` — optional but encouraged for phrases and sentences. Use natural, context-appropriate example sentences. Include reading and translation.
+- `text` — the word or phrase as it would appear in text. Use standard simplified characters for zh; kanji+kana as appropriate for ja.
+- `reading` — optional. Always included for non-roman languages. Structured array of `[base, annotation|null]` pairs (see schema). For zh: every character gets tone-marked pinyin. For ja: kanji get hiragana; kana/katakana use `null`.
+- `translation` — clear, natural English. For words with multiple senses, give the 1–2 most common.
+- `romanization` — optional. Romaji for ja; omit if not useful.
+- `notes` — optional. Use for grammatical notes, register, common collocations, or disambiguation. Keep brief.
+- `example` — optional but encouraged for phrases and sentences. Include `reading` tokens and translation.
 
 ## Step 3: Preview and approval
 
-Present a numbered preview list — only `front.text` and `back.translation` — like this:
+Present a numbered preview list — only `text` and `translation` — like this:
 
 ```
 1. 菜单 — menu
@@ -55,9 +56,9 @@ Ask the user: **"Any changes? (or type 'ok' to generate)"**
 
 The user may:
 - Approve all cards ("ok", "looks good", "generate", etc.) → proceed to Step 4
-- Request changes to specific cards ("swap #3 for X", "drop #5", "add a card for Y") → apply changes, re-display the updated preview, and ask again
+- Request changes → apply, re-display the updated preview, and ask again
 
-Repeat this loop until the user approves.
+Repeat until the user approves.
 
 ## Step 4: Output
 
@@ -71,7 +72,7 @@ Produce the final JSON, then generate two import links and display the raw JSON 
 
 ```
 **Import (production):**
-https://loudmouth-gilt.verce.app/#deck?cards=<encoded>
+https://loudmouth-gilt.vercel.app/#deck?cards=<encoded>
 
 **Import (local):**
 http://localhost:8000/#deck?cards=<encoded>
@@ -79,96 +80,4 @@ http://localhost:8000/#deck?cards=<encoded>
 
 ### 4b: Show the raw JSON
 
-After the links, display the full JSON in a fenced code block for troubleshooting:
-
-```json
-{ ... }
-```
-
-### Schema
-
-```json
-{
-  "cards": [
-    {
-      "lang": "zh" | "ja",
-      "type": "word" | "phrase" | "sentence",
-      "front": {
-        "text": "string",
-        "reading": "string"
-      },
-      "back": {
-        "translation": "string",
-        "notes": "string (optional)"
-      },
-      "example": {
-        "text": "string",
-        "reading": "string (optional)",
-        "translation": "string (optional)"
-      }
-    }
-  ]
-}
-```
-
-Do not include `id` or `importedAt` — those are assigned by the app at import time.
-
-### Example output (zh, 2 cards)
-
-```json
-{
-  "cards": [
-    {
-      "lang": "zh",
-      "type": "phrase",
-      "text": "我想点菜",
-      "reading": "wǒ xiǎng diǎn cài",
-      "translation": "I'd like to order",
-      "notes": "Standard phrase to get a waiter's attention when ordering",
-      "example": {
-        "text": "服务员，我想点菜。",
-        "reading": "Fúwùyuán, wǒ xiǎng diǎn cài.",
-        "translation": "Waiter, I'd like to order."
-      }
-    },
-    {
-      "lang": "zh",
-      "type": "word",
-      "text": "菜单",
-      "reading": "càidān",
-      "translation": "menu"
-      }
-    }
-  ]
-}
-```
-
-### Example output (ja, 2 cards)
-
-```json
-{
-  "cards": [
-    {
-      "lang": "ja",
-      "type": "phrase",
-      "text": "注文してもいいですか",
-      "reading": "ちゅうもんしてもいいですか",
-      "translation": "May I order?",
-      "notes": "Polite request form; use in restaurants",
-      "example": {
-        "text": "すみません、注文してもいいですか。",
-        "reading": "すみません、ちゅうもんしてもいいですか。",
-        "translation": "Excuse me, may I order?"
-      }
-    },
-    {
-      "lang": "ja",
-      "type": "word",
-      "text": "おすすめ",
-      "reading": "おすすめ",
-      "translation": "recommendation; recommended dish",
-      "notes": "Often seen on menus as おすすめ料理"
-    }
-  ]
-}
-```
+After the links, display the full JSON in a fenced code block for troubleshooting.

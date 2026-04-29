@@ -17,8 +17,8 @@ struct FlipCardView: View {
 
     private var frontReading: String {
         guard mode == "study" else { return "" }
-        if readingDisplay == "romanization" { return card.romanization ?? card.reading ?? "" }
-        return card.reading ?? ""
+        if readingDisplay == "romanization" { return card.romanization ?? flatReading(card.reading) }
+        return flatReading(card.reading)
     }
 
     private var backText: String {
@@ -27,8 +27,8 @@ struct FlipCardView: View {
 
     private var backReading: String {
         guard mode != "study" else { return "" }
-        if readingDisplay == "romanization" { return card.romanization ?? card.reading ?? "" }
-        return card.reading ?? ""
+        if readingDisplay == "romanization" { return card.romanization ?? flatReading(card.reading) }
+        return flatReading(card.reading)
     }
 
     var body: some View {

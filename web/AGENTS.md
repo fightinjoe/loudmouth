@@ -78,10 +78,11 @@ Always use semantic variables (`--text-body`, `--bg-primary`) in component style
 
 ## Card schema
 
-See `../docs/BRIEF.md` — Library Schema section. Key points:
+See `../docs/CARD_SCHEMA.md` for the full batch schema. Key points:
 - `id` (UUID v4) and `createdAt` (ISO 8601) are assigned at import time, never in the batch JSON
 - Required per card: `lang`, `text`, `translation`
-- All other fields optional: `type`, `reading`, `notes`, `example`
+- `reading` is a `ReadingToken[]` array of `[base, annotation|null]` pairs, not a plain string
+- All other fields optional: `type`, `reading`, `romanization`, `notes`, `example`
 
 ## Swipe gesture pattern
 

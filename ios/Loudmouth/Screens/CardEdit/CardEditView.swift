@@ -7,7 +7,6 @@ struct CardEditView: View {
 
     @State private var text: String
     @State private var translation: String
-    @State private var reading: String
     @State private var romanization: String
     @State private var notes: String
     @State private var exampleText: String
@@ -18,7 +17,6 @@ struct CardEditView: View {
         self.card = card
         _text = State(initialValue: card.text)
         _translation = State(initialValue: card.translation)
-        _reading = State(initialValue: card.reading ?? "")
         _romanization = State(initialValue: card.romanization ?? "")
         _notes = State(initialValue: card.notes ?? "")
         _exampleText = State(initialValue: card.exampleText ?? "")
@@ -37,12 +35,6 @@ struct CardEditView: View {
                     LabeledContent("Translation") {
                         TextField("Required", text: $translation)
                             .multilineTextAlignment(.trailing)
-                    }
-                    LabeledContent("Reading") {
-                        TextField("Optional", text: $reading)
-                            .multilineTextAlignment(.trailing)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
                     }
                     LabeledContent("Romanization") {
                         TextField("Optional", text: $romanization)
@@ -110,7 +102,6 @@ struct CardEditView: View {
 
         card.text = trimmedText
         card.translation = trimmedTranslation
-        card.reading = reading.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         card.romanization = romanization.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         card.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         card.exampleText = exampleText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty

@@ -8,8 +8,8 @@ struct CardRowView: View {
     let onEdit: () -> Void
 
     private var reading: String {
-        if readingDisplay == "romanization" { return card.romanization ?? card.reading ?? "" }
-        return card.reading ?? ""
+        if readingDisplay == "romanization" { return card.romanization ?? flatReading(card.reading) }
+        return flatReading(card.reading)
     }
 
     var body: some View {

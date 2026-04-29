@@ -247,28 +247,6 @@ describe('getCardsByLang', () => {
 // --- restoreAllData migration ---
 
 describe('restoreAllData', () => {
-  it('normalizes old-schema cards on restore', async () => {
-    const oldCards = [
-      {
-        id: 'test-id-1',
-        lang: 'zh',
-        createdAt: '2026-01-01T00:00:00.000Z',
-        deckIds: ['all-zh'],
-        front: { text: '你好', reading: 'nǐ hǎo' },
-        back: { translation: 'Hello', notes: 'greeting' },
-      }
-    ]
-    await restoreAllData({ cards: oldCards, decks: [] }, store)
-    const cards = await store.cards.toArray()
-    expect(cards).toHaveLength(1)
-    expect(cards[0].text).toBe('你好')
-    expect(cards[0].reading).toBe('nǐ hǎo')
-    expect(cards[0].translation).toBe('Hello')
-    expect(cards[0].notes).toBe('greeting')
-    expect(cards[0].front).toBeUndefined()
-    expect(cards[0].back).toBeUndefined()
-  })
-
   it('strips all-{lang} deckIds on restore', async () => {
     const cards = [
       {

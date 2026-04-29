@@ -1,5 +1,4 @@
 import Dexie from 'dexie';
-import { normalizeCard } from './import-parser.js';
 import { DEFAULT_MODE, MODES } from './modes.js';
 
 function createDb(options = {}) {
@@ -15,14 +14,7 @@ function createDb(options = {}) {
   instance.version(2).stores({
     cards: 'id, lang, *deckIds, createdAt',
     decks: 'id, lang, createdAt',
-  }).upgrade(tx => {
-    return tx.cards.toCollection().modify(card => {
-      if (!card.text) {
-        const normalized = normalizeCard(card)
-        Object.assign(card, normalized)
-      }
-    })
-  });
+  }).upgrade(() => {});
 
   // v3 — deck mode rename: old mode names → study/review/reverse vocabulary;
   //      added lastAccessedAt index on decks for recents ordering
@@ -337,11 +329,9 @@ export async function restoreAllData(data, store = db) {
     await store.decks.add(deck);
   }
 
-  // Normalize and restore cards, stripping any legacy all-{lang} deckIds
   for (const card of cards) {
-    const normalized = normalizeCard(card);
-    normalized.deckIds = (normalized.deckIds || []).filter(id => !id.startsWith('all-'));
-    await store.cards.add(normalized);
+    card.deckIds = (card.deckIds || []).filter(id => !id.startsWith('all-'));
+    await store.cards.add(card);
   }
 }
 

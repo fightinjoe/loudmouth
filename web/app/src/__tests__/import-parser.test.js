@@ -1,48 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { parseCardBatch, normalizeCard } from '../js/import-parser.js';
+import { parseCardBatch } from '../js/import-parser.js';
 
-// New flat schema fixture
 const valid = (overrides = {}) => ({
   lang: 'zh',
   type: 'word',
   text: '你好',
-  reading: 'nǐ hǎo',
+  reading: [['你', 'nǐ'], ['好', 'hǎo']],
   translation: 'Hello',
   notes: 'Common greeting',
-  example: { text: '你好吗', reading: 'nǐ hǎo ma', translation: 'How are you?' },
-  ...overrides,
-});
-
-// Old nested schema fixture (backward compat)
-const validOld = (overrides = {}) => ({
-  lang: 'zh',
-  type: 'word',
-  front: { text: '你好', reading: 'nǐ hǎo' },
-  back: { translation: 'Hello', notes: 'Common greeting' },
-  example: { text: '你好吗', reading: 'nǐ hǎo ma', translation: 'How are you?' },
+  example: { text: '你好吗', reading: [['你', 'nǐ'], ['好', 'hǎo'], ['吗', 'ma']], translation: 'How are you?' },
   ...overrides,
 });
 
 const batch = (cards) => JSON.stringify({ cards });
-
-// --- normalizeCard ---
-
-describe('normalizeCard', () => {
-  it('returns flat card unchanged', () => {
-    const card = valid()
-    expect(normalizeCard(card)).toEqual(card)
-  })
-
-  it('migrates old front/back schema to flat', () => {
-    const result = normalizeCard(validOld())
-    expect(result.text).toBe('你好')
-    expect(result.reading).toBe('nǐ hǎo')
-    expect(result.translation).toBe('Hello')
-    expect(result.notes).toBe('Common greeting')
-    expect(result.front).toBeUndefined()
-    expect(result.back).toBeUndefined()
-  })
-})
 
 // --- invalid JSON ---
 
@@ -106,9 +76,9 @@ describe('missing required fields', () => {
   });
 });
 
-// --- valid cards (new flat schema) ---
+// --- valid cards ---
 
-describe('valid JSON (flat schema)', () => {
+describe('valid JSON', () => {
   it('returns correct card array with empty errors', () => {
     const result = parseCardBatch(batch([valid()]));
     expect(result.cards).toHaveLength(1);
@@ -123,36 +93,6 @@ describe('valid JSON (flat schema)', () => {
     expect(card.translation).toBe('Hello');
   });
 });
-
-// --- backward compat: old front/back schema ---
-
-describe('backward compat (old front/back schema)', () => {
-  it('parses old schema and returns flat card', () => {
-    const result = parseCardBatch(batch([validOld()]));
-    expect(result.cards).toHaveLength(1);
-    expect(result.errors).toHaveLength(0);
-    const card = result.cards[0]
-    expect(card.text).toBe('你好')
-    expect(card.translation).toBe('Hello')
-    expect(card.front).toBeUndefined()
-    expect(card.back).toBeUndefined()
-  })
-
-  it('preserves optional fields from old schema', () => {
-    const result = parseCardBatch(batch([validOld()]));
-    const card = result.cards[0]
-    expect(card.reading).toBe('nǐ hǎo')
-    expect(card.notes).toBe('Common greeting')
-    expect(card.type).toBe('word')
-    expect(card.example.text).toBe('你好吗')
-  })
-
-  it('skips old-schema card missing front.text', () => {
-    const result = parseCardBatch(batch([{ lang: 'zh', front: {}, back: { translation: 'Hello' } }]));
-    expect(result.cards).toHaveLength(0);
-    expect(result.errors[0]).toMatch(/text/);
-  });
-})
 
 // --- optional fields ---
 
@@ -175,9 +115,9 @@ describe('optional fields', () => {
     expect(result.cards[0].type).toBe('word');
   });
 
-  it('preserves reading when present', () => {
+  it('preserves reading array when present', () => {
     const result = parseCardBatch(batch([valid()]));
-    expect(result.cards[0].reading).toBe('nǐ hǎo');
+    expect(result.cards[0].reading).toEqual([['你', 'nǐ'], ['好', 'hǎo']]);
   });
 
   it('preserves romanization when present', () => {
@@ -186,9 +126,9 @@ describe('optional fields', () => {
   });
 
   it('romanization is independent of reading — card can have both', () => {
-    const card = valid({ reading: 'nǐ hǎo', romanization: 'ni hao' });
+    const card = valid({ reading: [['你', 'nǐ'], ['好', 'hǎo']], romanization: 'ni hao' });
     const result = parseCardBatch(batch([card]));
-    expect(result.cards[0].reading).toBe('nǐ hǎo');
+    expect(result.cards[0].reading).toEqual([['你', 'nǐ'], ['好', 'hǎo']]);
     expect(result.cards[0].romanization).toBe('ni hao');
   });
 
@@ -201,7 +141,7 @@ describe('optional fields', () => {
     const result = parseCardBatch(batch([valid()]));
     const ex = result.cards[0].example;
     expect(ex.text).toBe('你好吗');
-    expect(ex.reading).toBe('nǐ hǎo ma');
+    expect(ex.reading).toEqual([['你', 'nǐ'], ['好', 'hǎo'], ['吗', 'ma']]);
     expect(ex.translation).toBe('How are you?');
   });
 });

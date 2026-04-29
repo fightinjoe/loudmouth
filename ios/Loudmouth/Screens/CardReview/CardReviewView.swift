@@ -287,8 +287,8 @@ struct CardReviewView: View {
 
     private func frontReading(card: Card) -> String {
         guard mode == "study" else { return "" }
-        if readingDisplay == "romanization" { return card.romanization ?? card.reading ?? "" }
-        return card.reading ?? ""
+        if readingDisplay == "romanization" { return card.romanization ?? flatReading(card.reading) }
+        return flatReading(card.reading)
     }
 
     private func backText(card: Card) -> String {
@@ -297,8 +297,8 @@ struct CardReviewView: View {
 
     private func backReading(card: Card) -> String {
         guard mode != "study" else { return "" }
-        if readingDisplay == "romanization" { return card.romanization ?? card.reading ?? "" }
-        return card.reading ?? ""
+        if readingDisplay == "romanization" { return card.romanization ?? flatReading(card.reading) }
+        return flatReading(card.reading)
     }
 
     private func playCard(_ card: Card) {

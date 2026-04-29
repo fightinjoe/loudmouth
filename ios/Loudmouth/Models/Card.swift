@@ -7,13 +7,13 @@ final class Card {
     var createdAt: Date
     var lang: String
     var text: String
-    var reading: String?
+    var reading: [[String?]]?
     var romanization: String?
     var translation: String
     var type: String?
     var notes: String?
     var exampleText: String?
-    var exampleReading: String?
+    var exampleReading: [[String?]]?
     var exampleTranslation: String?
     var starredAt: Date?
     var deckIds: [String]
@@ -23,13 +23,13 @@ final class Card {
         createdAt: Date,
         lang: String,
         text: String,
-        reading: String? = nil,
+        reading: [[String?]]? = nil,
         romanization: String? = nil,
         translation: String,
         type: String? = nil,
         notes: String? = nil,
         exampleText: String? = nil,
-        exampleReading: String? = nil,
+        exampleReading: [[String?]]? = nil,
         exampleTranslation: String? = nil,
         starredAt: Date? = nil,
         deckIds: [String] = []

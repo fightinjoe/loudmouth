@@ -1,3 +1,11 @@
+---
+name: brief
+description: >
+  Product brief and technical overview for the Loudmouth monorepo — a mobile-first language
+  flashcard app for travelers. Load this doc for product context, feature scope, architecture
+  decisions, or to understand the monorepo structure (web PWA, iOS app, Cloud Run API).
+---
+
 # Language Flashcards — Product Brief
 
 > A mobile-first travel companion for capturing useful language in context and reviewing it in short bursts throughout the day.
@@ -100,30 +108,9 @@ A mobile-first app (PWA and native iOS) where cards are generated externally (by
 
 ### Card Batch Schema (import format)
 
-Validated in `prototypes/2-json-import/`. `id` and `importedAt` are never present in the batch — assigned by the app at import time.
+See [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md) for the full schema reference, field definitions, and examples.
 
-```json
-{
-  "cards": [
-    {
-      "lang": "zh | ja",
-      "type": "word | phrase | sentence",
-      "text": "string",
-      "reading": "string (optional — pinyin for zh, hiragana for ja)",
-      "romanization": "string (optional — romaji for ja; Latin-alphabet transcription for other scripts)",
-      "translation": "string",
-      "notes": "string (optional)",
-      "example": {
-        "text": "string",
-        "reading": "string (optional)",
-        "translation": "string (optional)"
-      }
-    }
-  ]
-}
-```
-
-**Required per card:** `lang`, `text`, `translation`. All other fields optional. `romanization` is a Latin-alphabet transcription (e.g. romaji for Japanese) distinct from `reading` (hiragana/pinyin); both are optional and independent.
+`id` and `importedAt` are never present in the batch — assigned by the app at import time. Required per card: `lang`, `text`, `translation`.
 
 ### Library Schema (internal storage)
 

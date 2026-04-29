@@ -11,13 +11,13 @@ struct CardBackup: Codable {
     let createdAt: Date
     let lang: String
     let text: String
-    let reading: String?
+    let reading: [[String?]]?
     let romanization: String?
     let translation: String
     let type: String?
     let notes: String?
     let exampleText: String?
-    let exampleReading: String?
+    let exampleReading: [[String?]]?
     let exampleTranslation: String?
     let starredAt: Date?
     let deckIds: [String]
