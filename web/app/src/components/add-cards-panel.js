@@ -12,7 +12,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
   let parseErrors = initialErrors || []
 
   const panel = document.createElement('div')
-  panel.className = 'add-cards-panel panel-screen bg-primary flex-col'
+  panel.className = 'add-cards-panel panel-screen fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
   appEl.appendChild(panel)
 
   requestAnimationFrame(() => {
@@ -32,7 +32,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
   function renderStep1() {
     panel.innerHTML = `
       <div class="panel-header flex items-center">
-        <button class="panel-header-back bg-none fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+        <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
         <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add Cards</span>
         <span class="panel-header-spacer shrink-0"></span>
       </div>
@@ -128,7 +128,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
 
     panel.innerHTML = `
       <div class="panel-header flex items-center">
-        <button class="panel-header-back bg-none fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+        <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
         <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Confirm Import</span>
         <span class="panel-header-spacer shrink-0"></span>
       </div>

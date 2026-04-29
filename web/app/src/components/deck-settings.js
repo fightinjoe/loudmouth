@@ -10,11 +10,11 @@ const READING_DISPLAY_LABELS = { reading: 'Native', romanization: 'Romanized' }
 
 export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, exportJson }, onChanged) {
   const scrim = document.createElement('div')
-  scrim.className = 'deck-settings-scrim'
+  scrim.className = 'deck-settings-scrim fixed-inset scrim scrim-clear transition-bg'
   appEl.appendChild(scrim)
 
   const panel = document.createElement('div')
-  panel.className = 'deck-settings-panel'
+  panel.className = 'deck-settings-panel bottom-sheet bg-primary transition-sheet'
   appEl.appendChild(panel)
 
   let currentMode = deck.mode || DEFAULT_MODE
@@ -109,8 +109,8 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
   render()
 
   function close() {
-    panel.classList.remove('deck-settings-panel--visible')
-    scrim.classList.remove('deck-settings-scrim--visible')
+    panel.classList.remove('bottom-sheet--visible')
+    scrim.classList.remove('scrim-visible')
     panel.addEventListener('transitionend', () => { panel.remove(); scrim.remove() }, { once: true })
   }
 
@@ -118,8 +118,8 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      panel.classList.add('deck-settings-panel--visible')
-      scrim.classList.add('deck-settings-scrim--visible')
+      panel.classList.add('bottom-sheet--visible')
+      scrim.classList.add('scrim-visible')
     })
   })
 }

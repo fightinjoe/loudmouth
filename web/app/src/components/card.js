@@ -36,7 +36,7 @@ export function renderCard(card, mode, readingDisplay = 'reading') {
 export function renderCardRow(card, readingDisplay = 'reading') {
   const isStarred = !!card.state?.starredAt;
   return `
-    <div class="card-row-wrapper shrink-0" data-card-id="${card.id}">
+    <div class="card-row-wrapper shrink-0 overflow-hidden" data-card-id="${card.id}">
       <button
         class="card-row-star-btn bg-star fg-white text-icon tappable"
         data-card-id="${card.id}"
@@ -55,7 +55,7 @@ export function renderCardRow(card, readingDisplay = 'reading') {
         ${ renderCardContent(card, readingDisplay) }
 
         <button
-          class="card-row-play bg-none fg-tertiary text-body1 shrink-0 tappable"
+          class="card-row-play fg-tertiary text-body1 shrink-0 tappable"
           data-card-id="${card.id}"
           aria-label="Play"
         >

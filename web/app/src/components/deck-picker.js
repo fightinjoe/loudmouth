@@ -83,14 +83,14 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
   }
 
   const panel = document.createElement('div')
-  panel.className = 'deck-picker-panel panel-screen bg-primary flex-col'
+  panel.className = 'deck-picker-panel panel-screen fixed-inset bg-primary flex-col transition-sheet'
   panel.innerHTML = `
     <div class="panel-header flex items-center">
-      <button class="panel-header-back bg-none fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
       <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Language decks</span>
-      <button class="panel-header-right bg-none fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Add">＋</button>
+      <button class="panel-header-right fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Add">＋</button>
     </div>
-    <div class="deck-picker-list flex-1">
+    <div class="deck-picker-list flex-1 overflow-y-auto">
       ${mostRecentHTML}
       ${byLangHTML}
       ${allDecks.length === 0 && allLangs.length === 0 ? '<p class="deck-picker-empty text-center fg-secondary">No decks yet.</p>' : ''}

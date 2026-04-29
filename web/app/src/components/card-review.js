@@ -21,14 +21,14 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   let currentIndex = startIndex
 
   const scrim = document.createElement('div')
-  scrim.className = 'card-review-scrim'
+  scrim.className = 'card-review-scrim fixed-inset scrim scrim-dim transition-opacity'
   appEl.appendChild(scrim)
 
   const panel = document.createElement('div')
-  panel.className = 'card-review-panel panel-screen bg-primary flex-col'
+  panel.className = 'card-review-panel panel-screen fixed-inset bg-primary flex-col transition-sheet'
   panel.innerHTML = `
     <div class="panel-header flex items-center">
-      <button class="panel-header-back bg-none fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
       <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">${deck.name}</span>
       <span class="panel-header-spacer shrink-0"></span>
     </div>

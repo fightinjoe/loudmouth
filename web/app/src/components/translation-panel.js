@@ -30,7 +30,7 @@ function renderResultCard(t, position) {
           <span class="tr-card-text text-h2 font-medium fg-body">${escHtml(t.text)}</span>
           <span class="tr-card-meaning text-body2 fg-caption">${escHtml(t.translation)}</span>
         </div>
-        <button class="tr-card-play bg-none fg-tertiary text-body1 shrink-0" aria-label="Play">▶</button>
+        <button class="tr-card-play fg-tertiary text-body1 shrink-0" aria-label="Play">▶</button>
       </div>
     </div>
   `
@@ -80,19 +80,19 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
   const langName = LANG_NAMES[deck.lang] ?? deck.lang ?? 'Unknown'
 
   const scrim = document.createElement('div')
-  scrim.className = 'translation-scrim'
+  scrim.className = 'translation-scrim fixed-inset scrim scrim-clear transition-bg'
   appEl.appendChild(scrim)
 
   const panel = document.createElement('div')
-  panel.className = 'translation-panel bg-primary flex-col'
+  panel.className = 'translation-panel bottom-sheet bg-primary flex-col transition-sheet'
   panel.innerHTML = `
     <div class="translation-handle sheet-handle"></div>
     <div class="panel-header flex items-center">
-      <button class="panel-header-back bg-none fg-accent text-icon flex items-center justify-center shrink-0 translation-back" aria-label="Back">‹</button>
+      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0 translation-back" aria-label="Back">‹</button>
       <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none translation-lang-label">${langFlag} ${escHtml(langName)}</span>
       <span class="panel-header-spacer shrink-0"></span>
     </div>
-    <div class="translation-body flex-1 flex-col min-h-0">
+    <div class="translation-body flex-1 flex-col min-h-0 overflow-y-auto">
       <textarea
         class="translation-textarea surface-field text-area-fixed text-entry font-inherit"
         id="tr-input"
@@ -112,14 +112,14 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      scrim.classList.add('translation-scrim--visible')
-      panel.classList.add('translation-panel--visible')
+      scrim.classList.add('scrim-visible')
+      panel.classList.add('bottom-sheet--visible')
     })
   })
 
   function close() {
-    scrim.classList.remove('translation-scrim--visible')
-    panel.classList.remove('translation-panel--visible')
+    scrim.classList.remove('scrim-visible')
+    panel.classList.remove('bottom-sheet--visible')
     panel.addEventListener('transitionend', () => {
       panel.remove()
       scrim.remove()
@@ -174,7 +174,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
         if (res.status === 429) {
           showError('Try again in 60 seconds.')
         } else if (res.status >= 500) {
-          showError('Could not generate — try again. <button class="translation-retry-btn bg-none fg-accent text-body1 tappable" id="tr-retry">↻</button>')
+          showError('Could not generate — try again. <button class="translation-retry-btn fg-accent text-body1 tappable" id="tr-retry">↻</button>')
           panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
         } else {
           showError(`Error ${res.status} — try again.`)
@@ -186,7 +186,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
       data = await res.json()
     } catch (err) {
       if (err.name === 'AbortError') {
-        showError('Could not generate — try again. <button class="translation-retry-btn bg-none fg-accent text-body1 tappable" id="tr-retry">↻</button>')
+        showError('Could not generate — try again. <button class="translation-retry-btn fg-accent text-body1 tappable" id="tr-retry">↻</button>')
         panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
       } else {
         showError('No connection.')
@@ -197,7 +197,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
 
     const translations = data?.translations ?? []
     if (translations.length === 0) {
-      showError('No result — try rephrasing. <button class="translation-retry-btn bg-none fg-accent text-body1 tappable" id="tr-retry">↻</button>')
+      showError('No result — try rephrasing. <button class="translation-retry-btn fg-accent text-body1 tappable" id="tr-retry">↻</button>')
       panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
       translateBtn.disabled = inputEl.value.trim().length === 0
       return

@@ -120,6 +120,28 @@
 .shrink-0 { flex-shrink: 0; }
 .min-w-0 { min-width: 0; }
 .min-h-0 { min-height: 0; }
+.fixed-inset {
+  position: fixed;
+  inset: 0;
+}
+.absolute-inset {
+  position: absolute;
+  inset: 0;
+}
+.fixed-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.transition-transform { transition: transform 300ms ease; }
+.transition-opacity { transition: opacity 300ms ease; }
+.transition-bg { transition: background 300ms ease; }
+.transition-sheet { transition: transform 300ms ease; }
+.transition-none,
+.no-transition { transition: none; }
 
 .gap-auto { justify-content: space-between; }
 
@@ -134,6 +156,19 @@
 .tappable {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.scrim {
+  z-index: 150;
+}
+
+.scrim-clear {
+  background: rgba(0, 0, 0, 0);
+}
+
+.scrim-dim,
+.scrim-visible {
+  background: rgba(0, 0, 0, 0.35);
 }
 
 /*-- Reusable controls --*/

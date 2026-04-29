@@ -19,16 +19,16 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
   const langName = LANG_NAMES[selectedLang] ?? selectedLang
 
   const scrim = document.createElement('div')
-  scrim.className = 'generate-cards-scrim'
+  scrim.className = 'generate-cards-scrim fixed-inset scrim scrim-clear transition-bg'
   appEl.appendChild(scrim)
 
   const panel = document.createElement('div')
-  panel.className = 'generate-cards-panel bg-primary flex-col'
+  panel.className = 'generate-cards-panel bottom-sheet bg-primary flex-col transition-sheet'
   if (targetDeck) panel.dataset.hasDeck = ''
   panel.innerHTML = `
     <div class="generate-cards-handle sheet-handle"></div>
     <div class="panel-header flex items-center">
-      <button class="panel-header-back bg-none fg-accent text-icon flex items-center justify-center shrink-0 generate-cards-back" aria-label="Back">‹</button>
+      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0 generate-cards-back" aria-label="Back">‹</button>
       <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add cards</span>
       <span class="panel-header-spacer shrink-0"></span>
     </div>
@@ -42,7 +42,7 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
           <span id="gc-lang-flag">${langFlag}</span>
           <span id="gc-lang-name">${langName}</span>
           <span class="generate-cards-lang-chevron text-icon-sm fg-tertiary">⇅</span>
-          <select class="generate-cards-lang-select" id="gc-lang-select" aria-label="Language">
+          <select class="generate-cards-lang-select absolute-inset" id="gc-lang-select" aria-label="Language">
             ${SUPPORTED_LANGS.map(l => `<option value="${l}"${l === selectedLang ? ' selected' : ''}>${LANG_FLAGS[l] ?? ''} ${LANG_NAMES[l] ?? l}</option>`).join('')}
           </select>
         </div>
@@ -56,14 +56,14 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      scrim.classList.add('generate-cards-scrim--visible')
-      panel.classList.add('generate-cards-panel--visible')
+      scrim.classList.add('scrim-visible')
+      panel.classList.add('bottom-sheet--visible')
     })
   })
 
   function close() {
-    scrim.classList.remove('generate-cards-scrim--visible')
-    panel.classList.remove('generate-cards-panel--visible')
+    scrim.classList.remove('scrim-visible')
+    panel.classList.remove('bottom-sheet--visible')
     panel.addEventListener('transitionend', () => {
       panel.remove()
       scrim.remove()

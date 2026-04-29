@@ -26,6 +26,13 @@ body {
 
 /* ── Shared buttons ── */
 
+button {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
 .btn {
   display: block;
   width: 100%;
