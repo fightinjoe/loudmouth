@@ -36,8 +36,8 @@ function renderDeckPickerRow(deck, cardCount) {
   return `
     <div class="deck-picker-row flex items-center bg-surface tappable" data-deck-id="${deck.id}">
       <div class="deck-picker-row-info flex-col justify-center">
-        <span class="deck-picker-row-name text-body">${deck.name}</span>
-        <span class="deck-picker-row-meta text-secondary">${flag} · ${cardCount} cards</span>
+        <span class="deck-picker-row-name text-body1 font-semibold fg-body">${deck.name}</span>
+        <span class="deck-picker-row-meta text-body2 fg-secondary">${flag} · ${cardCount} cards</span>
       </div>
     </div>
   `
@@ -93,7 +93,7 @@ async function buildNavPaneContent() {
     byLangHTML += `
       <div class="deck-picker-section-header flex items-baseline justify-between section-label">
         <span>${flag} ${name}</span>
-        <span class="deck-picker-section-header-link text-secondary tappable" data-deck-id="lang:${lang}">All ${total} cards</span>
+        <span class="deck-picker-section-header-link text-body2 fg-secondary tappable" data-deck-id="lang:${lang}">All ${total} cards</span>
       </div>
       <div class="deck-picker-lang-group">
         ${starredRow}
@@ -106,16 +106,16 @@ async function buildNavPaneContent() {
 
   return `
     <div class="panel-header">
-      <span class="panel-header-spacer"></span>
-      <span class="panel-header-title">Decks</span>
-      <span class="panel-header-spacer"></span>
+      <span class="panel-header-spacer shrink-0"></span>
+      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Decks</span>
+      <span class="panel-header-spacer shrink-0"></span>
     </div>
     <div class="deck-picker-list flex-1">
       ${mostRecentHTML}
       ${byLangHTML}
-      ${isEmpty ? '<p class="deck-picker-empty text-secondary">No decks yet.</p>' : ''}
+      ${isEmpty ? '<p class="deck-picker-empty text-center fg-secondary">No decks yet.</p>' : ''}
     </div>
-    <button class="nav-pane-add-fab flex items-center justify-center bg-accent text-surface shrink-0 tappable" aria-label="Add deck">＋</button>
+    <button class="nav-pane-add-fab flex items-center justify-center bg-accent fg-surface text-h2 shrink-0 tappable" aria-label="Add deck">＋</button>
   `
 }
 
@@ -128,7 +128,7 @@ export function renderDeckView(el, params) {
       if (jsonStr === null) {
         el.innerHTML = `
           <div class="screen flex-1 flex-col bg-primary" id="deck-view-screen">
-            <div class="deck-view-empty text-secondary">
+            <div class="deck-view-empty text-center fg-secondary">
               <p class="uri-import-error">
                 Import link is invalid — could not decode the card data.
               </p>
@@ -142,7 +142,7 @@ export function renderDeckView(el, params) {
       if (result.cards.length === 0) {
         el.innerHTML = `
           <div class="screen flex-1 flex-col bg-primary" id="deck-view-screen">
-            <div class="deck-view-empty text-secondary">
+            <div class="deck-view-empty text-center fg-secondary">
               <p class="uri-import-error">
                 Import link contained no valid cards.
               </p>
@@ -159,7 +159,7 @@ export function renderDeckView(el, params) {
       }
       el.innerHTML = `
         <div class="screen flex-1 flex-col bg-primary" id="deck-view-screen">
-          <div class="deck-view-empty text-secondary">
+          <div class="deck-view-empty text-center fg-secondary">
             <p>Review your cards below before importing.</p>
           </div>
         </div>
@@ -252,7 +252,7 @@ export function renderDeckView(el, params) {
     async function loadDeck() {
       if (!deckId) {
         screenEl.innerHTML = `
-          <div class="deck-view-empty text-secondary">
+          <div class="deck-view-empty text-center fg-secondary">
             <p>No decks yet.</p>
             <button id="btn-import-cards" class="btn btn-primary">Import cards</button>
           </div>
@@ -277,7 +277,7 @@ export function renderDeckView(el, params) {
         deck = await db.decks.get(deckId)
         if (!deck) {
           screenEl.innerHTML = `
-            <div class="deck-view-empty text-secondary">
+            <div class="deck-view-empty text-center fg-secondary">
               <p>Deck not found.</p>
             </div>
           `
@@ -295,16 +295,16 @@ export function renderDeckView(el, params) {
       el.dataset.mode = deck.mode
       screenEl.innerHTML = `
         <div class="panel-header flex items-center">
-          <button class="panel-header-back" id="btn-menu" aria-label="Menu">☰</button>
-          <button class="panel-header-title" id="btn-deck-title">${deck.name}</button>
+          <button class="panel-header-back bg-none fg-accent text-icon flex items-center justify-center shrink-0" id="btn-menu" aria-label="Menu">☰</button>
+          <button class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none" id="btn-deck-title">${deck.name}</button>
           ${isLangView
-            ? '<span class="panel-header-spacer"></span>'
-            : `<button class="panel-header-right" id="btn-deck-add" aria-label="Translate">＋</button>
-               <button class="panel-header-right deck-header-done" id="btn-deck-done">Done</button>`}
+            ? '<span class="panel-header-spacer shrink-0"></span>'
+            : `<button class="panel-header-right bg-none fg-accent text-icon flex items-center justify-center shrink-0" id="btn-deck-add" aria-label="Translate">＋</button>
+               <button class="panel-header-right bg-none fg-accent text-icon flex items-center justify-center shrink-0 deck-header-done text-body1 font-semibold" id="btn-deck-done">Done</button>`}
         </div>
         <div class="deck-view-list flex-1 flex-col min-h-0">
           ${cards.length === 0
-            ? `<div class="deck-view-empty text-secondary"><p>No cards in this deck.</p></div>`
+            ? `<div class="deck-view-empty text-center fg-secondary"><p>No cards in this deck.</p></div>`
             : cards.map(card => renderCardRow(card, deck.readingDisplay)).join('')}
         </div>
       `
@@ -331,7 +331,7 @@ export function renderDeckView(el, params) {
         if (wrapperEl) wrapperEl.remove()
         if (cards.length === 0) {
           const list = screenEl.querySelector('.deck-view-list')
-          if (list) list.innerHTML = `<div class="deck-view-empty text-secondary"><p>No cards in this deck.</p></div>`
+          if (list) list.innerHTML = `<div class="deck-view-empty text-center fg-secondary"><p>No cards in this deck.</p></div>`
         }
       }
 
@@ -394,8 +394,8 @@ export function renderDeckView(el, params) {
         menu.className = 'deck-title-menu bg-surface'
         menu.style.top = (rect.bottom + 4) + 'px'
         menu.innerHTML = `
-          <button class="deck-title-menu-item bg-none text-body tappable" id="dtm-settings">Settings</button>
-          <button class="deck-title-menu-item bg-none text-body tappable" id="dtm-edit">Edit cards</button>
+          <button class="deck-title-menu-item bg-none fg-body text-menu-item text-left tappable" id="dtm-settings">Settings</button>
+          <button class="deck-title-menu-item bg-none fg-body text-menu-item text-left tappable" id="dtm-edit">Edit cards</button>
         `
         document.body.appendChild(menu)
         requestAnimationFrame(() => requestAnimationFrame(() => menu.classList.add('deck-title-menu--visible')))

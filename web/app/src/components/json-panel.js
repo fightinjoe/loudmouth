@@ -27,12 +27,12 @@ export function openJsonPanel(appEl, title, jsonString) {
 
   panel.innerHTML = `
     <div class="panel-header flex items-center">
-      <button class="panel-header-back" aria-label="Back">‹</button>
-      <span class="panel-header-title">${title}</span>
-      <button class="panel-header-right panel-action-text json-panel-copy-btn" id="btn-copy-json">Copy</button>
+      <button class="panel-header-back bg-none fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">${title}</span>
+      <button class="panel-header-right bg-none fg-accent text-icon flex items-center justify-center shrink-0 panel-action-text json-panel-copy-btn" id="btn-copy-json">Copy</button>
     </div>
     <div class="json-panel-body flex-1 flex-col">
-      <textarea class="json-panel-textarea flex-1 surface-field text-area-fixed" readonly spellcheck="false"></textarea>
+      <textarea class="json-panel-textarea flex-1 surface-field text-area-fixed text-body2 font-mono leading-entry" readonly spellcheck="false"></textarea>
     </div>
   `
 

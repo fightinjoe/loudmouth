@@ -18,15 +18,16 @@
 
   --red-500: 4 86 58;
 
-  --font-family: Inter, Roboto, sans-serif;
+  --font-family: "Roboto Flex", "Noto Sans JP", sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 /*-- Semantic variables --*/
 :root, [data-theme="light"] {
-  --text-body: hsl(var(--gray-900));
-  --text-secondary: hsl(var(--gray-500));
-  --text-tertiary: hsl(var(--gray-400));
-  --text-caption: hsl(var(--gray-500));
+  --fg-body: hsl(var(--gray-900));
+  --fg-secondary: hsl(var(--gray-500));
+  --fg-tertiary: hsl(var(--gray-400));
+  --fg-caption: hsl(var(--gray-500));
 
   --fg-primary: hsl(var(--green-600));
 
@@ -45,6 +46,16 @@
   --radius-sm: 8px;
 
   --swipe-reveal-width: 160px;
+
+  --text-size-h1: 2.5rem;       /* Figma 40px */
+  --text-size-entry: 2rem;      /* Figma 32px */
+  --text-size-h2: 1.5rem;       /* Figma 24px */
+  --text-size-body1: 1rem;      /* Figma 16px */
+  --text-size-body2: 0.875rem;  /* Figma 14px */
+
+  --line-height-h1: 1.2;        /* Figma 48px / 40px */
+  --line-height-entry: 1.5;     /* Figma 48px / 32px */
+  --line-height-tight: 1;
 }
 
 /*-- Defaults --*/

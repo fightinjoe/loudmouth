@@ -28,28 +28,28 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
   panel.innerHTML = `
     <div class="generate-cards-handle sheet-handle"></div>
     <div class="panel-header flex items-center">
-      <button class="panel-header-back generate-cards-back" aria-label="Back">‹</button>
-      <span class="panel-header-title">Add cards</span>
-      <span class="panel-header-spacer"></span>
+      <button class="panel-header-back bg-none fg-accent text-icon flex items-center justify-center shrink-0 generate-cards-back" aria-label="Back">‹</button>
+      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add cards</span>
+      <span class="panel-header-spacer shrink-0"></span>
     </div>
     <div class="generate-cards-body flex-col">
-      <p class="generate-cards-instruction text-secondary">Share a situation or context</p>
-      <textarea class="generate-cards-textarea surface-field text-area-fixed" id="gc-topic"
+      <p class="generate-cards-instruction text-body2 text-center fg-secondary">Share a situation or context</p>
+      <textarea class="generate-cards-textarea surface-field text-area-fixed text-body1 font-inherit leading-entry" id="gc-topic"
         placeholder="Greetings for morning, afternoon, evening…"
         rows="4" autocorrect="off" autocapitalize="sentences" spellcheck="true"></textarea>
       <div class="generate-cards-footer flex items-center justify-between">
-        <div class="generate-cards-lang-wrap flex items-center text-body">
+        <div class="generate-cards-lang-wrap flex items-center text-body1 fg-body">
           <span id="gc-lang-flag">${langFlag}</span>
           <span id="gc-lang-name">${langName}</span>
-          <span class="generate-cards-lang-chevron text-tertiary">⇅</span>
+          <span class="generate-cards-lang-chevron text-icon-sm fg-tertiary">⇅</span>
           <select class="generate-cards-lang-select" id="gc-lang-select" aria-label="Language">
             ${SUPPORTED_LANGS.map(l => `<option value="${l}"${l === selectedLang ? ' selected' : ''}>${LANG_FLAGS[l] ?? ''} ${LANG_NAMES[l] ?? l}</option>`).join('')}
           </select>
         </div>
-        <span class="generate-cards-lang-label items-center text-secondary">${langFlag} ${langName}</span>
+        <span class="generate-cards-lang-label items-center text-body1 fg-secondary">${langFlag} ${langName}</span>
         <button class="generate-cards-generate-btn pill-action tappable" id="gc-generate-btn" disabled>Generate</button>
       </div>
-      <div class="generate-cards-error text-danger" id="gc-error" aria-live="polite"></div>
+      <div class="generate-cards-error text-body2 text-center fg-danger" id="gc-error" aria-live="polite"></div>
     </div>
   `
   appEl.appendChild(panel)

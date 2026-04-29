@@ -2,7 +2,7 @@
 
 body {
   background: var(--bg-primary);
-  color: var(--text-body);
+  color: var(--fg-body);
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -50,7 +50,7 @@ body {
 
 .btn-secondary {
   background: var(--bg-surface);
-  color: var(--text-body);
+  color: var(--fg-body);
   border: 1px solid var(--border-default);
 }
 

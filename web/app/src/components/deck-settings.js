@@ -27,37 +27,37 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
       <div class="deck-settings-handle sheet-handle"></div>
       <div class="deck-settings-section-header section-label">General</div>
       <div class="deck-settings-row flex items-center justify-between tappable" id="ds-name-row">
-        <span class="deck-settings-label text-body">Name</span>
-        <span class="deck-settings-value flex items-center text-body" id="ds-name-value">${currentName}</span>
+        <span class="deck-settings-label text-body1 font-medium fg-body">Name</span>
+        <span class="deck-settings-value flex items-center text-body1 font-medium fg-body" id="ds-name-value">${currentName}</span>
       </div>
       <div class="deck-settings-row flex items-center justify-between tappable" id="ds-mode-row">
-        <span class="deck-settings-label text-body">Card template</span>
-        <span class="deck-settings-value deck-settings-value--accent flex items-center text-accent" id="ds-mode-value">
+        <span class="deck-settings-label text-body1 font-medium fg-body">Card template</span>
+        <span class="deck-settings-value deck-settings-value--accent flex items-center text-body1 font-medium fg-accent" id="ds-mode-value">
           ${MODE_LABELS[currentMode]}
-          <span class="deck-settings-chevron">⌃</span>
+          <span class="deck-settings-chevron text-icon-sm">⌃</span>
         </span>
       </div>
       <div class="deck-settings-row flex items-center justify-between tappable" id="ds-order-row">
-        <span class="deck-settings-label text-body">Card order</span>
-        <span class="deck-settings-value deck-settings-value--accent flex items-center text-accent" id="ds-order-value">
+        <span class="deck-settings-label text-body1 font-medium fg-body">Card order</span>
+        <span class="deck-settings-value deck-settings-value--accent flex items-center text-body1 font-medium fg-accent" id="ds-order-value">
           ${ORDER_LABELS[currentOrder]}
-          <span class="deck-settings-chevron">⌃</span>
+          <span class="deck-settings-chevron text-icon-sm">⌃</span>
         </span>
       </div>
       <div class="deck-settings-row flex items-center justify-between tappable" id="ds-reading-display-row">
-        <span class="deck-settings-label text-body">Reading</span>
-        <span class="deck-settings-value deck-settings-value--accent flex items-center text-accent" id="ds-reading-display-value">
+        <span class="deck-settings-label text-body1 font-medium fg-body">Reading</span>
+        <span class="deck-settings-value deck-settings-value--accent flex items-center text-body1 font-medium fg-accent" id="ds-reading-display-value">
           ${READING_DISPLAY_LABELS[currentReadingDisplay]}
-          <span class="deck-settings-chevron">⌃</span>
+          <span class="deck-settings-chevron text-icon-sm">⌃</span>
         </span>
       </div>
       <div class="deck-settings-row flex items-center justify-between tappable" id="ds-export-row">
-        <span class="deck-settings-label text-body">Export JSON</span>
+        <span class="deck-settings-label text-body1 font-medium fg-body">Export JSON</span>
       </div>
       ${!deck.system ? `
       <div class="deck-settings-section-header section-label">Danger zone</div>
       <div class="deck-settings-row deck-settings-row--destructive flex items-center justify-between tappable" id="ds-delete-row">
-        <span class="deck-settings-label text-danger">Delete deck</span>
+        <span class="deck-settings-label text-body1 font-medium fg-danger">Delete deck</span>
       </div>` : ''}
     `
 

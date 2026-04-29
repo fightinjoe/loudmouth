@@ -31,8 +31,6 @@
   display: block;
   width: 100%;
   padding: 14px 20px;
-  text-align: left;
-  font-size: 1rem;
   border: none;
   border-bottom: 1px solid var(--border-default);
 }
@@ -49,8 +47,6 @@
 
 .deck-header-done {
   display: none;
-  font-size: 0.9375rem;
-  font-weight: 600;
   color: var(--accent);
 }
 
@@ -124,7 +120,6 @@
   bottom: 0;
   width: 80px;
   border: none;
-  font-size: 1.25rem;
 }
 
 .card-row-edit-btn {
@@ -134,8 +129,6 @@
   bottom: 0;
   width: 80px;
   border: none;
-  font-size: 0.875rem;
-  font-weight: 600;
 }
 
 .card-row {
@@ -157,13 +150,11 @@
 
 .card-row-play {
   border: none;
-  font-size: 1rem;
   padding: 0.5rem;
 }
 
 .deck-view-empty {
   padding: 3rem 1.25rem;
-  text-align: center;
 }
 
 /* ── Deck Picker Panel ── */
@@ -190,10 +181,6 @@
   display: none;
 }
 
-.deck-picker-section-header-link {
-  font-size: 0.8125rem;
-}
-
 .deck-picker-row {
   border-radius: var(--radius-sm);
   height: 64px;
@@ -205,17 +192,7 @@
   gap: 2px;
 }
 
-.deck-picker-row-name {
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.deck-picker-row-meta {
-  font-size: 0.8125rem;
-}
-
 .deck-picker-empty {
-  text-align: center;
   padding: 2rem 0;
 }
 
@@ -241,44 +218,22 @@
 
 .add-cards-textarea {
   height: 160px;
-  font-size: 0.875rem;
-  font-family: monospace;
 }
 
 .add-cards-error {
-  font-size: 0.8125rem;
   min-height: 1rem;
 }
 
 .add-cards-summary {
-  text-align: center;
   padding: 1rem 0;
 }
 
-.add-cards-count {
-  font-size: 3rem;
-  font-weight: 700;
-}
-
-.add-cards-count-label {
-  font-size: 1rem;
-}
-
 .add-cards-skipped {
-  font-size: 0.8125rem;
   margin-top: 0.25rem;
 }
 
 .add-cards-deck-selector {
   gap: 0.5rem;
-}
-
-.add-cards-deck-selector label {
-  font-size: 0.875rem;
-}
-
-.add-cards-select {
-  font-size: 1rem;
 }
 
 .add-cards-new-deck {
@@ -287,10 +242,6 @@
 
 .add-cards-new-deck.visible {
   display: block;
-}
-
-.add-cards-input {
-  font-size: 1rem;
 }
 
 /* ── Deck Settings Panel ── */
@@ -342,19 +293,11 @@
   border-bottom: none;
 }
 
-.deck-settings-label {
-  font-size: 1rem;
-  font-weight: 500;
-}
-
 .deck-settings-value {
-  font-size: 1rem;
-  font-weight: 500;
   gap: 4px;
 }
 
 .deck-settings-chevron {
-  font-size: 0.75rem;
   opacity: 0.7;
   transform: rotate(180deg);
   display: inline-block;
@@ -400,15 +343,7 @@
   will-change: transform;
 }
 
-.review-card-text {
-  font-size: 2.5rem;
-  font-weight: 700;
-  text-align: center;
-}
-
 .review-card-reading {
-  font-size: 1rem;
-  text-align: center;
   margin-top: 0.5rem;
 }
 
@@ -441,8 +376,6 @@
 
 .review-translation-text {
   display: none;
-  font-size: 1rem;
-  text-align: center;
 }
 
 /* Reverse mode */
@@ -451,9 +384,6 @@
   .review-card-reading { display: none; }
   .review-card-reverse {
     display: block;
-    font-size: 2.5rem;
-    font-weight: 700;
-    text-align: center;
   }
   .review-translation { display: none; }
 }
@@ -507,11 +437,6 @@
   padding-left: 0.25rem;
 }
 
-.card-edit-input {
-  font-size: 1rem;
-  font-family: inherit;
-}
-
 .card-edit-textarea {
   min-height: 80px;
 }
@@ -543,12 +468,6 @@
   padding: 1rem 1.25rem 2rem;
 }
 
-.json-panel-textarea {
-  font-size: 0.8125rem;
-  font-family: monospace;
-  line-height: 1.5;
-}
-
 /* ── Nav Pane ADD FAB ── */
 
 .nav-pane-add-fab {
@@ -559,8 +478,6 @@
   height: 52px;
   border-radius: 50%;
   border: none;
-  font-size: 1.5rem;
-  line-height: 1;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
@@ -609,23 +526,15 @@
   gap: 12px;
 }
 
-.generate-cards-instruction {
-  font-size: 0.875rem;
-  text-align: center;
-}
-
 .generate-cards-textarea {
   height: 124px;
   border-radius: 20px;
   padding: 20px;
-  font-size: 1rem;
-  font-family: inherit;
   box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.15);
-  line-height: 1.5;
 }
 
 .generate-cards-textarea::placeholder {
-  color: var(--text-tertiary);
+  color: var(--fg-tertiary);
 }
 
 .generate-cards-footer {
@@ -635,12 +544,7 @@
 .generate-cards-lang-wrap {
   position: relative;
   gap: 6px;
-  font-size: 1rem;
   cursor: pointer;
-}
-
-.generate-cards-lang-chevron {
-  font-size: 0.75rem;
 }
 
 .generate-cards-generate-btn {
@@ -648,8 +552,6 @@
 }
 
 .generate-cards-error {
-  font-size: 0.875rem;
-  text-align: center;
   min-height: 1.25rem;
 }
 
@@ -657,7 +559,6 @@
 .generate-cards-lang-label {
   display: none;
   gap: 6px;
-  font-size: 1rem;
 }
 
 .generate-cards-panel[data-has-deck] .generate-cards-lang-wrap { display: none; }
@@ -721,16 +622,11 @@
   min-height: 80px;
   border-radius: 20px;
   padding: 20px;
-  font-size: 2rem;
-  font-weight: 300;
-  font-family: inherit;
   box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.15);
-  line-height: 1.4;
 }
 
 .translation-textarea::placeholder {
-  color: var(--text-tertiary);
-  font-size: 1.25rem;
+  color: var(--fg-tertiary);
 }
 
 .translation-results {
@@ -738,8 +634,6 @@
 }
 
 .translation-hint {
-  font-size: 0.8125rem;
-  text-align: center;
   margin: 0 0 8px;
 }
 
@@ -775,22 +669,8 @@
   gap: 2px;
 }
 
-.tr-card-reading {
-  font-size: 0.875rem;
-}
-
-.tr-card-text {
-  font-size: 1.5rem;
-  font-weight: 500;
-}
-
-.tr-card-meaning {
-  font-size: 0.875rem;
-}
-
 .tr-card-play {
   border: none;
-  font-size: 1rem;
   padding: 0.5rem;
 }
 
@@ -827,11 +707,6 @@
   50% { opacity: 0.4; }
 }
 
-/* ── Footer with translate button ── */
-
-.translation-footer {
-}
-
 .translation-translate-btn {
   padding: 0.625rem 1.5rem;
 }
@@ -839,19 +714,12 @@
 /* ── Error / retry ── */
 
 .translation-error {
-  font-size: 0.875rem;
-  text-align: center;
   padding: 1rem 0;
 }
 
 .translation-retry-btn {
   border: none;
-  font-size: 1rem;
   padding: 0 4px;
-}
-
-.translation-lang-label {
-  font-size: 0.9375rem;
 }
 
 /*-- Nav shell: nav-pane + content-pane layout --*/
@@ -931,26 +799,13 @@
 
 .panel-header-back,
 .panel-header-right {
-  background: none;
   border: none;
-  font-size: 1.25rem;
-  color: var(--accent);
   padding: 0;
   width: 44px;
   height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
 .panel-header-title {
-  flex: 1;
-  text-align: center;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--text-body);
-  background: none;
   border: none;
   padding: 0;
   cursor: default;
@@ -961,14 +816,4 @@
 
 .panel-header-spacer {
   width: 44px;
-  flex-shrink: 0;
-}
-
-/*-- Section label (small-caps, secondary color) --*/
-
-.section-label {
-  font-size: 0.8125rem;
-  font-variant: small-caps;
-  color: var(--text-secondary);
-  letter-spacing: 0.04em;
 }
