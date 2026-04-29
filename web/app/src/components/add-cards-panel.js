@@ -38,15 +38,15 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
       </div>
       <div class="add-cards-body">
         <section class="add-cards-section">
-          <h2 class="add-cards-section-title">Import Cards</h2>
-          <textarea id="json-input" class="add-cards-textarea"
+          <h2 class="add-cards-section-title section-label">Import Cards</h2>
+          <textarea id="json-input" class="add-cards-textarea surface-field text-area"
             placeholder='{"cards": [...]}'
             spellcheck="false" autocorrect="off" autocapitalize="none"></textarea>
           <div id="error-msg" class="add-cards-error"></div>
           <button id="btn-parse" class="btn btn-primary">Parse Cards</button>
         </section>
         <section class="add-cards-section">
-          <h2 class="add-cards-section-title">Backup</h2>
+          <h2 class="add-cards-section-title section-label">Backup</h2>
           <button id="btn-export" class="btn btn-secondary">Download Backup</button>
           <button id="btn-restore-pick" class="btn btn-secondary">Restore Backup</button>
           <input id="file-input" type="file" accept=".json,application/json" style="display:none">
@@ -140,12 +140,12 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
         </div>
         <div class="add-cards-deck-selector">
           <label for="deck-select">Add to deck</label>
-          <select id="deck-select" class="add-cards-select">
+          <select id="deck-select" class="add-cards-select surface-field">
             ${userDecks.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
             <option value="__new__"${autoNew ? ' selected' : ''}>New deck…</option>
           </select>
           <div class="add-cards-new-deck${autoNew ? ' visible' : ''}" id="new-deck-wrap">
-            <input id="new-deck-input" class="add-cards-input" type="text" placeholder="Deck name" autocorrect="off" />
+            <input id="new-deck-input" class="add-cards-input surface-field" type="text" placeholder="Deck name" autocorrect="off" />
           </div>
           <div id="deck-error" class="add-cards-error"></div>
         </div>

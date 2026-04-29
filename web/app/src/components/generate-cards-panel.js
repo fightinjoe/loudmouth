@@ -26,7 +26,7 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
   panel.className = 'generate-cards-panel'
   if (targetDeck) panel.dataset.hasDeck = ''
   panel.innerHTML = `
-    <div class="generate-cards-handle"></div>
+    <div class="generate-cards-handle sheet-handle"></div>
     <div class="panel-header">
       <button class="panel-header-back generate-cards-back" aria-label="Back">‹</button>
       <span class="panel-header-title">Add cards</span>
@@ -34,7 +34,7 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
     </div>
     <div class="generate-cards-body">
       <p class="generate-cards-instruction">Share a situation or context</p>
-      <textarea class="generate-cards-textarea" id="gc-topic"
+      <textarea class="generate-cards-textarea surface-field text-area-fixed" id="gc-topic"
         placeholder="Greetings for morning, afternoon, evening…"
         rows="4" autocorrect="off" autocapitalize="sentences" spellcheck="true"></textarea>
       <div class="generate-cards-footer">
@@ -47,7 +47,7 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
           </select>
         </div>
         <span class="generate-cards-lang-label">${langFlag} ${langName}</span>
-        <button class="generate-cards-generate-btn" id="gc-generate-btn" disabled>Generate</button>
+        <button class="generate-cards-generate-btn pill-action tappable" id="gc-generate-btn" disabled>Generate</button>
       </div>
       <div class="generate-cards-error" id="gc-error" aria-live="polite"></div>
     </div>

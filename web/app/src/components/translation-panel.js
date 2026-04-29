@@ -86,7 +86,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
   const panel = document.createElement('div')
   panel.className = 'translation-panel'
   panel.innerHTML = `
-    <div class="translation-handle"></div>
+    <div class="translation-handle sheet-handle"></div>
     <div class="panel-header">
       <button class="panel-header-back translation-back" aria-label="Back">‹</button>
       <span class="panel-header-title translation-lang-label">${langFlag} ${escHtml(langName)}</span>
@@ -94,7 +94,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
     </div>
     <div class="translation-body">
       <textarea
-        class="translation-textarea"
+        class="translation-textarea surface-field text-area-fixed"
         id="tr-input"
         placeholder="Type a word or phrase…"
         autocorrect="off"
@@ -104,7 +104,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
       ></textarea>
       <div class="translation-results" id="tr-results" aria-live="polite"></div>
       <div class="translation-footer">
-        <button class="translation-translate-btn" id="tr-translate-btn" disabled>Translate</button>
+        <button class="translation-translate-btn pill-action tappable" id="tr-translate-btn" disabled>Translate</button>
       </div>
     </div>
   `
@@ -174,7 +174,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
         if (res.status === 429) {
           showError('Try again in 60 seconds.')
         } else if (res.status >= 500) {
-          showError('Could not generate — try again. <button class="translation-retry-btn" id="tr-retry">↻</button>')
+          showError('Could not generate — try again. <button class="translation-retry-btn tappable" id="tr-retry">↻</button>')
           panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
         } else {
           showError(`Error ${res.status} — try again.`)
@@ -186,7 +186,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
       data = await res.json()
     } catch (err) {
       if (err.name === 'AbortError') {
-        showError('Could not generate — try again. <button class="translation-retry-btn" id="tr-retry">↻</button>')
+        showError('Could not generate — try again. <button class="translation-retry-btn tappable" id="tr-retry">↻</button>')
         panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
       } else {
         showError('No connection.')
@@ -197,7 +197,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
 
     const translations = data?.translations ?? []
     if (translations.length === 0) {
-      showError('No result — try rephrasing. <button class="translation-retry-btn" id="tr-retry">↻</button>')
+      showError('No result — try rephrasing. <button class="translation-retry-btn tappable" id="tr-retry">↻</button>')
       panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
       translateBtn.disabled = inputEl.value.trim().length === 0
       return

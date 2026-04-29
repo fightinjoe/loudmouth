@@ -6,7 +6,7 @@ function renderDeckPickerRow(deck, cardCount) {
   const ts = relativeTime(deck.lastAccessedAt ?? deck.createdAt)
   const flag = LANG_FLAGS[deck.lang] ?? ''
   return `
-    <div class="deck-picker-row" data-deck-id="${deck.id}">
+    <div class="deck-picker-row tappable" data-deck-id="${deck.id}">
       <div class="deck-picker-row-info">
         <span class="deck-picker-row-name">${deck.name}</span>
         <span class="deck-picker-row-meta">${ts} · <span class="deck-picker-row-flag">${flag} ·</span> ${cardCount} cards</span>
@@ -56,7 +56,7 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
   let mostRecentHTML = ''
   if (recentDecks.length > 0) {
     mostRecentHTML = `
-      <div class="deck-picker-section-header">Most Recent</div>
+      <div class="deck-picker-section-header section-label">Most Recent</div>
       ${recentDecks.map(d => renderDeckPickerRow(d, cardCount(d.id))).join('')}
     `
   }
@@ -71,9 +71,9 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
       ? renderDeckPickerRow({ id: `starred-${lang}`, name: '★ Starred', lang, lastAccessedAt: null, createdAt: null }, starredCount)
       : ''
     byLangHTML += `
-      <div class="deck-picker-section-header">
+      <div class="deck-picker-section-header section-label">
         <span>${flag} ${name}</span>
-        <span class="deck-picker-section-header-link" data-deck-id="lang:${lang}">All ${total} cards</span>
+        <span class="deck-picker-section-header-link tappable" data-deck-id="lang:${lang}">All ${total} cards</span>
       </div>
       <div class="deck-picker-lang-group">
         ${starredRow}

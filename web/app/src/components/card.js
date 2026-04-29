@@ -38,24 +38,24 @@ export function renderCardRow(card, readingDisplay = 'reading') {
   return `
     <div class="card-row-wrapper" data-card-id="${card.id}">
       <button
-        class="card-row-star-btn"
+        class="card-row-star-btn tappable"
         data-card-id="${card.id}"
         aria-label="${isStarred ? 'Unstar' : 'Star'}"
         data-starred="${isStarred}"
       >${isStarred ? '★' : '☆'}</button>
       <button
-        class="card-row-edit-btn"
+        class="card-row-edit-btn tappable"
         data-card-id="${card.id}"
         aria-label="Edit"
       >Edit</button>
       <div
-        class="card-row flex-row gap-auto"
+        class="card-row flex-row gap-auto tappable"
         data-card-id="${card.id}"
       >
         ${ renderCardContent(card, readingDisplay) }
 
         <button
-          class="card-row-play"
+          class="card-row-play tappable"
           data-card-id="${card.id}"
           aria-label="Play"
         >

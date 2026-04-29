@@ -63,4 +63,4 @@ Neither web nor iOS currently has an in-app Generate Cards flow. The current imp
 
 ## Bugs
 
-- [ ] Web content panel does not scroll cards when there are more than will fit on the screen. Instead, it incorrectly shrinks the height of the cards so they all fit on the screen at once. https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=254-13095&t=glPczHFNXaQtaweV-11
+- [x] Web content panel does not scroll cards when there are more than will fit on the screen. Instead, it incorrectly shrinks the height of the cards so they all fit on the screen at once. https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=254-13095&t=glPczHFNXaQtaweV-11

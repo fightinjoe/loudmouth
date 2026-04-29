@@ -29,10 +29,10 @@ export function openJsonPanel(appEl, title, jsonString) {
     <div class="panel-header">
       <button class="panel-header-back" aria-label="Back">‹</button>
       <span class="panel-header-title">${title}</span>
-      <button class="panel-header-right json-panel-copy-btn" id="btn-copy-json">Copy</button>
+      <button class="panel-header-right panel-action-text json-panel-copy-btn" id="btn-copy-json">Copy</button>
     </div>
     <div class="json-panel-body">
-      <textarea class="json-panel-textarea" readonly spellcheck="false"></textarea>
+      <textarea class="json-panel-textarea surface-field text-area-fixed" readonly spellcheck="false"></textarea>
     </div>
   `
 
