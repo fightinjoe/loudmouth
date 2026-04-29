@@ -13,32 +13,32 @@ export function toImportJson(cards) {
 
 export function openJsonPanel(appEl, title, jsonString) {
   const panel = document.createElement('div')
-  panel.className = 'json-panel panel-screen fixed-inset bg-primary flex-col transition-sheet'
+  panel.className = 'json-panel pane-screen fixed-inset bg-primary flex-col transition-sheet'
   appEl.appendChild(panel)
 
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => panel.classList.add('panel-screen--visible'))
+    requestAnimationFrame(() => panel.classList.add('pane-screen--visible'))
   })
 
   function close() {
-    panel.classList.remove('panel-screen--visible')
+    panel.classList.remove('pane-screen--visible')
     panel.addEventListener('transitionend', () => panel.remove(), { once: true })
   }
 
   panel.innerHTML = `
-    <div class="panel-header flex items-center">
-      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
-      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">${title}</span>
-      <button class="panel-header-right fg-accent text-icon flex items-center justify-center shrink-0 panel-action-text json-panel-copy-btn" id="btn-copy-json">Copy</button>
+    <div class="pane-header flex items-center">
+      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">${title}</span>
+      <button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0 pane-action-text json-pane-copy-btn" id="btn-copy-json">Copy</button>
     </div>
-    <div class="json-panel-body flex-1 flex-col">
-      <textarea class="json-panel-textarea flex-1 surface-field text-area-fixed text-body2 font-mono leading-entry" readonly spellcheck="false"></textarea>
+    <div class="json-pane-body flex-1 flex-col">
+      <textarea class="json-pane-textarea flex-1 surface-field text-area-fixed text-body2 font-mono leading-entry" readonly spellcheck="false"></textarea>
     </div>
   `
 
-  panel.querySelector('.json-panel-textarea').value = jsonString
+  panel.querySelector('.json-pane-textarea').value = jsonString
 
-  panel.querySelector('.panel-header-back').addEventListener('click', close)
+  panel.querySelector('.pane-header-back').addEventListener('click', close)
 
   const copyBtn = panel.querySelector('#btn-copy-json')
   copyBtn.addEventListener('click', () => {
@@ -48,7 +48,7 @@ export function openJsonPanel(appEl, title, jsonString) {
         setTimeout(() => { copyBtn.textContent = 'Copy' }, 1500)
       })
     } else {
-      const ta = panel.querySelector('.json-panel-textarea')
+      const ta = panel.querySelector('.json-pane-textarea')
       ta.removeAttribute('readonly')
       ta.select()
       ta.setSelectionRange(0, 99999)

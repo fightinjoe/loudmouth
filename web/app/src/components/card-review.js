@@ -25,12 +25,12 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   appEl.appendChild(scrim)
 
   const panel = document.createElement('div')
-  panel.className = 'card-review-panel panel-screen fixed-inset bg-primary flex-col transition-sheet'
+  panel.className = 'card-review-panel pane-screen fixed-inset bg-primary flex-col transition-sheet'
   panel.innerHTML = `
-    <div class="panel-header flex items-center">
-      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
-      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">${deck.name}</span>
-      <span class="panel-header-spacer shrink-0"></span>
+    <div class="pane-header flex items-center">
+      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">${deck.name}</span>
+      <span class="pane-header-spacer shrink-0"></span>
     </div>
     <div class="card-review-body flex-1 flex items-center justify-center">
       <div class="card-review-content flex-col items-center"></div>
@@ -151,7 +151,7 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   // the append and the class toggle into the same paint, skipping the transition.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      panel.classList.add('panel-screen--visible')
+      panel.classList.add('pane-screen--visible')
       scrim.classList.add('card-review-scrim--visible')
     })
   })
@@ -241,11 +241,11 @@ export function openCardReview(appEl, cards, deck, startIndex) {
 
   function dismiss() {
     scrim.classList.remove('card-review-scrim--visible')
-    panel.classList.remove('panel-screen--visible')
+    panel.classList.remove('pane-screen--visible')
     const cleanup = () => { panel.remove(); scrim.remove() }
     panel.addEventListener('transitionend', cleanup, { once: true })
     setTimeout(cleanup, 350)
   }
 
-  panel.querySelector('.panel-header-back').addEventListener('click', dismiss)
+  panel.querySelector('.pane-header-back').addEventListener('click', dismiss)
 }

@@ -19,7 +19,7 @@
 - 46 tests pass
 
 ## DU-009 — DONE (commit c010831, implementation from DU-006)
-- Back button already implemented in DU-006: removes .card-review-panel--visible, listens for transitionend, calls panel.remove()
+- Back button already implemented in DU-006: removes .card-review-pane--visible, listens for transitionend, calls panel.remove()
 - Panel is fixed overlay; removal reveals the card list beneath
 - 46 tests pass
 
@@ -39,7 +39,7 @@
 
 ## DU-006 — DONE
 - openCardReview() added to deck-view.js; appended panel div to appEl
-- Slide-up via translateY(100%)→0, 300ms ease; .card-review-panel--visible class
+- Slide-up via translateY(100%)→0, 300ms ease; .card-review-pane--visible class
 - renderReviewCardContent(): comprehension/review → text bold + reading; reverse → translation
 - Card tap → speak(reading||text, lang); back button → slide out + remove from DOM
 - Touch swipe (50px threshold) advances/retreats currentIndex, no wrap-around

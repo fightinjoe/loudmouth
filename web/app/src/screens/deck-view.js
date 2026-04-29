@@ -105,10 +105,10 @@ async function buildNavPaneContent() {
   const isEmpty = allDecks.length === 0 && allLangs.length === 0
 
   return `
-    <div class="panel-header">
-      <span class="panel-header-spacer shrink-0"></span>
-      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Decks</span>
-      <span class="panel-header-spacer shrink-0"></span>
+    <div class="pane-header">
+      <span class="pane-header-spacer shrink-0"></span>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Decks</span>
+      <span class="pane-header-spacer shrink-0"></span>
     </div>
     <div class="deck-picker-list flex-1 overflow-y-auto">
       ${mostRecentHTML}
@@ -294,13 +294,13 @@ export function renderDeckView(el, params) {
 
       el.dataset.mode = deck.mode
       screenEl.innerHTML = `
-        <div class="panel-header flex items-center">
-          <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" id="btn-menu" aria-label="Menu">☰</button>
-          <button class="panel-header-title flex-1 text-center text-header font-semibold fg-body" id="btn-deck-title">${deck.name}</button>
+        <div class="pane-header flex items-center">
+          <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" id="btn-menu" aria-label="Menu">☰</button>
+          <button class="pane-header-title flex-1 text-center text-header font-semibold fg-body" id="btn-deck-title">${deck.name}</button>
           ${isLangView
-            ? '<span class="panel-header-spacer shrink-0"></span>'
-            : `<button class="panel-header-right fg-accent text-icon flex items-center justify-center shrink-0" id="btn-deck-add" aria-label="Translate">＋</button>
-               <button class="panel-header-right fg-accent text-icon flex items-center justify-center shrink-0 deck-header-done text-body1 font-semibold" id="btn-deck-done">Done</button>`}
+            ? '<span class="pane-header-spacer shrink-0"></span>'
+            : `<button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0" id="btn-deck-add" aria-label="Translate">＋</button>
+               <button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0 deck-header-done text-body1 font-semibold" id="btn-deck-done">Done</button>`}
         </div>
         <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto">
           ${cards.length === 0

@@ -31,7 +31,7 @@ export function wireNavPaneGesture(contentPaneEl, onOpen, onClose, navPaneWidth 
   }
 
   navMainEl.addEventListener('touchstart', e => {
-    if (e.target.closest('.panel-screen') || e.target.closest('.nav-main-scrim')) return
+    if (e.target.closest('.pane-screen') || e.target.closest('.nav-main-scrim')) return
     if (isOpen) return
     startX = e.touches[0].clientX
     startY = e.touches[0].clientY

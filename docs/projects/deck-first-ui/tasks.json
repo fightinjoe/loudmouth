@@ -1,6 +1,6 @@
 {
   "project": "Deck-First UI Redesign",
-  "description": "Redesign navigation and UI to match Figma prototype: deck view as home, panel-based navigation, swipe review, new card templates.",
+  "description": "Redesign navigation and UI to match Figma prototype: deck view as home, pane-based navigation, swipe review, new card templates.",
   "tasks": [
     {
       "id": "DU-001",

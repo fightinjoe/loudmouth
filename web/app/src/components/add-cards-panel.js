@@ -12,15 +12,15 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
   let parseErrors = initialErrors || []
 
   const panel = document.createElement('div')
-  panel.className = 'add-cards-panel panel-screen fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
+  panel.className = 'add-cards-panel pane-screen fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
   appEl.appendChild(panel)
 
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => panel.classList.add('panel-screen--visible'))
+    requestAnimationFrame(() => panel.classList.add('pane-screen--visible'))
   })
 
   function close() {
-    panel.classList.remove('panel-screen--visible')
+    panel.classList.remove('pane-screen--visible')
     panel.addEventListener('transitionend', () => panel.remove(), { once: true })
   }
 
@@ -31,10 +31,10 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
 
   function renderStep1() {
     panel.innerHTML = `
-      <div class="panel-header flex items-center">
-        <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
-        <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add Cards</span>
-        <span class="panel-header-spacer shrink-0"></span>
+      <div class="pane-header flex items-center">
+        <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+        <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add Cards</span>
+        <span class="pane-header-spacer shrink-0"></span>
       </div>
       <div class="add-cards-body flex-col">
         <section class="add-cards-section flex-col">
@@ -55,7 +55,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
       </div>
     `
 
-    panel.querySelector('.panel-header-back').addEventListener('click', close)
+    panel.querySelector('.pane-header-back').addEventListener('click', close)
 
     panel.querySelector('#btn-parse').addEventListener('click', () => {
       const raw = panel.querySelector('#json-input').value.trim()
@@ -127,10 +127,10 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
     const autoNew = userDecks.length === 0
 
     panel.innerHTML = `
-      <div class="panel-header flex items-center">
-        <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
-        <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Confirm Import</span>
-        <span class="panel-header-spacer shrink-0"></span>
+      <div class="pane-header flex items-center">
+        <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+        <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Confirm Import</span>
+        <span class="pane-header-spacer shrink-0"></span>
       </div>
       <div class="add-cards-body flex-col">
         <div class="add-cards-summary text-center">
@@ -154,7 +154,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
       </div>
     `
 
-    panel.querySelector('.panel-header-back').addEventListener('click', fromUri ? cancelFromUri : close)
+    panel.querySelector('.pane-header-back').addEventListener('click', fromUri ? cancelFromUri : close)
     panel.querySelector('#btn-step-back').addEventListener('click', fromUri ? cancelFromUri : renderStep1)
 
     const select = panel.querySelector('#deck-select')

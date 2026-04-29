@@ -83,12 +83,12 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
   }
 
   const panel = document.createElement('div')
-  panel.className = 'deck-picker-panel panel-screen fixed-inset bg-primary flex-col transition-sheet'
+  panel.className = 'deck-picker-panel pane-screen fixed-inset bg-primary flex-col transition-sheet'
   panel.innerHTML = `
-    <div class="panel-header flex items-center">
-      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
-      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Language decks</span>
-      <button class="panel-header-right fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Add">＋</button>
+    <div class="pane-header flex items-center">
+      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Language decks</span>
+      <button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Add">＋</button>
     </div>
     <div class="deck-picker-list flex-1 overflow-y-auto">
       ${mostRecentHTML}
@@ -100,16 +100,16 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      panel.classList.add('panel-screen--visible')
+      panel.classList.add('pane-screen--visible')
     })
   })
 
   function close() {
-    panel.classList.remove('panel-screen--visible')
+    panel.classList.remove('pane-screen--visible')
     panel.addEventListener('transitionend', () => panel.remove(), { once: true })
   }
 
-  panel.querySelector('.panel-header-back').addEventListener('click', close)
+  panel.querySelector('.pane-header-back').addEventListener('click', close)
 
   panel.querySelector('.deck-picker-list').addEventListener('click', e => {
     const row = e.target.closest('[data-deck-id]')
@@ -119,7 +119,7 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
     onSelectDeck(deckId)
   })
 
-  panel.querySelector('.panel-header-right').addEventListener('click', () => {
+  panel.querySelector('.pane-header-right').addEventListener('click', () => {
     if (onAddCards) onAddCards(close)
   })
 }

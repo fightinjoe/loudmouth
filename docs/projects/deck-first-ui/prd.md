@@ -143,9 +143,9 @@ Three templates control what is shown on a card both in the list row and in the 
 
 ### Panel Animation Contract
 
-- All panels use the same CSS class-based animation: a `panel` base class with `translateY(100%)` initial transform; a `panel--open` class that transitions to `translateY(0)` using `transition: transform 300ms ease`.
+- All panels use the same CSS class-based animation: a `panel` base class with `translateY(100%)` initial transform; a `pane--open` class that transitions to `translateY(0)` using `transition: transform 300ms ease`.
 - Panels are rendered into a fixed overlay container stacked above the main Deck View.
-- Closing a panel removes `panel--open`, waits for the transition to end, then removes the element from the DOM.
+- Closing a panel removes `pane--open`, waits for the transition to end, then removes the element from the DOM.
 
 ## Testing Decisions
 

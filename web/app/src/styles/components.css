@@ -105,7 +105,9 @@
 
 .card-row-wrapper {
   position: relative;
-  border-radius: var(--radius-sm);
+
+  &:first-child .card-row { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  &:last-child .card-row { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
 }
 
 .card-row-star-btn {
@@ -127,7 +129,6 @@
 .card-row {
   position: relative;
   z-index: 1;
-  border-radius: var(--radius-sm);
   min-height: 64px;
   padding: 0.5rem 0.75rem 0.5rem 1rem;
   transition: transform 250ms ease;
@@ -436,7 +437,7 @@
   z-index: 200;
 }
 
-.json-panel-body {
+.json-pane-body {
   padding: 1rem 1.25rem 2rem;
 }
 
@@ -687,34 +688,34 @@
 
 /*-- Full-screen slide-up panel --*/
 
-.panel-screen {
+.pane-screen {
   transform: translateY(100%);
   z-index: 100;
 }
 
-.panel-screen--visible {
+.pane-screen--visible {
   transform: translateY(0);
 }
 
 /*-- Panel navigation header (back · title · action) --*/
 
-.panel-header {
+.pane-header {
   padding: 1rem 1.25rem 0.75rem;
 }
 
-.panel-header-back,
-.panel-header-right {
+.pane-header-back,
+.pane-header-right {
   width: 44px;
   height: 44px;
 }
 
-.panel-header-title {
+.pane-header-title {
   cursor: default;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* .tappable is added to panel-header-title buttons in JS */
+/* .tappable is added to pane-header-title buttons in JS */
 
-.panel-header-spacer {
+.pane-header-spacer {
   width: 44px;
 }

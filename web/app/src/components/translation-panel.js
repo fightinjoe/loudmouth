@@ -87,10 +87,10 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
   panel.className = 'translation-panel bottom-sheet bg-primary flex-col transition-sheet'
   panel.innerHTML = `
     <div class="translation-handle sheet-handle"></div>
-    <div class="panel-header flex items-center">
-      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0 translation-back" aria-label="Back">‹</button>
-      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none translation-lang-label">${langFlag} ${escHtml(langName)}</span>
-      <span class="panel-header-spacer shrink-0"></span>
+    <div class="pane-header flex items-center">
+      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0 translation-back" aria-label="Back">‹</button>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none translation-lang-label">${langFlag} ${escHtml(langName)}</span>
+      <span class="pane-header-spacer shrink-0"></span>
     </div>
     <div class="translation-body flex-1 flex-col min-h-0 overflow-y-auto">
       <textarea

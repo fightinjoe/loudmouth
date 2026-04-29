@@ -10,23 +10,23 @@ function esc(str) {
 
 export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSave, onDelete) {
   const panel = document.createElement('div')
-  panel.className = 'card-edit-panel panel-screen fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
+  panel.className = 'card-edit-panel pane-screen fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
   appEl.appendChild(panel)
 
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => panel.classList.add('panel-screen--visible'))
+    requestAnimationFrame(() => panel.classList.add('pane-screen--visible'))
   })
 
   function close() {
-    panel.classList.remove('panel-screen--visible')
+    panel.classList.remove('pane-screen--visible')
     panel.addEventListener('transitionend', () => panel.remove(), { once: true })
   }
 
   panel.innerHTML = `
-    <div class="panel-header flex items-center">
-      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Cancel">‹</button>
-      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Edit Card</span>
-      <button class="panel-header-right fg-accent text-icon flex items-center justify-center shrink-0 panel-action-text card-edit-save-btn" id="btn-save-card">Save</button>
+    <div class="pane-header flex items-center">
+      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Cancel">‹</button>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Edit Card</span>
+      <button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0 pane-action-text card-edit-save-btn" id="btn-save-card">Save</button>
     </div>
     <div class="card-edit-body flex-col">
       <div class="card-edit-field flex-col">
@@ -69,7 +69,7 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
     </div>
   `
 
-  panel.querySelector('.panel-header-back').addEventListener('click', close)
+  panel.querySelector('.pane-header-back').addEventListener('click', close)
 
   panel.querySelector('#btn-view-json').addEventListener('click', () => {
     openJsonPanel(appEl, 'Card JSON', toImportJson([card]))

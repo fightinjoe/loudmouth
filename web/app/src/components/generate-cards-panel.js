@@ -27,10 +27,10 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
   if (targetDeck) panel.dataset.hasDeck = ''
   panel.innerHTML = `
     <div class="generate-cards-handle sheet-handle"></div>
-    <div class="panel-header flex items-center">
-      <button class="panel-header-back fg-accent text-icon flex items-center justify-center shrink-0 generate-cards-back" aria-label="Back">‹</button>
-      <span class="panel-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add cards</span>
-      <span class="panel-header-spacer shrink-0"></span>
+    <div class="pane-header flex items-center">
+      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0 generate-cards-back" aria-label="Back">‹</button>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add cards</span>
+      <span class="pane-header-spacer shrink-0"></span>
     </div>
     <div class="generate-cards-body flex-col">
       <p class="generate-cards-instruction text-body2 text-center fg-secondary">Share a situation or context</p>
