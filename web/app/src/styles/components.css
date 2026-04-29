@@ -8,6 +8,63 @@
   overflow: hidden;
 }
 
+/* ── Deck Title Tap Menu ── */
+
+.deck-title-menu {
+  position: fixed;
+  left: 50%;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 300;
+  min-width: 160px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(-50%) translateY(-4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  pointer-events: none;
+}
+
+.deck-title-menu--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.deck-title-menu-item {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  text-align: left;
+  font-size: 1rem;
+  color: var(--text-body);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.deck-title-menu-item:last-child {
+  border-bottom: none;
+}
+
+.deck-title-menu-item:active {
+  background: var(--bg-primary);
+}
+
+/* ── Edit mode header toggle ── */
+
+.deck-header-done {
+  display: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+#deck-view-screen[data-edit-mode] .deck-header-done { display: flex; }
+#deck-view-screen[data-edit-mode] #btn-deck-add     { display: none; }
+
 /* ── Deck View ── */
 
 #deck-view-screen {

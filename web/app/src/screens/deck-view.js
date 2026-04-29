@@ -297,7 +297,10 @@ export function renderDeckView(el, params) {
         <div class="panel-header">
           <button class="panel-header-back" id="btn-menu" aria-label="Menu">☰</button>
           <button class="panel-header-title" id="btn-deck-title">${deck.name}</button>
-          ${isLangView ? '<span class="panel-header-spacer"></span>' : '<button class="panel-header-right" id="btn-deck-add" aria-label="Translate">＋</button>'}
+          ${isLangView
+            ? '<span class="panel-header-spacer"></span>'
+            : `<button class="panel-header-right" id="btn-deck-add" aria-label="Translate">＋</button>
+               <button class="panel-header-right deck-header-done" id="btn-deck-done">Done</button>`}
         </div>
         <div class="deck-view-list">
           ${cards.length === 0
@@ -380,7 +383,54 @@ export function renderDeckView(el, params) {
 
       screenEl.querySelector('#btn-menu').addEventListener('click', () => navPane.open())
 
-      screenEl.querySelector('#btn-deck-title').addEventListener('click', () => navPane.open())
+      function closeTitleMenu() {
+        document.getElementById('deck-title-menu')?.remove()
+      }
+
+      function showTitleMenu(anchor) {
+        const rect = anchor.getBoundingClientRect()
+        const menu = document.createElement('div')
+        menu.id = 'deck-title-menu'
+        menu.className = 'deck-title-menu'
+        menu.style.top = (rect.bottom + 4) + 'px'
+        menu.innerHTML = `
+          <button class="deck-title-menu-item" id="dtm-settings">Settings</button>
+          <button class="deck-title-menu-item" id="dtm-edit">Edit cards</button>
+        `
+        document.body.appendChild(menu)
+        requestAnimationFrame(() => requestAnimationFrame(() => menu.classList.add('deck-title-menu--visible')))
+        menu.querySelector('#dtm-settings').addEventListener('click', () => {
+          closeTitleMenu()
+          openDeckSettings(
+            el, deck,
+            { ...settingsOps, exportJson: () => openJsonPanel(el, deck.name, toImportJson(cards)) },
+            async (changes) => {
+              if (changes.deleted) { deckId = null; await refreshNavPane() }
+              else { await refreshNavPane() }
+              await loadDeck()
+            }
+          )
+        })
+        menu.querySelector('#dtm-edit').addEventListener('click', () => {
+          closeTitleMenu()
+          screenEl.dataset.editMode = ''
+        })
+        setTimeout(() => document.addEventListener('click', closeTitleMenu, { once: true, capture: true }), 0)
+      }
+
+      const titleBtn = screenEl.querySelector('#btn-deck-title')
+      if (isLangView) {
+        titleBtn.addEventListener('click', () => navPane.open())
+      } else {
+        titleBtn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          if (document.getElementById('deck-title-menu')) { closeTitleMenu(); return }
+          showTitleMenu(titleBtn)
+        })
+        screenEl.querySelector('#btn-deck-done').addEventListener('click', () => {
+          delete screenEl.dataset.editMode
+        })
+      }
 
       if (!isLangView) {
         screenEl.querySelector('#btn-deck-add').addEventListener('click', () => {

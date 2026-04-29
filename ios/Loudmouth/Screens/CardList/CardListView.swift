@@ -19,6 +19,7 @@ struct CardListView: View {
     @State private var editingCard: Card?
     @State private var showSettings = false
     @State private var showTranslation = false
+    @State private var isEditing = false
 
     private var title: String {
         if let deck { return deck.name }
@@ -72,11 +73,31 @@ struct CardListView: View {
                                 .background(Circle().fill(Theme.bgSurface))
                         }
                         Spacer()
-                        Text(title)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Theme.textBody)
-                        Spacer()
                         if deck != nil {
+                            Menu {
+                                Button { showSettings = true } label: {
+                                    Label("Settings", systemImage: "gear")
+                                }
+                                Button { isEditing = true } label: {
+                                    Label("Edit cards", systemImage: "pencil")
+                                }
+                            } label: {
+                                Text(title)
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(Theme.textBody)
+                            }
+                        } else {
+                            Text(title)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(Theme.textBody)
+                        }
+                        Spacer()
+                        if isEditing {
+                            Button("Done") { isEditing = false }
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Theme.accent)
+                                .frame(width: 44, height: 44)
+                        } else if deck != nil {
                             Button { showTranslation = true } label: {
                                 Image(systemName: "plus")
                                     .font(.system(size: 17, weight: .semibold))
