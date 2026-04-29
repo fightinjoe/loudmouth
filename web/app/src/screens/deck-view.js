@@ -15,6 +15,7 @@ import { openCardEditPanel } from '../components/card-edit-panel.js'
 import { openJsonPanel, toImportJson } from '../components/json-panel.js'
 import { openGenerateCardsPanel } from '../components/generate-cards-panel.js'
 import { openTranslationPanel } from '../components/translation-panel.js'
+import { icon } from '../components/icon.js';
 
 const LAST_DECK_KEY = 'loudmouth.lastDeckId'
 
@@ -295,12 +296,16 @@ export function renderDeckView(el, params) {
       el.dataset.mode = deck.mode
       screenEl.innerHTML = `
         <div class="pane-header flex items-center">
-          <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" id="btn-menu" aria-label="Menu">☰</button>
+
+          <button class="icon-button" id="btn-menu" aria-label="Menu">${icon('Menu')}</button>
+
           <button class="pane-header-title flex-1 text-center text-header font-semibold fg-body" id="btn-deck-title">${deck.name}</button>
           ${isLangView
             ? '<span class="pane-header-spacer shrink-0"></span>'
-            : `<button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" id="btn-deck-add" aria-label="Translate">＋</button>
-               <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 deck-header-done text-body1 font-semibold" id="btn-deck-done">Done</button>`}
+            : `
+              <button class="icon-button" id="btn-deck-add" aria-label="Translate">${icon('Add')}</button>
+              <button class="icon-button deck-header-done" id="btn-deck-done" aria-label="Done">${icon('Done')}</button>
+            `}
         </div>
         <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto">
           ${cards.length === 0
