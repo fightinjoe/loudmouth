@@ -703,10 +703,15 @@
   padding: 1rem 1.25rem 0.75rem;
 }
 
-.pane-header-back,
-.pane-header-right {
+.icon-button {
+  background: hsl(var(--white));
+  border-radius: 9999px;
   width: 44px;
   height: 44px;
+
+  &.emphasis { background: hsl(var(--bg-primary)); }
+  &.danger { background: hsl(var(--bg-red)); }
+  &.blue { background: hsl(var(--bg-red)); }
 }
 
 .pane-header-title {

@@ -295,12 +295,12 @@ export function renderDeckView(el, params) {
       el.dataset.mode = deck.mode
       screenEl.innerHTML = `
         <div class="pane-header flex items-center">
-          <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" id="btn-menu" aria-label="Menu">☰</button>
+          <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" id="btn-menu" aria-label="Menu">☰</button>
           <button class="pane-header-title flex-1 text-center text-header font-semibold fg-body" id="btn-deck-title">${deck.name}</button>
           ${isLangView
             ? '<span class="pane-header-spacer shrink-0"></span>'
-            : `<button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0" id="btn-deck-add" aria-label="Translate">＋</button>
-               <button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0 deck-header-done text-body1 font-semibold" id="btn-deck-done">Done</button>`}
+            : `<button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" id="btn-deck-add" aria-label="Translate">＋</button>
+               <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 deck-header-done text-body1 font-semibold" id="btn-deck-done">Done</button>`}
         </div>
         <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto">
           ${cards.length === 0

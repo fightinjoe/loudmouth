@@ -27,9 +27,9 @@ export function openJsonPanel(appEl, title, jsonString) {
 
   panel.innerHTML = `
     <div class="pane-header flex items-center">
-      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
       <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">${title}</span>
-      <button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0 pane-action-text json-pane-copy-btn" id="btn-copy-json">Copy</button>
+      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 pane-action-text json-pane-copy-btn" id="btn-copy-json">Copy</button>
     </div>
     <div class="json-pane-body flex-1 flex-col">
       <textarea class="json-pane-textarea flex-1 surface-field text-area-fixed text-body2 font-mono leading-entry" readonly spellcheck="false"></textarea>
@@ -38,7 +38,7 @@ export function openJsonPanel(appEl, title, jsonString) {
 
   panel.querySelector('.json-pane-textarea').value = jsonString
 
-  panel.querySelector('.pane-header-back').addEventListener('click', close)
+  panel.querySelector('.icon_button').addEventListener('click', close)
 
   const copyBtn = panel.querySelector('#btn-copy-json')
   copyBtn.addEventListener('click', () => {

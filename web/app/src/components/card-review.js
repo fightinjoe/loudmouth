@@ -28,7 +28,7 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   panel.className = 'card-review-panel pane-screen fixed-inset bg-primary flex-col transition-sheet'
   panel.innerHTML = `
     <div class="pane-header flex items-center">
-      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
       <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">${deck.name}</span>
       <span class="pane-header-spacer shrink-0"></span>
     </div>
@@ -247,5 +247,5 @@ export function openCardReview(appEl, cards, deck, startIndex) {
     setTimeout(cleanup, 350)
   }
 
-  panel.querySelector('.pane-header-back').addEventListener('click', dismiss)
+  panel.querySelector('.icon_button').addEventListener('click', dismiss)
 }

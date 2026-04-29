@@ -16,7 +16,11 @@
 
   --amber-500: 38 71 49;
 
-  --red-500: 4 86 58;
+  --red-500: 13 100 56;
+
+  --blue-500: 207 100 56;
+  
+  --yellow-500: 53 100 56;
 
   --font-family: "Roboto Flex", "Noto Sans JP", sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;

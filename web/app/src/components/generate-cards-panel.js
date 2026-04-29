@@ -28,7 +28,7 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
   panel.innerHTML = `
     <div class="generate-cards-handle sheet-handle"></div>
     <div class="pane-header flex items-center">
-      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0 generate-cards-back" aria-label="Back">‹</button>
+      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 generate-cards-back" aria-label="Back">‹</button>
       <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add cards</span>
       <span class="pane-header-spacer shrink-0"></span>
     </div>

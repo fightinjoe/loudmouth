@@ -32,7 +32,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
   function renderStep1() {
     panel.innerHTML = `
       <div class="pane-header flex items-center">
-        <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+        <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
         <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add Cards</span>
         <span class="pane-header-spacer shrink-0"></span>
       </div>
@@ -55,7 +55,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
       </div>
     `
 
-    panel.querySelector('.pane-header-back').addEventListener('click', close)
+    panel.querySelector('.icon_button').addEventListener('click', close)
 
     panel.querySelector('#btn-parse').addEventListener('click', () => {
       const raw = panel.querySelector('#json-input').value.trim()
@@ -128,7 +128,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
 
     panel.innerHTML = `
       <div class="pane-header flex items-center">
-        <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+        <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
         <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Confirm Import</span>
         <span class="pane-header-spacer shrink-0"></span>
       </div>
@@ -154,7 +154,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
       </div>
     `
 
-    panel.querySelector('.pane-header-back').addEventListener('click', fromUri ? cancelFromUri : close)
+    panel.querySelector('.icon_button').addEventListener('click', fromUri ? cancelFromUri : close)
     panel.querySelector('#btn-step-back').addEventListener('click', fromUri ? cancelFromUri : renderStep1)
 
     const select = panel.querySelector('#deck-select')

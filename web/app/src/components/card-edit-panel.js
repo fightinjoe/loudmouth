@@ -24,9 +24,9 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
 
   panel.innerHTML = `
     <div class="pane-header flex items-center">
-      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Cancel">‹</button>
+      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Cancel">‹</button>
       <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Edit Card</span>
-      <button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0 pane-action-text card-edit-save-btn" id="btn-save-card">Save</button>
+      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 pane-action-text card-edit-save-btn" id="btn-save-card">Save</button>
     </div>
     <div class="card-edit-body flex-col">
       <div class="card-edit-field flex-col">
@@ -69,7 +69,7 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
     </div>
   `
 
-  panel.querySelector('.pane-header-back').addEventListener('click', close)
+  panel.querySelector('.icon_button').addEventListener('click', close)
 
   panel.querySelector('#btn-view-json').addEventListener('click', () => {
     openJsonPanel(appEl, 'Card JSON', toImportJson([card]))

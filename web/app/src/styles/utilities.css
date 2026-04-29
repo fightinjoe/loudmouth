@@ -197,7 +197,7 @@
 }
 
 .pane-action-text,
-.pane-header-right.pane-action-text {
+.icon_button.pane-action-text {
   width: auto;
   padding: 0 0.25rem;
   font-size: 1rem;

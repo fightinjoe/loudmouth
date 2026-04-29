@@ -86,9 +86,9 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
   panel.className = 'deck-picker-panel pane-screen fixed-inset bg-primary flex-col transition-sheet'
   panel.innerHTML = `
     <div class="pane-header flex items-center">
-      <button class="pane-header-back fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
       <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Language decks</span>
-      <button class="pane-header-right fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Add">＋</button>
+      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Add">＋</button>
     </div>
     <div class="deck-picker-list flex-1 overflow-y-auto">
       ${mostRecentHTML}
@@ -109,7 +109,7 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
     panel.addEventListener('transitionend', () => panel.remove(), { once: true })
   }
 
-  panel.querySelector('.pane-header-back').addEventListener('click', close)
+  panel.querySelector('.icon_button').addEventListener('click', close)
 
   panel.querySelector('.deck-picker-list').addEventListener('click', e => {
     const row = e.target.closest('[data-deck-id]')
@@ -119,7 +119,7 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
     onSelectDeck(deckId)
   })
 
-  panel.querySelector('.pane-header-right').addEventListener('click', () => {
+  panel.querySelector('.icon_button').addEventListener('click', () => {
     if (onAddCards) onAddCards(close)
   })
 }
