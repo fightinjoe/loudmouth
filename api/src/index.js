@@ -16,7 +16,8 @@ const DEFAULT_LLM = 'google';
 const DEFAULT_CARD_COUNT = 15;
 
 async function handleTranslate(req, res) {
-  const { text, targetLanguage, llm } = req.body || {};
+  const { text, targetLanguage, llm: rawLlm } = req.body || {};
+  const llm = rawLlm || DEFAULT_LLM;
 
   if (!text || typeof text !== 'string' || !text.trim()) {
     return res.status(400).json({ error: 'Missing or empty field: text' });
@@ -24,10 +25,6 @@ async function handleTranslate(req, res) {
   if (!targetLanguage || typeof targetLanguage !== 'string' || !targetLanguage.trim()) {
     return res.status(400).json({ error: 'Missing or empty field: targetLanguage' });
   }
-  if (!llm || typeof llm !== 'string' || !llm.trim()) {
-    return res.status(400).json({ error: 'Missing or empty field: llm' });
-  }
-
   const handler = LLM_REGISTRY[llm];
   if (!handler) {
     return res.status(400).json({ error: `Unknown LLM: ${llm}`, supported: Object.keys(LLM_REGISTRY) });

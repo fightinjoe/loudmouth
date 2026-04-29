@@ -14,6 +14,7 @@ import { openCardReview } from '../components/card-review.js'
 import { openCardEditPanel } from '../components/card-edit-panel.js'
 import { openJsonPanel, toImportJson } from '../components/json-panel.js'
 import { openGenerateCardsPanel } from '../components/generate-cards-panel.js'
+import { openTranslationPanel } from '../components/translation-panel.js'
 
 const LAST_DECK_KEY = 'loudmouth.lastDeckId'
 
@@ -296,7 +297,7 @@ export function renderDeckView(el, params) {
         <div class="panel-header">
           <button class="panel-header-back" id="btn-menu" aria-label="Menu">☰</button>
           <button class="panel-header-title" id="btn-deck-title">${deck.name}</button>
-          ${isLangView ? '<span class="panel-header-spacer"></span>' : '<button class="panel-header-right" id="btn-deck-settings" aria-label="Settings">⚙</button>'}
+          ${isLangView ? '<span class="panel-header-spacer"></span>' : '<button class="panel-header-right" id="btn-deck-add" aria-label="Translate">＋</button>'}
         </div>
         <div class="deck-view-list">
           ${cards.length === 0
@@ -382,41 +383,17 @@ export function renderDeckView(el, params) {
       screenEl.querySelector('#btn-deck-title').addEventListener('click', () => navPane.open())
 
       if (!isLangView) {
-        screenEl.querySelector('#btn-deck-settings').addEventListener('click', () => {
-          const deckSettingsOps = { ...settingsOps, exportJson: () => openJsonPanel(el, 'Deck JSON', toImportJson(cards)) }
-          openDeckSettings(el, deck, deckSettingsOps, async (changes) => {
-            if (changes.deleted) {
-              localStorage.removeItem(LAST_DECK_KEY)
-              deckId = null
-              await loadDeck()
-              return
-            }
-            if (changes.name) {
-              screenEl.querySelector('#btn-deck-title').textContent = changes.name
-              deck.name = changes.name
-            }
-            if (changes.mode) {
-              deck.mode = changes.mode
-              el.dataset.mode = changes.mode
-            }
-            if (changes.order) {
-              deck.order = changes.order
-              cards = applyCardOrder(cards, changes.order)
-              const list = screenEl.querySelector('.deck-view-list')
-              if (list) {
-                list.innerHTML = cards.length === 0
-                  ? `<div class="deck-view-empty"><p>No cards in this deck.</p></div>`
-                  : cards.map(card => renderCardRow(card, deck.readingDisplay)).join('')
-              }
-            }
-            if (changes.readingDisplay) {
-              deck.readingDisplay = changes.readingDisplay
-              const list = screenEl.querySelector('.deck-view-list')
-              if (list) {
-                list.innerHTML = cards.length === 0
-                  ? `<div class="deck-view-empty"><p>No cards in this deck.</p></div>`
-                  : cards.map(card => renderCardRow(card, deck.readingDisplay)).join('')
-              }
+        screenEl.querySelector('#btn-deck-add').addEventListener('click', () => {
+          openTranslationPanel(el, deck, { importCards }, (addedCard) => {
+            cards.push(addedCard)
+            const list = screenEl.querySelector('.deck-view-list')
+            if (list) {
+              // Remove empty state if present
+              const empty = list.querySelector('.deck-view-empty')
+              if (empty) empty.remove()
+              const tmp = document.createElement('div')
+              tmp.innerHTML = renderCardRow(addedCard, deck.readingDisplay)
+              list.appendChild(tmp.firstElementChild)
             }
           })
         })

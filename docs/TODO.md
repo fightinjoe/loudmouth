@@ -4,7 +4,7 @@
 
 - [ ] **iOS card schema is defined in multiple places** — `Card.swift` (SwiftData model), `ImportService.swift` (`CardInput`/`CardInputExample`), and `BackupService.swift` (`CardBackup`) each independently declare the card shape. A single canonical definition should be the source of truth.
 - [ ] **`example` storage shape differs between iOS and web** — The web app stores `example` as a nested object `{ text, reading, translation }` on the card. iOS flattens it into three top-level fields on the `Card` model: `exampleText`, `exampleReading`, `exampleTranslation`. These should be reconciled so both platforms use the same shape (nested object preferred, matching the batch schema).
-- [ ] **LLM:** make sure that `google` is the default LLM for all API requests
+- [x] **LLM:** make sure that `google` is the default LLM for all API requests
 
 ## Design migration
 
@@ -24,14 +24,14 @@ The items below track gaps between `DESIGN.md` and the current web/iOS implement
 
 The current web/iOS implementations have a "press to reveal translation" card-review interaction, but **not** the standalone Translation bottom sheet described in DESIGN.md. The following items build that sheet.
 
-- [ ] **Web: Translation action pane (bottom sheet)** — Create a new bottom-sheet component (white card, 40px top-radius, scrim over deck screen) triggered by the `+` FAB in the deck header. Header: back FAB (left) + non-tappable language label (right). Body: large multi-line text input (32px Roboto Flex Light, `--text-body`). "Translate" pill button bottom-right. Wire to `POST /translate` (see `api/README.md`). Display skeleton rows while in-flight, then result cards with reading/CJK text/English/play icon.
-- [ ] **Web: Translation result cards layout** — Each result card row: reading (ruby, 14px `--text-caption`) above CJK text (24px `--text-body`), English meaning (14px `--text-caption`) below. Top card `border-radius: 20px 20px 0 0`; bottom card `0 0 20px 20px`; middle cards no radius. "Swipe or tap to add card" hint above the list.
-- [ ] **Web: Swipe-to-add on translation result cards** — Top card is swipeable: drag reveals green ✓ (add) on left, red × (dismiss) + blue ✏ (edit) on right. Swipe right past threshold or tap → card added to current deck and removed from list. After all cards are added/dismissed, sheet returns to empty state.
-- [ ] **Web: Translation pane error states** — Timeout (504): "Could not generate — try again. [↻]". Rate-limited (429): "Try again in 60 seconds." Network error: "No connection." Empty result: "No result — try rephrasing. [↻]".
+- [x] **Web: Translation action pane (bottom sheet)** — Create a new bottom-sheet component (white card, 40px top-radius, scrim over deck screen) triggered by the `+` FAB in the deck header. Header: back FAB (left) + non-tappable language label (right). Body: large multi-line text input (32px Roboto Flex Light, `--text-body`). "Translate" pill button bottom-right. Wire to `POST /translate` (see `api/README.md`). Display skeleton rows while in-flight, then result cards with reading/CJK text/English/play icon.
+- [x] **Web: Translation result cards layout** — Each result card row: reading (ruby, 14px `--text-caption`) above CJK text (24px `--text-body`), English meaning (14px `--text-caption`) below. Top card `border-radius: 20px 20px 0 0`; bottom card `0 0 20px 20px`; middle cards no radius. "Swipe or tap to add card" hint above the list.
+- [x] **Web: Swipe-to-add on translation result cards** — Top card is swipeable: drag reveals green ✓ (add) on left, red × (dismiss) + blue ✏ (edit) on right. Swipe right past threshold or tap → card added to current deck and removed from list. After all cards are added/dismissed, sheet returns to empty state.
+- [x] **Web: Translation pane error states** — Timeout (504): "Could not generate — try again. [↻]". Rate-limited (429): "Try again in 60 seconds." Network error: "No connection." Empty result: "No result — try rephrasing. [↻]".
 - [ ] **Web: Deck with no language set edge case** — If the deck has no language set, show "🌐 Set language" pill that opens Generate Cards sheet for language selection instead of Translation sheet.
-- [ ] **iOS: Translation action pane (bottom sheet)** — Equivalent of the above web Translation sheet. Triggered by `+` FAB in deck header. Wire to `POST /translate`. Show skeleton while loading, then result cards. Swipe/tap to add card to current deck.
-- [ ] **iOS: Translation result card swipe-to-add** — Same interaction as web: swipe right to add, swipe left to dismiss/edit. After last card, return to empty state.
-- [ ] **iOS: Translation pane error states** — Same error states as web.
+- [x] **iOS: Translation action pane (bottom sheet)** — Equivalent of the above web Translation sheet. Triggered by `+` FAB in deck header. Wire to `POST /translate`. Show skeleton while loading, then result cards. Swipe/tap to add card to current deck.
+- [x] **iOS: Translation result card swipe-to-add** — Same interaction as web: swipe right to add, swipe left to dismiss/edit. After last card, return to empty state.
+- [x] **iOS: Translation pane error states** — Same error states as web.
 
 ### Generate Cards action pane
 
@@ -45,18 +45,22 @@ Neither web nor iOS currently has an in-app Generate Cards flow. The current imp
 
 ### Deck pane / content pane header
 
-- [ ] **Web: `+` FAB moves to header top-right (Translation entry)** — Per DESIGN.md, the deck header has a `+` FAB on the **right** that opens the Translation sheet (not the existing import panel). The existing import flow should be accessible from elsewhere (e.g., deck settings or a separate route).
-- [ ] **iOS: `+` FAB moves to header top-right (Translation entry)** — Same as above.
+- [x] **Web: `+` FAB moves to header top-right (Translation entry)** — Per DESIGN.md, the deck header has a `+` FAB on the **right** that opens the Translation sheet (not the existing import panel). The existing import flow should be accessible from elsewhere (e.g., deck settings or a separate route).
+- [x] **iOS: `+` FAB moves to header top-right (Translation entry)** — Same as above.
 - [ ] **Web: Edit cards mode — reorder drag** — DESIGN.md describes an "Edit cards" mode where cards can be dragged to reorder. When active, the add button becomes a "confirm" button, and the "Add cards" input appears at the bottom. Not currently implemented in web.
 - [ ] **iOS: Edit cards mode — reorder drag** — Same reorder mode not yet implemented on iOS.
 
 ### Dismissal
 
-- [ ] **Web: all action panes dismissible by swipe-down** — DESIGN.md specifies swipe-down dismissal for Translation and Generate Cards action panes. Verify and implement consistent swipe-down-to-dismiss across all bottom sheets in the web app.
-- [ ] **iOS: all action panes dismissible by swipe-down** — Same; verify Generate Cards and Translation sheets support swipe-down-to-dismiss (standard iOS sheet behavior, but confirm it is wired correctly once those sheets are built).
+- [x] **Web: all action panes dismissible by swipe-down** — DESIGN.md specifies swipe-down dismissal for Translation and Generate Cards action panes. Verify and implement consistent swipe-down-to-dismiss across all bottom sheets in the web app.
+- [x] **iOS: all action panes dismissible by swipe-down** — Same; verify Generate Cards and Translation sheets support swipe-down-to-dismiss (standard iOS sheet behavior, but confirm it is wired correctly once those sheets are built).
 
 ## Improvements
 
 - [ ] Add support for the following languages in a way that is shared across web, ios, and api: Japanese, Chinese, Czech, Spanish, French, and German
 - [ ] Expand the generate card API to pass in existing words so duplicates aren't created
 - [ ] Add "suggested title" to the response when generating cards. The title should be as short as possible, and prepended with an emoji if an appropriate one exists
+
+## Bugs
+
+- [ ] Web content panel does not scroll cards when there are more than will fit on the screen. Instead, it incorrectly shrinks the height of the cards so they all fit on the screen at once. https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=254-13095&t=glPczHFNXaQtaweV-11

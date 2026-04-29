@@ -18,6 +18,7 @@ struct CardListView: View {
     @State private var reviewStartIndex: Int?
     @State private var editingCard: Card?
     @State private var showSettings = false
+    @State private var showTranslation = false
 
     private var title: String {
         if let deck { return deck.name }
@@ -76,8 +77,8 @@ struct CardListView: View {
                             .foregroundStyle(Theme.textBody)
                         Spacer()
                         if deck != nil {
-                            Button { showSettings = true } label: {
-                                Image(systemName: "gearshape")
+                            Button { showTranslation = true } label: {
+                                Image(systemName: "plus")
                                     .font(.system(size: 17, weight: .semibold))
                                     .foregroundStyle(Theme.textBody)
                                     .frame(width: 44, height: 44)
@@ -123,6 +124,11 @@ struct CardListView: View {
             }
             .sheet(isPresented: $showSettings) {
                 if let deck { DeckSettingsView(deck: deck) }
+            }
+            .sheet(isPresented: $showTranslation) {
+                if let deck {
+                    TranslationView(deck: deck)
+                }
             }
             .tint(Theme.accent)
 
