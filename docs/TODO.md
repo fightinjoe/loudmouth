@@ -11,7 +11,7 @@ The items below track gaps between `DESIGN.md` and the current web/iOS implement
 
 ### Information Architecture
 
-- [ ] **Web: content pane slides right to reveal nav pane** — Current web impl uses a left drawer that overlays the content. DESIGN.md specifies the content pane slides *off to the right*, revealing the nav pane underneath (not an overlay). Refactor `deck-view.js` drawer animation so the main content translates right instead of a side drawer sliding over it.
+- [x] **Web: content pane slides right to reveal nav pane** — Current web impl uses a left drawer that overlays the content. DESIGN.md specifies the content pane slides *off to the right*, revealing the nav pane underneath (not an overlay). Refactor `deck-view.js` drawer animation so the main content translates right instead of a side drawer sliding over it.
 - [ ] **Web: nav pane ADD FAB (bottom-left)** — DESIGN.md calls for a `+` FAB pinned to the bottom-left of the navigation pane that creates a new deck and immediately opens the Generate Cards action pane. The current web `+` button in the drawer opens the paste-JSON import sheet instead. Replace with a FAB that calls `/generate-cards` (see `api/README.md`) and creates a deck from the result.
 - [ ] **iOS: ADD FAB on nav pane (bottom-left)** — Same as above; the iOS nav pane `+` button currently opens `AddCardsView` (paste JSON). Replace with a FAB that opens the Generate Cards sheet (not the paste-JSON import).
 - [ ] **Web: deck title tap menu ("Settings" / "Edit cards")** — DESIGN.md specifies tapping the deck title in the header reveals a two-item menu: "Settings" (slides up deck-settings action pane) and "Edit cards" (enters reorder mode). Not present in current web implementation.

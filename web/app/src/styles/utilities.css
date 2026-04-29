@@ -65,7 +65,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/*-- Nav shell: drawer + main panel layout --*/
+/*-- Nav shell: nav-pane + content-pane layout --*/
 
 .nav-shell {
   position: fixed;
@@ -75,8 +75,8 @@
   overflow: hidden;
 }
 
-/* Drawer sits behind nav-main, left-aligned, full height */
-.nav-drawer {
+/* Nav pane sits behind the content pane, left-aligned, full height */
+.nav-pane {
   position: absolute;
   top: 0;
   left: 0;
@@ -89,7 +89,7 @@
   z-index: 0;
 }
 
-/* Main panel covers the full shell, slides right to reveal drawer */
+/* Content pane covers the full shell, slides right to reveal nav pane */
 .nav-main {
   position: absolute;
   inset: 0;

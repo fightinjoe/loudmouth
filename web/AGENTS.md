@@ -128,7 +128,7 @@ All touch gesture logic lives in `src/js/gestures.js`. Do not embed gesture code
 
 Two factories are available:
 
-- **`wireDrawerGesture(navMainEl, onOpen, onClose)`** — swipe-right to open / swipe-left to close a side drawer. Returns `{ open, close }`.
+- **`wireNavPaneGesture(contentPaneEl, onOpen, onClose)`** — swipe-right to open / swipe-left to close the nav pane. Returns `{ open, close }`.
 - **`wireRevealGesture(listEl, wrapperSelector, rowSelector)`** — swipe-left on a list row to reveal buttons behind it. Returns `{ reset }`.
 
 Both follow the axis-lock, real-time tracking, and `data-dragging` suppression patterns described in the Swipe gesture pattern section above.

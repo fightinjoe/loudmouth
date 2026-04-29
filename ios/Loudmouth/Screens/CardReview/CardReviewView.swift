@@ -8,9 +8,9 @@ struct CardReviewView: View {
 
     @StateObject private var viewModel: CardReviewViewModel
 
-    // Sheet drag state
-    @State private var sheetOffset: CGFloat = 0
-    @State private var sheetDragBase: CGFloat = 0
+    // Pane drag state
+    @State private var paneOffset: CGFloat = 0
+    @State private var paneDragBase: CGFloat = 0
 
     // Horizontal swipe state
     @State private var cardDragX: CGFloat = 0
@@ -30,7 +30,7 @@ struct CardReviewView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let sheetHeight = geo.size.height * 0.92
+            let paneHeight = geo.size.height * 0.92
 
             ZStack(alignment: .bottom) {
                 // Scrim
@@ -39,7 +39,7 @@ struct CardReviewView: View {
                     .ignoresSafeArea()
                     .onTapGesture { dismiss() }
 
-                // Sheet
+                // Pane
                 VStack(spacing: 0) {
                     // Drag handle area — captures downward drag to dismiss
                     handleBar
@@ -49,7 +49,7 @@ struct CardReviewView: View {
                         cardContent(card: card, geo: geo)
                     }
                 }
-                .frame(width: geo.size.width, height: sheetHeight)
+                .frame(width: geo.size.width, height: paneHeight)
                 .background(Theme.bgPrimary)
                 .clipShape(
                     UnevenRoundedRectangle(
@@ -59,7 +59,7 @@ struct CardReviewView: View {
                         topTrailingRadius: 40
                     )
                 )
-                .offset(y: max(0, sheetOffset))
+                .offset(y: max(0, paneOffset))
                 .gesture(verticalDragGesture)
             }
         }
@@ -222,15 +222,15 @@ struct CardReviewView: View {
         DragGesture()
             .onChanged { value in
                 if value.translation.height < 20 && value.translation.height > -20 {
-                    sheetDragBase = sheetOffset
+                    paneDragBase = paneOffset
                 }
-                sheetOffset = max(0, sheetDragBase + value.translation.height)
+                paneOffset = max(0, paneDragBase + value.translation.height)
             }
             .onEnded { value in
                 if value.translation.height > 120 || value.predictedEndTranslation.height > 300 {
                     dismiss()
                 } else {
-                    withAnimation(.easeOut(duration: 0.25)) { sheetOffset = 0 }
+                    withAnimation(.easeOut(duration: 0.25)) { paneOffset = 0 }
                 }
             }
     }
@@ -277,7 +277,7 @@ struct CardReviewView: View {
     // MARK: - Helpers
 
     private func dismiss() {
-        withAnimation(.easeOut(duration: 0.25)) { sheetOffset = 1000 }
+        withAnimation(.easeOut(duration: 0.25)) { paneOffset = 1000 }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { onDismiss() }
     }
 

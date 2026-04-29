@@ -1,14 +1,15 @@
 /**
- * wireDrawerGesture — swipe-right-to-open / swipe-left-to-close for a slide-in drawer.
+ * wireNavPaneGesture — swipe-right-to-open / swipe-left-to-close for the nav pane.
  *
- * @param {HTMLElement} navMainEl  The element that slides (wraps drawer + content).
- * @param {Function}    onOpen     Called when the drawer opens.
- * @param {Function}    onClose    Called when the drawer closes.
- * @param {number}      drawerWidth  Width of the drawer in px (default 280).
+ * @param {HTMLElement} contentPaneEl  The content pane element that slides right to reveal the nav pane.
+ * @param {Function}    onOpen     Called when the nav pane opens.
+ * @param {Function}    onClose    Called when the nav pane closes.
+ * @param {number}      navPaneWidth  Width of the nav pane in px (default 280).
  * @param {number}      openThreshold  Swipe distance needed to commit open/close (default 100).
  * @returns {{ open: Function, close: Function }}
  */
-export function wireDrawerGesture(navMainEl, onOpen, onClose, drawerWidth = 280, openThreshold = 100) {
+export function wireNavPaneGesture(contentPaneEl, onOpen, onClose, navPaneWidth = 280, openThreshold = 100) {
+  const navMainEl = contentPaneEl
   let startX = null
   let startY = null
   let axis = null
@@ -50,12 +51,12 @@ export function wireDrawerGesture(navMainEl, onOpen, onClose, drawerWidth = 280,
     if (!isOpen && dx < 0) return
     if (isOpen && dx > 0) return
 
-    const base = isOpen ? drawerWidth : 0
-    const clamped = Math.max(0, Math.min(drawerWidth, base + dx))
+    const base = isOpen ? navPaneWidth : 0
+    const clamped = Math.max(0, Math.min(navPaneWidth, base + dx))
     navMainEl.dataset.dragging = ''
     navMainEl.style.transform = `translateX(${clamped}px)`
     const scrim = navMainEl.querySelector('.nav-main-scrim')
-    if (scrim) scrim.style.opacity = clamped / drawerWidth
+    if (scrim) scrim.style.opacity = clamped / navPaneWidth
   }, { passive: false })
 
   navMainEl.addEventListener('touchend', e => {

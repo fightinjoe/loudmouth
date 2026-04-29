@@ -6,7 +6,7 @@ import { speak, ttsText } from '../js/tts.js'
 
 import { LANG_FLAGS, LANG_NAMES } from '../js/lang.js'
 import { stripHashParam } from '../js/utils.js'
-import { wireDrawerGesture, wireRevealGesture } from '../js/gestures.js'
+import { wireNavPaneGesture, wireRevealGesture } from '../js/gestures.js'
 import { renderCardRow } from '../components/card.js'
 import { openAddCardsPanel } from '../components/add-cards-panel.js'
 import { openDeckSettings } from '../components/deck-settings.js'
@@ -27,7 +27,7 @@ export function setLastDeckId(deckId) {
 const dbOps = { db, getDecks, getRecentDecks, getCardsByLang, createDeck, importCards, exportAllData, restoreAllData }
 const settingsOps = { updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck }
 
-// ── Drawer HTML builder ──────────────────────────────────────────────────────
+// ── Nav pane HTML builder ────────────────────────────────────────────────────
 
 function renderDeckPickerRow(deck, cardCount) {
   const flag = LANG_FLAGS[deck.lang] ?? ''
@@ -41,7 +41,7 @@ function renderDeckPickerRow(deck, cardCount) {
   `
 }
 
-async function buildDrawerContent() {
+async function buildNavPaneContent() {
   const allDecks = await getDecks(null, { includeSystem: false })
   const recentDecks = await getRecentDecks(3)
   const allCards = await db.cards.toArray()
@@ -106,7 +106,7 @@ async function buildDrawerContent() {
     <div class="panel-header">
       <span class="panel-header-spacer"></span>
       <span class="panel-header-title">Decks</span>
-      <button class="panel-header-right nav-drawer-add-btn" aria-label="Add">＋</button>
+      <button class="panel-header-right nav-pane-add-btn" aria-label="Add">＋</button>
     </div>
     <div class="deck-picker-list">
       ${mostRecentHTML}
@@ -184,7 +184,7 @@ export function renderDeckView(el, params) {
 
     el.innerHTML = `
       <div class="nav-shell">
-        <div class="nav-drawer" id="nav-drawer"></div>
+        <div class="nav-pane" id="nav-pane"></div>
         <div class="nav-main" id="nav-main">
           <div class="nav-main-scrim" id="nav-main-scrim"></div>
           <div class="screen" id="deck-view-screen"></div>
@@ -192,29 +192,29 @@ export function renderDeckView(el, params) {
       </div>
     `
 
-    const drawerEl = el.querySelector('#nav-drawer')
+    const navPaneEl = el.querySelector('#nav-pane')
     const navMainEl = el.querySelector('#nav-main')
     const scrimEl = el.querySelector('#nav-main-scrim')
     const screenEl = el.querySelector('#deck-view-screen')
 
-    // Populate drawer
-    drawerEl.innerHTML = await buildDrawerContent()
+    // Populate nav pane
+    navPaneEl.innerHTML = await buildNavPaneContent()
 
-    // Wire drawer gesture
-    const drawer = wireDrawerGesture(navMainEl, () => {}, () => {})
+    // Wire nav pane gesture
+    const navPane = wireNavPaneGesture(navMainEl, () => {}, () => {})
 
-    // Scrim tap closes drawer
-    scrimEl.addEventListener('click', () => drawer.close())
+    // Scrim tap closes nav pane
+    scrimEl.addEventListener('click', () => navPane.close())
 
-    // Drawer deck selection
-    drawerEl.querySelector('.deck-picker-list').addEventListener('click', async e => {
+    // Nav pane deck selection
+    navPaneEl.querySelector('.deck-picker-list').addEventListener('click', async e => {
       const row = e.target.closest('[data-deck-id]')
       if (!row) return
-      drawer.close()
+      navPane.close()
       await selectDeck(row.dataset.deckId)
     })
 
-    drawerEl.querySelector('.nav-drawer-add-btn').addEventListener('click', () => openAdd())
+    navPaneEl.querySelector('.nav-pane-add-btn').addEventListener('click', () => openAdd())
 
     // ── Load deck content ────────────────────────────────────────────────────
 
@@ -230,15 +230,15 @@ export function renderDeckView(el, params) {
     function openAdd() {
       openAddCardsPanel(el, () => {}, async (importedDeckId) => {
         if (importedDeckId) await selectDeck(importedDeckId)
-        // Refresh drawer
-        drawerEl.innerHTML = await buildDrawerContent()
-        drawerEl.querySelector('.deck-picker-list').addEventListener('click', async e => {
+        // Refresh nav pane
+        navPaneEl.innerHTML = await buildNavPaneContent()
+        navPaneEl.querySelector('.deck-picker-list').addEventListener('click', async e => {
           const row = e.target.closest('[data-deck-id]')
           if (!row) return
-          drawer.close()
+          navPane.close()
           await selectDeck(row.dataset.deckId)
         })
-        drawerEl.querySelector('.nav-drawer-add-btn').addEventListener('click', () => openAdd())
+        navPaneEl.querySelector('.nav-pane-add-btn').addEventListener('click', () => openAdd())
       }, dbOps)
     }
 
@@ -371,9 +371,9 @@ export function renderDeckView(el, params) {
         openCardReview(el, cards, deck, idx < 0 ? 0 : idx)
       })
 
-      screenEl.querySelector('#btn-menu').addEventListener('click', () => drawer.open())
+      screenEl.querySelector('#btn-menu').addEventListener('click', () => navPane.open())
 
-      screenEl.querySelector('#btn-deck-title').addEventListener('click', () => drawer.open())
+      screenEl.querySelector('#btn-deck-title').addEventListener('click', () => navPane.open())
 
       if (!isLangView) {
         screenEl.querySelector('#btn-deck-settings').addEventListener('click', () => {

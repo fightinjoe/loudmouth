@@ -126,7 +126,7 @@ struct CardListView: View {
             }
             .tint(Theme.accent)
 
-            // Card review bottom sheet overlay
+            // Card review pane overlay
             if let startIndex = reviewStartIndex {
                 CardReviewView(
                     deck: deck,
