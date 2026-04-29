@@ -16,6 +16,8 @@ struct GenerateCardsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    /// When set, cards are added to this deck instead of creating a new one.
+    var targetDeck: Deck? = nil
     var onDeckCreated: ((Deck) -> Void)?
 
     @State private var topic = ""
@@ -82,19 +84,28 @@ struct GenerateCardsView: View {
                     }
 
                 HStack {
-                    Menu {
-                        ForEach(supportedLangs, id: \.code) { lang in
-                            Button("\(lang.flag) \(lang.name)") { selectedLang = lang }
+                    if targetDeck == nil {
+                        Menu {
+                            ForEach(supportedLangs, id: \.code) { lang in
+                                Button("\(lang.flag) \(lang.name)") { selectedLang = lang }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text(selectedLang.flag)
+                                Text(selectedLang.name)
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(Theme.textBody)
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Theme.textTertiary)
+                            }
                         }
-                    } label: {
+                    } else {
                         HStack(spacing: 6) {
                             Text(selectedLang.flag)
                             Text(selectedLang.name)
                                 .font(.system(size: 16))
-                                .foregroundStyle(Theme.textBody)
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 11))
-                                .foregroundStyle(Theme.textTertiary)
+                                .foregroundStyle(Theme.textSecondary)
                         }
                     }
 
@@ -124,6 +135,12 @@ struct GenerateCardsView: View {
             .padding(.bottom, 24)
         }
         .background(Theme.bgPrimary)
+        .onAppear {
+            if let deck = targetDeck,
+               let lang = supportedLangs.first(where: { $0.code == deck.lang }) {
+                selectedLang = lang
+            }
+        }
     }
 
     private func generate() {
@@ -136,9 +153,14 @@ struct GenerateCardsView: View {
         Task {
             do {
                 let cards = try await fetchCards(lang: selectedLang.code, topic: trimmed)
-                let deckName = trimmed.count > 30 ? String(trimmed.prefix(30)).trimmingCharacters(in: .whitespaces) + "…" : trimmed
-                let deck = Deck(id: UUID().uuidString, name: deckName, lang: selectedLang.code)
-                modelContext.insert(deck)
+                let deck: Deck
+                if let existing = targetDeck {
+                    deck = existing
+                } else {
+                    let deckName = trimmed.count > 30 ? String(trimmed.prefix(30)).trimmingCharacters(in: .whitespaces) + "…" : trimmed
+                    deck = Deck(id: UUID().uuidString, name: deckName, lang: selectedLang.code)
+                    modelContext.insert(deck)
+                }
                 for input in cards {
                     let card = Card(
                         id: UUID().uuidString,

@@ -755,7 +755,7 @@
   left: 0;
   right: 0;
   background: var(--bg-primary);
-  border-radius: 20px 20px 0 0;
+  border-radius: 40px 40px 0 0;
   z-index: 151;
   transform: translateY(100%);
   transition: transform 300ms ease;
@@ -863,6 +863,18 @@
   text-align: center;
   min-height: 1.25rem;
 }
+
+/* Static lang label shown when panel is opened for an existing deck */
+.generate-cards-lang-label {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.generate-cards-panel[data-has-deck] .generate-cards-lang-wrap { display: none; }
+.generate-cards-panel[data-has-deck] .generate-cards-lang-label { display: flex; }
 
 /* Native select overlays the lang display for tap target */
 .generate-cards-lang-select {

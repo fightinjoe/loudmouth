@@ -1,0 +1,9 @@
+{"ts":"2026-04-29T18:32:00.684Z","cmd":"goto","args":"http://localhost:5173","origin":"http://localhost:5173/","durationMs":86,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:32:00.753Z","cmd":"screenshot","args":"/tmp/deck-view-base.png","origin":"http://localhost:5173/","durationMs":31,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:32:08.074Z","cmd":"snapshot","args":"-i","origin":"http://localhost:5173/","durationMs":13,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:32:13.218Z","cmd":"click","args":"@e2","origin":"http://localhost:5173/","durationMs":54,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:32:13.820Z","cmd":"screenshot","args":"/tmp/generate-cards-open.png","origin":"http://localhost:5173/","durationMs":31,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:32:53.793Z","cmd":"snapshot","args":"-i","origin":"http://localhost:5173/","durationMs":6,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:32:57.103Z","cmd":"click","args":"@e3","origin":"http://localhost:5173/","durationMs":14,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-04-29T18:33:02.617Z","cmd":"click","args":"@e1","origin":"http://localhost:5173/","durationMs":5036,"status":"error","hasCookies":false,"mode":"launched","error":"click: Timeout 5000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'Add deck' })\n    - locator resolved to <button aria-label=\"Add deck\" class=\"nav-pane-add-fab\">＋</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is…"}
+{"ts":"2026-04-29T18:33:03.105Z","cmd":"screenshot","args":"/tmp/generate-cards-nav-fab.png","origin":"http://localhost:5173/","durationMs":17,"status":"ok","hasCookies":false,"mode":"launched"}
