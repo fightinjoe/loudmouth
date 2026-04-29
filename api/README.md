@@ -174,6 +174,8 @@ After `deploy.sh` completes, it prints the gateway URL. Export it and run smoke 
 export GATEWAY_URL=https://YOUR_GATEWAY_HOST
 ```
 
+The gateway URL is `https://translation-api-gateway-2qqw247r.uc.gateway.dev`
+
 ### `/translate`
 
 ```bash
