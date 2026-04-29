@@ -23,33 +23,33 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
   appEl.appendChild(scrim)
 
   const panel = document.createElement('div')
-  panel.className = 'generate-cards-panel'
+  panel.className = 'generate-cards-panel bg-primary flex-col'
   if (targetDeck) panel.dataset.hasDeck = ''
   panel.innerHTML = `
     <div class="generate-cards-handle sheet-handle"></div>
-    <div class="panel-header">
+    <div class="panel-header flex items-center">
       <button class="panel-header-back generate-cards-back" aria-label="Back">‹</button>
       <span class="panel-header-title">Add cards</span>
       <span class="panel-header-spacer"></span>
     </div>
-    <div class="generate-cards-body">
-      <p class="generate-cards-instruction">Share a situation or context</p>
+    <div class="generate-cards-body flex-col">
+      <p class="generate-cards-instruction text-secondary">Share a situation or context</p>
       <textarea class="generate-cards-textarea surface-field text-area-fixed" id="gc-topic"
         placeholder="Greetings for morning, afternoon, evening…"
         rows="4" autocorrect="off" autocapitalize="sentences" spellcheck="true"></textarea>
-      <div class="generate-cards-footer">
-        <div class="generate-cards-lang-wrap">
+      <div class="generate-cards-footer flex items-center justify-between">
+        <div class="generate-cards-lang-wrap flex items-center text-body">
           <span id="gc-lang-flag">${langFlag}</span>
           <span id="gc-lang-name">${langName}</span>
-          <span class="generate-cards-lang-chevron">⇅</span>
+          <span class="generate-cards-lang-chevron text-tertiary">⇅</span>
           <select class="generate-cards-lang-select" id="gc-lang-select" aria-label="Language">
             ${SUPPORTED_LANGS.map(l => `<option value="${l}"${l === selectedLang ? ' selected' : ''}>${LANG_FLAGS[l] ?? ''} ${LANG_NAMES[l] ?? l}</option>`).join('')}
           </select>
         </div>
-        <span class="generate-cards-lang-label">${langFlag} ${langName}</span>
+        <span class="generate-cards-lang-label items-center text-secondary">${langFlag} ${langName}</span>
         <button class="generate-cards-generate-btn pill-action tappable" id="gc-generate-btn" disabled>Generate</button>
       </div>
-      <div class="generate-cards-error" id="gc-error" aria-live="polite"></div>
+      <div class="generate-cards-error text-danger" id="gc-error" aria-live="polite"></div>
     </div>
   `
   appEl.appendChild(panel)

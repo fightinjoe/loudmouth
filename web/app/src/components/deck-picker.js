@@ -6,10 +6,10 @@ function renderDeckPickerRow(deck, cardCount) {
   const ts = relativeTime(deck.lastAccessedAt ?? deck.createdAt)
   const flag = LANG_FLAGS[deck.lang] ?? ''
   return `
-    <div class="deck-picker-row tappable" data-deck-id="${deck.id}">
-      <div class="deck-picker-row-info">
-        <span class="deck-picker-row-name">${deck.name}</span>
-        <span class="deck-picker-row-meta">${ts} · <span class="deck-picker-row-flag">${flag} ·</span> ${cardCount} cards</span>
+    <div class="deck-picker-row flex items-center bg-surface tappable" data-deck-id="${deck.id}">
+      <div class="deck-picker-row-info flex-col justify-center">
+        <span class="deck-picker-row-name text-body">${deck.name}</span>
+        <span class="deck-picker-row-meta text-secondary">${ts} · <span class="deck-picker-row-flag">${flag} ·</span> ${cardCount} cards</span>
       </div>
     </div>
   `
@@ -56,7 +56,7 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
   let mostRecentHTML = ''
   if (recentDecks.length > 0) {
     mostRecentHTML = `
-      <div class="deck-picker-section-header section-label">Most Recent</div>
+      <div class="deck-picker-section-header flex items-baseline justify-between section-label">Most Recent</div>
       ${recentDecks.map(d => renderDeckPickerRow(d, cardCount(d.id))).join('')}
     `
   }
@@ -71,9 +71,9 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
       ? renderDeckPickerRow({ id: `starred-${lang}`, name: '★ Starred', lang, lastAccessedAt: null, createdAt: null }, starredCount)
       : ''
     byLangHTML += `
-      <div class="deck-picker-section-header section-label">
+      <div class="deck-picker-section-header flex items-baseline justify-between section-label">
         <span>${flag} ${name}</span>
-        <span class="deck-picker-section-header-link tappable" data-deck-id="lang:${lang}">All ${total} cards</span>
+        <span class="deck-picker-section-header-link text-secondary tappable" data-deck-id="lang:${lang}">All ${total} cards</span>
       </div>
       <div class="deck-picker-lang-group">
         ${starredRow}
@@ -83,17 +83,17 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
   }
 
   const panel = document.createElement('div')
-  panel.className = 'deck-picker-panel panel-screen'
+  panel.className = 'deck-picker-panel panel-screen bg-primary flex-col'
   panel.innerHTML = `
-    <div class="panel-header">
+    <div class="panel-header flex items-center">
       <button class="panel-header-back" aria-label="Back">‹</button>
       <span class="panel-header-title">Language decks</span>
       <button class="panel-header-right" aria-label="Add">＋</button>
     </div>
-    <div class="deck-picker-list">
+    <div class="deck-picker-list flex-1">
       ${mostRecentHTML}
       ${byLangHTML}
-      ${allDecks.length === 0 && allLangs.length === 0 ? '<p class="deck-picker-empty">No decks yet.</p>' : ''}
+      ${allDecks.length === 0 && allLangs.length === 0 ? '<p class="deck-picker-empty text-secondary">No decks yet.</p>' : ''}
     </div>
   `
   appEl.appendChild(panel)

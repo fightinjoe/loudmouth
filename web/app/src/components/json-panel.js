@@ -13,7 +13,7 @@ export function toImportJson(cards) {
 
 export function openJsonPanel(appEl, title, jsonString) {
   const panel = document.createElement('div')
-  panel.className = 'json-panel panel-screen'
+  panel.className = 'json-panel panel-screen bg-primary flex-col'
   appEl.appendChild(panel)
 
   requestAnimationFrame(() => {
@@ -26,13 +26,13 @@ export function openJsonPanel(appEl, title, jsonString) {
   }
 
   panel.innerHTML = `
-    <div class="panel-header">
+    <div class="panel-header flex items-center">
       <button class="panel-header-back" aria-label="Back">‹</button>
       <span class="panel-header-title">${title}</span>
       <button class="panel-header-right panel-action-text json-panel-copy-btn" id="btn-copy-json">Copy</button>
     </div>
-    <div class="json-panel-body">
-      <textarea class="json-panel-textarea surface-field text-area-fixed" readonly spellcheck="false"></textarea>
+    <div class="json-panel-body flex-1 flex-col">
+      <textarea class="json-panel-textarea flex-1 surface-field text-area-fixed" readonly spellcheck="false"></textarea>
     </div>
   `
 

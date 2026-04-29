@@ -12,7 +12,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
   let parseErrors = initialErrors || []
 
   const panel = document.createElement('div')
-  panel.className = 'add-cards-panel panel-screen'
+  panel.className = 'add-cards-panel panel-screen bg-primary flex-col'
   appEl.appendChild(panel)
 
   requestAnimationFrame(() => {
@@ -31,26 +31,26 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
 
   function renderStep1() {
     panel.innerHTML = `
-      <div class="panel-header">
+      <div class="panel-header flex items-center">
         <button class="panel-header-back" aria-label="Back">‹</button>
         <span class="panel-header-title">Add Cards</span>
         <span class="panel-header-spacer"></span>
       </div>
-      <div class="add-cards-body">
-        <section class="add-cards-section">
+      <div class="add-cards-body flex-col">
+        <section class="add-cards-section flex-col">
           <h2 class="add-cards-section-title section-label">Import Cards</h2>
           <textarea id="json-input" class="add-cards-textarea surface-field text-area"
             placeholder='{"cards": [...]}'
             spellcheck="false" autocorrect="off" autocapitalize="none"></textarea>
-          <div id="error-msg" class="add-cards-error"></div>
+          <div id="error-msg" class="add-cards-error text-danger"></div>
           <button id="btn-parse" class="btn btn-primary">Parse Cards</button>
         </section>
-        <section class="add-cards-section">
+        <section class="add-cards-section flex-col">
           <h2 class="add-cards-section-title section-label">Backup</h2>
           <button id="btn-export" class="btn btn-secondary">Download Backup</button>
           <button id="btn-restore-pick" class="btn btn-secondary">Restore Backup</button>
           <input id="file-input" type="file" accept=".json,application/json" style="display:none">
-          <div id="restore-status" class="add-cards-error"></div>
+          <div id="restore-status" class="add-cards-error text-danger"></div>
         </section>
       </div>
     `
@@ -127,19 +127,19 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
     const autoNew = userDecks.length === 0
 
     panel.innerHTML = `
-      <div class="panel-header">
+      <div class="panel-header flex items-center">
         <button class="panel-header-back" aria-label="Back">‹</button>
         <span class="panel-header-title">Confirm Import</span>
         <span class="panel-header-spacer"></span>
       </div>
-      <div class="add-cards-body">
+      <div class="add-cards-body flex-col">
         <div class="add-cards-summary">
-          <div class="add-cards-count">${parsedCards.length}</div>
-          <div class="add-cards-count-label">card${parsedCards.length === 1 ? '' : 's'} ready to import</div>
-          ${parseErrors.length > 0 ? `<div class="add-cards-skipped">${parseErrors.length} skipped</div>` : ''}
+          <div class="add-cards-count text-body">${parsedCards.length}</div>
+          <div class="add-cards-count-label text-secondary">card${parsedCards.length === 1 ? '' : 's'} ready to import</div>
+          ${parseErrors.length > 0 ? `<div class="add-cards-skipped text-secondary">${parseErrors.length} skipped</div>` : ''}
         </div>
-        <div class="add-cards-deck-selector">
-          <label for="deck-select">Add to deck</label>
+        <div class="add-cards-deck-selector flex-col">
+          <label class="text-secondary" for="deck-select">Add to deck</label>
           <select id="deck-select" class="add-cards-select surface-field">
             ${userDecks.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
             <option value="__new__"${autoNew ? ' selected' : ''}>New deck…</option>
@@ -147,7 +147,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
           <div class="add-cards-new-deck${autoNew ? ' visible' : ''}" id="new-deck-wrap">
             <input id="new-deck-input" class="add-cards-input surface-field" type="text" placeholder="Deck name" autocorrect="off" />
           </div>
-          <div id="deck-error" class="add-cards-error"></div>
+          <div id="deck-error" class="add-cards-error text-danger"></div>
         </div>
         <button id="btn-import" class="btn btn-primary">Import</button>
         <button id="btn-step-back" class="btn btn-secondary">Back</button>

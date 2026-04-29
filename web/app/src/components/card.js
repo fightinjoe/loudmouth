@@ -36,26 +36,26 @@ export function renderCard(card, mode, readingDisplay = 'reading') {
 export function renderCardRow(card, readingDisplay = 'reading') {
   const isStarred = !!card.state?.starredAt;
   return `
-    <div class="card-row-wrapper" data-card-id="${card.id}">
+    <div class="card-row-wrapper shrink-0" data-card-id="${card.id}">
       <button
-        class="card-row-star-btn tappable"
+        class="card-row-star-btn bg-star text-white tappable"
         data-card-id="${card.id}"
         aria-label="${isStarred ? 'Unstar' : 'Star'}"
         data-starred="${isStarred}"
       >${isStarred ? '★' : '☆'}</button>
       <button
-        class="card-row-edit-btn tappable"
+        class="card-row-edit-btn bg-accent text-white tappable"
         data-card-id="${card.id}"
         aria-label="Edit"
       >Edit</button>
       <div
-        class="card-row flex-row gap-auto tappable"
+        class="card-row flex-row items-center bg-surface gap-auto tappable"
         data-card-id="${card.id}"
       >
         ${ renderCardContent(card, readingDisplay) }
 
         <button
-          class="card-row-play tappable"
+          class="card-row-play bg-none text-tertiary shrink-0 tappable"
           data-card-id="${card.id}"
           aria-label="Play"
         >
@@ -80,7 +80,7 @@ function renderCardContent(card, readingDisplay = 'reading') {
   return `
     <div class="card-content flex-col gap-sm">
       <div class="card-primary text-h2">
-        <span class="card-text">${displayText}</span>
+        <span class="card-text text-body">${displayText}</span>
         <span class="card-translation">${card.translation}</span>
       </div>
       <div class="card-secondary flex-col text-body2 text-caption">

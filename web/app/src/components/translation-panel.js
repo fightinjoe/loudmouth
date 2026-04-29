@@ -23,14 +23,14 @@ function renderResultCard(t, position) {
     .trim() || t.translation
 
   return `
-    <div class="tr-card ${radiusClass}" data-translation-text="${escAttr(t.text)}" data-translation-reading="${escAttr(plainReading)}" data-translation="${escAttr(t.translation)}" data-lang="${escAttr(t.lang ?? '')}">
-      <div class="tr-card-main">
-        <div class="tr-card-left">
-          <span class="tr-card-reading">${escHtml(plainReading)}</span>
-          <span class="tr-card-text">${escHtml(t.text)}</span>
-          <span class="tr-card-meaning">${escHtml(t.translation)}</span>
+    <div class="tr-card bg-surface ${radiusClass}" data-translation-text="${escAttr(t.text)}" data-translation-reading="${escAttr(plainReading)}" data-translation="${escAttr(t.translation)}" data-lang="${escAttr(t.lang ?? '')}">
+      <div class="tr-card-main flex items-center">
+        <div class="tr-card-left flex-1 flex-col min-w-0">
+          <span class="tr-card-reading text-caption">${escHtml(plainReading)}</span>
+          <span class="tr-card-text text-body">${escHtml(t.text)}</span>
+          <span class="tr-card-meaning text-caption">${escHtml(t.translation)}</span>
         </div>
-        <button class="tr-card-play" aria-label="Play">▶</button>
+        <button class="tr-card-play bg-none text-tertiary shrink-0" aria-label="Play">▶</button>
       </div>
     </div>
   `
@@ -39,14 +39,14 @@ function renderResultCard(t, position) {
 function renderSkeletonCard(position) {
   const radiusClass = { top: 'tr-card--top', middle: 'tr-card--middle', bottom: 'tr-card--bottom', only: 'tr-card--only' }[position] ?? ''
   return `
-    <div class="tr-card tr-card--skeleton ${radiusClass}">
-      <div class="tr-card-main">
-        <div class="tr-card-left">
-          <div class="tr-skeleton-line tr-skeleton-line--short"></div>
-          <div class="tr-skeleton-line tr-skeleton-line--long"></div>
-          <div class="tr-skeleton-line tr-skeleton-line--med"></div>
+    <div class="tr-card tr-card--skeleton bg-surface ${radiusClass}">
+      <div class="tr-card-main flex items-center">
+        <div class="tr-card-left flex-1 flex-col min-w-0">
+          <div class="tr-skeleton-line tr-skeleton-line--short bg-border"></div>
+          <div class="tr-skeleton-line tr-skeleton-line--long bg-border"></div>
+          <div class="tr-skeleton-line tr-skeleton-line--med bg-border"></div>
         </div>
-        <div class="tr-skeleton-play"></div>
+        <div class="tr-skeleton-play bg-border shrink-0"></div>
       </div>
     </div>
   `
@@ -84,15 +84,15 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
   appEl.appendChild(scrim)
 
   const panel = document.createElement('div')
-  panel.className = 'translation-panel'
+  panel.className = 'translation-panel bg-primary flex-col'
   panel.innerHTML = `
     <div class="translation-handle sheet-handle"></div>
-    <div class="panel-header">
+    <div class="panel-header flex items-center">
       <button class="panel-header-back translation-back" aria-label="Back">‹</button>
       <span class="panel-header-title translation-lang-label">${langFlag} ${escHtml(langName)}</span>
       <span class="panel-header-spacer"></span>
     </div>
-    <div class="translation-body">
+    <div class="translation-body flex-1 flex-col min-h-0">
       <textarea
         class="translation-textarea surface-field text-area-fixed"
         id="tr-input"
@@ -102,8 +102,8 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
         spellcheck="true"
         rows="3"
       ></textarea>
-      <div class="translation-results" id="tr-results" aria-live="polite"></div>
-      <div class="translation-footer">
+      <div class="translation-results flex-1 flex-col" id="tr-results" aria-live="polite"></div>
+      <div class="translation-footer flex justify-end shrink-0">
         <button class="translation-translate-btn pill-action tappable" id="tr-translate-btn" disabled>Translate</button>
       </div>
     </div>
@@ -152,8 +152,8 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
 
     // Show skeleton (1 row while loading)
     resultsEl.innerHTML = `
-      <p class="translation-hint">Swipe or tap to add card</p>
-      <div class="translation-card-list" id="tr-card-list">
+      <p class="translation-hint text-secondary">Swipe or tap to add card</p>
+      <div class="translation-card-list flex-col" id="tr-card-list">
         ${renderSkeletonCard('only')}
       </div>
     `
@@ -174,7 +174,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
         if (res.status === 429) {
           showError('Try again in 60 seconds.')
         } else if (res.status >= 500) {
-          showError('Could not generate — try again. <button class="translation-retry-btn tappable" id="tr-retry">↻</button>')
+          showError('Could not generate — try again. <button class="translation-retry-btn bg-none text-accent tappable" id="tr-retry">↻</button>')
           panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
         } else {
           showError(`Error ${res.status} — try again.`)
@@ -186,7 +186,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
       data = await res.json()
     } catch (err) {
       if (err.name === 'AbortError') {
-        showError('Could not generate — try again. <button class="translation-retry-btn tappable" id="tr-retry">↻</button>')
+        showError('Could not generate — try again. <button class="translation-retry-btn bg-none text-accent tappable" id="tr-retry">↻</button>')
         panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
       } else {
         showError('No connection.')
@@ -197,7 +197,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
 
     const translations = data?.translations ?? []
     if (translations.length === 0) {
-      showError('No result — try rephrasing. <button class="translation-retry-btn tappable" id="tr-retry">↻</button>')
+      showError('No result — try rephrasing. <button class="translation-retry-btn bg-none text-accent tappable" id="tr-retry">↻</button>')
       panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
       translateBtn.disabled = inputEl.value.trim().length === 0
       return
@@ -209,7 +209,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
   }
 
   function showError(html) {
-    resultsEl.innerHTML = `<p class="translation-error" aria-live="polite">${html}</p>`
+    resultsEl.innerHTML = `<p class="translation-error text-danger" aria-live="polite">${html}</p>`
   }
 
   function renderResults() {
@@ -221,8 +221,8 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
       renderResultCard(t, positionLabel(i, currentTranslations.length))
     ).join('')
     resultsEl.innerHTML = `
-      <p class="translation-hint">Swipe or tap to add card</p>
-      <div class="translation-card-list" id="tr-card-list">
+      <p class="translation-hint text-secondary">Swipe or tap to add card</p>
+      <div class="translation-card-list flex-col" id="tr-card-list">
         ${cardListHtml}
       </div>
     `

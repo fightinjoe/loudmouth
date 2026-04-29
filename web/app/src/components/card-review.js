@@ -2,17 +2,17 @@ import { speak, ttsText } from '../js/tts.js'
 
 function renderReviewCard(card, readingDisplay = 'reading') {
   return `
-    <div class="review-card">
-      <div class="review-card-text">${card.text || ''}</div>
-      <div class="review-card-reading">${card[readingDisplay] || ''}</div>
-      <div class="review-card-reverse">${card.translation || ''}</div>
+    <div class="review-card bg-surface flex-col items-center justify-center">
+      <div class="review-card-text text-body">${card.text || ''}</div>
+      <div class="review-card-reading text-secondary">${card[readingDisplay] || ''}</div>
+      <div class="review-card-reverse text-body">${card.translation || ''}</div>
     </div>
-    <div class="review-translation">
-      <div class="review-translation-skeleton">
-        <div class="review-translation-skeleton-line"></div>
-        <div class="review-translation-skeleton-line review-translation-skeleton-line--short"></div>
+    <div class="review-translation flex-col">
+      <div class="review-translation-skeleton flex-col">
+        <div class="review-translation-skeleton-line bg-surface"></div>
+        <div class="review-translation-skeleton-line review-translation-skeleton-line--short bg-surface"></div>
       </div>
-      <div class="review-translation-text">${card.translation || ''}</div>
+      <div class="review-translation-text text-body">${card.translation || ''}</div>
     </div>
   `
 }
@@ -25,15 +25,15 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   appEl.appendChild(scrim)
 
   const panel = document.createElement('div')
-  panel.className = 'card-review-panel panel-screen'
+  panel.className = 'card-review-panel panel-screen bg-primary flex-col'
   panel.innerHTML = `
-    <div class="panel-header">
+    <div class="panel-header flex items-center">
       <button class="panel-header-back" aria-label="Back">‹</button>
       <span class="panel-header-title">${deck.name}</span>
       <span class="panel-header-spacer"></span>
     </div>
-    <div class="card-review-body">
-      <div class="card-review-content"></div>
+    <div class="card-review-body flex-1 flex items-center justify-center">
+      <div class="card-review-content flex-col items-center"></div>
     </div>
   `
   appEl.appendChild(panel)
