@@ -214,7 +214,7 @@
 
 .pill-action:not(:disabled) {
   background: var(--bg-accent);
-  color: var(--fg-primary);
+  color: var(--fg-emphasis);
   box-shadow: 0 4px 5px rgba(0, 0, 0, 0.15);
 }
 

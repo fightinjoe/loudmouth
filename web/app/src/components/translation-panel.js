@@ -22,8 +22,16 @@ function renderResultCard(t, position) {
     .replace(/<rt>/g, ' (').replace(/<\/rt>/g, ')').replace(/<\/?ruby>/g, '').replace(/<\/rb>/g, '').replace(/<rb>/g, '')
     .trim() || t.translation
 
+  const tokens = parseRubyMarkup(t.ruby_markup);
+  const tokensJson = tokens ? JSON.stringify(tokens) : '';
+
   return `
-    <div class="tr-card bg-surface ${radiusClass}" data-translation-text="${escAttr(t.text)}" data-translation-reading="${escAttr(plainReading)}" data-translation="${escAttr(t.translation)}" data-lang="${escAttr(t.lang ?? '')}">
+    <div class="tr-card bg-surface ${radiusClass}"
+      data-translation-text="${escAttr(t.text)}"
+      data-translation-reading="${escAttr(plainReading)}"
+      data-translation-reading-tokens='${escAttr(tokensJson)}'
+      data-translation="${escAttr(t.translation)}"
+      data-lang="${escAttr(t.lang ?? '')}">
       <div class="tr-card-main flex items-center">
         <div class="tr-card-left flex-1 flex-col min-w-0">
           <span class="tr-card-reading text-body2 fg-caption">${escHtml(plainReading)}</span>
@@ -64,7 +72,35 @@ function escHtml(s) {
 }
 
 function escAttr(s) {
-  return String(s ?? '').replace(/"/g, '&quot;')
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
+/**
+ * Parses a ruby_markup string into a ReadingToken array.
+ * @param {string} htmlStr - HTML string like "<ruby>済<rt>す</rt></ruby>みます"
+ * @returns {Array|null} Array of [base, annotation|null] or null
+ */
+function parseRubyMarkup(htmlStr) {
+  if (!htmlStr) return null;
+  const div = document.createElement('div');
+  div.innerHTML = htmlStr;
+  const tokens = [];
+  for (const node of div.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent;
+      if (text) tokens.push([text, null]);
+    } else if (node.nodeName === 'RUBY') {
+      let base = '';
+      let annotation = null;
+      for (const child of node.childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) base += child.textContent;
+        else if (child.nodeName === 'RB') base += child.textContent;
+        else if (child.nodeName === 'RT') annotation = child.textContent;
+      }
+      tokens.push([base, annotation]);
+    }
+  }
+  return tokens.length > 0 ? tokens : null;
 }
 
 /**
@@ -251,9 +287,11 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
 
   async function addCard(cardEl) {
     const text = cardEl.dataset.translationText
-    const reading = cardEl.dataset.translationReading
     const translation = cardEl.dataset.translation
     const lang = cardEl.dataset.lang || deck.lang
+
+    const tokensAttr = cardEl.dataset.translationReadingTokens;
+    const reading = tokensAttr ? JSON.parse(tokensAttr) : cardEl.dataset.translationReading;
 
     const card = { lang, text, reading, translation }
     try {

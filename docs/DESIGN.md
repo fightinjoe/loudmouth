@@ -24,7 +24,7 @@ The Translation action pane is a bottom sheet (white card, 40px top-radius, sits
 
 **Empty:** Large text input area (32px Roboto Flex Light, `--text-body`), placeholder in `--text-secondary`. "Translate" pill button bottom-right, grayed (`--gray-400` bg, `--gray-400` text).
 
-**Typing:** Multi-line text area (grows with content). "Translate" pill activates when field is non-empty (`--bg-accent` bg, `--fg-primary` text, drop-shadow). No "Go" key submission — user taps "Translate" explicitly.
+**Typing:** Multi-line text area (grows with content). "Translate" pill activates when field is non-empty (`--bg-accent` bg, `--fg-emphasis` text, drop-shadow). No "Go" key submission — user taps "Translate" explicitly.
 
 **Loading (~500ms–2s):** Skeleton card row(s) with shimmer appear in the result area below a "Swipe or tap to add card" hint. "Translate" pill grays out while in-flight.
 
@@ -82,7 +82,7 @@ Layout: bottom sheet, same beige/white motif as Translation sheet (40px top-radi
 - Language selector: flag emoji + language name + ▲▼ sort icon (unfold), bottom-left
 - Generate button: bottom-right, `border-radius: 100px`
   - Disabled (empty input): `--border-default` bg (gray-300), `--text-tertiary` text (gray-400) — `--tint-black-100` not in token system, use closest semantic equivalent
-  - Enabled (filled): `--bg-accent` bg, `--fg-primary` text, `drop-shadow: 0 4px 5px rgba(0,0,0,0.15)`
+  - Enabled (filled): `--bg-accent` bg, `--fg-emphasis` text, `drop-shadow: 0 4px 5px rgba(0,0,0,0.15)`
 
 After Generate: the action pane closes after generation completes. (No inline preview in this flow — the generated cards land directly in the deck.)
 

@@ -8,6 +8,12 @@ function esc(str) {
     .replace(/"/g, '&quot;')
 }
 
+function getPlainReading(reading) {
+  if (typeof reading === 'string') return reading;
+  if (!Array.isArray(reading)) return '';
+  return reading.map(([base, annotation]) => annotation || base).join('');
+}
+
 export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSave, onDelete) {
   const panel = document.createElement('div')
   panel.className = 'card-edit-panel pane-screen fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
@@ -42,7 +48,7 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
       <div class="card-edit-field flex-col">
         <label class="section-label card-edit-label" for="edit-reading">Reading</label>
         <input class="card-edit-input surface-field text-body1 font-inherit" id="edit-reading" type="text"
-          value="${esc(card.reading)}" autocorrect="off" autocapitalize="none" spellcheck="false" />
+          value="${esc(getPlainReading(card.reading))}" autocorrect="off" autocapitalize="none" spellcheck="false" />
       </div>
       <div class="card-edit-field flex-col">
         <label class="section-label card-edit-label" for="edit-romanization">Romanization</label>
@@ -69,7 +75,7 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
     </div>
   `
 
-  panel.querySelector('.icon_button').addEventListener('click', close)
+  panel.querySelector('.icon-button').addEventListener('click', close)
 
   panel.querySelector('#btn-view-json').addEventListener('click', () => {
     openJsonPanel(appEl, 'Card JSON', toImportJson([card]))

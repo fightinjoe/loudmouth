@@ -35,7 +35,13 @@ export function speak(text, lang, { onEnd, onError } = {}) {
  * @returns {string}
  */
 export function ttsText(card) {
-  return card.lang === 'ja' ? (card.reading || card.text) : card.text
+  if (card.lang === 'ja') {
+    if (Array.isArray(card.reading)) {
+      return card.reading.map(([base, annotation]) => annotation || base).join('')
+    }
+    return card.reading || card.text
+  }
+  return card.text
 }
 
 /**

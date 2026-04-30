@@ -1,9 +1,13 @@
 import { speak, ttsText } from '../js/tts.js'
+import { renderRuby } from './card.js'
 
 function renderReviewCard(card, readingDisplay = 'reading') {
+  const hasRuby = readingDisplay === 'reading' && Array.isArray(card.reading);
+  const displayText = hasRuby ? renderRuby(card.reading) : (card.text || '');
+
   return `
-    <div class="review-card bg-surface flex-col items-center justify-center">
-      <div class="review-card-text text-h1 font-bold text-center fg-body">${card.text || ''}</div>
+    <div class="review-card bg-surface flex-col items-center justify-center" ${hasRuby ? 'data-has-ruby' : ''}>
+      <div class="review-card-text text-h1 font-bold text-center fg-body">${displayText}</div>
       <div class="review-card-reading text-body1 text-center fg-secondary">${card[readingDisplay] || ''}</div>
       <div class="review-card-reverse text-h1 font-bold text-center fg-body">${card.translation || ''}</div>
     </div>
@@ -247,5 +251,5 @@ export function openCardReview(appEl, cards, deck, startIndex) {
     setTimeout(cleanup, 350)
   }
 
-  panel.querySelector('.icon_button').addEventListener('click', dismiss)
+  panel.querySelector('.icon-button').addEventListener('click', dismiss)
 }

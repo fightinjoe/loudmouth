@@ -33,12 +33,16 @@
   --fg-tertiary: hsl(var(--gray-400));
   --fg-caption: hsl(var(--gray-500));
 
-  --fg-primary: hsl(var(--green-600));
+  --fg-emphasis: hsl(var(--green-600));
 
   --bg-primary: hsl(var(--beige-100));
   --bg-secondary: hsl(var(--beige-400));
   --bg-surface: hsl(var(--white));
   --bg-accent: hsl(var(--green-100));
+
+  --bg-blue: hsl(var(--blue-500));
+  --bg-red: hsl(var(--red-500));
+  --bg-yellow: hsl(var(--yellow-500));
 
   --border-default: hsl(var(--gray-300));
 
@@ -46,7 +50,7 @@
   --accent-star: hsl(var(--amber-500));
   --danger: hsl(var(--red-500));
 
-  --radius: 16px;
+  --radius: 20px;
   --radius-sm: 8px;
 
   --swipe-reveal-width: 160px;

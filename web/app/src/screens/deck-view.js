@@ -299,7 +299,7 @@ export function renderDeckView(el, params) {
 
           <button class="icon-button" id="btn-menu" aria-label="Menu">${icon('Menu')}</button>
 
-          <button class="pane-header-title flex-1 text-center text-header font-semibold fg-body" id="btn-deck-title">${deck.name}</button>
+          <button class="pane-header-title flex-1 text-center text-header fg-body" id="btn-deck-title">${deck.name}</button>
           ${isLangView
             ? '<span class="pane-header-spacer shrink-0"></span>'
             : `

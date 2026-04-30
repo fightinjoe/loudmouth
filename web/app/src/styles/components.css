@@ -68,6 +68,29 @@
 
 /*-- Cards --*/
 
+rt {
+  font-family: var(--font-family);
+  font-size: var(--text-size-body2);
+  color: var(--fg-caption);
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+ruby {
+  ruby-align: center;
+  ruby-position: over;
+}
+
+/* Hide plain reading if ruby is active */
+.card-content[data-has-ruby] .card-reading,
+.review-card[data-has-ruby] .review-card-reading {
+  display: none;
+}
+
+.review-card-text rt {
+  font-size: var(--text-size-body1); /* 16px for larger card */
+}
+
 [data-mode="study"] .deck-view-list {
   .card-row .card-primary {
     .card-text { display: auto; }
@@ -106,8 +129,8 @@
 .card-row-wrapper {
   position: relative;
 
-  &:first-child .card-row { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
-  &:last-child .card-row { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+  &:first-child .card-row { border-radius: var(--radius) var(--radius) 0 0; }
+  &:last-child .card-row { border-radius: 0 0 var(--radius) var(--radius); }
 }
 
 .card-row-star-btn {
@@ -169,7 +192,6 @@
 }
 
 .deck-picker-row {
-  border-radius: var(--radius-sm);
   height: 64px;
   padding: 0 1rem;
   margin-bottom: 6px;
@@ -705,13 +727,14 @@
 
 .icon-button {
   background: hsl(var(--white));
+  color: var(--fg-emphasis);
   border-radius: 9999px;
   width: 44px;
   height: 44px;
 
-  &.emphasis { background: hsl(var(--bg-primary)); }
-  &.danger { background: hsl(var(--bg-red)); }
-  &.blue { background: hsl(var(--bg-red)); }
+  &.emphasis { background: var(--bg-primary); }
+  &.danger { background: var(--bg-red); }
+  &.blue { background: var(--bg-blue); }
 }
 
 .pane-header-title {
