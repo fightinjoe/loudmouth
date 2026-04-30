@@ -1,4 +1,5 @@
-import { buildNavPane } from "../screens/deck-view.js";
+// import { buildNavPane } from "../screens/deck-view.js";
+import { buildNavPane } from "../panes/navPane.js";
 
 export function initRouter(appEl) {
   function route() {

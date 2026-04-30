@@ -322,9 +322,6 @@ export function buildNavPane(el, params) {
           return;
         }
         cards = await getCards(deckId);
-      }
-
-      if (!isStarredView) {
         cards = applyCardOrder(
           cards,
           deck.order || "default",
@@ -332,17 +329,16 @@ export function buildNavPane(el, params) {
         );
       }
 
-      const isLangView = deckId.startsWith("lang:") || isStarredView;
-
       el.dataset.mode = deck.mode;
+
+      // HTML for the Content pane
       contentPaneEl.innerHTML = `
+        ${ /** Deck header */ }
         <div class="pane-header flex items-center">
-
           <button class="icon-button" id="btn-menu" aria-label="Menu">${icon("Menu")}</button>
-
           <button class="pane-header-title flex-1 text-center text-header fg-body tappable" id="btn-deck-title">${deck.name}</button>
           ${
-            isLangView
+            deck.system
               ? '<span class="pane-header-spacer shrink-0"></span>'
               : `
               <button class="icon-button" id="btn-deck-add" aria-label="Translate">${icon("Add")}</button>
@@ -350,6 +346,7 @@ export function buildNavPane(el, params) {
             `
           }
         </div>
+        ${ /** Deck cards */ }
         <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto">
           ${
             cards.length === 0
@@ -360,7 +357,7 @@ export function buildNavPane(el, params) {
           }
         </div>
         ${
-          isLangView
+          deck.system
             ? ""
             : `
           <div class="deck-view-add-cards-bar shrink-0 flex items-center px-5 py-4">
@@ -535,7 +532,7 @@ export function buildNavPane(el, params) {
       }
 
       const titleBtn = contentPaneEl.querySelector("#btn-deck-title");
-      if (isLangView) {
+      if (deck.system) {
         titleBtn.addEventListener("click", () => navPane.open());
       } else {
         titleBtn.addEventListener("click", (e) => {
@@ -553,7 +550,7 @@ export function buildNavPane(el, params) {
           });
       }
 
-      if (!isLangView) {
+      if (!deck.system) {
         contentPaneEl
           .querySelector("#btn-deck-add")
           .addEventListener("click", () => {
