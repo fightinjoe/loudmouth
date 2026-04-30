@@ -16,7 +16,9 @@
   min-width: 160px;
   opacity: 0;
   transform: translateX(-50%) translateY(-4px);
-  transition: opacity 150ms ease, transform 150ms ease;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
   pointer-events: none;
 }
 
@@ -48,8 +50,12 @@
   color: var(--accent);
 }
 
-#deck-view-screen[data-edit-mode] .deck-header-done { display: flex; }
-#deck-view-screen[data-edit-mode] #btn-deck-add     { display: none; }
+#deck-view-screen[data-edit-mode] .deck-header-done {
+  display: flex;
+}
+#deck-view-screen[data-edit-mode] #btn-deck-add {
+  display: none;
+}
 
 /* ── Edit mode card row ── */
 
@@ -66,8 +72,12 @@
   height: 44px;
 }
 
-#deck-view-screen[data-edit-mode] .card-row-reorder-handle { display: flex; }
-#deck-view-screen[data-edit-mode] .card-row-play           { display: none; }
+#deck-view-screen[data-edit-mode] .card-row-reorder-handle {
+  display: flex;
+}
+#deck-view-screen[data-edit-mode] .card-row-play {
+  display: none;
+}
 
 /* Dragged placeholder — shows target slot position, dimmed */
 .card-row-reorder-placeholder {
@@ -76,7 +86,8 @@
 }
 
 /* Siblings animate position as placeholder moves between slots */
-.deck-view-list--reordering .card-row-wrapper:not(.card-row-reorder-placeholder) {
+.deck-view-list--reordering
+  .card-row-wrapper:not(.card-row-reorder-placeholder) {
   transition: transform 150ms ease;
 }
 
@@ -94,7 +105,9 @@
   padding: 0.75rem 1.25rem 1.5rem;
 }
 
-#deck-view-screen[data-edit-mode] .deck-view-add-cards-bar { display: flex; }
+#deck-view-screen[data-edit-mode] .deck-view-add-cards-bar {
+  display: flex;
+}
 
 .deck-view-add-cards-btn {
   display: block;
@@ -114,7 +127,6 @@
   max-width: none;
   margin: 0;
 }
-
 
 .deck-view-list {
   gap: 6px;
@@ -148,34 +160,58 @@ ruby {
 
 [data-mode="study"] .deck-view-list {
   .card-row .card-primary {
-    .card-text { display: auto; }
-    .card-translation { display: none; }
+    .card-text {
+      display: auto;
+    }
+    .card-translation {
+      display: none;
+    }
   }
   .card-row .card-secondary {
-    .card-reading { display: auto; }
-    .card-translation { display: none; }
+    .card-reading {
+      display: auto;
+    }
+    .card-translation {
+      display: none;
+    }
   }
 }
 
 [data-mode="review"] .deck-view-list {
   .card-row .card-primary {
-    .card-text { display: auto; }
-    .card-translation { display: none; }
+    .card-text {
+      display: auto;
+    }
+    .card-translation {
+      display: none;
+    }
   }
   .card-row .card-secondary {
-    .card-reading { display: auto; }
-    .card-translation { display: auto; }
+    .card-reading {
+      display: auto;
+    }
+    .card-translation {
+      display: auto;
+    }
   }
 }
 
 [data-mode="reverse"] .deck-view-list {
   .card-row .card-primary {
-    .card-text { display: auto; }
-    .card-translation { display: none; }
+    .card-text {
+      display: auto;
+    }
+    .card-translation {
+      display: none;
+    }
   }
   .card-row .card-secondary {
-    .card-reading { display: none; }
-    .card-translation { display: none; }
+    .card-reading {
+      display: none;
+    }
+    .card-translation {
+      display: none;
+    }
   }
 }
 
@@ -184,8 +220,12 @@ ruby {
 .card-row-wrapper {
   position: relative;
 
-  &:first-child .card-row { border-radius: var(--radius) var(--radius) 0 0; }
-  &:last-child .card-row { border-radius: 0 0 var(--radius) var(--radius); }
+  &:first-child .card-row {
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  &:last-child .card-row {
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
 }
 
 .card-row-star-btn {
@@ -435,31 +475,55 @@ ruby {
 
 /* Reverse mode */
 [data-mode="reverse"] .card-review-content {
-  .review-card-text { display: none; }
-  .review-card-reading { display: none; }
+  .review-card-text {
+    display: none;
+  }
+  .review-card-reading {
+    display: none;
+  }
   .review-card-reverse {
     display: block;
   }
-  .review-translation { display: none; }
+  .review-translation {
+    display: none;
+  }
 }
 
 /* Study mode: show skeleton; reveal on press */
 [data-mode="study"] .card-review-content {
-  .review-translation-skeleton { display: flex; }
-  .review-translation-text { display: none; }
+  .review-translation-skeleton {
+    display: flex;
+  }
+  .review-translation-text {
+    display: none;
+  }
 
   &.review--revealed {
-    .review-translation { background: var(--bg-surface); cursor: default; }
-    .review-translation-skeleton { display: none; }
-    .review-translation-text { display: block; }
+    .review-translation {
+      background: var(--bg-surface);
+      cursor: default;
+    }
+    .review-translation-skeleton {
+      display: none;
+    }
+    .review-translation-text {
+      display: block;
+    }
   }
 }
 
 /* Review mode: always show translation */
 [data-mode="review"] .card-review-content {
-  .review-translation { background: var(--bg-surface); cursor: default; }
-  .review-translation-skeleton { display: none; }
-  .review-translation-text { display: block; }
+  .review-translation {
+    background: var(--bg-surface);
+    cursor: default;
+  }
+  .review-translation-skeleton {
+    display: none;
+  }
+  .review-translation-text {
+    display: block;
+  }
 }
 
 .review-translation-skeleton-line {
@@ -589,8 +653,12 @@ ruby {
   gap: 6px;
 }
 
-.generate-cards-panel[data-has-deck] .generate-cards-lang-wrap { display: none; }
-.generate-cards-panel[data-has-deck] .generate-cards-lang-label { display: flex; }
+.generate-cards-panel[data-has-deck] .generate-cards-lang-wrap {
+  display: none;
+}
+.generate-cards-panel[data-has-deck] .generate-cards-lang-label {
+  display: flex;
+}
 
 /* Native select overlays the lang display for tap target */
 .generate-cards-lang-select {
@@ -643,17 +711,28 @@ ruby {
 .tr-card {
   padding: 12px 16px;
   overflow: hidden;
-  transition: transform 250ms ease, opacity 200ms ease, max-height 250ms ease;
+  transition:
+    transform 250ms ease,
+    opacity 200ms ease,
+    max-height 250ms ease;
 }
 
 .tr-card[data-dragging] {
   transition: none;
 }
 
-.tr-card--top    { border-radius: 20px 20px 0 0; }
-.tr-card--middle { border-radius: 0; }
-.tr-card--bottom { border-radius: 0 0 20px 20px; }
-.tr-card--only   { border-radius: 20px; }
+.tr-card--top {
+  border-radius: 20px 20px 0 0;
+}
+.tr-card--middle {
+  border-radius: 0;
+}
+.tr-card--bottom {
+  border-radius: 0 0 20px 20px;
+}
+.tr-card--only {
+  border-radius: 20px;
+}
 
 .tr-card--removing {
   opacity: 0;
@@ -691,9 +770,17 @@ ruby {
   animation: tr-shimmer 1.2s ease-in-out infinite;
 }
 
-.tr-skeleton-line--short { width: 40%; }
-.tr-skeleton-line--long  { width: 70%; height: 20px; border-radius: 10px; }
-.tr-skeleton-line--med   { width: 55%; }
+.tr-skeleton-line--short {
+  width: 40%;
+}
+.tr-skeleton-line--long {
+  width: 70%;
+  height: 20px;
+  border-radius: 10px;
+}
+.tr-skeleton-line--med {
+  width: 55%;
+}
 
 .tr-skeleton-play {
   width: 24px;
@@ -703,8 +790,13 @@ ruby {
 }
 
 @keyframes tr-shimmer {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .translation-translate-btn {
@@ -790,9 +882,9 @@ ruby {
   width: 44px;
   height: 44px;
 
-  &.emphasis { background: var(--bg-primary); }
-  &.danger { background: var(--bg-red); }
-  &.blue { background: var(--bg-blue); }
+  &:[data-selected='true'] {
+    color: var(--fg-emphasis);
+  }
 }
 
 /* .tappable is added to pane-header-title buttons in JS */

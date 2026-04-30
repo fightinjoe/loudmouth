@@ -1,5 +1,4 @@
 /*-- Text / font styling --*/
-
 .text-h1 {
   font-family: var(--font-family);
   font-size: var(--text-size-h1);
@@ -50,10 +49,18 @@
   line-height: 1;
 }
 
-.font-light { font-weight: 300; }
-.font-medium { font-weight: 500; }
-.font-semibold { font-weight: 600; }
-.font-bold { font-weight: 700; }
+.font-light {
+  font-weight: 300;
+}
+.font-medium {
+  font-weight: 500;
+}
+.font-semibold {
+  font-weight: 600;
+}
+.font-bold {
+  font-weight: 700;
+}
 
 .font-mono {
   font-family: var(--font-family-mono);
@@ -63,10 +70,16 @@
   font-family: inherit;
 }
 
-.leading-entry { line-height: var(--line-height-entry); }
+.leading-entry {
+  line-height: var(--line-height-entry);
+}
 
-.text-left { text-align: left; }
-.text-center { text-align: center; }
+.text-left {
+  text-align: left;
+}
+.text-center {
+  text-align: center;
+}
 
 .section-label {
   font-family: var(--font-family);
@@ -80,46 +93,125 @@
 
 /*-- Color tokens --*/
 
-.bg-primary { background: var(--bg-primary); }
-.bg-surface { background: var(--bg-surface); }
-.bg-accent { background: var(--accent); }
-.bg-star { background: var(--accent-star); }
-.bg-border { background: var(--border-default); }
-.bg-none { background: none; }
-.bg-transparent { background: transparent; }
+.bg-primary {
+  background: var(--bg-primary);
+}
+.bg-surface {
+  background: var(--bg-surface);
+}
+.bg-accent {
+  background: var(--accent);
+}
+.bg-star {
+  background: var(--accent-star);
+}
+.bg-border {
+  background: var(--border-default);
+}
+.bg-none {
+  background: none;
+}
+.bg-transparent {
+  background: transparent;
+}
 
-.fg-body { color: var(--fg-body); }
-.fg-secondary { color: var(--fg-secondary); }
-.fg-tertiary { color: var(--fg-tertiary); }
-.fg-caption { color: var(--fg-caption); }
-.fg-danger { color: var(--danger); }
-.fg-accent { color: var(--accent); }
-.fg-surface { color: var(--bg-surface); }
-.fg-white { color: #fff; }
+.fg-body {
+  color: var(--fg-body);
+}
+.fg-secondary {
+  color: var(--fg-secondary);
+}
+.fg-tertiary {
+  color: var(--fg-tertiary);
+}
+.fg-caption {
+  color: var(--fg-caption);
+}
+.fg-danger {
+  color: var(--danger);
+}
+.fg-accent {
+  color: var(--accent);
+}
+.fg-surface {
+  color: var(--bg-surface);
+}
+.fg-white {
+  color: #fff;
+}
+
+.bg-blue {
+  background: var(--bg-blue);
+}
+.bg-yellow {
+  background: var(--bg-yellow);
+}
+.bg-emphasis {
+  background: var(--bg-primary);
+}
+.bg-danger {
+  background: var(--bg-red);
+}
 
 /*-- Display and positioning --*/
 
-.flex { display: flex; }
+.flex {
+  display: flex;
+}
 
 .flex-col {
   display: flex;
   flex-direction: column;
+
+  &.reverse {
+    flex-direction: column-reverse;
+  }
 }
 
 .flex-row {
   display: flex;
   flex-direction: row;
+
+  &.reverse {
+    flex-direction: row-reverse;
+  }
 }
 
-.items-center { align-items: center; }
-.items-baseline { align-items: baseline; }
-.justify-center { justify-content: center; }
-.justify-between { justify-content: space-between; }
-.justify-end { justify-content: flex-end; }
-.flex-1 { flex: 1; }
-.shrink-0 { flex-shrink: 0; }
-.min-w-0 { min-width: 0; }
-.min-h-0 { min-height: 0; }
+.inset {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+}
+
+.items-center {
+  align-items: center;
+}
+.items-baseline {
+  align-items: baseline;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+.flex-1 {
+  flex: 1;
+}
+.shrink-0 {
+  flex-shrink: 0;
+}
+.min-w-0 {
+  min-width: 0;
+}
+.min-h-0 {
+  min-height: 0;
+}
 .fixed-inset {
   position: fixed;
   inset: 0;
@@ -134,18 +226,40 @@
   left: 0;
   right: 0;
 }
-.overflow-hidden { overflow: hidden; }
-.overflow-y-auto { overflow-y: auto; }
-.transition-transform { transition: transform 300ms ease; }
-.transition-opacity { transition: opacity 300ms ease; }
-.transition-bg { transition: background 300ms ease; }
-.transition-sheet { transition: transform 300ms ease; }
+.overflow-hidden {
+  overflow: hidden;
+}
+.overflow-y-auto {
+  overflow-y: auto;
+}
+.transition-transform {
+  transition: transform 300ms ease;
+}
+.transition-opacity {
+  transition: opacity 300ms ease;
+}
+.transition-bg {
+  transition: background 300ms ease;
+}
+.transition-sheet {
+  transition: transform 300ms ease;
+}
 .transition-none,
-.no-transition { transition: none; }
+.no-transition {
+  transition: none;
+}
 
-.gap-auto { justify-content: space-between; }
+.gap-auto {
+  justify-content: space-between;
+}
 
-.gap-sm { gap: 4px; }
+.gap-sm {
+  gap: 0.25rem;
+}
+
+.gap-md {
+  gap: 0.5rem;
+}
 
 /*-- Interaction --*/
 

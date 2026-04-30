@@ -86,19 +86,65 @@ function parseRubyMarkup(htmlStr) {
   const div = document.createElement('div');
   div.innerHTML = htmlStr;
   const tokens = [];
+  
+  function addToken(base, annotation) {
+    if (!base) return;
+    
+    // 1. Suppress redundant annotation
+    if (annotation === base || !annotation) {
+      tokens.push([base, null]);
+      return;
+    }
+
+    // 2. Strip matching prefix
+    let start = 0;
+    while (start < base.length && start < annotation.length && base[start] === annotation[start]) {
+      start++;
+    }
+    if (start > 0) {
+      tokens.push([base.slice(0, start), null]);
+    }
+
+    // 3. Strip matching suffix
+    let endBase = base.length;
+    let endAnn = annotation.length;
+    while (endBase > start && endAnn > start && base[endBase - 1] === annotation[endAnn - 1]) {
+      endBase--;
+      endAnn--;
+    }
+
+    // 4. Push the remaining annotated core
+    const midBase = base.slice(start, endBase);
+    const midAnn = annotation.slice(start, endAnn);
+    if (midBase) {
+      tokens.push([midBase, midAnn]);
+    }
+
+    // 5. Push the matching suffix
+    if (endBase < base.length) {
+      tokens.push([base.slice(endBase), null]);
+    }
+  }
+
   for (const node of div.childNodes) {
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent;
       if (text) tokens.push([text, null]);
     } else if (node.nodeName === 'RUBY') {
-      let base = '';
-      let annotation = null;
+      let currentBase = '';
       for (const child of node.childNodes) {
-        if (child.nodeType === Node.TEXT_NODE) base += child.textContent;
-        else if (child.nodeName === 'RB') base += child.textContent;
-        else if (child.nodeName === 'RT') annotation = child.textContent;
+        if (child.nodeName === 'RT') {
+          if (currentBase) {
+            addToken(currentBase, child.textContent);
+            currentBase = '';
+          }
+        } else if (child.nodeType === Node.TEXT_NODE) {
+          currentBase += child.textContent;
+        } else if (child.nodeName === 'RB') {
+          currentBase += child.textContent;
+        }
       }
-      tokens.push([base, annotation]);
+      if (currentBase) addToken(currentBase, null);
     }
   }
   return tokens.length > 0 ? tokens : null;
