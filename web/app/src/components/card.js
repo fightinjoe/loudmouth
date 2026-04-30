@@ -65,6 +65,10 @@ export function renderCardRow(card, readingDisplay = 'reading') {
         >
           ▶
         </button>
+
+        <div class="card-row-reorder-handle shrink-0" aria-hidden="true">
+          ${icon('Reorder')}
+        </div>
       </div>
     </div>
   `;

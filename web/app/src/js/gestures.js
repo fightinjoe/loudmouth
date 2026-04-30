@@ -111,7 +111,7 @@ export function wireNavPaneGesture(contentPaneEl, onOpen, onClose, navPaneWidth 
  * @param {number}      commitThreshold Swipe distance needed to commit reveal (default 80).
  * @returns {{ reset: Function, isAnyOpen: Function }}
  */
-export function wireRevealGesture(listEl, wrapperSelector, rowSelector, revealWidth = 160, commitThreshold = 80) {
+export function wireRevealGesture(listEl, wrapperSelector, rowSelector, revealWidth = 160, commitThreshold = 80, isSuppressed = null) {
   let startX = 0
   let startY = 0
   let target = null   // wrapper element
@@ -119,6 +119,8 @@ export function wireRevealGesture(listEl, wrapperSelector, rowSelector, revealWi
   let activeSwiped = null
 
   listEl.addEventListener('touchstart', e => {
+    if (isSuppressed && isSuppressed()) return
+    if (e.target.closest('.card-row-reorder-handle')) return
     const wrapper = e.target.closest(wrapperSelector)
     if (!wrapper) return
     startX = e.touches[0].clientX
@@ -197,6 +199,117 @@ export function wireRevealGesture(listEl, wrapperSelector, rowSelector, revealWi
       return activeSwiped !== null
     },
   }
+}
+
+/**
+ * wireCardReorder — touch-drag on .card-row-reorder-handle to reorder cards.
+ *
+ * A floating ghost clone follows the finger. The placeholder (the original row,
+ * dimmed) moves live to the target slot so the user can see exactly where the
+ * card will land. On release, onReorder(fromIndex, toIndex) is called with the
+ * final indices and the placeholder stays in its new position.
+ *
+ * @param {HTMLElement} listEl      The scrollable list container.
+ * @param {Function}    onReorder   Called with (fromIndex, toIndex) after a successful drag.
+ */
+export function wireCardReorder(listEl, onReorder) {
+  let state = null  // { wrapperEl, ghostEl, startY, ghostTop, fromIndex, currentIndex }
+
+  function getWrappers() {
+    return [...listEl.querySelectorAll('.card-row-wrapper')]
+  }
+
+  // Move the placeholder to the slot indicated by the ghost's midpoint.
+  // Returns the new currentIndex (index of placeholder in the full list).
+  function updatePlaceholderPosition(ghostMidY) {
+    // Measure the siblings (everything except the placeholder)
+    const siblings = getWrappers().filter(w => w !== state.wrapperEl)
+
+    // Find which slot the ghost belongs in among siblings
+    let slotAmongSiblings = 0
+    for (let i = 0; i < siblings.length; i++) {
+      const r = siblings[i].getBoundingClientRect()
+      if (ghostMidY > r.top + r.height / 2) slotAmongSiblings = i + 1
+    }
+
+    // Insert placeholder before siblings[slotAmongSiblings], or at end
+    const insertBeforeEl = siblings[slotAmongSiblings] ?? null
+    listEl.insertBefore(state.wrapperEl, insertBeforeEl)
+
+    return getWrappers().indexOf(state.wrapperEl)
+  }
+
+  listEl.addEventListener('touchstart', e => {
+    const handle = e.target.closest('.card-row-reorder-handle')
+    if (!handle) return
+    const wrapperEl = handle.closest('.card-row-wrapper')
+    if (!wrapperEl) return
+
+    // Stop propagation so the title button or card click handlers don't fire
+    e.stopPropagation()
+
+    const wrappers = getWrappers()
+    const fromIndex = wrappers.indexOf(wrapperEl)
+    const rect = wrapperEl.getBoundingClientRect()
+    const startY = e.touches[0].clientY
+
+    const ghostEl = wrapperEl.cloneNode(true)
+    ghostEl.classList.add('card-row-reorder-ghost')
+    // Hide the reorder handle on the ghost (it's not interactive)
+    ghostEl.querySelector('.card-row-reorder-handle')?.remove()
+    ghostEl.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      top: ${rect.top}px;
+      width: ${rect.width}px;
+      z-index: 500;
+      pointer-events: none;
+    `
+    document.body.appendChild(ghostEl)
+    wrapperEl.classList.add('card-row-reorder-placeholder')
+    listEl.classList.add('deck-view-list--reordering')
+
+    state = { wrapperEl, ghostEl, startY, ghostTop: rect.top, fromIndex, currentIndex: fromIndex }
+    e.preventDefault()
+  }, { passive: false })
+
+  // touchmove/touchend/touchcancel on document so they fire even if the finger
+  // leaves the listEl bounds (e.g. scrolls past the list or lifts outside it)
+  document.addEventListener('touchmove', e => {
+    if (!state) return
+    const dy = e.touches[0].clientY - state.startY
+    const newTop = state.ghostTop + dy
+    state.ghostEl.style.top = newTop + 'px'
+
+    const ghostRect = state.ghostEl.getBoundingClientRect()
+    const ghostMidY = ghostRect.top + ghostRect.height / 2
+    state.currentIndex = updatePlaceholderPosition(ghostMidY)
+
+    e.preventDefault()
+  }, { passive: false })
+
+  function endDrag(cancelled) {
+    if (!state) return
+    const { wrapperEl, ghostEl, fromIndex, currentIndex } = state
+    ghostEl.remove()
+    wrapperEl.classList.remove('card-row-reorder-placeholder')
+    listEl.classList.remove('deck-view-list--reordering')
+    state = null
+
+    if (!cancelled && currentIndex !== fromIndex) {
+      onReorder(fromIndex, currentIndex)
+    }
+  }
+
+  document.addEventListener('touchend', e => {
+    if (!state) return
+    endDrag(false)
+  }, { passive: true })
+
+  document.addEventListener('touchcancel', e => {
+    if (!state) return
+    endDrag(true)
+  }, { passive: true })
 }
 
 /**

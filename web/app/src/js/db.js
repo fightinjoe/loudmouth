@@ -215,8 +215,15 @@ export async function toggleCardStar(cardId, store = db) {
 /**
  * Applies a deck's order setting to an array of cards.
  * 'default' preserves createdAt insertion order, 'reverse' reverses it, 'random' shuffles.
+ * If deck.cardOrder (an array of card IDs) is set, it takes precedence over the order setting.
  */
-export function applyCardOrder(cards, order) {
+export function applyCardOrder(cards, order, cardOrder = null) {
+  if (cardOrder && cardOrder.length > 0) {
+    const byId = new Map(cards.map(c => [c.id, c]));
+    const ordered = cardOrder.map(id => byId.get(id)).filter(Boolean);
+    const remaining = cards.filter(c => !cardOrder.includes(c.id));
+    return [...ordered, ...remaining];
+  }
   const sorted = [...cards].sort((a, b) => {
     if (a.createdAt < b.createdAt) return -1;
     if (a.createdAt > b.createdAt) return 1;
@@ -231,6 +238,13 @@ export function applyCardOrder(cards, order) {
     return sorted;
   }
   return sorted;
+}
+
+/**
+ * Persists a custom card order for a deck as an array of card IDs.
+ */
+export async function updateDeckCardOrder(deckId, cardIds, store = db) {
+  await store.decks.update(deckId, { cardOrder: cardIds });
 }
 
 /**

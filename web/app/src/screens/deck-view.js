@@ -1,4 +1,4 @@
-import { db, getCards, getCardsByLang, getStarredCards, toggleCardStar, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, createDeck, importCards, exportAllData, restoreAllData, applyCardOrder, updateCard, deleteCard } from '../js/db.js'
+import { db, getCards, getCardsByLang, getStarredCards, toggleCardStar, getDecks, getRecentDecks, updateDeckAccessTime, updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, createDeck, importCards, exportAllData, restoreAllData, applyCardOrder, updateDeckCardOrder, updateCard, deleteCard } from '../js/db.js'
 import { DEFAULT_MODE } from '../js/modes.js'
 import { decode as base64urlDecode } from '../js/base64url.js'
 import { parseCardBatch } from '../js/import-parser.js'
@@ -6,7 +6,7 @@ import { speak, ttsText } from '../js/tts.js'
 
 import { LANG_FLAGS, LANG_NAMES } from '../js/lang.js'
 import { stripHashParam } from '../js/utils.js'
-import { wireNavPaneGesture, wireRevealGesture } from '../js/gestures.js'
+import { wireNavPaneGesture, wireRevealGesture, wireCardReorder } from '../js/gestures.js'
 import { renderCardRow } from '../components/card.js'
 import { openAddCardsPanel } from '../components/add-cards-panel.js'
 import { openDeckSettings } from '../components/deck-settings.js'
@@ -288,7 +288,7 @@ export function renderDeckView(el, params) {
       }
 
       if (!isStarredView) {
-        cards = applyCardOrder(cards, deck.order || 'default')
+        cards = applyCardOrder(cards, deck.order || 'default', deck.cardOrder || null)
       }
 
       const isLangView = deckId.startsWith('lang:') || isStarredView
@@ -312,12 +312,20 @@ export function renderDeckView(el, params) {
             ? `<div class="deck-view-empty text-center fg-secondary"><p>No cards in this deck.</p></div>`
             : cards.map(card => renderCardRow(card, deck.readingDisplay)).join('')}
         </div>
+        ${isLangView ? '' : `
+          <div class="deck-view-add-cards-bar shrink-0 flex items-center px-5 py-4">
+            <button class="deck-view-add-cards-btn flex-1 text-body1 fg-tertiary surface-field" id="btn-edit-add-cards" aria-label="Add cards">
+              Add cards
+            </button>
+          </div>
+        `}
       `
 
       const listEl = screenEl.querySelector('.deck-view-list')
       const editOps = { updateCard, deleteCard }
-      const reveal = wireRevealGesture(listEl, '.card-row-wrapper', '.card-row')
-      navPane.setSuppressed(() => reveal.isAnyOpen())
+      const reveal = wireRevealGesture(listEl, '.card-row-wrapper', '.card-row',
+        undefined, undefined, () => 'editMode' in screenEl.dataset)
+      navPane.setSuppressed(() => reveal.isAnyOpen() || 'editMode' in screenEl.dataset)
 
       function onSaveCard(updatedCard) {
         const idx = cards.findIndex(c => String(c.id) === String(updatedCard.id))
@@ -342,6 +350,9 @@ export function renderDeckView(el, params) {
       }
 
       listEl.addEventListener('click', async e => {
+        // In edit mode, only the reorder handle is active — block all other interactions
+        if ('editMode' in screenEl.dataset) return
+
         const starBtn = e.target.closest('.card-row-star-btn')
         if (starBtn) {
           reveal.reset()
@@ -452,6 +463,31 @@ export function renderDeckView(el, params) {
               list.appendChild(tmp.firstElementChild)
             }
           })
+        })
+
+        screenEl.querySelector('#btn-edit-add-cards')?.addEventListener('click', () => {
+          const prevIds = new Set(cards.map(c => c.id))
+          openGenerateCardsPanel(el, { createDeck, importCards }, async () => {
+            const freshCards = await getCards(deck.id)
+            const addedCards = freshCards.filter(c => !prevIds.has(c.id))
+            for (const c of addedCards) cards.push(c)
+            const list = screenEl.querySelector('.deck-view-list')
+            if (list) {
+              const empty = list.querySelector('.deck-view-empty')
+              if (empty) empty.remove()
+              for (const card of addedCards) {
+                const tmp = document.createElement('div')
+                tmp.innerHTML = renderCardRow(card, deck.readingDisplay)
+                list.appendChild(tmp.firstElementChild)
+              }
+            }
+          }, deck)
+        })
+
+        wireCardReorder(listEl, async (fromIndex, toIndex) => {
+          const moved = cards.splice(fromIndex, 1)[0]
+          cards.splice(toIndex, 0, moved)
+          await updateDeckCardOrder(deck.id, cards.map(c => c.id))
         })
       }
     }
