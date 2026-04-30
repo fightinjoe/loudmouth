@@ -45,6 +45,8 @@ import { icon } from "../components/icon.js";
 
 const LAST_DECK_KEY = "loudmouth.lastDeckId";
 
+const ERROR = true;
+
 export function getLastDeckId() {
   try {
     return localStorage.getItem(LAST_DECK_KEY);
@@ -148,7 +150,8 @@ async function renderLangSection(lang, decks) {
   `;
 }
 
-async function buildNavPaneContent() {
+// Renders the content for the Nav pane
+async function renderNavPane() {
   const allDecks = await getDecks(null, { includeSystem: false });
 
   // Collect the decks by language
@@ -160,6 +163,7 @@ async function buildNavPaneContent() {
     byLang[lang].sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  // Render all of the language sections
   let byLangHTML = "";
   for (const [lang, decks] of Object.entries(byLang).sort(([a], [b]) =>
     a.localeCompare(b),
@@ -188,64 +192,6 @@ async function buildNavPaneContent() {
 
 export function renderDeckView(el, params) {
   async function init() {
-    if (params.cards) {
-      const jsonStr = base64urlDecode(params.cards);
-      if (jsonStr === null) {
-        el.innerHTML = `
-          <div class="screen flex-1 flex-col bg-primary overflow-hidden" id="deck-view-screen">
-            <div class="deck-view-empty text-center fg-secondary">
-              <p class="uri-import-error">
-                Import link is invalid — could not decode the card data.
-              </p>
-            </div>
-          </div>
-        `;
-        stripHashParam("cards");
-        return;
-      }
-      const result = parseCardBatch(jsonStr);
-      if (result.cards.length === 0) {
-        el.innerHTML = `
-          <div class="screen flex-1 flex-col bg-primary overflow-hidden" id="deck-view-screen">
-            <div class="deck-view-empty text-center fg-secondary">
-              <p class="uri-import-error">
-                Import link contained no valid cards.
-              </p>
-            </div>
-          </div>
-        `;
-        stripHashParam("cards");
-        return;
-      }
-      let deckId = params.id || getLastDeckId();
-      if (!deckId) {
-        const recent = await getRecentDecks(1);
-        deckId = recent[0]?.id ?? null;
-      }
-      el.innerHTML = `
-        <div class="screen flex-1 flex-col bg-primary overflow-hidden" id="deck-view-screen">
-          <div class="deck-view-empty text-center fg-secondary">
-            <p>Review your cards below before importing.</p>
-          </div>
-        </div>
-      `;
-      openAddCardsPanel(
-        el,
-        () => {},
-        (importedDeckId) => {
-          const dest = importedDeckId || deckId;
-          window.location.hash = dest ? `deck?id=${dest}` : "deck";
-        },
-        dbOps,
-        {
-          initialCards: result.cards,
-          initialErrors: result.errors,
-          fromUri: true,
-        },
-      );
-      return;
-    }
-
     let deckId = params.id || getLastDeckId();
     if (!deckId) {
       const recent = await getRecentDecks(1);
@@ -270,7 +216,7 @@ export function renderDeckView(el, params) {
     const screenEl = el.querySelector("#deck-view-screen");
 
     // Populate nav pane
-    navPaneEl.innerHTML = await buildNavPaneContent();
+    navPaneEl.innerHTML = await renderNavPane();
 
     // Wire nav pane gesture
     const navPane = wireNavPaneGesture(
@@ -308,7 +254,7 @@ export function renderDeckView(el, params) {
     }
 
     async function refreshNavPane() {
-      navPaneEl.innerHTML = await buildNavPaneContent();
+      navPaneEl.innerHTML = await renderNavPane();
       navPaneEl
         .querySelector(".deck-picker-list")
         .addEventListener("click", async (e) => {
