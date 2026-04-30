@@ -333,7 +333,6 @@ export function buildNavPane(el, params) {
 
       // HTML for the Content pane
       contentPaneEl.innerHTML = `
-        ${ /** Deck header */ }
         <div class="pane-header flex items-center">
           <button class="icon-button" id="btn-menu" aria-label="Menu">${icon("Menu")}</button>
           <button class="pane-header-title flex-1 text-center text-header fg-body tappable" id="btn-deck-title">${deck.name}</button>
@@ -346,7 +345,6 @@ export function buildNavPane(el, params) {
             `
           }
         </div>
-        ${ /** Deck cards */ }
         <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto">
           ${
             cards.length === 0

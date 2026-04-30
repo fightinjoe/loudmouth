@@ -892,3 +892,12 @@ ruby {
 .pane-header-spacer {
   width: 44px;
 }
+
+.handle {
+  border: 1px solid Red;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 15%;
+}

@@ -18,7 +18,7 @@ import {
 } from "../js/db.js";
 
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
-import { wireNavPaneGesture } from "../js/gestures.js";
+// import { wireNavPaneGesture } from "../js/gestures.js";
 import { buildContentPane } from "../panes/contentPane.js";
 import { openGenerateCardsPanel } from "../components/generate-cards-panel.js";
 
@@ -167,7 +167,7 @@ async function renderNavPane() {
 
 // ── Main render ──────────────────────────────────────────────────────────────
 
-export function buildNavPane(el, params) {
+export function buildNavPane(app, params) {
   async function init() {
     let deckId = params.id || getLastDeckId();
     if (!deckId) {
@@ -177,41 +177,41 @@ export function buildNavPane(el, params) {
 
     // ── Build nav shell ──────────────────────────────────────────────────────
 
-    el.innerHTML = `
-      <div class="nav-shell fixed-inset overflow-hidden">
-        <div id="nav-pane" class="nav-pane flex-col bg-primary overflow-y-auto"></div>
-        <div id="nav-main" class="nav-main absolute-inset flex-col bg-primary transition-transform">
-          <div id="nav-main-scrim" class="nav-main-scrim absolute-inset transition-opacity"></div>
-          <div id="content-pane" class="screen flex-1 flex-col bg-primary overflow-hidden"></div>
-        </div>
-      </div>
-    `;
+    // el.innerHTML = `
+    //   <div class="nav-shell fixed-inset overflow-hidden">
+    //     <div id="nav-pane" class="nav-pane flex-col bg-primary overflow-y-auto"></div>
+    //     <div id="nav-main" class="nav-main absolute-inset flex-col bg-primary transition-transform">
+    //       <div id="nav-main-scrim" class="nav-main-scrim absolute-inset transition-opacity"></div>
+    //       <div id="content-pane" class="screen flex-1 flex-col bg-primary overflow-hidden"></div>
+    //     </div>
+    //   </div>
+    // `;
 
-    const navPaneEl = el.querySelector("#nav-pane");
-    const navMainEl = el.querySelector("#nav-main");
-    const scrimEl = el.querySelector("#nav-main-scrim");
+    // const app.navPane.el = el.querySelector("#nav-pane");
+    // const navMainEl = el.querySelector("#nav-main");
+    // const scrimEl = el.querySelector("#nav-main-scrim");
 
     // Populate nav pane
-    navPaneEl.innerHTML = await renderNavPane();
+    app.els.navPane.innerHTML = await renderNavPane();
 
     // Wire nav pane gesture
-    const navPane = wireNavPaneGesture(navMainEl);
+    // const navPane = wireNavPaneGesture(navMainEl);
 
     // Scrim tap closes nav pane
-    scrimEl.addEventListener("click", () => navPane.close());
+    // scrimEl.addEventListener("click", () => app.navPane.close());
 
     function registerEvents() {
       // Nav pane deck selection
-      navPaneEl
+      app.els.navPane
         .querySelector(".deck-list")
         .addEventListener("click", async (e) => {
           const row = e.target.closest("[data-deck-id]");
           if (!row) return;
-          navPane.close();
+          app.navPane.close();
           await selectDeck(row.dataset.deckId);
         });
 
-      navPaneEl
+      app.els.navPane
         .querySelector(".nav-pane-add-fab")
         .addEventListener("click", () => openGenerateCards());
     }
@@ -230,7 +230,7 @@ export function buildNavPane(el, params) {
     }
 
     async function refreshNavPane() {
-      navPaneEl.innerHTML = await renderNavPane();
+      app.navPane.el.innerHTML = await renderNavPane();
       registerEvents();
     }
 
@@ -240,7 +240,7 @@ export function buildNavPane(el, params) {
         { createDeck, importCards },
         async (newDeckId) => {
           await refreshNavPane();
-          navPane.close();
+          app.navPane.close();
           await selectDeck(newDeckId);
         },
       );
@@ -250,7 +250,7 @@ export function buildNavPane(el, params) {
      * Function that loads a selected deck into the content pane
      */
 
-    await buildContentPane(deckId, el);
+    await buildContentPane(deckId, document.querySelector(".nav-shell"));
   }
 
   init();

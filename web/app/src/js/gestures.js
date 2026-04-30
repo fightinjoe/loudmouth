@@ -9,13 +9,14 @@
  * @returns {{ open: Function, close: Function, setSuppressed: Function }}
  */
 export function wireNavPaneGesture(
-  contentPaneEl,
+  app,
   onOpen = () => {},
   onClose = () => {},
   navPaneWidth = 280,
   openThreshold = 100,
 ) {
-  const navMainEl = contentPaneEl;
+  // const navMainEl = app.els.navMain;
+  // const navMainEl = app.els.handle;
   let startX = null;
   let startY = null;
   let axis = null;
@@ -23,24 +24,25 @@ export function wireNavPaneGesture(
   let _isSuppressed = null;
 
   function setOpen(open, animate = true) {
+    const contentPane = app.els.contentPane;
     isOpen = open;
-    if (!animate) navMainEl.dataset.dragging = "";
+    if (!animate) contentPane.dataset.dragging = "";
     if (open) {
-      navMainEl.classList.add("nav-main--open");
+      contentPane.classList.add("nav-main--open");
       onOpen();
     } else {
-      navMainEl.classList.remove("nav-main--open");
+      contentPane.classList.remove("nav-main--open");
       onClose();
     }
     if (!animate) {
-      requestAnimationFrame(() => delete navMainEl.dataset.dragging);
+      requestAnimationFrame(() => delete contentPane.dataset.dragging);
     }
   }
 
-  navMainEl.addEventListener(
+  app.els.handle.addEventListener(
     "touchstart",
     (e) => {
-      if (e.target.closest(".pane-screen")) return;
+      // if (e.target.closest(".pane-screen")) return;
       // When open, allow tracking on the scrim (for swipe-left to close).
       // When closed, ignore scrim touches (it's invisible).
       if (!isOpen && e.target.closest(".nav-main-scrim")) return;
@@ -52,9 +54,11 @@ export function wireNavPaneGesture(
     { passive: true },
   );
 
-  navMainEl.addEventListener(
+  app.els.handle.addEventListener(
     "touchmove",
     (e) => {
+      const contentPane = app.els.contentPane;
+      console.log(app.els);
       if (startX === null) return;
       const dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
@@ -69,22 +73,23 @@ export function wireNavPaneGesture(
 
       const base = isOpen ? navPaneWidth : 0;
       const clamped = Math.max(0, Math.min(navPaneWidth, base + dx));
-      navMainEl.dataset.dragging = "";
-      navMainEl.style.transform = `translateX(${clamped}px)`;
-      const scrim = navMainEl.querySelector(".nav-main-scrim");
+      contentPane.dataset.dragging = "";
+      contentPane.style.transform = `translateX(${clamped}px)`;
+      const scrim = contentPane.querySelector(".nav-main-scrim");
       if (scrim) scrim.style.opacity = clamped / navPaneWidth;
     },
     { passive: false },
   );
 
-  navMainEl.addEventListener(
+  app.els.handle.addEventListener(
     "touchend",
     (e) => {
+      const contentPane = app.els.contentPane;
       if (startX === null) return;
       const dx = e.changedTouches[0].clientX - startX;
-      delete navMainEl.dataset.dragging;
-      navMainEl.style.transform = "";
-      const scrim = navMainEl.querySelector(".nav-main-scrim");
+      delete contentPane.dataset.dragging;
+      contentPane.style.transform = "";
+      const scrim = contentPane.querySelector(".nav-main-scrim");
       if (scrim) scrim.style.opacity = "";
       startX = null;
 
@@ -96,12 +101,13 @@ export function wireNavPaneGesture(
     { passive: true },
   );
 
-  navMainEl.addEventListener(
+  app.els.handle.addEventListener(
     "touchcancel",
     () => {
+      const contentPane = app.els.contentPane;
       if (startX === null) return;
       delete navMainEl.dataset.dragging;
-      navMainEl.style.transform = "";
+      contentPane.style.transform = "";
       const scrim = navMainEl.querySelector(".nav-main-scrim");
       if (scrim) scrim.style.opacity = "";
       startX = null;

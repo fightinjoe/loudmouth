@@ -1,12 +1,13 @@
-// import { buildNavPane } from "../screens/deck-view.js";
-import { buildNavPane } from "../panes/navPane.js";
+// import { buildNavPane } from "../panes/navPane.js";
+import { initApp } from "../panes/app.js";
 
-export function initRouter(appEl) {
+export function initRouter() {
   function route() {
     const raw = window.location.hash.slice(1) || "deck";
     const [, qparams] = raw.split("?");
     const params = Object.fromEntries(new URLSearchParams(qparams || ""));
-    buildNavPane(appEl, params);
+
+    initApp(params);
   }
 
   window.addEventListener("hashchange", route);
