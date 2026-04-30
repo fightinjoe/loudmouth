@@ -15,8 +15,6 @@ export function wireNavPaneGesture(
   navPaneWidth = 280,
   openThreshold = 100,
 ) {
-  // const navMainEl = app.els.navMain;
-  // const navMainEl = app.els.handle;
   let startX = null;
   let startY = null;
   let axis = null;
@@ -58,7 +56,6 @@ export function wireNavPaneGesture(
     "touchmove",
     (e) => {
       const contentPane = app.els.contentPane;
-      console.log(app.els);
       if (startX === null) return;
       const dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
