@@ -1,4 +1,5 @@
 import { MODES as MODES_MAP, MODE_LABELS, DEFAULT_MODE } from '../js/modes.js'
+import { wireSheetDismissGesture } from '../js/gestures.js'
 
 const MODES = Object.values(MODES_MAP)
 
@@ -115,6 +116,7 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
   }
 
   scrim.addEventListener('click', close)
+  wireSheetDismissGesture(panel, close)
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {

@@ -278,6 +278,10 @@ ruby {
   transform: translateY(0);
 }
 
+.bottom-sheet[data-dragging] {
+  transition: none;
+}
+
 /* ── Deck Settings Panel ── */
 
 .deck-settings-panel {

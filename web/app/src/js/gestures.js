@@ -6,7 +6,7 @@
  * @param {Function}    onClose    Called when the nav pane closes.
  * @param {number}      navPaneWidth  Width of the nav pane in px (default 280).
  * @param {number}      openThreshold  Swipe distance needed to commit open/close (default 100).
- * @returns {{ open: Function, close: Function }}
+ * @returns {{ open: Function, close: Function, setSuppressed: Function }}
  */
 export function wireNavPaneGesture(contentPaneEl, onOpen, onClose, navPaneWidth = 280, openThreshold = 100) {
   const navMainEl = contentPaneEl
@@ -14,6 +14,7 @@ export function wireNavPaneGesture(contentPaneEl, onOpen, onClose, navPaneWidth 
   let startY = null
   let axis = null
   let isOpen = false
+  let _isSuppressed = null
 
   function setOpen(open, animate = true) {
     isOpen = open
@@ -31,8 +32,11 @@ export function wireNavPaneGesture(contentPaneEl, onOpen, onClose, navPaneWidth 
   }
 
   navMainEl.addEventListener('touchstart', e => {
-    if (e.target.closest('.pane-screen') || e.target.closest('.nav-main-scrim')) return
-    if (isOpen) return
+    if (e.target.closest('.pane-screen')) return
+    // When open, allow tracking on the scrim (for swipe-left to close).
+    // When closed, ignore scrim touches (it's invisible).
+    if (!isOpen && e.target.closest('.nav-main-scrim')) return
+    if (_isSuppressed && _isSuppressed()) return
     startX = e.touches[0].clientX
     startY = e.touches[0].clientY
     axis = null
@@ -87,6 +91,7 @@ export function wireNavPaneGesture(contentPaneEl, onOpen, onClose, navPaneWidth 
   return {
     open: () => setOpen(true),
     close: () => setOpen(false),
+    setSuppressed: (fn) => { _isSuppressed = fn },
   }
 }
 
@@ -104,7 +109,7 @@ export function wireNavPaneGesture(contentPaneEl, onOpen, onClose, navPaneWidth 
  * @param {string}      rowSelector     CSS selector for the inner row element that slides.
  * @param {number}      revealWidth     How far (px) the row slides to reveal buttons (default 160).
  * @param {number}      commitThreshold Swipe distance needed to commit reveal (default 80).
- * @returns {{ reset: Function }}  reset() closes any currently-open row.
+ * @returns {{ reset: Function, isAnyOpen: Function }}
  */
 export function wireRevealGesture(listEl, wrapperSelector, rowSelector, revealWidth = 160, commitThreshold = 80) {
   let startX = 0
@@ -187,6 +192,76 @@ export function wireRevealGesture(listEl, wrapperSelector, rowSelector, revealWi
         activeSwiped.querySelector(rowSelector).style.transform = ''
         activeSwiped = null
       }
-    }
+    },
+    isAnyOpen() {
+      return activeSwiped !== null
+    },
   }
+}
+
+/**
+ * wireSheetDismissGesture — swipe-down on a bottom sheet panel to dismiss it.
+ *
+ * Tracks the finger in real-time, translating the panel downward. Commits
+ * (calls onDismiss) if displacement exceeds the threshold, otherwise snaps back.
+ *
+ * @param {HTMLElement} panelEl        The bottom sheet element.
+ * @param {Function}    onDismiss      Called when the swipe-down threshold is met.
+ * @param {number}      threshold      Downward drag distance needed to commit (default 80).
+ */
+export function wireSheetDismissGesture(panelEl, onDismiss, threshold = 80) {
+  let startX = null
+  let startY = null
+  let axis = null
+
+  panelEl.addEventListener('touchstart', e => {
+    // Only initiate from the handle or header area to avoid conflicting with
+    // scrollable content inside the sheet.
+    const handle = e.target.closest('.sheet-handle, .pane-header')
+    if (!handle) return
+    startX = e.touches[0].clientX
+    startY = e.touches[0].clientY
+    axis = null
+    panelEl.dataset.dragging = ''
+  }, { passive: true })
+
+  panelEl.addEventListener('touchmove', e => {
+    if (startY === null) return
+    const dy = e.touches[0].clientY - startY
+    const dx = e.touches[0].clientX - startX
+
+    if (!axis) {
+      if (Math.abs(dy) < 4 && Math.abs(dx) < 4) return
+      axis = Math.abs(dy) > Math.abs(dx) ? 'v' : 'h'
+    }
+    if (axis !== 'v') return
+
+    const clamped = Math.max(0, dy)
+    panelEl.style.transform = `translateY(${clamped}px)`
+  }, { passive: true })
+
+  panelEl.addEventListener('touchend', e => {
+    if (startY === null) return
+    const dy = e.changedTouches[0].clientY - startY
+    delete panelEl.dataset.dragging
+    startX = null
+    startY = null
+
+    if (axis === 'v' && dy >= threshold) {
+      panelEl.style.transform = ''
+      onDismiss()
+    } else {
+      panelEl.style.transform = ''
+    }
+    axis = null
+  }, { passive: true })
+
+  panelEl.addEventListener('touchcancel', () => {
+    if (startY === null) return
+    delete panelEl.dataset.dragging
+    panelEl.style.transform = ''
+    startX = null
+    startY = null
+    axis = null
+  }, { passive: true })
 }

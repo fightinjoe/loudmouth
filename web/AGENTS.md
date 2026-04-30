@@ -126,12 +126,13 @@ if (Math.abs(dx) >= THRESHOLD) {
 
 All touch gesture logic lives in `src/js/gestures.js`. Do not embed gesture code in screens or components — add to the module and call it from there.
 
-Two factories are available:
+Three factories are available:
 
-- **`wireNavPaneGesture(contentPaneEl, onOpen, onClose)`** — swipe-right to open / swipe-left to close the nav pane. Returns `{ open, close }`.
-- **`wireRevealGesture(listEl, wrapperSelector, rowSelector)`** — swipe-left on a list row to reveal buttons behind it. Returns `{ reset }`.
+- **`wireNavPaneGesture(contentPaneEl, onOpen, onClose)`** — swipe-right to open / swipe-left to close the nav pane. Returns `{ open, close, setSuppressed }`. Call `setSuppressed(fn)` with a predicate to block the gesture (e.g. when a card row is revealed).
+- **`wireRevealGesture(listEl, wrapperSelector, rowSelector)`** — swipe-left on a list row to reveal buttons behind it. Returns `{ reset, isAnyOpen }`. `isAnyOpen()` returns true when any row is currently revealed — pass it to `navPane.setSuppressed` to prevent the nav pane from opening while a row is exposed.
+- **`wireSheetDismissGesture(panelEl, onDismiss)`** — swipe-down on a bottom sheet to dismiss it. Initiates only from `.sheet-handle` or `.pane-header` touches to avoid conflicting with scrollable sheet content. Applies `data-dragging` during drag; CSS rule `.bottom-sheet[data-dragging] { transition: none }` suppresses the transition.
 
-Both follow the axis-lock, real-time tracking, and `data-dragging` suppression patterns described in the Swipe gesture pattern section above.
+All three follow the axis-lock, real-time tracking, and `data-dragging` suppression patterns described in the Swipe gesture pattern section above.
 
 ## Testing
 

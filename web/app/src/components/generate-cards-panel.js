@@ -1,4 +1,5 @@
 import { LANG_FLAGS, LANG_NAMES } from '../js/lang.js'
+import { wireSheetDismissGesture } from '../js/gestures.js'
 
 const GATEWAY_URL = 'https://translation-api-gateway-2qqw247r.uc.gateway.dev'
 
@@ -133,11 +134,5 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
     }
   })
 
-  // Swipe-down to dismiss
-  let startY = 0
-  panel.addEventListener('touchstart', e => { startY = e.touches[0].clientY }, { passive: true })
-  panel.addEventListener('touchend', e => {
-    const dy = e.changedTouches[0].clientY - startY
-    if (dy > 60) close()
-  }, { passive: true })
+  wireSheetDismissGesture(panel, close)
 }

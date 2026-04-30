@@ -317,6 +317,7 @@ export function renderDeckView(el, params) {
       const listEl = screenEl.querySelector('.deck-view-list')
       const editOps = { updateCard, deleteCard }
       const reveal = wireRevealGesture(listEl, '.card-row-wrapper', '.card-row')
+      navPane.setSuppressed(() => reveal.isAnyOpen())
 
       function onSaveCard(updatedCard) {
         const idx = cards.findIndex(c => String(c.id) === String(updatedCard.id))

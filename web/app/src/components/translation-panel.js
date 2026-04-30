@@ -1,5 +1,6 @@
 import { LANG_FLAGS, LANG_NAMES } from '../js/lang.js'
 import { speak, ttsText } from '../js/tts.js'
+import { wireSheetDismissGesture } from '../js/gestures.js'
 
 const GATEWAY_URL = 'https://translation-api-gateway-2qqw247r.uc.gateway.dev'
 
@@ -405,13 +406,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
 
   panel.querySelector('.translation-back').addEventListener('click', close)
   scrim.addEventListener('click', close)
-
-  let swipeStartY = 0
-  panel.addEventListener('touchstart', e => { swipeStartY = e.touches[0].clientY }, { passive: true })
-  panel.addEventListener('touchend', e => {
-    const dy = e.changedTouches[0].clientY - swipeStartY
-    if (dy > 60) close()
-  }, { passive: true })
+  wireSheetDismissGesture(panel, close)
 
   // Focus the input
   requestAnimationFrame(() => inputEl.focus())
