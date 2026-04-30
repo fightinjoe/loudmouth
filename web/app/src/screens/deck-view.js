@@ -81,29 +81,75 @@ const settingsOps = {
 
 // ── Nav pane HTML builder ────────────────────────────────────────────────────
 
+function renderHeader(title) {
+  return `
+    <div class="deck-picker-section-header flex items-baseline justify-between section-label">
+      ${title}
+    </div>
+  `;
+}
+
 /*==
  * Renders a singleton row for a deck, as used on the Navigation pane
  */
-function renderDeckRow(deck, cardCount) {
+async function renderDeck(deck) {
+  const cards = await getCards(deck.id);
   return `
     <div class="deck-picker-row flex items-center tappable" data-deck-id="${deck.id}">
       <div class="flex-row gap-md justify-center">
-        <span class="text-body1 fg-body">${deck.name}</span>
-        <span class="text-body2 fg-secondary">${cardCount} cards</span>
+        <span class="text-h2 fg-body">${deck.name}</span>
+        <span class="text-body2 fg-secondary">${cards.length} card${cards.length ? "s" : ""}</span>
       </div>
+    </div>
+  `;
+}
+
+// Renders a group of decks
+async function renderDecks(decks) {
+  return await Promise.all(decks.map(async (d) => await renderDeck(d))).then(
+    (ds) => ds.join(""),
+  );
+}
+
+async function renderRecentDecks() {
+  const recentDecks = await getRecentDecks(3);
+  if (recentDecks.length === 0) return "";
+
+  return `
+    ${renderHeader("Most recent")}
+    ${await renderDecks(recentDecks)}
+  `;
+}
+
+// Renders the deck row for the ephimeral "starred" deck
+async function renderStarredDeck(lang) {
+  const starredCount = await getStarredCards(lang).length;
+  if (starredCount === 0) return "";
+
+  return await renderDeck(
+    { id: `starred-${lang}`, name: "★ Starred", lang },
+    starredCount,
+  );
+}
+
+// Render the group of decks for a given language
+async function renderLangSection(lang, decks) {
+  const flag = LANG_FLAGS[lang] ?? "";
+  const name = LANG_NAMES[lang] ?? lang.toUpperCase();
+
+  return `
+    ${renderHeader(`
+      <span>${flag} ${name}</span>
+    `)}
+    <div class="deck-picker-lang-group">
+      ${await renderStarredDeck(lang)}
+      ${await renderDecks(decks)}
     </div>
   `;
 }
 
 async function buildNavPaneContent() {
   const allDecks = await getDecks(null, { includeSystem: false });
-  const recentDecks = await getRecentDecks(3);
-  const allCards = await db.cards.toArray();
-
-  function cardCount(deckId) {
-    return allCards.filter((c) => c.deckIds && c.deckIds.includes(deckId))
-      .length;
-  }
 
   // Collect the decks by language
   const byLang = {};
@@ -114,58 +160,14 @@ async function buildNavPaneContent() {
     byLang[lang].sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  // Collect all of the languages by traversing the cards
-  const allLangs = [...new Set(allCards.map((c) => c.lang))].sort();
-  // If there is a card with a language, but no deck with that language,
-  // make sure that it's added with an empty list in the `byLang` object
-  for (const lang of allLangs) {
-    if (!byLang[lang]) byLang[lang] = [];
-  }
-
-  const langCardCounts = {};
-  const starredCounts = {};
-  for (const lang of Object.keys(byLang)) {
-    const langCards = await getCardsByLang(lang);
-    langCardCounts[lang] = langCards.length;
-    starredCounts[lang] = langCards.filter((c) => c.state?.starredAt).length;
-  }
-
-  let mostRecentHTML = "";
-  if (recentDecks.length > 0) {
-    mostRecentHTML = `
-      <div class="deck-picker-section-header flex items-baseline justify-between section-label">Most Recent</div>
-      ${recentDecks.map((d) => renderDeckRow(d, cardCount(d.id))).join("")}
-    `;
-  }
-
   let byLangHTML = "";
   for (const [lang, decks] of Object.entries(byLang).sort(([a], [b]) =>
     a.localeCompare(b),
   )) {
-    const flag = LANG_FLAGS[lang] ?? "";
-    const name = LANG_NAMES[lang] ?? lang.toUpperCase();
-    const total = langCardCounts[lang] ?? 0;
-    const starredCount = starredCounts[lang] ?? 0;
-    const starredRow =
-      starredCount > 0
-        ? renderDeckRow(
-            { id: `starred-${lang}`, name: "★ Starred", lang },
-            starredCount,
-          )
-        : "";
-    byLangHTML += `
-      <div class="deck-picker-section-header flex items-baseline justify-between section-label">
-        <span>${flag} ${name}</span>
-        <span class="deck-picker-section-header-link text-body2 fg-secondary tappable" data-deck-id="lang:${lang}">All ${total} cards</span>
-      </div>
-      <div class="deck-picker-lang-group">
-        ${starredRow}
-        ${decks.map((d) => renderDeckRow(d, cardCount(d.id))).join("")}
-      </div>
-    `;
+    byLangHTML += await renderLangSection(lang, decks);
   }
 
-  const isEmpty = allDecks.length === 0 && allLangs.length === 0;
+  const isEmpty = allDecks.length === 0;
 
   return `
     <div class="pane-header">
@@ -174,7 +176,7 @@ async function buildNavPaneContent() {
       <span class="pane-header-spacer shrink-0"></span>
     </div>
     <div class="deck-picker-list flex-1 overflow-y-auto">
-      ${mostRecentHTML}
+      ${await renderRecentDecks()}
       ${byLangHTML}
       ${isEmpty ? '<p class="deck-picker-empty text-center fg-secondary">No decks yet.</p>' : ""}
     </div>
