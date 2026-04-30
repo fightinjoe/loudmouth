@@ -38,7 +38,7 @@ function renderResultCard(t, position) {
           <span class="tr-card-text text-h2 font-medium fg-body">${escHtml(t.text)}</span>
           <span class="tr-card-meaning text-body2 fg-caption">${escHtml(t.translation)}</span>
         </div>
-        <button class="tr-card-play fg-tertiary text-body1 shrink-0" aria-label="Play">▶</button>
+        <button class="tr-card-play fg-tertiary text-body1 shrink-0 tappable" aria-label="Play">▶</button>
       </div>
     </div>
   `
@@ -125,7 +125,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
     <div class="translation-handle sheet-handle"></div>
     <div class="pane-header flex items-center">
       <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 translation-back" aria-label="Back">‹</button>
-      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none translation-lang-label">${langFlag} ${escHtml(langName)}</span>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight translation-lang-label">${langFlag} ${escHtml(langName)}</span>
       <span class="pane-header-spacer shrink-0"></span>
     </div>
     <div class="translation-body flex-1 flex-col min-h-0 overflow-y-auto">

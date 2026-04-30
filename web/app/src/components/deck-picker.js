@@ -87,7 +87,7 @@ export async function openDeckPicker(appEl, { db, getDecks, getRecentDecks, getC
   panel.innerHTML = `
     <div class="pane-header flex items-center">
       <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
-      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Language decks</span>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">Language decks</span>
       <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Add">＋</button>
     </div>
     <div class="deck-picker-list flex-1 overflow-y-auto">

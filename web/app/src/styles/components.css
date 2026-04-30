@@ -514,7 +514,6 @@ ruby {
 .generate-cards-lang-wrap {
   position: relative;
   gap: 6px;
-  cursor: pointer;
 }
 
 .generate-cards-generate-btn {
@@ -735,11 +734,6 @@ ruby {
   &.emphasis { background: var(--bg-primary); }
   &.danger { background: var(--bg-red); }
   &.blue { background: var(--bg-blue); }
-}
-
-.pane-header-title {
-  cursor: default;
-  -webkit-tap-highlight-color: transparent;
 }
 
 /* .tappable is added to pane-header-title buttons in JS */

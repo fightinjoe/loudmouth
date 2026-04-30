@@ -29,7 +29,7 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
     <div class="generate-cards-handle sheet-handle"></div>
     <div class="pane-header flex items-center">
       <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 generate-cards-back" aria-label="Back">‹</button>
-      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add cards</span>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">Add cards</span>
       <span class="pane-header-spacer shrink-0"></span>
     </div>
     <div class="generate-cards-body flex-col">
@@ -38,7 +38,7 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
         placeholder="Greetings for morning, afternoon, evening…"
         rows="4" autocorrect="off" autocapitalize="sentences" spellcheck="true"></textarea>
       <div class="generate-cards-footer flex items-center justify-between">
-        <div class="generate-cards-lang-wrap flex items-center text-body1 fg-body">
+        <div class="generate-cards-lang-wrap flex items-center text-body1 fg-body tappable">
           <span id="gc-lang-flag">${langFlag}</span>
           <span id="gc-lang-name">${langName}</span>
           <span class="generate-cards-lang-chevron text-icon-sm fg-tertiary">⇅</span>

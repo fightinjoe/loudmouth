@@ -108,7 +108,7 @@ async function buildNavPaneContent() {
   return `
     <div class="pane-header">
       <span class="pane-header-spacer shrink-0"></span>
-      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Decks</span>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">Decks</span>
       <span class="pane-header-spacer shrink-0"></span>
     </div>
     <div class="deck-picker-list flex-1 overflow-y-auto">
@@ -299,7 +299,7 @@ export function renderDeckView(el, params) {
 
           <button class="icon-button" id="btn-menu" aria-label="Menu">${icon('Menu')}</button>
 
-          <button class="pane-header-title flex-1 text-center text-header fg-body" id="btn-deck-title">${deck.name}</button>
+          <button class="pane-header-title flex-1 text-center text-header fg-body tappable" id="btn-deck-title">${deck.name}</button>
           ${isLangView
             ? '<span class="pane-header-spacer shrink-0"></span>'
             : `

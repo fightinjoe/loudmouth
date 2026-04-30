@@ -33,7 +33,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
     panel.innerHTML = `
       <div class="pane-header flex items-center">
         <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
-        <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Add Cards</span>
+        <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">Add Cards</span>
         <span class="pane-header-spacer shrink-0"></span>
       </div>
       <div class="add-cards-body flex-col">
@@ -129,7 +129,7 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
     panel.innerHTML = `
       <div class="pane-header flex items-center">
         <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
-        <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">Confirm Import</span>
+        <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">Confirm Import</span>
         <span class="pane-header-spacer shrink-0"></span>
       </div>
       <div class="add-cards-body flex-col">

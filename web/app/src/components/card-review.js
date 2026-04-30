@@ -6,7 +6,7 @@ function renderReviewCard(card, readingDisplay = 'reading') {
   const displayText = hasRuby ? renderRuby(card.reading) : (card.text || '');
 
   return `
-    <div class="review-card bg-surface flex-col items-center justify-center" ${hasRuby ? 'data-has-ruby' : ''}>
+    <div class="review-card bg-surface flex-col items-center justify-center tappable" ${hasRuby ? 'data-has-ruby' : ''}>
       <div class="review-card-text text-h1 font-bold text-center fg-body">${displayText}</div>
       <div class="review-card-reading text-body1 text-center fg-secondary">${card[readingDisplay] || ''}</div>
       <div class="review-card-reverse text-h1 font-bold text-center fg-body">${card.translation || ''}</div>
@@ -33,7 +33,7 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   panel.innerHTML = `
     <div class="pane-header flex items-center">
       <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
-      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none">${deck.name}</span>
+      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">${deck.name}</span>
       <span class="pane-header-spacer shrink-0"></span>
     </div>
     <div class="card-review-body flex-1 flex items-center justify-center">
