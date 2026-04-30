@@ -129,7 +129,7 @@ async function renderStarredDeck(lang) {
   if (starredCount === 0) return "";
 
   return await renderDeck(
-    { id: `starred-${lang}`, name: "★ Starred", lang },
+    { id: `starred:${lang}`, name: "★ Starred", lang },
     starredCount,
   );
 }
@@ -179,7 +179,7 @@ async function renderNavPane() {
       <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">Decks</span>
       <span class="pane-header-spacer shrink-0"></span>
     </div>
-    <div class="deck-picker-list flex-1 overflow-y-auto">
+    <div class="deck-list flex-1 overflow-y-auto">
       ${await renderRecentDecks()}
       ${byLangHTML}
       ${isEmpty ? '<p class="deck-picker-empty text-center fg-secondary">No decks yet.</p>' : ""}
@@ -190,7 +190,10 @@ async function renderNavPane() {
 
 // ── Main render ──────────────────────────────────────────────────────────────
 
-export function renderDeckView(el, params) {
+/**
+ *
+ */
+export function buildNavPane(el, params) {
   async function init() {
     let deckId = params.id || getLastDeckId();
     if (!deckId) {
@@ -202,10 +205,10 @@ export function renderDeckView(el, params) {
 
     el.innerHTML = `
       <div class="nav-shell fixed-inset overflow-hidden">
-        <div class="nav-pane flex-col bg-primary overflow-y-auto" id="nav-pane"></div>
-        <div class="nav-main absolute-inset flex-col bg-primary transition-transform" id="nav-main">
-          <div class="nav-main-scrim absolute-inset transition-opacity" id="nav-main-scrim"></div>
-          <div class="screen flex-1 flex-col bg-primary overflow-hidden" id="deck-view-screen"></div>
+        <div id="nav-pane" class="nav-pane flex-col bg-primary overflow-y-auto"></div>
+        <div id="nav-main" class="nav-main absolute-inset flex-col bg-primary transition-transform">
+          <div id="nav-main-scrim" class="nav-main-scrim absolute-inset transition-opacity"></div>
+          <div id="content-pane" class="screen flex-1 flex-col bg-primary overflow-hidden"></div>
         </div>
       </div>
     `;
@@ -213,40 +216,40 @@ export function renderDeckView(el, params) {
     const navPaneEl = el.querySelector("#nav-pane");
     const navMainEl = el.querySelector("#nav-main");
     const scrimEl = el.querySelector("#nav-main-scrim");
-    const screenEl = el.querySelector("#deck-view-screen");
+    const contentPaneEl = el.querySelector("#content-pane");
 
     // Populate nav pane
     navPaneEl.innerHTML = await renderNavPane();
 
     // Wire nav pane gesture
-    const navPane = wireNavPaneGesture(
-      navMainEl,
-      () => {},
-      () => {},
-    );
+    const navPane = wireNavPaneGesture(navMainEl);
 
     // Scrim tap closes nav pane
     scrimEl.addEventListener("click", () => navPane.close());
 
-    // Nav pane deck selection
-    navPaneEl
-      .querySelector(".deck-picker-list")
-      .addEventListener("click", async (e) => {
-        const row = e.target.closest("[data-deck-id]");
-        if (!row) return;
-        navPane.close();
-        await selectDeck(row.dataset.deckId);
-      });
+    function registerEvents() {
+      // Nav pane deck selection
+      navPaneEl
+        .querySelector(".deck-list")
+        .addEventListener("click", async (e) => {
+          const row = e.target.closest("[data-deck-id]");
+          if (!row) return;
+          navPane.close();
+          await selectDeck(row.dataset.deckId);
+        });
 
-    navPaneEl
-      .querySelector(".nav-pane-add-fab")
-      .addEventListener("click", () => openGenerateCards());
+      navPaneEl
+        .querySelector(".nav-pane-add-fab")
+        .addEventListener("click", () => openGenerateCards());
+    }
+
+    registerEvents();
 
     // ── Load deck content ────────────────────────────────────────────────────
 
     async function selectDeck(newDeckId) {
       setLastDeckId(newDeckId);
-      if (!newDeckId.startsWith("lang:") && !newDeckId.startsWith("starred-")) {
+      if (!newDeckId.startsWith("lang:") && !newDeckId.startsWith("starred:")) {
         await updateDeckAccessTime(newDeckId);
       }
       deckId = newDeckId;
@@ -255,17 +258,7 @@ export function renderDeckView(el, params) {
 
     async function refreshNavPane() {
       navPaneEl.innerHTML = await renderNavPane();
-      navPaneEl
-        .querySelector(".deck-picker-list")
-        .addEventListener("click", async (e) => {
-          const row = e.target.closest("[data-deck-id]");
-          if (!row) return;
-          navPane.close();
-          await selectDeck(row.dataset.deckId);
-        });
-      navPaneEl
-        .querySelector(".nav-pane-add-fab")
-        .addEventListener("click", () => openGenerateCards());
+      registerEvents();
     }
 
     function openGenerateCards() {
@@ -280,52 +273,48 @@ export function renderDeckView(el, params) {
       );
     }
 
+    /**
+     * Function that loads a selected deck into the content pane
+     */
     async function loadDeck() {
       if (!deckId) {
-        screenEl.innerHTML = `
+        contentPaneEl.innerHTML = `
           <div class="deck-view-empty text-center fg-secondary">
             <p>No decks yet.</p>
             <button id="btn-import-cards" class="btn btn-primary">Import cards</button>
           </div>
         `;
-        screenEl
+        contentPaneEl
           .querySelector("#btn-import-cards")
           .addEventListener("click", () => openGenerateCards());
         return;
       }
 
-      let deck,
-        cards,
+      // Load the cards into the `deck` object
+      let cards,
         isStarredView = false;
+      let deck = { mode: DEFAULT_MODE, order: "default", system: true };
       if (deckId.startsWith("lang:")) {
-        const lang = deckId.slice(5);
+        const lang = deckId.split(":")[1];
         cards = await getCardsByLang(lang);
         const langName = LANG_NAMES[lang] ?? lang.toUpperCase();
         deck = {
-          id: deckId,
-          name: `All ${langName} Cards`,
-          lang,
-          mode: DEFAULT_MODE,
-          order: "default",
-          system: true,
+          ...deck,
+          ...{ id: deckId, name: `All ${langName} Cards`, lang },
         };
-      } else if (deckId.startsWith("starred-")) {
+      } else if (deckId.startsWith("starred:")) {
         isStarredView = true;
-        const lang = deckId.slice(8);
+        const lang = deckId.split(":")[1];
         cards = await getStarredCards(lang);
         const langName = LANG_NAMES[lang] ?? lang.toUpperCase();
         deck = {
-          id: deckId,
-          name: `★ Starred ${langName}`,
-          lang,
-          mode: DEFAULT_MODE,
-          order: "default",
-          system: true,
+          ...deck,
+          ...{ id: deckId, name: `★ Starred ${langName}`, lang },
         };
       } else {
         deck = await db.decks.get(deckId);
         if (!deck) {
-          screenEl.innerHTML = `
+          contentPaneEl.innerHTML = `
             <div class="deck-view-empty text-center fg-secondary">
               <p>Deck not found.</p>
             </div>
@@ -346,7 +335,7 @@ export function renderDeckView(el, params) {
       const isLangView = deckId.startsWith("lang:") || isStarredView;
 
       el.dataset.mode = deck.mode;
-      screenEl.innerHTML = `
+      contentPaneEl.innerHTML = `
         <div class="pane-header flex items-center">
 
           <button class="icon-button" id="btn-menu" aria-label="Menu">${icon("Menu")}</button>
@@ -383,7 +372,7 @@ export function renderDeckView(el, params) {
         }
       `;
 
-      const listEl = screenEl.querySelector(".deck-view-list");
+      const listEl = contentPaneEl.querySelector(".deck-view-list");
       const editOps = { updateCard, deleteCard };
       const reveal = wireRevealGesture(
         listEl,
@@ -391,10 +380,10 @@ export function renderDeckView(el, params) {
         ".card-row",
         undefined,
         undefined,
-        () => "editMode" in screenEl.dataset,
+        () => "editMode" in contentPaneEl.dataset,
       );
       navPane.setSuppressed(
-        () => reveal.isAnyOpen() || "editMode" in screenEl.dataset,
+        () => reveal.isAnyOpen() || "editMode" in contentPaneEl.dataset,
       );
 
       function onSaveCard(updatedCard) {
@@ -402,7 +391,7 @@ export function renderDeckView(el, params) {
           (c) => String(c.id) === String(updatedCard.id),
         );
         if (idx >= 0) cards[idx] = updatedCard;
-        const wrapperEl = screenEl.querySelector(
+        const wrapperEl = contentPaneEl.querySelector(
           `.card-row-wrapper[data-card-id="${updatedCard.id}"]`,
         );
         if (wrapperEl) {
@@ -415,12 +404,12 @@ export function renderDeckView(el, params) {
       function onDeleteCard(cardId) {
         const idx = cards.findIndex((c) => String(c.id) === String(cardId));
         if (idx >= 0) cards.splice(idx, 1);
-        const wrapperEl = screenEl.querySelector(
+        const wrapperEl = contentPaneEl.querySelector(
           `.card-row-wrapper[data-card-id="${cardId}"]`,
         );
         if (wrapperEl) wrapperEl.remove();
         if (cards.length === 0) {
-          const list = screenEl.querySelector(".deck-view-list");
+          const list = contentPaneEl.querySelector(".deck-view-list");
           if (list)
             list.innerHTML = `<div class="deck-view-empty text-center fg-secondary"><p>No cards in this deck.</p></div>`;
         }
@@ -428,7 +417,7 @@ export function renderDeckView(el, params) {
 
       listEl.addEventListener("click", async (e) => {
         // In edit mode, only the reorder handle is active — block all other interactions
-        if ("editMode" in screenEl.dataset) return;
+        if ("editMode" in contentPaneEl.dataset) return;
 
         const starBtn = e.target.closest(".card-row-star-btn");
         if (starBtn) {
@@ -486,7 +475,7 @@ export function renderDeckView(el, params) {
         openCardReview(el, cards, deck, idx < 0 ? 0 : idx);
       });
 
-      screenEl
+      contentPaneEl
         .querySelector("#btn-menu")
         .addEventListener("click", () => navPane.open());
 
@@ -533,7 +522,7 @@ export function renderDeckView(el, params) {
         });
         menu.querySelector("#dtm-edit").addEventListener("click", () => {
           closeTitleMenu();
-          screenEl.dataset.editMode = "";
+          contentPaneEl.dataset.editMode = "";
         });
         setTimeout(
           () =>
@@ -545,7 +534,7 @@ export function renderDeckView(el, params) {
         );
       }
 
-      const titleBtn = screenEl.querySelector("#btn-deck-title");
+      const titleBtn = contentPaneEl.querySelector("#btn-deck-title");
       if (isLangView) {
         titleBtn.addEventListener("click", () => navPane.open());
       } else {
@@ -557,20 +546,20 @@ export function renderDeckView(el, params) {
           }
           showTitleMenu(titleBtn);
         });
-        screenEl
+        contentPaneEl
           .querySelector("#btn-deck-done")
           .addEventListener("click", () => {
-            delete screenEl.dataset.editMode;
+            delete contentPaneEl.dataset.editMode;
           });
       }
 
       if (!isLangView) {
-        screenEl
+        contentPaneEl
           .querySelector("#btn-deck-add")
           .addEventListener("click", () => {
             openTranslationPanel(el, deck, { importCards }, (addedCard) => {
               cards.push(addedCard);
-              const list = screenEl.querySelector(".deck-view-list");
+              const list = contentPaneEl.querySelector(".deck-view-list");
               if (list) {
                 // Remove empty state if present
                 const empty = list.querySelector(".deck-view-empty");
@@ -582,7 +571,7 @@ export function renderDeckView(el, params) {
             });
           });
 
-        screenEl
+        contentPaneEl
           .querySelector("#btn-edit-add-cards")
           ?.addEventListener("click", () => {
             const prevIds = new Set(cards.map((c) => c.id));
@@ -593,7 +582,7 @@ export function renderDeckView(el, params) {
                 const freshCards = await getCards(deck.id);
                 const addedCards = freshCards.filter((c) => !prevIds.has(c.id));
                 for (const c of addedCards) cards.push(c);
-                const list = screenEl.querySelector(".deck-view-list");
+                const list = contentPaneEl.querySelector(".deck-view-list");
                 if (list) {
                   const empty = list.querySelector(".deck-view-empty");
                   if (empty) empty.remove();

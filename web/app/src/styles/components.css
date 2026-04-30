@@ -50,10 +50,10 @@
   color: var(--accent);
 }
 
-#deck-view-screen[data-edit-mode] .deck-header-done {
+#content-pane[data-edit-mode] .deck-header-done {
   display: flex;
 }
-#deck-view-screen[data-edit-mode] #btn-deck-add {
+#content-pane[data-edit-mode] #btn-deck-add {
   display: none;
 }
 
@@ -72,10 +72,10 @@
   height: 44px;
 }
 
-#deck-view-screen[data-edit-mode] .card-row-reorder-handle {
+#content-pane[data-edit-mode] .card-row-reorder-handle {
   display: flex;
 }
-#deck-view-screen[data-edit-mode] .card-row-play {
+#content-pane[data-edit-mode] .card-row-play {
   display: none;
 }
 
@@ -105,7 +105,7 @@
   padding: 0.75rem 1.25rem 1.5rem;
 }
 
-#deck-view-screen[data-edit-mode] .deck-view-add-cards-bar {
+#content-pane[data-edit-mode] .deck-view-add-cards-bar {
   display: flex;
 }
 
@@ -121,7 +121,7 @@
 
 /* ── Deck View ── */
 
-#deck-view-screen {
+#content-pane {
   padding: 0;
   height: 0;
   max-width: none;
@@ -270,11 +270,11 @@ ruby {
 
 /* ── Deck Picker Panel ── */
 
-.deck-picker-list {
+.deck-list {
   padding: 0 1.25rem 1.25rem;
 }
 
-.nav-pane .deck-picker-list {
+.nav-pane .deck-list {
   padding-bottom: 88px; /* clear the ADD FAB */
 }
 

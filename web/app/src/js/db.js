@@ -1,72 +1,101 @@
-import Dexie from 'dexie';
-import { DEFAULT_MODE, MODES } from './modes.js';
+import Dexie from "dexie";
+import { DEFAULT_MODE, MODES } from "./modes.js";
 
 function createDb(options = {}) {
-  const instance = new Dexie('loudmouth', options);
+  const instance = new Dexie("loudmouth", options);
 
   // v1 — initial schema
   instance.version(1).stores({
-    cards: 'id, lang, *deckIds, createdAt',
-    decks: 'id, lang, createdAt',
+    cards: "id, lang, *deckIds, createdAt",
+    decks: "id, lang, createdAt",
   });
 
   // v2 — card schema migration: legacy front/back shape → flat text/translation shape
-  instance.version(2).stores({
-    cards: 'id, lang, *deckIds, createdAt',
-    decks: 'id, lang, createdAt',
-  }).upgrade(() => {});
+  instance
+    .version(2)
+    .stores({
+      cards: "id, lang, *deckIds, createdAt",
+      decks: "id, lang, createdAt",
+    })
+    .upgrade(() => {});
 
   // v3 — deck mode rename: old mode names → study/review/reverse vocabulary;
   //      added lastAccessedAt index on decks for recents ordering
-  instance.version(3).stores({
-    cards: 'id, lang, *deckIds, createdAt',
-    decks: 'id, lang, createdAt, lastAccessedAt',
-  }).upgrade(tx => {
-    const modeMap = {
-      'target-lang': 'comprehension',
-      'reading': 'comprehension',
-      'native-lang': 'reverse',
-    };
-    return tx.decks.toCollection().modify(deck => {
-      if (modeMap[deck.mode]) {
-        deck.mode = modeMap[deck.mode];
-      }
+  instance
+    .version(3)
+    .stores({
+      cards: "id, lang, *deckIds, createdAt",
+      decks: "id, lang, createdAt, lastAccessedAt",
+    })
+    .upgrade((tx) => {
+      const modeMap = {
+        "target-lang": "comprehension",
+        reading: "comprehension",
+        "native-lang": "reverse",
+      };
+      return tx.decks.toCollection().modify((deck) => {
+        if (modeMap[deck.mode]) {
+          deck.mode = modeMap[deck.mode];
+        }
+      });
     });
-  });
 
   // v4 — removed virtual all-{lang} system decks; strip orphaned all-* deckIds from cards
-  instance.version(4).stores({
-    cards: 'id, lang, *deckIds, createdAt',
-    decks: 'id, lang, createdAt, lastAccessedAt',
-  }).upgrade(async tx => {
-    await tx.table('cards').toCollection().modify(card => {
-      card.deckIds = (card.deckIds || []).filter(id => !id.startsWith('all-'));
+  instance
+    .version(4)
+    .stores({
+      cards: "id, lang, *deckIds, createdAt",
+      decks: "id, lang, createdAt, lastAccessedAt",
+    })
+    .upgrade(async (tx) => {
+      await tx
+        .table("cards")
+        .toCollection()
+        .modify((card) => {
+          card.deckIds = (card.deckIds || []).filter(
+            (id) => !id.startsWith("all-"),
+          );
+        });
+      const systemDecks = await tx
+        .table("decks")
+        .filter((d) => d.system)
+        .toArray();
+      for (const d of systemDecks) {
+        await tx.table("decks").delete(d.id);
+      }
     });
-    const systemDecks = await tx.table('decks').filter(d => d.system).toArray();
-    for (const d of systemDecks) {
-      await tx.table('decks').delete(d.id);
-    }
-  });
 
   // v5 — added deck.order field ('default' | 'random' | 'reverse')
-  instance.version(5).stores({
-    cards: 'id, lang, *deckIds, createdAt',
-    decks: 'id, lang, createdAt, lastAccessedAt',
-  }).upgrade(tx => {
-    return tx.table('decks').toCollection().modify(deck => {
-      if (!deck.order) deck.order = 'default';
+  instance
+    .version(5)
+    .stores({
+      cards: "id, lang, *deckIds, createdAt",
+      decks: "id, lang, createdAt, lastAccessedAt",
+    })
+    .upgrade((tx) => {
+      return tx
+        .table("decks")
+        .toCollection()
+        .modify((deck) => {
+          if (!deck.order) deck.order = "default";
+        });
     });
-  });
 
   // v6 — added deck.readingDisplay field ('reading' | 'romanization')
-  instance.version(6).stores({
-    cards: 'id, lang, *deckIds, createdAt',
-    decks: 'id, lang, createdAt, lastAccessedAt',
-  }).upgrade(tx => {
-    return tx.table('decks').toCollection().modify(deck => {
-      if (!deck.readingDisplay) deck.readingDisplay = 'reading';
+  instance
+    .version(6)
+    .stores({
+      cards: "id, lang, *deckIds, createdAt",
+      decks: "id, lang, createdAt, lastAccessedAt",
+    })
+    .upgrade((tx) => {
+      return tx
+        .table("decks")
+        .toCollection()
+        .modify((deck) => {
+          if (!deck.readingDisplay) deck.readingDisplay = "reading";
+        });
     });
-  });
 
   return instance;
 }
@@ -80,8 +109,8 @@ function uuid() {
   const b = crypto.getRandomValues(new Uint8Array(16));
   b[6] = (b[6] & 0x0f) | 0x40;
   b[8] = (b[8] & 0x3f) | 0x80;
-  const h = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
-  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 function isoNow() {
@@ -89,20 +118,23 @@ function isoNow() {
 }
 
 function slugify(name) {
-  return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 }
 
 /**
  * Returns the next zero-padded deck counter string (e.g. '003').
  */
 async function nextDeckCounter(store) {
-  const userDecks = await store.decks.filter(d => !d.system).toArray();
-  if (userDecks.length === 0) return '001';
+  const userDecks = await store.decks.filter((d) => !d.system).toArray();
+  if (userDecks.length === 0) return "001";
   const max = userDecks.reduce((m, d) => {
-    const n = parseInt(d.id.split('-')[0], 10);
+    const n = parseInt(d.id.split("-")[0], 10);
     return isNaN(n) ? m : Math.max(m, n);
   }, 0);
-  return String(max + 1).padStart(3, '0');
+  return String(max + 1).padStart(3, "0");
 }
 
 /**
@@ -111,7 +143,16 @@ async function nextDeckCounter(store) {
 export async function createDeck(name, lang, store = db) {
   const counter = await nextDeckCounter(store);
   const id = `${counter}-${slugify(name)}`;
-  const deck = { id, name, lang, createdAt: isoNow(), system: false, mode: DEFAULT_MODE, order: 'default', readingDisplay: 'reading' };
+  const deck = {
+    id,
+    name,
+    lang,
+    createdAt: isoNow(),
+    system: false,
+    mode: DEFAULT_MODE,
+    order: "default",
+    readingDisplay: "reading",
+  };
   await store.decks.add(deck);
   return deck;
 }
@@ -137,7 +178,11 @@ export async function updateDeckName(deckId, name, store = db) {
 /**
  * Updates the reading display setting for a deck ('reading' or 'romanization').
  */
-export async function updateDeckReadingDisplay(deckId, readingDisplay, store = db) {
+export async function updateDeckReadingDisplay(
+  deckId,
+  readingDisplay,
+  store = db,
+) {
   await store.decks.update(deckId, { readingDisplay });
 }
 
@@ -167,33 +212,39 @@ export async function getRecentDecks(n, store = db) {
  * Returns decks for the given language.
  * By default excludes system decks (for import dropdown).
  */
-export async function getDecks(lang, { includeSystem = false } = {}, store = db) {
-  let col = lang ? store.decks.where('lang').equals(lang) : store.decks.toCollection();
+export async function getDecks(
+  lang,
+  { includeSystem = false } = {},
+  store = db,
+) {
+  let col = lang
+    ? store.decks.where("lang").equals(lang)
+    : store.decks.toCollection();
   const results = await col.toArray();
-  return includeSystem ? results : results.filter(d => !d.system);
+  return includeSystem ? results : results.filter((d) => !d.system);
 }
 
 /**
  * Returns all cards belonging to the given deck.
  */
 export async function getCards(deckId, store = db) {
-  return store.cards.where('deckIds').equals(deckId).toArray();
+  return store.cards.where("deckIds").equals(deckId).toArray();
 }
 
 /**
  * Returns all cards for the given language, regardless of deck.
  */
 export async function getCardsByLang(lang, store = db) {
-  return store.cards.where('lang').equals(lang).toArray();
+  return store.cards.where("lang").equals(lang).toArray();
 }
 
 /**
  * Returns all starred cards for a language, sorted by starredAt descending (most recently starred first).
  */
 export async function getStarredCards(lang, store = db) {
-  const cards = await store.cards.where('lang').equals(lang).toArray();
+  const cards = await store.cards.where("lang").equals(lang).toArray();
   return cards
-    .filter(c => c.state?.starredAt)
+    .filter((c) => c.state?.starredAt)
     .sort((a, b) => (b.state.starredAt > a.state.starredAt ? 1 : -1));
 }
 
@@ -219,9 +270,9 @@ export async function toggleCardStar(cardId, store = db) {
  */
 export function applyCardOrder(cards, order, cardOrder = null) {
   if (cardOrder && cardOrder.length > 0) {
-    const byId = new Map(cards.map(c => [c.id, c]));
-    const ordered = cardOrder.map(id => byId.get(id)).filter(Boolean);
-    const remaining = cards.filter(c => !cardOrder.includes(c.id));
+    const byId = new Map(cards.map((c) => [c.id, c]));
+    const ordered = cardOrder.map((id) => byId.get(id)).filter(Boolean);
+    const remaining = cards.filter((c) => !cardOrder.includes(c.id));
     return [...ordered, ...remaining];
   }
   const sorted = [...cards].sort((a, b) => {
@@ -229,8 +280,8 @@ export function applyCardOrder(cards, order, cardOrder = null) {
     if (a.createdAt > b.createdAt) return 1;
     return (a.importIndex ?? 0) - (b.importIndex ?? 0);
   });
-  if (order === 'reverse') return sorted.reverse();
-  if (order === 'random') {
+  if (order === "reverse") return sorted.reverse();
+  if (order === "random") {
     for (let i = sorted.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
@@ -268,7 +319,7 @@ export async function importCards(cards, deckId = null, store = db) {
  */
 export async function getLangs(store = db) {
   const cards = await store.cards.toArray();
-  return [...new Set(cards.map(c => c.lang))].sort();
+  return [...new Set(cards.map((c) => c.lang))].sort();
 }
 
 /**
@@ -277,7 +328,7 @@ export async function getLangs(store = db) {
 export async function removeCardFromDeck(cardId, deckId, store = db) {
   const card = await store.cards.get(cardId);
   if (!card) return;
-  const deckIds = card.deckIds.filter(id => id !== deckId);
+  const deckIds = card.deckIds.filter((id) => id !== deckId);
   await store.cards.update(cardId, { deckIds });
 }
 
@@ -292,7 +343,15 @@ export async function deleteCard(cardId, store = db) {
  * Updates editable fields of a card.
  */
 export async function updateCard(cardId, fields, store = db) {
-  const allowed = ['text', 'translation', 'reading', 'romanization', 'notes', 'example', 'lang'];
+  const allowed = [
+    "text",
+    "translation",
+    "reading",
+    "romanization",
+    "notes",
+    "example",
+    "lang",
+  ];
   const update = {};
   for (const key of allowed) {
     if (key in fields) update[key] = fields[key];
@@ -310,7 +369,7 @@ export async function updateCard(cardId, fields, store = db) {
  * all UI queries (which filter by deckIds). A future migration can sweep them.
  */
 export async function deleteDeck(deckId, store = db) {
-  const cards = await store.cards.where('deckIds').equals(deckId).toArray();
+  const cards = await store.cards.where("deckIds").equals(deckId).toArray();
   for (const card of cards) {
     await store.cards.delete(card.id);
   }
@@ -323,7 +382,7 @@ export async function deleteDeck(deckId, store = db) {
  */
 export async function exportAllData(store = db) {
   const cards = await store.cards.toArray();
-  const decks = await store.decks.filter(d => !d.system).toArray();
+  const decks = await store.decks.filter((d) => !d.system).toArray();
   return { cards, decks };
 }
 
@@ -344,10 +403,9 @@ export async function restoreAllData(data, store = db) {
   }
 
   for (const card of cards) {
-    card.deckIds = (card.deckIds || []).filter(id => !id.startsWith('all-'));
+    card.deckIds = (card.deckIds || []).filter((id) => !id.startsWith("all-"));
     await store.cards.add(card);
   }
 }
 
 export { createDb };
-
