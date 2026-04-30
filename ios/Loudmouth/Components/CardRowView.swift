@@ -12,6 +12,10 @@ struct CardRowView: View {
         return flatReading(card.reading)
     }
 
+    private var hasRuby: Bool {
+        readingDisplay == "reading" && card.reading != nil
+    }
+
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
@@ -21,13 +25,28 @@ struct CardRowView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(Theme.accentStar)
                     }
-                    Text(card.text)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(Theme.textBody)
+                    if hasRuby, let tokens = card.reading {
+                        RubyTextView(
+                            tokens,
+                            baseFont: .system(size: 18, weight: .semibold),
+                            rubyFont: .system(size: 13),
+                            alignment: .leading
+                        )
+                    } else {
+                        Text(card.text)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(Theme.textBody)
+                    }
                 }
-                Text(reading.isEmpty ? card.translation : reading)
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.textSecondary)
+                if !hasRuby || readingDisplay == "romanization" {
+                    Text(reading.isEmpty ? card.translation : reading)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
+                } else {
+                    Text(card.translation)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.textSecondary)
+                }
             }
             Spacer()
             Button(action: onPlay) {

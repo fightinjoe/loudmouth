@@ -129,13 +129,25 @@ struct CardReviewView: View {
                         .foregroundStyle(Theme.accentStar)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text(frontText(card: card))
-                    .font(.system(size: 40, weight: .bold))
-                    .foregroundStyle(Theme.textBody)
-                    .multilineTextAlignment(.center)
+                
+                let hasFrontRuby = mode == "study" && readingDisplay == "reading" && card.reading != nil
+                if hasFrontRuby, let tokens = card.reading {
+                    RubyTextView(
+                        tokens,
+                        baseFont: .system(size: 40, weight: .bold),
+                        rubyFont: .system(size: 16)
+                    )
                     .frame(maxWidth: .infinity)
+                } else {
+                    Text(frontText(card: card))
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(Theme.textBody)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
+                
                 let r = frontReading(card: card)
-                if !r.isEmpty {
+                if !r.isEmpty && !hasFrontRuby {
                     Text(r)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(Theme.textSecondary)
@@ -165,12 +177,22 @@ struct CardReviewView: View {
 
                 // Revealed
                 VStack(spacing: 6) {
-                    Text(backText(card: card))
-                        .font(.title3)
-                        .foregroundStyle(Theme.textBody)
-                        .multilineTextAlignment(.center)
+                    let hasBackRuby = mode != "study" && readingDisplay == "reading" && card.reading != nil
+                    if hasBackRuby, let tokens = card.reading {
+                        RubyTextView(
+                            tokens,
+                            baseFont: .title3,
+                            rubyFont: .caption
+                        )
+                    } else {
+                        Text(backText(card: card))
+                            .font(.title3)
+                            .foregroundStyle(Theme.textBody)
+                            .multilineTextAlignment(.center)
+                    }
+                    
                     let br = backReading(card: card)
-                    if !br.isEmpty {
+                    if !br.isEmpty && !hasBackRuby {
                         Text(br)
                             .font(.body)
                             .foregroundStyle(Theme.textSecondary)

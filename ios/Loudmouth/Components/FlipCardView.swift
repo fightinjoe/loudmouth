@@ -47,7 +47,15 @@ struct FlipCardView: View {
                         .foregroundStyle(Theme.textBody)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
-                    if !frontReading.isEmpty {
+                    
+                    let hasFrontRuby = mode == "study" && readingDisplay == "reading" && card.reading != nil
+                    if hasFrontRuby, let tokens = card.reading {
+                        RubyTextView(
+                            tokens,
+                            baseFont: .system(size: 40, weight: .bold),
+                            rubyFont: .system(size: 16)
+                        )
+                    } else if !frontReading.isEmpty {
                         Text(frontReading)
                             .font(.title3)
                             .foregroundStyle(Theme.textSecondary)
@@ -77,10 +85,20 @@ struct FlipCardView: View {
 
                 // Revealed content
                 VStack(spacing: 8) {
-                    Text(backText)
-                        .font(.title2)
-                        .multilineTextAlignment(.center)
-                    if !backReading.isEmpty {
+                    let hasBackRuby = mode != "study" && readingDisplay == "reading" && card.reading != nil
+                    if hasBackRuby, let tokens = card.reading {
+                        RubyTextView(
+                            tokens,
+                            baseFont: .title2,
+                            rubyFont: .body
+                        )
+                    } else {
+                        Text(backText)
+                            .font(.title2)
+                            .multilineTextAlignment(.center)
+                    }
+                    
+                    if !backReading.isEmpty && !hasBackRuby {
                         Text(backReading)
                             .font(.body)
                             .foregroundStyle(.secondary)

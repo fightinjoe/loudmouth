@@ -9,6 +9,7 @@ private struct TranslationResult: Identifiable {
     let id = UUID()
     let text: String
     let reading: String
+    let readingTokens: [[String?]]?
     let translation: String
     let lang: String
 }
@@ -55,6 +56,7 @@ private func fetchTranslations(text: String, targetLanguage: String) async throw
     if decoded.translations.isEmpty { throw TranslateError.empty }
 
     return decoded.translations.map { item in
+        let tokens = parseRubyMarkup(item.ruby_markup)
         // Strip ruby markup tags to get plain reading text
         let plain = item.ruby_markup?
             .replacingOccurrences(of: "<rt>", with: " (")
@@ -67,10 +69,106 @@ private func fetchTranslations(text: String, targetLanguage: String) async throw
         return TranslationResult(
             text: item.text,
             reading: plain?.isEmpty == false ? plain! : item.translation,
+            readingTokens: tokens,
             translation: item.translation,
             lang: item.lang
         )
     }
+}
+
+/// Simple manual parser for <ruby> markup.
+/// Handles multiple <rt> tags within a single <ruby> element and strips redundant annotations.
+private func parseRubyMarkup(_ htmlStr: String?) -> [[String?]]? {
+    guard let htmlStr = htmlStr, !htmlStr.isEmpty else { return nil }
+
+    var tokens: [[String?]] = []
+    
+    func addToken(base: String, annotation: String?) {
+        let b = base.trimmingCharacters(in: .whitespaces)
+        let a = annotation?.trimmingCharacters(in: .whitespaces)
+        
+        if b.isEmpty { return }
+        
+        // 1. Suppress redundant annotation
+        if a == nil || a == b || a?.isEmpty == true {
+            tokens.append([b, nil])
+            return
+        }
+
+        let ann = a!
+        
+        // 2. Strip matching prefix
+        var start = 0
+        while start < b.count && start < ann.count && 
+              b[b.index(b.startIndex, offsetBy: start)] == ann[ann.index(ann.startIndex, offsetBy: start)] {
+            start += 1
+        }
+        
+        if start > 0 {
+            let prefix = String(b.prefix(start))
+            tokens.append([prefix, nil])
+        }
+
+        // 3. Strip matching suffix
+        var endBase = b.count
+        var endAnn = ann.count
+        while endBase > start && endAnn > start && 
+              b[b.index(b.startIndex, offsetBy: endBase - 1)] == ann[ann.index(ann.startIndex, offsetBy: endAnn - 1)] {
+            endBase -= 1
+            endAnn -= 1
+        }
+
+        // 4. Push the remaining annotated core
+        if endBase > start {
+            let midBase = String(b[b.index(b.startIndex, offsetBy: start)..<b.index(b.startIndex, offsetBy: endBase)])
+            let midAnn = String(ann[ann.index(ann.startIndex, offsetBy: start)..<ann.index(ann.startIndex, offsetBy: endAnn)])
+            tokens.append([midBase, midAnn])
+        }
+
+        // 5. Push matching suffix
+        if endBase < b.count {
+            let suffix = String(b.suffix(b.count - endBase))
+            tokens.append([suffix, nil])
+        }
+    }
+
+    let topLevelRegex = try? NSRegularExpression(pattern: "(<ruby>.*?</ruby>)|([^<]+)", options: [.dotMatchesLineSeparators])
+    let nsInput = htmlStr as NSString
+    let matches = topLevelRegex?.matches(in: htmlStr, options: [], range: NSRange(location: 0, length: nsInput.length)) ?? []
+    
+    for match in matches {
+        let part = nsInput.substring(with: match.range)
+        
+        if part.hasPrefix("<ruby>") {
+            let content = part
+                .replacingOccurrences(of: "<ruby>", with: "")
+                .replacingOccurrences(of: "</ruby>", with: "")
+            
+            let innerRegex = try? NSRegularExpression(pattern: "([^<]*?)<rt>(.*?)</rt>", options: [.dotMatchesLineSeparators])
+            let nsContent = content as NSString
+            let innerMatches = innerRegex?.matches(in: content, options: [], range: NSRange(location: 0, length: nsContent.length)) ?? []
+            
+            var lastPos = 0
+            for innerMatch in innerMatches {
+                let base = nsContent.substring(with: innerMatch.range(at: 1))
+                let ruby = nsContent.substring(with: innerMatch.range(at: 2))
+                
+                addToken(base: base.replacingOccurrences(of: "<rb>", with: "").replacingOccurrences(of: "</rb>", with: ""),
+                         annotation: ruby)
+                lastPos = innerMatch.range.location + innerMatch.range.length
+            }
+            
+            if lastPos < nsContent.length {
+                let trailing = nsContent.substring(from: lastPos)
+                addToken(base: trailing.replacingOccurrences(of: "<rb>", with: "").replacingOccurrences(of: "</rb>", with: ""),
+                         annotation: nil)
+            }
+        } else {
+            addToken(base: part, annotation: nil)
+        }
+    }
+    
+    return tokens.isEmpty ? nil : tokens
 }
 
 // MARK: - Result card
@@ -136,12 +234,21 @@ private struct TranslationResultCard: View {
             // Card content
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(result.reading)
-                        .font(.system(size: 14))
-                        .foregroundStyle(Theme.textSecondary)
-                    Text(result.text)
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundStyle(Theme.textBody)
+                    if let tokens = result.readingTokens {
+                        RubyTextView(
+                            tokens,
+                            baseFont: .system(size: 24, weight: .medium),
+                            rubyFont: .system(size: 13),
+                            alignment: .leading
+                        )
+                    } else {
+                        Text(result.reading)
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.textSecondary)
+                        Text(result.text)
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundStyle(Theme.textBody)
+                    }
                     Text(result.translation)
                         .font(.system(size: 14))
                         .foregroundStyle(Theme.textSecondary)
@@ -392,7 +499,7 @@ struct TranslationView: View {
             createdAt: .now,
             lang: result.lang.isEmpty ? (deck.lang ?? "") : result.lang,
             text: result.text,
-            reading: nil,
+            reading: result.readingTokens,
             translation: result.translation,
             deckIds: [deck.id]
         )

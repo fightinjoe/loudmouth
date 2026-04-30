@@ -83,16 +83,17 @@ When \`lang\` is **Japanese** or **Chinese** (Mandarin, Cantonese, etc.), includ
 \`ruby_markup\` field with full HTML5 \`<ruby>\` annotations for all kanji/hanzi:
  
 ### Japanese
-- Annotate every kanji (and kanji compound) with hiragana reading
-- Do not annotate hirigana or katakana
-- Kana-only words do not need ruby
-- Example: \`<ruby>日<rt>に</rt>本<rt>ほん</rt>語<rt>ご</rt></ruby>\`
-- Example: \`<ruby>食<rt>た</rt>べる</ruby>\`
-- Example: \`<ruby>こんにちは</ruby>\`
-- For mixed strings: \`<ruby>食<rt>た</rt></ruby>べる\`
+- Annotate every kanji with its hiragana reading
+- **USE GRANULAR TAGS**: Put a separate \`<ruby>\` tag around EACH individual kanji character.
+- **EXCLUDE KANA**: Do not put hiragana or katakana inside \`<ruby>\` tags.
+- Example: \`<ruby>日<rt>に</rt></ruby><ruby>本<rt>ほん</rt></ruby><ruby>語<rt>ご</rt></ruby>\`
+- Example: \`<ruby>食<rt>た</rt></ruby>べる\`
+- Example: \`こんにちは\`
+- Example for "元気": \`<ruby>元<rt>げん</rt></ruby><ruby>気<rt>き</rt></ruby>\`
 ### Chinese
 - Annotate every character with its pinyin (with tone marks)
-- Example: \`<ruby>你<rt>nǐ</rt>好<rt>hǎo</rt></ruby>\`
+- **USE GRANULAR TAGS**: Put a separate \`<ruby>\` tag around EACH individual character.
+- Example: \`<ruby>你<rt>nǐ</rt></ruby><ruby>好<rt>hǎo</rt></ruby>\`
 - Use simplified or traditional characters as appropriate to the dialect/context
 For all other languages, set \`ruby_markup\` to \`null\`.
  
