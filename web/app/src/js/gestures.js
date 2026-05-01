@@ -113,6 +113,8 @@ export function wireNavPaneGesture(
     { passive: true },
   );
 
+  app.els.handle.addEventListener("click", () => setOpen(false));
+
   return {
     open: () => setOpen(true),
     close: () => setOpen(false),

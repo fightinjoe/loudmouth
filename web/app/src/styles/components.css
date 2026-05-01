@@ -898,6 +898,6 @@ ruby {
   top: 0;
   left: 0;
   bottom: 0;
-  width: 110px;
+  width: 15%;
   z-index: 9999;
 }

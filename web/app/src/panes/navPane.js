@@ -177,28 +177,8 @@ export function buildNavPane(app, params) {
 
     // ── Build nav shell ──────────────────────────────────────────────────────
 
-    // el.innerHTML = `
-    //   <div class="nav-shell fixed-inset overflow-hidden">
-    //     <div id="nav-pane" class="nav-pane flex-col bg-primary overflow-y-auto"></div>
-    //     <div id="nav-main" class="nav-main absolute-inset flex-col bg-primary transition-transform">
-    //       <div id="nav-main-scrim" class="nav-main-scrim absolute-inset transition-opacity"></div>
-    //       <div id="content-pane" class="screen flex-1 flex-col bg-primary overflow-hidden"></div>
-    //     </div>
-    //   </div>
-    // `;
-
-    // const app.navPane.el = el.querySelector("#nav-pane");
-    // const navMainEl = el.querySelector("#nav-main");
-    // const scrimEl = el.querySelector("#nav-main-scrim");
-
     // Populate nav pane
     app.els.navPane.innerHTML = await renderNavPane();
-
-    // Wire nav pane gesture
-    // const navPane = wireNavPaneGesture(navMainEl);
-
-    // Scrim tap closes nav pane
-    // scrimEl.addEventListener("click", () => app.navPane.close());
 
     function registerEvents() {
       // Nav pane deck selection
