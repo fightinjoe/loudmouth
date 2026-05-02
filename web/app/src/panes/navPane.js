@@ -106,7 +106,8 @@ async function renderNavPaneHTML() {
 // ── Builder ──────────────────────────────────────────────────────────────────
 
 export function initNavPane(app, params) {
-  const meatEl = app.els.navPane.querySelector(".meat");
+  const { navPaneEl } = app.els;
+  const meatEl = navPaneEl.querySelector(".meat");
 
   async function refresh() {
     meatEl.innerHTML = await renderNavPaneHTML();
@@ -125,7 +126,7 @@ export function initNavPane(app, params) {
   }
 
   // One delegated click listener on the stable nav pane element — never re-attached
-  app.els.navPane.addEventListener("click", async (e) => {
+  navPaneEl.addEventListener("click", async (e) => {
     if (e.target.closest(".nav-pane-add-fab")) {
       openGenerateCards();
       return;

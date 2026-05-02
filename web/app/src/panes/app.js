@@ -40,10 +40,10 @@ export function initApp(params) {
   const app = {
     els: {
       appEl,
-      navPane: appEl.querySelector("#nav-pane"),
-      contentPane: appEl.querySelector("#content-pane"),
-      handle: appEl.querySelector("#content-pane .handle"),
-      scrim: appEl.querySelector("#content-pane-scrim"),
+      navPaneEl: appEl.querySelector("#nav-pane"),
+      contentPaneEl: appEl.querySelector("#content-pane"),
+      handleEl: appEl.querySelector("#content-pane .handle"),
+      scrimEl: appEl.querySelector("#content-pane-scrim"),
     },
     getLastDeckId,
     setLastDeckId,
@@ -52,7 +52,7 @@ export function initApp(params) {
   initNavPane(app, params);
   initContentPane(app); // sets app.navPane = gestures.shell
 
-  app.els.scrim.addEventListener("click", () => app.navPane.close());
+  app.els.scrimEl.addEventListener("click", () => app.navPane.close());
 
   const initialDeckId = params.id || getLastDeckId();
   app.contentPane.loadDeck(initialDeckId);

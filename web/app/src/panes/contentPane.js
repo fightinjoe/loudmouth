@@ -19,7 +19,7 @@ import {
 import { DEFAULT_MODE } from "../js/modes.js";
 import { speak, ttsText } from "../js/tts.js";
 import { LANG_NAMES } from "../js/lang.js";
-import { wireContentPaneGestures } from "../js/contentPaneGestures.js";
+import { wireContentPaneGestures } from "./contentPaneGestures.js";
 import { renderCardRow } from "../components/card.js";
 import { openDeckSettings } from "../components/deck-settings.js";
 import { openCardReview } from "../components/card-review.js";
@@ -38,14 +38,8 @@ const settingsOps = {
 };
 
 // ── Pure renderer ─────────────────────────────────────────────────────────────
-// Returns the full innerHTML for the content pane. No side effects, no DOM queries.
 
-function renderDeckContent(deck, cards) {
-  const cardListHTML =
-    cards.length === 0
-      ? `<div class="deck-view-empty text-center fg-secondary"><p>No cards in this deck.</p></div>`
-      : cards.map((card) => renderCardRow(card, deck.readingDisplay)).join("");
-
+function renderDeckHeader(deck) {
   return `
     <div class="pane-header flex items-center">
       <button class="icon-button" data-action="menu" aria-label="Menu">${icon("Menu")}</button>
@@ -54,9 +48,19 @@ function renderDeckContent(deck, cards) {
         deck.system
           ? `<span class="pane-header-spacer shrink-0"></span>`
           : `<button class="icon-button" data-action="add-card" aria-label="Translate">${icon("Add")}</button>
-           <button class="icon-button deck-header-done" data-action="done" aria-label="Done">${icon("Done")}</button>`
+          <button class="icon-button deck-header-done" data-action="done" aria-label="Done">${icon("Done")}</button>`
       }
     </div>
+  `;
+}
+
+function renderDeckCards(deck, cards) {
+  const cardListHTML =
+    cards.length === 0
+      ? `<div class="deck-view-empty text-center fg-secondary"><p>No cards in this deck.</p></div>`
+      : cards.map((card) => renderCardRow(card, deck.readingDisplay)).join("");
+
+  return `
     <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto">
       ${cardListHTML}
     </div>
@@ -81,14 +85,13 @@ function renderDeckContent(deck, cards) {
 const CARD_WRAPPER_SEL = ".card-row-wrapper";
 
 export function initContentPane(app) {
-  const paneEl = app.els.contentPane;
-  const meatEl = paneEl.querySelector(".meat");
-  const appEl = app.els.appEl;
+  const { appEl, contentPaneEl } = app.els;
+  const meatEl = contentPaneEl.querySelector(".meat");
 
   // Gesture wiring — once, on the stable pane element
   const gestures = wireContentPaneGestures(app);
   gestures.shell.setSuppressed(
-    () => gestures.reveal.isAnyOpen() || "editMode" in paneEl.dataset,
+    () => gestures.reveal.isAnyOpen() || "editMode" in contentPaneEl.dataset,
   );
   app.navPane = gestures.shell;
 
@@ -144,7 +147,7 @@ export function initContentPane(app) {
       });
     menu.querySelector("[data-menu='edit']").addEventListener("click", () => {
       closeTitleMenu();
-      paneEl.dataset.editMode = "";
+      contentPaneEl.dataset.editMode = "";
     });
     setTimeout(
       () =>
@@ -158,7 +161,7 @@ export function initContentPane(app) {
 
   // ── Delegated click handler on the stable content pane ─────────────────────
 
-  paneEl.addEventListener("click", async (e) => {
+  contentPaneEl.addEventListener("click", async (e) => {
     // Title menu items (rendered into document.body, not paneEl — handled above via direct listeners)
 
     const action = e.target.closest("[data-action]")?.dataset.action;
@@ -197,7 +200,7 @@ export function initContentPane(app) {
     }
 
     if (action === "done") {
-      delete paneEl.dataset.editMode;
+      delete contentPaneEl.dataset.editMode;
       return;
     }
 
@@ -226,7 +229,7 @@ export function initContentPane(app) {
     }
 
     // Card list interactions — blocked in edit mode (only reorder handle active)
-    if ("editMode" in paneEl.dataset) return;
+    if ("editMode" in contentPaneEl.dataset) return;
 
     const starBtn = e.target.closest(
       "[aria-label='Star'], [aria-label='Unstar']",
@@ -382,7 +385,7 @@ export function initContentPane(app) {
     }
 
     appEl.dataset.deckMode = deck.mode;
-    meatEl.innerHTML = renderDeckContent(deck, cards);
+    meatEl.innerHTML = renderDeckHeader(deck) + renderDeckCards(deck, cards);
 
     gestures.setReorderCallback(
       deck.system
