@@ -1,33 +1,59 @@
-import { wireNavPaneGesture } from "../js/gestures.js";
-import { buildNavPane } from "../panes/navPane.js";
+import { initNavPane } from "../panes/navPane.js";
+import { initContentPane } from "../panes/contentPane.js";
+
+const LAST_DECK_KEY = "loudmouth.lastDeckId";
+
+export function getLastDeckId() {
+  try {
+    return localStorage.getItem(LAST_DECK_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setLastDeckId(deckId) {
+  try {
+    localStorage.setItem(LAST_DECK_KEY, deckId);
+  } catch {
+    /* ignore */
+  }
+}
 
 export function initApp(params) {
   const appEl = document.getElementById("app");
 
+  appEl.dataset.content = "foreground";
+
   appEl.innerHTML = `
-    <div class="nav-shell fixed-inset overflow-hidden">
-      <div id="nav-pane" class="nav-pane flex-col bg-primary overflow-y-auto"></div>
-      <div id="nav-main" class="nav-main absolute-inset flex-col bg-primary transition-transform">
+    <div id="app-shell" class="fixed-inset overflow-hidden">
+      <div id="nav-pane" class="nav-pane flex-col bg-primary overflow-y-auto">
+        <div class="meat"></div>
+      </div>
+      <div id="content-pane" class="content-pane absolute-inset flex-col bg-primary transition-transform">
         <div class="handle"></div>
-        <div id="nav-main-scrim" class="nav-main-scrim absolute-inset transition-opacity"></div>
-        <div id="content-pane" class="screen flex-1 flex-col bg-primary overflow-hidden"></div>
+        <div id="content-pane-scrim" class="content-pane-scrim absolute-inset transition-opacity"></div>
+        <div class="meat screen flex-1 flex-col bg-primary overflow-hidden"></div>
       </div>
     </div>
   `;
 
-  const els = {
-    navPane: appEl.querySelector("#nav-pane"),
-    handle: appEl.querySelector("#nav-main .handle"),
-    contentPane: appEl.querySelector("#nav-main"),
-    scrim: appEl.querySelector("#nav-main-scrim"),
+  const app = {
+    els: {
+      appEl,
+      navPane: appEl.querySelector("#nav-pane"),
+      contentPane: appEl.querySelector("#content-pane"),
+      handle: appEl.querySelector("#content-pane .handle"),
+      scrim: appEl.querySelector("#content-pane-scrim"),
+    },
+    getLastDeckId,
+    setLastDeckId,
   };
 
-  let app = { els };
+  initNavPane(app, params);
+  initContentPane(app); // sets app.navPane = gestures.shell
 
-  app.navPane = wireNavPaneGesture(app);
-
-  // Scrim tap closes nav pane
   app.els.scrim.addEventListener("click", () => app.navPane.close());
 
-  buildNavPane(app, params);
+  const initialDeckId = params.id || getLastDeckId();
+  app.contentPane.loadDeck(initialDeckId);
 }

@@ -1,64 +1,21 @@
 import {
   db,
   getCards,
-  getCardsByLang,
   getStarredCards,
   getDecks,
   getRecentDecks,
   updateDeckAccessTime,
-  updateDeckMode,
-  updateDeckName,
-  updateDeckOrder,
-  updateDeckReadingDisplay,
-  deleteDeck,
   createDeck,
   importCards,
   exportAllData,
   restoreAllData,
+  getCardsByLang,
 } from "../js/db.js";
 
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
-// import { wireNavPaneGesture } from "../js/gestures.js";
-import { buildContentPane } from "../panes/contentPane.js";
 import { openGenerateCardsPanel } from "../components/generate-cards-panel.js";
 
-const LAST_DECK_KEY = "loudmouth.lastDeckId";
-
-export function getLastDeckId() {
-  try {
-    return localStorage.getItem(LAST_DECK_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function setLastDeckId(deckId) {
-  try {
-    localStorage.setItem(LAST_DECK_KEY, deckId);
-  } catch {
-    /* ignore */
-  }
-}
-
-const dbOps = {
-  db,
-  getDecks,
-  getRecentDecks,
-  getCardsByLang,
-  createDeck,
-  importCards,
-  exportAllData,
-  restoreAllData,
-};
-const settingsOps = {
-  updateDeckMode,
-  updateDeckName,
-  updateDeckOrder,
-  updateDeckReadingDisplay,
-  deleteDeck,
-};
-
-// ── Nav pane HTML builder ────────────────────────────────────────────────────
+// ── Renderers (pure HTML) ────────────────────────────────────────────────────
 
 function renderHeader(title) {
   return `
@@ -68,58 +25,42 @@ function renderHeader(title) {
   `;
 }
 
-/*==
- * Renders a singleton row for a deck, as used on the Navigation pane
- */
 async function renderDeck(deck) {
   const cards = await getCards(deck.id);
   return `
     <div class="deck-picker-row flex items-center tappable" data-deck-id="${deck.id}">
       <div class="flex-row gap-md justify-center">
         <span class="text-h2 fg-body">${deck.name}</span>
-        <span class="text-body2 fg-secondary">${cards.length} card${cards.length ? "s" : ""}</span>
+        <span class="text-body2 fg-secondary">${cards.length} card${cards.length !== 1 ? "s" : ""}</span>
       </div>
     </div>
   `;
 }
 
-// Renders a group of decks
 async function renderDecks(decks) {
-  return await Promise.all(decks.map(async (d) => await renderDeck(d))).then(
-    (ds) => ds.join(""),
-  );
+  return (await Promise.all(decks.map(renderDeck))).join("");
 }
 
 async function renderRecentDecks() {
   const recentDecks = await getRecentDecks(3);
   if (recentDecks.length === 0) return "";
-
   return `
     ${renderHeader("Most recent")}
     ${await renderDecks(recentDecks)}
   `;
 }
 
-// Renders the deck row for the ephimeral "starred" deck
 async function renderStarredDeck(lang) {
-  const starredCount = await getStarredCards(lang).length;
-  if (starredCount === 0) return "";
-
-  return await renderDeck(
-    { id: `starred:${lang}`, name: "★ Starred", lang },
-    starredCount,
-  );
+  const starred = await getStarredCards(lang);
+  if (starred.length === 0) return "";
+  return renderDeck({ id: `starred:${lang}`, name: "★ Starred", lang });
 }
 
-// Render the group of decks for a given language
 async function renderLangSection(lang, decks) {
   const flag = LANG_FLAGS[lang] ?? "";
   const name = LANG_NAMES[lang] ?? lang.toUpperCase();
-
   return `
-    ${renderHeader(`
-      <span>${flag} ${name}</span>
-    `)}
+    ${renderHeader(`<span>${flag} ${name}</span>`)}
     <div class="deck-picker-lang-group">
       ${await renderStarredDeck(lang)}
       ${await renderDecks(decks)}
@@ -127,11 +68,9 @@ async function renderLangSection(lang, decks) {
   `;
 }
 
-// Renders the content for the Nav pane
-async function renderNavPane() {
+async function renderNavPaneHTML() {
   const allDecks = await getDecks(null, { includeSystem: false });
 
-  // Collect the decks by language
   const byLang = {};
   for (const deck of allDecks) {
     (byLang[deck.lang] ??= []).push(deck);
@@ -140,7 +79,6 @@ async function renderNavPane() {
     byLang[lang].sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  // Render all of the language sections
   let byLangHTML = "";
   for (const [lang, decks] of Object.entries(byLang).sort(([a], [b]) =>
     a.localeCompare(b),
@@ -165,73 +103,46 @@ async function renderNavPane() {
   `;
 }
 
-// ── Main render ──────────────────────────────────────────────────────────────
+// ── Builder ──────────────────────────────────────────────────────────────────
 
-export function buildNavPane(app, params) {
-  async function init() {
-    let deckId = params.id || getLastDeckId();
-    if (!deckId) {
-      const recent = await getRecentDecks(1);
-      deckId = recent[0]?.id ?? null;
-    }
+export function initNavPane(app, params) {
+  const meatEl = app.els.navPane.querySelector(".meat");
 
-    // ── Build nav shell ──────────────────────────────────────────────────────
-
-    // Populate nav pane
-    app.els.navPane.innerHTML = await renderNavPane();
-
-    function registerEvents() {
-      // Nav pane deck selection
-      app.els.navPane
-        .querySelector(".deck-list")
-        .addEventListener("click", async (e) => {
-          const row = e.target.closest("[data-deck-id]");
-          if (!row) return;
-          app.navPane.close();
-          await selectDeck(row.dataset.deckId);
-        });
-
-      app.els.navPane
-        .querySelector(".nav-pane-add-fab")
-        .addEventListener("click", () => openGenerateCards());
-    }
-
-    registerEvents();
-
-    // ── Load deck content ────────────────────────────────────────────────────
-
-    async function selectDeck(newDeckId) {
-      setLastDeckId(newDeckId);
-      if (!newDeckId.startsWith("lang:") && !newDeckId.startsWith("starred:")) {
-        await updateDeckAccessTime(newDeckId);
-      }
-      deckId = newDeckId;
-      await loadDeck();
-    }
-
-    async function refreshNavPane() {
-      app.navPane.el.innerHTML = await renderNavPane();
-      registerEvents();
-    }
-
-    function openGenerateCards() {
-      openGenerateCardsPanel(
-        el,
-        { createDeck, importCards },
-        async (newDeckId) => {
-          await refreshNavPane();
-          app.navPane.close();
-          await selectDeck(newDeckId);
-        },
-      );
-    }
-
-    /**
-     * Function that loads a selected deck into the content pane
-     */
-
-    await buildContentPane(deckId, document.querySelector(".nav-shell"));
+  async function refresh() {
+    meatEl.innerHTML = await renderNavPaneHTML();
   }
 
-  init();
+  function openGenerateCards() {
+    openGenerateCardsPanel(
+      document.getElementById("app"),
+      { createDeck, importCards },
+      async (newDeckId) => {
+        await refresh();
+        app.navPane.close();
+        app.contentPane.loadDeck(newDeckId);
+      },
+    );
+  }
+
+  // One delegated click listener on the stable nav pane element — never re-attached
+  app.els.navPane.addEventListener("click", async (e) => {
+    if (e.target.closest(".nav-pane-add-fab")) {
+      openGenerateCards();
+      return;
+    }
+    const row = e.target.closest("[data-deck-id]");
+    if (!row) return;
+    app.navPane.close();
+    const deckId = row.dataset.deckId;
+    app.setLastDeckId(deckId);
+    if (!deckId.startsWith("lang:") && !deckId.startsWith("starred:")) {
+      await updateDeckAccessTime(deckId);
+    }
+    app.contentPane.loadDeck(deckId);
+  });
+
+  // Expose refresh so contentPane can trigger it after settings changes
+  app.refreshNavPane = refresh;
+
+  refresh();
 }

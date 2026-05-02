@@ -1,4 +1,10 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
   background: var(--bg-primary);
@@ -14,7 +20,7 @@ body {
   overflow: hidden;
 }
 
-.screen {
+/*.screen {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -22,7 +28,7 @@ body {
   max-width: 480px;
   width: 100%;
   margin: 0 auto;
-}
+}*/
 
 /* ── Shared buttons ── */
 
@@ -48,7 +54,9 @@ button {
   transition: opacity 0.15s;
 }
 
-.btn:active { opacity: 0.75; }
+.btn:active {
+  opacity: 0.75;
+}
 
 .btn-primary {
   background: var(--accent);
@@ -61,4 +69,6 @@ button {
   border: 1px solid var(--border-default);
 }
 
-.btn + .btn { margin-top: 0.75rem; }
+.btn + .btn {
+  margin-top: 0.75rem;
+}

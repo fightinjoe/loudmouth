@@ -1,6 +1,6 @@
 /* ── Nav Shell ── */
 
-.nav-main > .screen {
+.content-pane > .meat {
   height: 0; /* force flex child to shrink, overflow handles the rest */
   overflow: hidden;
 }
@@ -56,6 +56,8 @@
 #content-pane[data-edit-mode] #btn-deck-add {
   display: none;
 }
+
+/* ── Deck mode (study / review / reverse) ── */
 
 /* ── Edit mode card row ── */
 
@@ -123,7 +125,6 @@
 
 #content-pane {
   padding: 0;
-  height: 0;
   max-width: none;
   margin: 0;
 }
@@ -158,7 +159,7 @@ ruby {
   font-size: var(--text-size-body1); /* 16px for larger card */
 }
 
-[data-mode="study"] .deck-view-list {
+#app[data-deck-mode="study"] .deck-view-list {
   .card-row .card-primary {
     .card-text {
       display: auto;
@@ -177,7 +178,7 @@ ruby {
   }
 }
 
-[data-mode="review"] .deck-view-list {
+#app[data-deck-mode="review"] .deck-view-list {
   .card-row .card-primary {
     .card-text {
       display: auto;
@@ -196,7 +197,7 @@ ruby {
   }
 }
 
-[data-mode="reverse"] .deck-view-list {
+#app[data-deck-mode="reverse"] .deck-view-list {
   .card-row .card-primary {
     .card-text {
       display: auto;
@@ -474,7 +475,7 @@ ruby {
 }
 
 /* Reverse mode */
-[data-mode="reverse"] .card-review-content {
+#app[data-deck-mode="reverse"] .card-review-content {
   .review-card-text {
     display: none;
   }
@@ -490,7 +491,7 @@ ruby {
 }
 
 /* Study mode: show skeleton; reveal on press */
-[data-mode="study"] .card-review-content {
+#app[data-deck-mode="study"] .card-review-content {
   .review-translation-skeleton {
     display: flex;
   }
@@ -513,7 +514,7 @@ ruby {
 }
 
 /* Review mode: always show translation */
-[data-mode="review"] .card-review-content {
+#app[data-deck-mode="review"] .card-review-content {
   .review-translation {
     background: var(--bg-surface);
     cursor: default;
@@ -815,13 +816,13 @@ ruby {
 
 /*-- Nav shell: nav-pane + content-pane layout --*/
 
-.nav-shell {
+#app-shell {
   max-width: 480px;
   margin: 0 auto;
 }
 
 /* Nav pane sits behind the content pane, left-aligned, full height */
-.nav-pane {
+#nav-pane {
   position: absolute;
   top: 0;
   left: 0;
@@ -831,29 +832,33 @@ ruby {
 }
 
 /* Content pane covers the full shell, slides right to reveal nav pane */
-.nav-main {
+.pane {
   height: 100%;
-  transform: translateX(0);
   z-index: 1;
   box-shadow: -4px 0 14px rgba(0, 0, 0, 0.25);
+  transition: transform 250ms ease;
 }
 
-.nav-main[data-dragging] {
+.content-pane[data-dragging] {
   transition: none;
 }
 
-.nav-main--open {
+#app[data-content="foreground"] .content-pane {
+  transform: translateX(0);
+}
+
+#app[data-content="background"] .content-pane {
   transform: translateX(280px);
 }
 
-.nav-main-scrim {
+.content-pane-scrim {
   background: rgba(245, 245, 240, 0.7);
   opacity: 0;
   pointer-events: none;
   z-index: 2;
 }
 
-.nav-main--open .nav-main-scrim {
+#app[data-content="background"] .content-pane-scrim {
   opacity: 1;
   pointer-events: auto;
 }
