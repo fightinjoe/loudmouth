@@ -8,7 +8,7 @@
 ## UI-002: URI import trigger in deck-view ✓
 - Modified `app/src/screens/deck-view.js`:
   - `openAddCardsPanel` accepts optional `initialCards`/`initialErrors` params to skip step 1
-  - `renderDeckView` checks `params.cards`, decodes + parses, then either opens confirm panel directly or shows inline error
+  - `buildNavPane` checks `params.cards`, decodes + parses, then either opens confirm panel directly or shows inline error
   - After successful import: hash stripped to `#deck?id=<deckId>`
   - After failed decode: error shown in deck view, normal render continues
 - All 54 tests still pass

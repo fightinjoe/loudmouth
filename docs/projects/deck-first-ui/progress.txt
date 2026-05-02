@@ -2,13 +2,13 @@
 - openAddCardsPanel(appEl, closePicker, onImportDone): slide-up panel (z-index 200, above picker)
 - Step 1: textarea + parse button; backup section with download + restore file input
 - Step 2: count summary + deck select/create + import button
-- On success: close add panel, call closePicker(), call onImportDone(deckId) → renderDeckView
+- On success: close add panel, call closePicker(), call onImportDone(deckId) → buildNavPane
 - detectLang() ported from import.js
 - CSS: .add-cards-panel, --visible, sections, textarea, select, inputs
 - 46 tests pass
 
 ## DU-011 — DONE (commit 42e2e16)
-- openDeckPicker callback: setLastDeckId + updateDeckAccessTime + renderDeckView
+- openDeckPicker callback: setLastDeckId + updateDeckAccessTime + buildNavPane
 - 46 tests pass
 
 ## DU-010 — DONE (commit a24b0e7)
@@ -61,7 +61,7 @@
 ## DU-003 — DONE (commit bec6581)
 - Created app/src/styles/deck-view.css: #f5f5f0 bg, white card rows, 64px height, 6px gap, rounded corners
 - Imported deck-view.css in main.js
-- Empty state uses .deck-view-empty class; #deck-view-screen overrides .screen padding to 0
+- Empty state uses .deck-view-empty class; #content-pane overrides .screen padding to 0
 - deck-view-header: flex row, deck title btn + gear icon
 - deck-view-list: flex col, gap 6px, scrollable
 - All 46 tests pass; browser verified (empty state shows correct bg/text)
@@ -73,7 +73,7 @@
 - Dexie version is now 3; add new versions at the end of the chain in createDb()
 
 ## DU-002 — DONE (commit b8acadb)
-- router.js: single `deck` route via renderDeckView; legacy routes redirect to #deck
+- router.js: single `deck` route via buildNavPane; legacy routes redirect to #deck
 - deck-view.js stub: resolves deckId from params → localStorage → getRecentDecks(1)
 - Exports getLastDeckId / setLastDeckId for DU-011
 - localStorage key: loudmouth.lastDeckId

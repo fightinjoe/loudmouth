@@ -39,7 +39,7 @@ This allows an external tool (e.g., an LLM) to produce a single clickable link a
 
 ### Router changes
 
-- The router already extracts query params from the hash; it passes them to `renderDeckView(el, params)`
+- The router already extracts query params from the hash; it passes them to `buildNavPane(el, params)`
 - No new route is needed — `params.cards` presence signals a URI import
 - The router itself does not decode the payload; decoding happens in the screen layer
 
