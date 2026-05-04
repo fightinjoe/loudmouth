@@ -897,12 +897,3 @@ ruby {
 .pane-header-spacer {
   width: 44px;
 }
-
-.handle {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 15%;
-  z-index: 9999;
-}

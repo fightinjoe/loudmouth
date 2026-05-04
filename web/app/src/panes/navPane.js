@@ -125,14 +125,7 @@ export function initNavPane(app, params) {
     );
   }
 
-  // One delegated click listener on the stable nav pane element — never re-attached
-  navPaneEl.addEventListener("click", async (e) => {
-    if (e.target.closest(".nav-pane-add-fab")) {
-      openGenerateCards();
-      return;
-    }
-    const row = e.target.closest("[data-deck-id]");
-    if (!row) return;
+  async function openCardFullScreen(row) {
     app.navPane.close();
     const deckId = row.dataset.deckId;
     app.setLastDeckId(deckId);
@@ -140,6 +133,16 @@ export function initNavPane(app, params) {
       await updateDeckAccessTime(deckId);
     }
     app.contentPane.loadDeck(deckId);
+  }
+
+  // One delegated click listener on the stable nav pane element — never re-attached
+  navPaneEl.addEventListener("click", async (e) => {
+    // Clicking the FAB
+    if (closest(".nav-pane-add-fab")) return openGenerateCards();
+
+    // Click a card in the deck
+    const row = e.target.closest("[data-deck-id]");
+    if (row) return await openCardFullScreen(row);
   });
 
   // Expose refresh so contentPane can trigger it after settings changes
@@ -147,3 +150,5 @@ export function initNavPane(app, params) {
 
   refresh();
 }
+
+const closest = (e, selector) => e.target.closest(selector);
