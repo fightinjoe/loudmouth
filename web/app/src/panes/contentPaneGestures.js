@@ -2,7 +2,7 @@
  * contentPaneGestures — all touch gestures on the content pane.
  *
  * Three gesture families, all attached to stable elements:
- *   - Shell slide: swipe right/left on app.els.handleEl to reveal/hide the nav pane
+ *   - Shell slide: swipe right/left on handleEl to reveal/hide the nav pane
  *   - Reveal:      swipe left on a card row to expose action buttons
  *   - Reorder:     long-press the reorder handle to drag cards into a new order
  *
@@ -10,7 +10,7 @@
  * @returns {{ shell: { open, close, setSuppressed }, reveal: { reset, isAnyOpen }, setReorderCallback }}
  */
 export function wireContentPaneGestures(app) {
-  const { appEl, contentPaneEl } = app.els;
+  const { appEl, contentPaneEl, handleEl } = app.els;
   const meatEl = contentPaneEl.querySelector(".meat");
 
   // ── Shell slide gesture ─────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ export function wireContentPaneGestures(app) {
       requestAnimationFrame(() => delete contentPaneEl.dataset.dragging);
   }
 
-  app.els.handleEl.addEventListener(
+  handleEl.addEventListener(
     "touchstart",
     (e) => {
       if (!shellIsOpen && e.target.closest(".content-pane-scrim")) return;
@@ -48,7 +48,7 @@ export function wireContentPaneGestures(app) {
     { passive: true },
   );
 
-  app.els.handleEl.addEventListener(
+  handleEl.addEventListener(
     "touchmove",
     (e) => {
       if (shellStartX === null) return;
@@ -73,7 +73,7 @@ export function wireContentPaneGestures(app) {
     { passive: false },
   );
 
-  app.els.handleEl.addEventListener(
+  handleEl.addEventListener(
     "touchend",
     (e) => {
       if (shellStartX === null) return;
@@ -91,7 +91,7 @@ export function wireContentPaneGestures(app) {
     { passive: true },
   );
 
-  app.els.handleEl.addEventListener(
+  handleEl.addEventListener(
     "touchcancel",
     () => {
       if (shellStartX === null) return;
@@ -104,7 +104,7 @@ export function wireContentPaneGestures(app) {
     { passive: true },
   );
 
-  app.els.handleEl.addEventListener("click", () => setShellOpen(false));
+  handleEl.addEventListener("click", () => setShellOpen(false));
 
   // ── Reveal gesture state ────────────────────────────────────────────────────
   // Swipe left on a card row to slide it left and expose the action buttons

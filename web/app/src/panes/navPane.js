@@ -146,7 +146,7 @@ export function initNavPane(app, params) {
   });
 
   // Expose refresh so contentPane can trigger it after settings changes
-  app.refreshNavPane = refresh;
+  app.panes.nav.refresh = refresh;
 
   refresh();
 }

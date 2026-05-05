@@ -136,10 +136,10 @@ export function initContentPane(app) {
           },
           async (changes) => {
             if (changes.deleted) {
-              await app.refreshNavPane();
+              await app.panes.nav.refresh();
               app.contentPane.loadDeck(null);
             } else {
-              await app.refreshNavPane();
+              await app.panes.nav.refresh();
               app.contentPane.loadDeck(deck.id);
             }
           },

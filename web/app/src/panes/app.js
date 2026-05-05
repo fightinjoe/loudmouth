@@ -45,6 +45,10 @@ export function initApp(params) {
       handleEl: appEl.querySelector("#content-pane .handle"),
       scrimEl: appEl.querySelector("#content-pane-scrim"),
     },
+    panes: {
+      nav: {},
+      content: {},
+    },
     getLastDeckId,
     setLastDeckId,
   };
