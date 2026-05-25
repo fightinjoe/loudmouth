@@ -73,14 +73,33 @@
 
 /* ── Deck mode (study / review / reverse) ── */
 
-/* ── Edit mode card row ── */
+/* ── Edit mode reorder handle ── */
+/* Static element that overlays the list region. Always rendered (Rule 6
+   requires gestures wire to a static handle, never to dynamic list items).
+   pointer-events is disabled in normal mode so taps reach the cards; in
+   edit mode it captures touches and uses elementFromPoint to identify the
+   row underneath. */
+#reorder-handle {
+  position: absolute;
+  top: 64px; /* below the title bar */
+  left: 0;
+  right: 0;
+  bottom: 84px; /* above the add-cards footer */
+  z-index: 50;
+  pointer-events: none;
+  touch-action: none;
+}
+#content-pane[data-edit-mode] #reorder-handle {
+  pointer-events: auto;
+}
+
+/* ── Per-row reorder grip icon (visual only; gesture lives on the
+   static #reorder-handle above) ── */
 
 .card-row-reorder-handle {
   display: none;
   padding: 0.5rem;
   color: var(--fg-tertiary);
-  cursor: grab;
-  touch-action: none;
 }
 
 .card-row-reorder-handle svg {

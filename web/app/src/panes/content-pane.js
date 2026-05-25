@@ -22,7 +22,7 @@
  *   content/toggle-menu            — toggle the deck-title menu
  *   content/close-menu             — close the deck-title menu
  */
-import { updateCard, deleteCard } from "../js/db.js";
+import { updateCard, deleteCard, updateDeckCardOrder } from "../js/db.js";
 import { setAttrSafe, setListHTMLSafe } from "../js/uiState.js";
 import { openCardReview } from "../components/card-review.js";
 import { openCardEditPanel } from "../components/card-edit-panel.js";
@@ -39,6 +39,7 @@ export default {
     deck: null,
     cards: [],
     editMode: false,
+    editOrder: null,
     menuOpen: false,
     isStarred: false,
   },
@@ -51,11 +52,54 @@ export default {
       cards,
       isStarred: !!isStarred,
       editMode: false,
+      editOrder: null,
       menuOpen: false,
     }),
     "content/cards-changed": (slice, { cards }) => ({ ...slice, cards }),
-    "content/toggle-edit": (slice) => ({ ...slice, editMode: !slice.editMode, menuOpen: false }),
-    "content/exit-edit": (slice) => ({ ...slice, editMode: false }),
+
+    // Enter edit mode — snapshot current order so we can mutate freely.
+    "content/enter-edit": (slice) => ({
+      ...slice,
+      editMode: true,
+      menuOpen: false,
+      editOrder: slice.cards.map((c) => c.id),
+    }),
+
+    // Reorder during edit. Payload: { fromId, toIndex }. Returns same
+    // reference if nothing changed (Rule 2: no notification).
+    "content/reorder": (slice, { fromId, toIndex }) => {
+      if (!slice.editMode || !slice.editOrder) return slice;
+      const from = slice.editOrder.indexOf(fromId);
+      if (from < 0) return slice;
+      const clamped = Math.max(0, Math.min(slice.editOrder.length - 1, toIndex));
+      if (from === clamped) return slice;
+      const next = slice.editOrder.slice();
+      const [moved] = next.splice(from, 1);
+      next.splice(clamped, 0, moved);
+      return { ...slice, editOrder: next };
+    },
+
+    // Commit edit: reorder cards to match editOrder, exit edit mode.
+    "content/confirm-edit": (slice) => {
+      if (!slice.editMode || !slice.editOrder) return slice;
+      const byId = new Map(slice.cards.map((c) => [c.id, c]));
+      const reordered = slice.editOrder.map((id) => byId.get(id)).filter(Boolean);
+      return {
+        ...slice,
+        cards: reordered,
+        editMode: false,
+        editOrder: null,
+        menuOpen: false,
+      };
+    },
+
+    "content/cancel-edit": (slice) => ({
+      ...slice,
+      editMode: false,
+      editOrder: null,
+      menuOpen: false,
+    }),
+
     "content/toggle-menu": (slice) => ({ ...slice, menuOpen: !slice.menuOpen }),
     "content/close-menu": (slice) => ({ ...slice, menuOpen: false }),
   },
@@ -68,6 +112,11 @@ export default {
         <div class="meat screen flex-1 flex-col bg-primary overflow-hidden" data-region="content-body">
           ${renderDeckBody(initial.deck, initial.cards)}
         </div>
+        <!-- Static reorder handle. Always in the DOM; CSS only enables
+             pointer-events when [data-edit-mode] is set on the pane.
+             Overlays the list region so a single gesture handler can
+             elementFromPoint to find the row underneath. -->
+        <div id="reorder-handle" class="reorder-handle" aria-hidden="true"></div>
         <div id="deck-title-menu-scrim" data-action="content/close-menu"></div>
         <div id="deck-title-menu" class="deck-title-menu bg-surface overflow-hidden">
           <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-action="content/menu-settings">Settings</button>
@@ -82,15 +131,24 @@ export default {
     const stageEl = rootEl.parentElement.parentElement; // #app
     const meatEl = rootEl.querySelector('[data-region="content-body"]');
     const handleEl = rootEl.querySelector(".handle");
+    const reorderHandleEl = rootEl.querySelector("#reorder-handle");
 
     // ── Subscribers ─────────────────────────────────────────────────────────
 
     let lastDeckRendered = null;
     const unsubContent = ui.subscribe("content", (next, prev) => {
-      if (next.deck !== prev?.deck || next.cards !== prev?.cards) {
+      const listOrderChanged =
+        next.cards !== prev?.cards || next.editOrder !== prev?.editOrder;
+      if (next.deck !== prev?.deck || listOrderChanged) {
         const listRegion = meatEl.querySelector('[data-region="card-list"]');
         if (listRegion && next.deck === lastDeckRendered) {
-          setListHTMLSafe(listRegion, renderCardsHTML(next.deck, next.cards));
+          // In edit mode the visible order is editOrder, not the underlying
+          // cards order — that snapshot only commits on confirm.
+          const visible =
+            next.editMode && next.editOrder
+              ? next.editOrder.map((id) => next.cards.find((c) => c.id === id)).filter(Boolean)
+              : next.cards;
+          setListHTMLSafe(listRegion, renderCardsHTML(next.deck, visible));
         } else {
           meatEl.innerHTML = renderDeckBody(next.deck, next.cards);
           lastDeckRendered = next.deck;
@@ -99,6 +157,15 @@ export default {
       setAttrSafe(rootEl, "editMode", next.editMode ? "" : null);
       setAttrSafe(rootEl, "menuOpen", next.menuOpen ? "" : null);
       if (next.deck?.mode) stageEl.dataset.deckMode = next.deck.mode;
+    });
+
+    // Persistence: when edit mode exits with a committed order, write it.
+    const unsubPersist = ui.subscribe("content", (next, prev) => {
+      const justConfirmed =
+        prev?.editMode && !next.editMode && next.cards !== prev.cards;
+      if (justConfirmed && next.deck && !next.deck.system) {
+        updateDeckCardOrder(next.deck.id, next.cards.map((c) => c.id));
+      }
     });
 
     // Effect subscriber: when deckId changes, load the deck.
@@ -111,9 +178,11 @@ export default {
       ui.transition("content/loaded", data);
     });
 
-    // ── Gestures (shell swipe + card-row reveal) ────────────────────────────
+    // ── Gestures (shell swipe + card-row reveal + edit-mode reorder) ───────
     function isEdit() { return ui.get("content").editMode; }
-    const { resetReveal } = wireContentGestures({ rootEl, handleEl, ui, isEdit });
+    const { resetReveal } = wireContentGestures({
+      rootEl, handleEl, reorderHandleEl, ui, isEdit,
+    });
 
     // ── Click actions ───────────────────────────────────────────────────────
 
@@ -134,7 +203,7 @@ export default {
 
     delegate.register("content/menu-edit", () => {
       ui.transition("content/close-menu");
-      ui.transition("content/toggle-edit");
+      ui.transition("content/enter-edit");
     });
 
     delegate.register("content/close-menu", () => ui.transition("content/close-menu"));
@@ -144,7 +213,7 @@ export default {
       ui.transition("action/open", { kind: "translation", payload: { deck } });
     });
 
-    delegate.register("content/done", () => ui.transition("content/exit-edit"));
+    delegate.register("content/done", () => ui.transition("content/confirm-edit"));
 
     delegate.register("content/import-cards", () => {
       ui.transition("action/open", { kind: "generate", payload: {} });
@@ -165,6 +234,7 @@ export default {
 
     return () => {
       unsubContent();
+      unsubPersist();
       unsubLoad();
       unregisterCardActions();
     };

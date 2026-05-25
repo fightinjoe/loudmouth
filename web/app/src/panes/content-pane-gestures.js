@@ -27,7 +27,7 @@ const CARD_WRAPPER_SEL = ".card-row-wrapper";
 const ROW_SEL = ".card-row";
 const SWIPED_CLASS = "card-row-wrapper--swiped";
 
-export function wireContentGestures({ rootEl, handleEl, ui, isEdit }) {
+export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isEdit }) {
   // ── Shell swipe ─────────────────────────────────────────────────────────
   let shellStartX = null, shellStartY = null, shellAxis = null;
   function shellIsOpen() { return ui.get("shell")?.exposed === "background"; }
@@ -143,6 +143,98 @@ export function wireContentGestures({ rootEl, handleEl, ui, isEdit }) {
     row.style.transform = "";
     revealTarget = null;
     revealAxis = null;
+  });
+
+  // ── Reorder gesture (edit mode) ─────────────────────────────────────────
+  // Static handle overlays the list region. On touchstart we use
+  // elementFromPoint to find the row underneath, then translateY-drag it.
+  // On touchend, we compute the target index and fire content/reorder.
+  //
+  // Per Rule 7: both the dragged row AND the list region carry
+  // data-dragging during the drag so subscribers don't paint over us.
+
+  const REORDER_THRESHOLD_PX = 4;
+
+  let reorderState = null;
+  function findRowAt(x, y) {
+    const prev = reorderHandleEl.style.pointerEvents;
+    reorderHandleEl.style.pointerEvents = "none";
+    const el = document.elementFromPoint(x, y);
+    reorderHandleEl.style.pointerEvents = prev;
+    return el ? el.closest("[data-card-id]") : null;
+  }
+
+  function listRegion() {
+    return rootEl.querySelector('[data-region="card-list"]');
+  }
+
+  function rowHeight(rowEl) {
+    return rowEl.getBoundingClientRect().height || 64;
+  }
+
+  reorderHandleEl.addEventListener("touchstart", (e) => {
+    if (!isEdit()) return;
+    const t = e.touches[0];
+    const row = findRowAt(t.clientX, t.clientY);
+    if (!row) return;
+    const allRows = [...row.parentElement.querySelectorAll("[data-card-id]")];
+    reorderState = {
+      rowEl: row,
+      cardId: row.dataset.cardId,
+      startIndex: allRows.indexOf(row),
+      startX: t.clientX,
+      startY: t.clientY,
+      axis: null,
+      active: false,
+      rowH: rowHeight(row),
+    };
+  }, { passive: true });
+
+  reorderHandleEl.addEventListener("touchmove", (e) => {
+    if (!reorderState) return;
+    const t = e.touches[0];
+    const dx = t.clientX - reorderState.startX;
+    const dy = t.clientY - reorderState.startY;
+    if (!reorderState.axis) {
+      if (Math.abs(dy) < REORDER_THRESHOLD_PX && Math.abs(dx) < REORDER_THRESHOLD_PX) return;
+      reorderState.axis = Math.abs(dy) > Math.abs(dx) ? "v" : "h";
+      if (reorderState.axis !== "v") { reorderState = null; return; }
+    }
+    if (!reorderState.active) {
+      reorderState.active = true;
+      reorderState.rowEl.dataset.dragging = "";
+      const region = listRegion();
+      if (region) region.dataset.dragging = "";
+    }
+    reorderState.rowEl.style.transform = `translateY(${dy}px)`;
+  }, { passive: false });
+
+  function endReorder(t) {
+    if (!reorderState) return;
+    const dy = t.clientY - reorderState.startY;
+    const row = reorderState.rowEl;
+    const region = listRegion();
+    const delta = Math.round(dy / reorderState.rowH);
+    const toIndex = reorderState.startIndex + delta;
+    const fromId = reorderState.cardId;
+    const committed = reorderState.axis === "v" && Math.abs(delta) >= 1;
+
+    row.style.transform = "";
+    delete row.dataset.dragging;
+    if (region) delete region.dataset.dragging;
+    reorderState = null;
+
+    if (committed) ui.transition("content/reorder", { fromId, toIndex });
+  }
+  reorderHandleEl.addEventListener("touchend", (e) => endReorder(e.changedTouches[0]));
+  reorderHandleEl.addEventListener("touchcancel", (e) => {
+    if (!reorderState) return;
+    const row = reorderState.rowEl;
+    const region = listRegion();
+    row.style.transform = "";
+    delete row.dataset.dragging;
+    if (region) delete region.dataset.dragging;
+    reorderState = null;
   });
 
   return {
