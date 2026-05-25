@@ -24,10 +24,7 @@ function renderReviewCard(card, readingDisplay = 'reading') {
 export function openCardReview(appEl, cards, deck, startIndex) {
   let currentIndex = startIndex
 
-  const scrim = document.createElement('div')
-  scrim.className = 'card-review-scrim fixed-inset scrim scrim-dim transition-opacity'
-  appEl.appendChild(scrim)
-
+  // Per the Pane Protocol, the details pane has no scrim.
   const panel = document.createElement('div')
   panel.className = 'card-review-panel pane-screen fixed-inset bg-primary flex-col transition-sheet'
   panel.innerHTML = `
@@ -156,7 +153,6 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       panel.classList.add('pane-screen--visible')
-      scrim.classList.add('card-review-scrim--visible')
     })
   })
 
@@ -196,10 +192,9 @@ export function openCardReview(appEl, cards, deck, startIndex) {
     dismissStartY = null
 
     if (dismissAxis === 'v' && dy >= DISMISS_THRESHOLD) {
-      scrim.classList.remove('card-review-scrim--visible')
       panel.style.transition = 'transform 250ms ease'
       panel.style.transform = 'translateY(100%)'
-      const cleanup = () => { panel.remove(); scrim.remove() }
+      const cleanup = () => { panel.remove() }
       panel.addEventListener('transitionend', cleanup, { once: true })
       setTimeout(cleanup, 300)
     } else {
@@ -244,9 +239,8 @@ export function openCardReview(appEl, cards, deck, startIndex) {
   contentEl.addEventListener('touchcancel', () => contentEl.classList.remove('review--revealed'))
 
   function dismiss() {
-    scrim.classList.remove('card-review-scrim--visible')
     panel.classList.remove('pane-screen--visible')
-    const cleanup = () => { panel.remove(); scrim.remove() }
+    const cleanup = () => { panel.remove() }
     panel.addEventListener('transitionend', cleanup, { once: true })
     setTimeout(cleanup, 350)
   }

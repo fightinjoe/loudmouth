@@ -377,20 +377,6 @@ ruby {
   display: block;
 }
 
-/* ── Scrims ── */
-
-/* Card review fades its scrim instead of changing background. */
-
-.card-review-scrim {
-  opacity: 0;
-  pointer-events: none;
-  z-index: 99;
-}
-
-.card-review-scrim--visible {
-  opacity: 1;
-}
-
 /* ── Bottom Sheets ── */
 
 .bottom-sheet {
