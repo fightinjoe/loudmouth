@@ -1,33 +1,13 @@
 import { LANG_FLAGS, LANG_NAMES } from '../js/lang.js'
-import { wireSheetDismissGesture } from '../js/gestures.js'
+import { openBottomSheet } from './bottom-sheet.js'
 
 const GATEWAY_URL = 'https://translation-api-gateway-2qqw247r.uc.gateway.dev'
-
 const SUPPORTED_LANGS = Object.keys(LANG_FLAGS)
 
-/**
- * Opens the Generate Cards action pane.
- *
- * @param {HTMLElement} appEl
- * @param {{ createDeck: Function, importCards: Function }} ops
- * @param {Function} onDone - called with the deck id after cards are added
- * @param {Object|null} targetDeck - if provided, add cards to this deck instead of creating a new one
- */
-export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDone, targetDeck = null) {
-  let selectedLang = targetDeck?.lang ?? (SUPPORTED_LANGS.includes('ja') ? 'ja' : SUPPORTED_LANGS[0])
-
+function renderBody(selectedLang) {
   const langFlag = LANG_FLAGS[selectedLang] ?? ''
   const langName = LANG_NAMES[selectedLang] ?? selectedLang
-
-  const scrim = document.createElement('div')
-  scrim.className = 'generate-cards-scrim fixed-inset scrim scrim-clear transition-bg'
-  appEl.appendChild(scrim)
-
-  const panel = document.createElement('div')
-  panel.className = 'generate-cards-panel bottom-sheet bg-primary flex-col transition-sheet'
-  if (targetDeck) panel.dataset.hasDeck = ''
-  panel.innerHTML = `
-    <div class="generate-cards-handle sheet-handle"></div>
+  return `
     <div class="pane-header flex items-center">
       <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 generate-cards-back" aria-label="Back">‹</button>
       <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">Add cards</span>
@@ -53,86 +33,76 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
       <div class="generate-cards-error text-body2 text-center fg-danger" id="gc-error" aria-live="polite"></div>
     </div>
   `
-  appEl.appendChild(panel)
+}
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      scrim.classList.add('scrim-visible')
-      panel.classList.add('bottom-sheet--visible')
-    })
-  })
+export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDone, targetDeck = null) {
+  let selectedLang = targetDeck?.lang ?? (SUPPORTED_LANGS.includes('ja') ? 'ja' : SUPPORTED_LANGS[0])
 
-  function close() {
-    scrim.classList.remove('scrim-visible')
-    panel.classList.remove('bottom-sheet--visible')
-    panel.addEventListener('transitionend', () => {
-      panel.remove()
-      scrim.remove()
-    }, { once: true })
-  }
+  const sheet = openBottomSheet(appEl, {
+    kind: 'generate',
+    bodyHTML: renderBody(selectedLang),
+    onMount: (panel) => {
+      if (targetDeck) panel.dataset.hasDeck = ''
+      const topicEl = panel.querySelector('#gc-topic')
+      const generateBtn = panel.querySelector('#gc-generate-btn')
+      const langSelect = panel.querySelector('#gc-lang-select')
+      const errorEl = panel.querySelector('#gc-error')
 
-  const topicEl = panel.querySelector('#gc-topic')
-  const generateBtn = panel.querySelector('#gc-generate-btn')
-  const langSelect = panel.querySelector('#gc-lang-select')
-  const errorEl = panel.querySelector('#gc-error')
-
-  topicEl.addEventListener('input', () => {
-    generateBtn.disabled = topicEl.value.trim().length === 0
-  })
-
-  langSelect.addEventListener('change', () => {
-    selectedLang = langSelect.value
-    panel.querySelector('#gc-lang-flag').textContent = LANG_FLAGS[selectedLang] ?? ''
-    panel.querySelector('#gc-lang-name').textContent = LANG_NAMES[selectedLang] ?? selectedLang
-  })
-
-  panel.querySelector('.generate-cards-back').addEventListener('click', close)
-  scrim.addEventListener('click', close)
-
-  generateBtn.addEventListener('click', async () => {
-    const topic = topicEl.value.trim()
-    if (!topic) return
-
-    errorEl.textContent = ''
-    generateBtn.disabled = true
-    generateBtn.textContent = 'Generating…'
-
-    let cards
-    try {
-      const res = await fetch(`${GATEWAY_URL}/generate-cards`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lang: selectedLang, topic }),
+      topicEl.addEventListener('input', () => {
+        generateBtn.disabled = topicEl.value.trim().length === 0
       })
-      if (!res.ok) {
-        if (res.status === 429) { errorEl.textContent = 'Try again in 60 seconds.'; return }
-        if (res.status === 504) { errorEl.textContent = 'Could not generate — try again.'; return }
-        errorEl.textContent = `Error ${res.status} — try again.`
-        return
-      }
-      const data = await res.json()
-      cards = data.cards
-      if (!cards || cards.length === 0) { errorEl.textContent = 'No cards returned — try rephrasing.'; return }
-    } catch {
-      errorEl.textContent = 'No connection.'
-      return
-    } finally {
-      generateBtn.textContent = 'Generate'
-      generateBtn.disabled = topicEl.value.trim().length === 0
-    }
 
-    if (targetDeck) {
-      await importCards(cards, targetDeck.id)
-      close()
-      onDone(targetDeck.id)
-    } else {
-      const deckName = topic.length > 30 ? topic.slice(0, 30).trimEnd() + '…' : topic
-      const deck = await createDeck(deckName, selectedLang)
-      await importCards(cards, deck.id)
-      close()
-      onDone(deck.id)
-    }
+      langSelect.addEventListener('change', () => {
+        selectedLang = langSelect.value
+        panel.querySelector('#gc-lang-flag').textContent = LANG_FLAGS[selectedLang] ?? ''
+        panel.querySelector('#gc-lang-name').textContent = LANG_NAMES[selectedLang] ?? selectedLang
+      })
+
+      panel.querySelector('.generate-cards-back').addEventListener('click', sheet.close)
+
+      generateBtn.addEventListener('click', async () => {
+        const topic = topicEl.value.trim()
+        if (!topic) return
+        errorEl.textContent = ''
+        generateBtn.disabled = true
+        generateBtn.textContent = 'Generating…'
+
+        let cards
+        try {
+          const res = await fetch(`${GATEWAY_URL}/generate-cards`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lang: selectedLang, topic }),
+          })
+          if (!res.ok) {
+            if (res.status === 429) { errorEl.textContent = 'Try again in 60 seconds.'; return }
+            if (res.status === 504) { errorEl.textContent = 'Could not generate — try again.'; return }
+            errorEl.textContent = `Error ${res.status} — try again.`
+            return
+          }
+          const data = await res.json()
+          cards = data.cards
+          if (!cards || cards.length === 0) { errorEl.textContent = 'No cards returned — try rephrasing.'; return }
+        } catch {
+          errorEl.textContent = 'No connection.'
+          return
+        } finally {
+          generateBtn.textContent = 'Generate'
+          generateBtn.disabled = topicEl.value.trim().length === 0
+        }
+
+        if (targetDeck) {
+          await importCards(cards, targetDeck.id)
+          sheet.close()
+          onDone(targetDeck.id)
+        } else {
+          const deckName = topic.length > 30 ? topic.slice(0, 30).trimEnd() + '…' : topic
+          const deck = await createDeck(deckName, selectedLang)
+          await importCards(cards, deck.id)
+          sheet.close()
+          onDone(deck.id)
+        }
+      })
+    },
   })
-
-  wireSheetDismissGesture(panel, close)
 }

@@ -3,7 +3,7 @@ import { icon } from "./icon.js";
 /**
  * Renders a card as a list row with swipe-to-reveal star/edit buttons behind it.
  * Star and edit buttons are rendered absolutely behind the row; the row slides
- * left via CSS transform to expose them (see wireRevealGesture in gestures.js).
+ * left via CSS transform to expose them (see content-pane-gestures.js).
  *
  * @param {Object} card
  * @param {string} readingDisplay - 'reading' | 'romanization'

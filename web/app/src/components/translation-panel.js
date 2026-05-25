@@ -1,28 +1,30 @@
 import { LANG_FLAGS, LANG_NAMES } from '../js/lang.js'
 import { speak, ttsText } from '../js/tts.js'
-import { wireSheetDismissGesture } from '../js/gestures.js'
+import { openBottomSheet } from './bottom-sheet.js'
 
 const GATEWAY_URL = 'https://translation-api-gateway-2qqw247r.uc.gateway.dev'
 
-/**
- * Renders a single translation result card row.
- * reading comes from ruby_markup (strip tags for plain text fallback) or
- * we just show it empty — the API returns ruby_markup.
- */
-function renderResultCard(t, position) {
-  // position: 'top' | 'middle' | 'bottom' | 'only'
-  const radiusClass = {
-    top: 'tr-card--top',
-    middle: 'tr-card--middle',
-    bottom: 'tr-card--bottom',
-    only: 'tr-card--only',
-  }[position] ?? ''
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+function escAttr(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
 
-  // Strip ruby tags to get plain reading text
+function positionLabel(i, total) {
+  if (total === 1) return 'only'
+  if (i === 0) return 'top'
+  if (i === total - 1) return 'bottom'
+  return 'middle'
+}
+
+function renderResultCard(t, position) {
+  const radiusClass = {
+    top: 'tr-card--top', middle: 'tr-card--middle', bottom: 'tr-card--bottom', only: 'tr-card--only',
+  }[position] ?? ''
   const plainReading = (t.ruby_markup ?? '')
     .replace(/<rt>/g, ' (').replace(/<\/rt>/g, ')').replace(/<\/?ruby>/g, '').replace(/<\/rb>/g, '').replace(/<rb>/g, '')
     .trim() || t.translation
-
   const tokens = parseRubyMarkup(t.ruby_markup);
   const tokensJson = tokens ? JSON.stringify(tokens) : '';
 
@@ -61,69 +63,28 @@ function renderSkeletonCard(position) {
   `
 }
 
-function positionLabel(i, total) {
-  if (total === 1) return 'only'
-  if (i === 0) return 'top'
-  if (i === total - 1) return 'bottom'
-  return 'middle'
-}
-
-function escHtml(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-function escAttr(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-}
-
 /**
  * Parses a ruby_markup string into a ReadingToken array.
- * @param {string} htmlStr - HTML string like "<ruby>済<rt>す</rt></ruby>みます"
- * @returns {Array|null} Array of [base, annotation|null] or null
  */
 function parseRubyMarkup(htmlStr) {
   if (!htmlStr) return null;
   const div = document.createElement('div');
   div.innerHTML = htmlStr;
   const tokens = [];
-  
+
   function addToken(base, annotation) {
     if (!base) return;
-    
-    // 1. Suppress redundant annotation
-    if (annotation === base || !annotation) {
-      tokens.push([base, null]);
-      return;
-    }
-
-    // 2. Strip matching prefix
+    if (annotation === base || !annotation) { tokens.push([base, null]); return; }
     let start = 0;
-    while (start < base.length && start < annotation.length && base[start] === annotation[start]) {
-      start++;
-    }
-    if (start > 0) {
-      tokens.push([base.slice(0, start), null]);
-    }
-
-    // 3. Strip matching suffix
+    while (start < base.length && start < annotation.length && base[start] === annotation[start]) start++;
+    if (start > 0) tokens.push([base.slice(0, start), null]);
     let endBase = base.length;
     let endAnn = annotation.length;
-    while (endBase > start && endAnn > start && base[endBase - 1] === annotation[endAnn - 1]) {
-      endBase--;
-      endAnn--;
-    }
-
-    // 4. Push the remaining annotated core
+    while (endBase > start && endAnn > start && base[endBase - 1] === annotation[endAnn - 1]) { endBase--; endAnn--; }
     const midBase = base.slice(start, endBase);
     const midAnn = annotation.slice(start, endAnn);
-    if (midBase) {
-      tokens.push([midBase, midAnn]);
-    }
-
-    // 5. Push the matching suffix
-    if (endBase < base.length) {
-      tokens.push([base.slice(endBase), null]);
-    }
+    if (midBase) tokens.push([midBase, midAnn]);
+    if (endBase < base.length) tokens.push([base.slice(endBase), null]);
   }
 
   for (const node of div.childNodes) {
@@ -134,10 +95,7 @@ function parseRubyMarkup(htmlStr) {
       let currentBase = '';
       for (const child of node.childNodes) {
         if (child.nodeName === 'RT') {
-          if (currentBase) {
-            addToken(currentBase, child.textContent);
-            currentBase = '';
-          }
+          if (currentBase) { addToken(currentBase, child.textContent); currentBase = ''; }
         } else if (child.nodeType === Node.TEXT_NODE) {
           currentBase += child.textContent;
         } else if (child.nodeName === 'RB') {
@@ -150,26 +108,8 @@ function parseRubyMarkup(htmlStr) {
   return tokens.length > 0 ? tokens : null;
 }
 
-/**
- * Opens the Translation action pane as a bottom sheet.
- *
- * @param {HTMLElement} appEl - the top-level app container
- * @param {Object} deck - the current deck ({ id, lang, name })
- * @param {{ importCards: Function }} ops - db operations
- * @param {Function} onCardAdded - called with a card object when user adds one
- */
-export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) {
-  const langFlag = LANG_FLAGS[deck.lang] ?? '🌐'
-  const langName = LANG_NAMES[deck.lang] ?? deck.lang ?? 'Unknown'
-
-  const scrim = document.createElement('div')
-  scrim.className = 'translation-scrim fixed-inset scrim scrim-clear transition-bg'
-  appEl.appendChild(scrim)
-
-  const panel = document.createElement('div')
-  panel.className = 'translation-panel bottom-sheet bg-primary flex-col transition-sheet'
-  panel.innerHTML = `
-    <div class="translation-handle sheet-handle"></div>
+function renderBody(langFlag, langName) {
+  return `
     <div class="pane-header flex items-center">
       <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 translation-back" aria-label="Back">‹</button>
       <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight translation-lang-label">${langFlag} ${escHtml(langName)}</span>
@@ -191,269 +131,211 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
       </div>
     </div>
   `
-  appEl.appendChild(panel)
+}
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      scrim.classList.add('scrim-visible')
-      panel.classList.add('bottom-sheet--visible')
-    })
-  })
+export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) {
+  const langFlag = LANG_FLAGS[deck.lang] ?? '🌐'
+  const langName = LANG_NAMES[deck.lang] ?? deck.lang ?? 'Unknown'
 
-  function close() {
-    scrim.classList.remove('scrim-visible')
-    panel.classList.remove('bottom-sheet--visible')
-    panel.addEventListener('transitionend', () => {
-      panel.remove()
-      scrim.remove()
-    }, { once: true })
-  }
+  const sheet = openBottomSheet(appEl, {
+    kind: 'translation',
+    bodyHTML: `<div class="translation-panel-inner flex-col flex-1">${renderBody(langFlag, langName)}</div>`,
+    onMount: (panel) => {
+      // Re-add the `flex-col` modifier that the original template relied on.
+      // openBottomSheet sets the base bottom-sheet classes; we add flex-col so
+      // the translation panel's internal layout works.
+      panel.classList.add('flex-col')
 
-  const inputEl = panel.querySelector('#tr-input')
-  const translateBtn = panel.querySelector('#tr-translate-btn')
-  const resultsEl = panel.querySelector('#tr-results')
+      const inputEl = panel.querySelector('#tr-input')
+      const translateBtn = panel.querySelector('#tr-translate-btn')
+      const resultsEl = panel.querySelector('#tr-results')
+      let currentTranslations = []
 
-  // Track current result translations so we can manage swipe-to-add
-  let currentTranslations = []
-
-  // ── Enable/disable translate button ─────────────────────────────────────────
-
-  inputEl.addEventListener('input', () => {
-    translateBtn.disabled = inputEl.value.trim().length === 0
-  })
-
-  // ── Translate ────────────────────────────────────────────────────────────────
-
-  translateBtn.addEventListener('click', () => runTranslate())
-
-  async function runTranslate() {
-    const text = inputEl.value.trim()
-    if (!text) return
-
-    translateBtn.disabled = true
-    currentTranslations = []
-
-    // Show skeleton (1 row while loading)
-    resultsEl.innerHTML = `
-      <p class="translation-hint text-body2 text-center fg-secondary">Swipe or tap to add card</p>
-      <div class="translation-card-list flex-col" id="tr-card-list">
-        ${renderSkeletonCard('only')}
-      </div>
-    `
-
-    let data
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
-      const res = await fetch(`${GATEWAY_URL}/translate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, targetLanguage: langName }),
-        signal: controller.signal,
+      inputEl.addEventListener('input', () => {
+        translateBtn.disabled = inputEl.value.trim().length === 0
       })
-      clearTimeout(timeoutId)
 
-      if (!res.ok) {
-        if (res.status === 429) {
-          showError('Try again in 60 seconds.')
-        } else if (res.status >= 500) {
-          showError('Could not generate — try again. <button class="translation-retry-btn fg-accent text-body1 tappable" id="tr-retry">↻</button>')
-          panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
-        } else {
-          showError(`Error ${res.status} — try again.`)
-        }
-        translateBtn.disabled = false
-        return
-      }
+      translateBtn.addEventListener('click', () => runTranslate())
 
-      data = await res.json()
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        showError('Could not generate — try again. <button class="translation-retry-btn fg-accent text-body1 tappable" id="tr-retry">↻</button>')
-        panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
-      } else {
-        showError('No connection.')
-      }
-      translateBtn.disabled = false
-      return
-    }
-
-    const translations = data?.translations ?? []
-    if (translations.length === 0) {
-      showError('No result — try rephrasing. <button class="translation-retry-btn fg-accent text-body1 tappable" id="tr-retry">↻</button>')
-      panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
-      translateBtn.disabled = inputEl.value.trim().length === 0
-      return
-    }
-
-    currentTranslations = [...translations]
-    renderResults()
-    translateBtn.disabled = false
-  }
-
-  function showError(html) {
-    resultsEl.innerHTML = `<p class="translation-error text-body2 text-center fg-danger" aria-live="polite">${html}</p>`
-  }
-
-  function renderResults() {
-    if (currentTranslations.length === 0) {
-      resultsEl.innerHTML = ''
-      return
-    }
-    const cardListHtml = currentTranslations.map((t, i) =>
-      renderResultCard(t, positionLabel(i, currentTranslations.length))
-    ).join('')
-    resultsEl.innerHTML = `
-      <p class="translation-hint text-body2 text-center fg-secondary">Swipe or tap to add card</p>
-      <div class="translation-card-list flex-col" id="tr-card-list">
-        ${cardListHtml}
-      </div>
-    `
-    wireCardInteractions()
-  }
-
-  function removeCard(cardEl) {
-    cardEl.classList.add('tr-card--removing')
-    cardEl.addEventListener('transitionend', () => {
-      cardEl.remove()
-      // Update radius classes on remaining cards
-      const remaining = resultsEl.querySelectorAll('.tr-card:not(.tr-card--removing)')
-      remaining.forEach((el, i) => {
-        el.classList.remove('tr-card--top', 'tr-card--middle', 'tr-card--bottom', 'tr-card--only')
-        el.classList.add(`tr-card--${positionLabel(i, remaining.length)}`)
-      })
-      if (remaining.length === 0) {
-        // All done — reset to empty state
-        currentTranslations = []
-        resultsEl.innerHTML = ''
-        inputEl.value = ''
+      async function runTranslate() {
+        const text = inputEl.value.trim()
+        if (!text) return
         translateBtn.disabled = true
-      }
-    }, { once: true })
-  }
-
-  async function addCard(cardEl) {
-    const text = cardEl.dataset.translationText
-    const translation = cardEl.dataset.translation
-    const lang = cardEl.dataset.lang || deck.lang
-
-    const tokensAttr = cardEl.dataset.translationReadingTokens;
-    const reading = tokensAttr ? JSON.parse(tokensAttr) : cardEl.dataset.translationReading;
-
-    const card = { lang, text, reading, translation }
-    try {
-      await importCards([card], deck.id)
-      onCardAdded && onCardAdded(card)
-    } catch (e) {
-      // best-effort; still remove from list
-    }
-    removeCard(cardEl)
-  }
-
-  function wireCardInteractions() {
-    const cardList = resultsEl.querySelector('#tr-card-list')
-    if (!cardList) return
-
-    // Tap on card row → add (top card only, matching design spec)
-    cardList.addEventListener('click', e => {
-      const playBtn = e.target.closest('.tr-card-play')
-      if (playBtn) {
-        e.stopPropagation()
-        const cardEl = playBtn.closest('.tr-card')
-        if (cardEl) {
-          const fakeCard = {
-            text: cardEl.dataset.translationText,
-            lang: cardEl.dataset.lang || deck.lang,
+        currentTranslations = []
+        resultsEl.innerHTML = `
+          <p class="translation-hint text-body2 text-center fg-secondary">Swipe or tap to add card</p>
+          <div class="translation-card-list flex-col" id="tr-card-list">
+            ${renderSkeletonCard('only')}
+          </div>
+        `
+        let data
+        try {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 15000)
+          const res = await fetch(`${GATEWAY_URL}/translate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, targetLanguage: langName }),
+            signal: controller.signal,
+          })
+          clearTimeout(timeoutId)
+          if (!res.ok) {
+            if (res.status === 429) showError('Try again in 60 seconds.')
+            else if (res.status >= 500) {
+              showError('Could not generate — try again. <button class="translation-retry-btn fg-accent text-body1 tappable" id="tr-retry">↻</button>')
+              panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
+            } else {
+              showError(`Error ${res.status} — try again.`)
+            }
+            translateBtn.disabled = false
+            return
           }
-          speak(ttsText(fakeCard), fakeCard.lang)
+          data = await res.json()
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            showError('Could not generate — try again. <button class="translation-retry-btn fg-accent text-body1 tappable" id="tr-retry">↻</button>')
+            panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
+          } else {
+            showError('No connection.')
+          }
+          translateBtn.disabled = false
+          return
         }
-        return
-      }
-
-      const cardEl = e.target.closest('.tr-card')
-      if (cardEl && (cardEl.classList.contains('tr-card--top') || cardEl.classList.contains('tr-card--only'))) {
-        addCard(cardEl)
-      }
-    })
-
-    // Swipe-to-add on top card
-    wireCardSwipe(cardList)
-  }
-
-  function wireCardSwipe(cardList) {
-    let startX = 0, startY = 0, axis = null, currentCardEl = null
-
-    cardList.addEventListener('touchstart', e => {
-      const cardEl = e.target.closest('.tr-card')
-      if (!cardEl) return
-      if (!cardEl.classList.contains('tr-card--top') && !cardEl.classList.contains('tr-card--only')) return
-      startX = e.touches[0].clientX
-      startY = e.touches[0].clientY
-      axis = null
-      currentCardEl = cardEl
-      cardEl.dataset.dragging = ''
-    }, { passive: true })
-
-    cardList.addEventListener('touchmove', e => {
-      if (!currentCardEl) return
-      const dx = e.touches[0].clientX - startX
-      const dy = e.touches[0].clientY - startY
-      if (!axis) {
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-          axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+        const translations = data?.translations ?? []
+        if (translations.length === 0) {
+          showError('No result — try rephrasing. <button class="translation-retry-btn fg-accent text-body1 tappable" id="tr-retry">↻</button>')
+          panel.querySelector('#tr-retry')?.addEventListener('click', runTranslate)
+          translateBtn.disabled = inputEl.value.trim().length === 0
+          return
         }
+        currentTranslations = [...translations]
+        renderResults()
+        translateBtn.disabled = false
       }
-      if (axis !== 'h') return
-      currentCardEl.style.transform = `translateX(${dx}px)`
-      // Reveal indicator
-      if (dx > 0) {
-        currentCardEl.dataset.swipeDir = 'right'
-      } else {
-        currentCardEl.dataset.swipeDir = 'left'
-      }
-    }, { passive: true })
 
-    cardList.addEventListener('touchend', e => {
-      if (!currentCardEl || axis !== 'h') {
-        if (currentCardEl) {
-          delete currentCardEl.dataset.dragging
-          delete currentCardEl.dataset.swipeDir
-          currentCardEl = null
-        }
-        return
+      function showError(html) {
+        resultsEl.innerHTML = `<p class="translation-error text-body2 text-center fg-danger" aria-live="polite">${html}</p>`
       }
-      const dx = e.changedTouches[0].clientX - startX
-      delete currentCardEl.dataset.dragging
-      delete currentCardEl.dataset.swipeDir
 
-      if (dx > 80) {
-        // Swipe right → add
-        addCard(currentCardEl)
-      } else {
-        // Snap back
-        currentCardEl.style.transform = ''
+      function renderResults() {
+        if (currentTranslations.length === 0) { resultsEl.innerHTML = ''; return }
+        const cardListHtml = currentTranslations.map((t, i) =>
+          renderResultCard(t, positionLabel(i, currentTranslations.length))
+        ).join('')
+        resultsEl.innerHTML = `
+          <p class="translation-hint text-body2 text-center fg-secondary">Swipe or tap to add card</p>
+          <div class="translation-card-list flex-col" id="tr-card-list">${cardListHtml}</div>
+        `
+        wireCardInteractions()
       }
-      currentCardEl = null
-      axis = null
-    }, { passive: true })
 
-    cardList.addEventListener('touchcancel', () => {
+      function removeCard(cardEl) {
+        cardEl.classList.add('tr-card--removing')
+        cardEl.addEventListener('transitionend', () => {
+          cardEl.remove()
+          const remaining = resultsEl.querySelectorAll('.tr-card:not(.tr-card--removing)')
+          remaining.forEach((el, i) => {
+            el.classList.remove('tr-card--top', 'tr-card--middle', 'tr-card--bottom', 'tr-card--only')
+            el.classList.add(`tr-card--${positionLabel(i, remaining.length)}`)
+          })
+          if (remaining.length === 0) {
+            currentTranslations = []
+            resultsEl.innerHTML = ''
+            inputEl.value = ''
+            translateBtn.disabled = true
+          }
+        }, { once: true })
+      }
+
+      async function addCard(cardEl) {
+        const text = cardEl.dataset.translationText
+        const translation = cardEl.dataset.translation
+        const lang = cardEl.dataset.lang || deck.lang
+        const tokensAttr = cardEl.dataset.translationReadingTokens
+        const reading = tokensAttr ? JSON.parse(tokensAttr) : cardEl.dataset.translationReading
+        const card = { lang, text, reading, translation }
+        try { await importCards([card], deck.id); onCardAdded && onCardAdded(card) }
+        catch { /* best-effort */ }
+        removeCard(cardEl)
+      }
+
+      function wireCardInteractions() {
+        const cardList = resultsEl.querySelector('#tr-card-list')
+        if (!cardList) return
+        cardList.addEventListener('click', e => {
+          const playBtn = e.target.closest('.tr-card-play')
+          if (playBtn) {
+            e.stopPropagation()
+            const cardEl = playBtn.closest('.tr-card')
+            if (cardEl) {
+              const fakeCard = { text: cardEl.dataset.translationText, lang: cardEl.dataset.lang || deck.lang }
+              speak(ttsText(fakeCard), fakeCard.lang)
+            }
+            return
+          }
+          const cardEl = e.target.closest('.tr-card')
+          if (cardEl && (cardEl.classList.contains('tr-card--top') || cardEl.classList.contains('tr-card--only'))) {
+            addCard(cardEl)
+          }
+        })
+        wireCardSwipe(cardList, addCard)
+      }
+
+      panel.querySelector('.translation-back').addEventListener('click', sheet.close)
+      requestAnimationFrame(() => inputEl.focus())
+    },
+  })
+}
+
+function wireCardSwipe(cardList, onCommitAdd) {
+  let startX = 0, startY = 0, axis = null, currentCardEl = null
+
+  cardList.addEventListener('touchstart', e => {
+    const cardEl = e.target.closest('.tr-card')
+    if (!cardEl) return
+    if (!cardEl.classList.contains('tr-card--top') && !cardEl.classList.contains('tr-card--only')) return
+    startX = e.touches[0].clientX
+    startY = e.touches[0].clientY
+    axis = null
+    currentCardEl = cardEl
+    cardEl.dataset.dragging = ''
+  }, { passive: true })
+
+  cardList.addEventListener('touchmove', e => {
+    if (!currentCardEl) return
+    const dx = e.touches[0].clientX - startX
+    const dy = e.touches[0].clientY - startY
+    if (!axis && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+    if (axis !== 'h') return
+    currentCardEl.style.transform = `translateX(${dx}px)`
+    currentCardEl.dataset.swipeDir = dx > 0 ? 'right' : 'left'
+  }, { passive: true })
+
+  cardList.addEventListener('touchend', e => {
+    if (!currentCardEl || axis !== 'h') {
       if (currentCardEl) {
         delete currentCardEl.dataset.dragging
         delete currentCardEl.dataset.swipeDir
-        currentCardEl.style.transform = ''
         currentCardEl = null
       }
-      axis = null
-    }, { passive: true })
-  }
+      return
+    }
+    const dx = e.changedTouches[0].clientX - startX
+    delete currentCardEl.dataset.dragging
+    delete currentCardEl.dataset.swipeDir
+    if (dx > 80) onCommitAdd(currentCardEl)
+    else currentCardEl.style.transform = ''
+    currentCardEl = null
+    axis = null
+  }, { passive: true })
 
-  // ── Dismiss ─────────────────────────────────────────────────────────────────
-
-  panel.querySelector('.translation-back').addEventListener('click', close)
-  scrim.addEventListener('click', close)
-  wireSheetDismissGesture(panel, close)
-
-  // Focus the input
-  requestAnimationFrame(() => inputEl.focus())
+  cardList.addEventListener('touchcancel', () => {
+    if (currentCardEl) {
+      delete currentCardEl.dataset.dragging
+      delete currentCardEl.dataset.swipeDir
+      currentCardEl.style.transform = ''
+      currentCardEl = null
+    }
+    axis = null
+  }, { passive: true })
 }
