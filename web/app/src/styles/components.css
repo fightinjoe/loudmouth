@@ -902,14 +902,17 @@ ruby {
   transform: translateX(280px);
 }
 
-.content-pane-scrim {
-  background: rgba(245, 245, 240, 0.7);
+/* Sits inside #app-shell between nav (z:0) and content (z:1). Visually
+   dims the nav while the shell is exposed; clicking it fires shell/close. */
+#content-pane-scrim {
+  background: rgba(0, 0, 0, 0.4);
   opacity: 0;
   pointer-events: none;
-  z-index: 2;
+  transition: opacity 240ms;
+  z-index: 0;
 }
 
-#app[data-shell="background"] .content-pane-scrim {
+#app[data-shell="background"] #content-pane-scrim {
   opacity: 1;
   pointer-events: auto;
 }

@@ -43,9 +43,16 @@ export function initApp(params) {
   appEl.dataset.shell = "foreground";
   appEl.dataset.details = "closed";
   appEl.dataset.actionState = "closed";
+  // Render order: nav (lowest), shell-reveal scrim (between nav and
+  // content), content (above scrim), then details and action layers on top.
+  // The scrim sits BEHIND the content pane in z-order — it dims the nav
+  // when exposed; the content pane is the actionable surface that the
+  // user drags back. Click on the scrim fires shell/close via the
+  // shell-layer delegate.
   appEl.innerHTML = `
     <div id="app-shell" class="fixed-inset overflow-hidden">
       ${navPane.render(navPane.initialState)}
+      <div id="content-pane-scrim" class="content-pane-scrim absolute-inset transition-opacity" data-action="shell/close"></div>
       ${contentPane.render(contentPane.initialState)}
     </div>
     ${detailsPane.render(detailsPane.initialState)}
@@ -71,11 +78,14 @@ export function initApp(params) {
     setAttrSafe(appEl, "shell", next.exposed);
   });
 
-  // Per-layer delegates.
+  // Per-layer delegates. The shell delegate lives on #app-shell so it
+  // catches both nav-pane clicks AND the scrim that sits between nav
+  // and content. The content delegate stays on #content-pane.
+  const shellRootEl = appEl.querySelector("#app-shell");
   const navEl = appEl.querySelector("#nav-pane");
   const contentEl = appEl.querySelector("#content-pane");
   const detailsEl = appEl.querySelector("#details-pane");
-  const shellDelegate = createDelegate(navEl);
+  const shellDelegate = createDelegate(shellRootEl);
   const contentDelegate = createDelegate(contentEl);
   const detailsDelegate = createDelegate(detailsEl);
 

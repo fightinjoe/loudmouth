@@ -245,6 +245,12 @@ function wireStackTraverse({ handles, stackEl, threshold, canPrev, canNext, onCo
     startX = null; startY = null; axis = null;
 
     if (_axis === "h" && Math.abs(dx) >= threshold && dx < 0 && canNext()) {
+      // Re-enable the transition (delete data-dragging) THEN set the
+      // commit transform so the stack animates to the new slot. After the
+      // animation, fire the transition (which re-paints all three faces)
+      // and snap the stack back to rest while transitions are suppressed
+      // so the user doesn't see a jump.
+      delete stackEl.dataset.dragging;
       stackEl.style.transform = "translateX(-66.6666%)";
       afterTransition(stackEl, () => {
         stackEl.dataset.dragging = "";
@@ -255,6 +261,7 @@ function wireStackTraverse({ handles, stackEl, threshold, canPrev, canNext, onCo
       return;
     }
     if (_axis === "h" && Math.abs(dx) >= threshold && dx > 0 && canPrev()) {
+      delete stackEl.dataset.dragging;
       stackEl.style.transform = "translateX(0%)";
       afterTransition(stackEl, () => {
         stackEl.dataset.dragging = "";
@@ -264,6 +271,8 @@ function wireStackTraverse({ handles, stackEl, threshold, canPrev, canNext, onCo
       });
       return;
     }
+    // Snap-back branch: re-enable transitions then clear the inline
+    // transform so the CSS animates back to rest.
     delete stackEl.dataset.dragging;
     stackEl.style.transform = "";
   }

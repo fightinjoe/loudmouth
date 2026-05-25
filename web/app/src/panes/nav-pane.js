@@ -179,6 +179,8 @@ export default {
     ui.transition("nav/reload");
 
     // Action handlers (shell delegate).
+    delegate.register("shell/close", () => ui.transition("shell/close"));
+
     delegate.register("nav/open-deck", (_e, el) => {
       const id = el.dataset.deckId;
       if (id && !id.startsWith("lang:") && !id.startsWith("starred:")) {

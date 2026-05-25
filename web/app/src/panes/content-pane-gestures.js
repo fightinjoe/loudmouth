@@ -33,7 +33,6 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
   function shellIsOpen() { return ui.get("shell")?.exposed === "background"; }
 
   handleEl.addEventListener("touchstart", (e) => {
-    if (!shellIsOpen() && e.target.closest(".content-pane-scrim")) return;
     shellStartX = e.touches[0].clientX;
     shellStartY = e.touches[0].clientY;
     shellAxis = null;

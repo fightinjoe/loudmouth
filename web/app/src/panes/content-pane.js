@@ -106,7 +106,6 @@ export default {
     return `
       <div id="content-pane" class="content-pane absolute-inset flex-col bg-primary transition-transform">
         <div class="handle"></div>
-        <div id="content-pane-scrim" class="content-pane-scrim absolute-inset transition-opacity" data-action="shell/close"></div>
         <div class="meat screen flex-1 flex-col bg-primary overflow-hidden" data-region="content-body">
           ${renderDeckBody(initial.deck, initial.cards)}
         </div>
@@ -196,7 +195,6 @@ export default {
 
     // ── Click actions ───────────────────────────────────────────────────────
 
-    delegate.register("shell/close", () => ui.transition("shell/close"));
     delegate.register("content/menu", () => ui.transition("shell/toggle"));
 
     delegate.register("content/deck-title", () => {
