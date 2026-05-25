@@ -491,20 +491,35 @@
 
 <p>Code that wants to change state calls the state machine with a transition name and a payload. It does not reach into the slice and write fields directly. This rule exists so that every state change is greppable, named, and reviewable in one pass.</p>
 
-<p>Transitions are pure functions of (previous slice, payload). They do not perform side effects, do not touch the DOM, and do not call other transitions. Side effects belong in subscribers; transitions only describe the next resting state.</p>
+<p>Transitions are pure functions of (previous slice, payload). They do not perform side effects, do not touch the DOM, and do not call other transitions. Transitions only describe the next resting state.</p>
+
+<p><strong>Side effects (I/O, DOM writes outside the subscriber pattern, network calls, persistence) live in one of two places:</strong></p>
+<ul>
+  <li><strong>Subscribers</strong> for effects driven by state — "whenever the deck changes, fetch its cards"; "whenever a sheet opens, focus its first input." The subscriber is the natural home because the effect is downstream of a state change that other parts of the app may also see.</li>
+  <li><strong>Action handlers</strong> for effects driven by direct user intent — "when the user confirms an edit, save the new order to IndexedDB"; "when the user taps Translate, call the API." The handler is the natural home because the effect is the point of the action, not a consequence of state having changed.</li>
+</ul>
+<p>The dividing line: if the effect should also fire when state changes through a route other than the action (programmatic change, restored state, transition triggered by another pane), put it in a subscriber. If it only makes sense as a direct response to the user's tap or swipe, put it in the action handler. When in doubt, prefer subscribers — they are more composable.</p>
+
+<p>Both surfaces have access to <code>host.ui</code> for reading state. Neither calls a transition during a side-effect's in-flight work; if the work needs to update state on completion, it calls the transition when it returns.</p>
 
 <p>An unknown transition is an error in development and a silent no-op in production. A transition that returns the same reference as the previous slice is a no-op; subscribers are not notified.</p>
 
 <h2 id="panes"><span class="rule-label">Rule 3</span> Every pane follows the same contract</h2>
 
-<p>A pane module is a file that exports a single object with the following five fields. Every pane, without exception, exports exactly these fields. No pane invents additional exports for state, transitions, or rendering.</p>
+<p>A pane module's <em>default export</em> is a single object with the following five fields. Every pane, without exception, exports exactly these fields as the default export. The pane may additionally have named exports for collaborator stubs (data fetchers, persistence helpers, pure utilities) that the pane itself uses internally — these are not part of the contract, but the protocol does not forbid them. What the protocol does forbid is putting state, transitions, or rendering logic in named exports — the default export is the only place those live.</p>
 
 <ul>
   <li><strong>namespace</strong> — the string this pane owns. Must be unique across the app.</li>
   <li><strong>initialState</strong> — the slice value this pane contributes when the app boots. May be null for panes that start empty (the details and action panes both start null).</li>
   <li><strong>transitions</strong> — the map of transition names to transition functions, as described in Rule 2.</li>
   <li><strong>render</strong> — a function that takes the initial slice and returns the full HTML string for the pane's root element, including any handles. Called exactly once, at mount time. Pure: no DOM access, no closures over mutable state, no side effects.</li>
-  <li><strong>bindEvents</strong> — a function that takes the pane's root DOM element and the global state machine. It creates the layer's delegate, registers click actions through it, subscribes to its own namespace (and any other namespaces it needs to react to), and wires touch gestures directly onto the static handles inside its root. Returns a cleanup function.</li>
+  <li><strong>bindEvents</strong> — a function with the signature <code>bindEvents(rootEl, host)</code>. The pane uses <code>host</code> to reach everything outside itself: the global state machine, its layer's delegate, and any siblings it needs to coordinate with. Inside <code>bindEvents</code> the pane registers click actions through its layer's delegate, subscribes to its own namespace (and any other namespaces it needs to react to), and wires touch gestures directly onto the static handles inside its root. Returns a cleanup function. The shape of <code>host</code> is:
+    <ul>
+      <li><code>host.ui</code> — the state machine (<code>get</code>, <code>subscribe</code>, <code>transition</code>, etc.).</li>
+      <li><code>host.delegate</code> — the delegate for this pane's layer (Rule 5).</li>
+      <li><code>host.parent</code> — optional, the parent pane's bound interface if this pane is a child of another (e.g., a sheet inside a content pane). Most panes do not use this.</li>
+    </ul>
+    The same <code>host</code> shape is passed to every pane. Panes never reach for globals or import other panes directly; if they need something not in <code>host</code>, the host shape is extended (a protocol change) rather than worked around.</li>
 </ul>
 
 <p>Cleanup is invoked when a pane is unmounted. In version one, persistent panes (navigation and content) are never unmounted, so their cleanup is a no-op. Transient panes (details and action) do get unmounted, and their cleanup must remove all delegate registrations, all state subscriptions, and all gesture listeners they installed.</p>
@@ -539,6 +554,8 @@
 
 <p>Gestures are <em>never</em> wired to dynamic content inside a pane (individual card rows, list items, or anything that gets re-rendered). If a piece of dynamic content needs a gesture, the pane provides a static handle that detects the gesture and uses event coordinates to identify which item was the target. The reason: re-rendering dynamic content would orphan any listeners attached to it.</p>
 
+<p><strong>Identifying the targeted item.</strong> When a static handle overlays dynamic content (a reorder handle covering a list of cards, for example), the blessed pattern is: on <code>touchstart</code>, temporarily set <code>pointer-events: none</code> on the handle, call <code>document.elementFromPoint(x, y)</code> to find the dynamic element underneath, then restore <code>pointer-events</code> on the handle so it continues receiving the rest of the gesture. The handle owns the gesture lifecycle; <code>elementFromPoint</code> is used only to identify which underlying item the gesture is acting on. Use <code>closest()</code> on the returned element to walk up to the meaningful row container, and read any <code>data-*</code> attributes (item id, index) you need from there.</p>
+
 <p>A gesture is responsible for three things and three things only.</p>
 
 <ol>
@@ -565,6 +582,8 @@
 <p>The rule is simple: before a subscriber writes anything to a DOM element, it checks whether that element (or any ancestor) has <code>data-dragging</code> set. If so, the subscriber defers the write until after the next <code>touchend</code>. The simplest implementation is a shared helper that subscribers call instead of writing attributes directly; the helper either writes immediately or queues the write to run when <code>data-dragging</code> is cleared.</p>
 
 <p>In practice, this conflict is rare because Rule 6 forbids gestures from calling transitions during <code>touchmove</code>. The guard exists to make accidental violations harmless rather than catastrophic.</p>
+
+<p><strong>List regions get the same discipline.</strong> Rule 4 allows a designated list region to be re-rendered via <code>innerHTML</code> when its underlying data changes. That re-render is just as destructive as an attribute write — possibly more so, because it can replace the very element a finger is dragging. While a gesture is active on items inside a list region, the gesture must mark <em>the list region itself</em> with <code>data-dragging</code>, and any subscriber that rebuilds the region's <code>innerHTML</code> must check <code>data-dragging</code> on the region before rebuilding. If the region is mid-drag, the rebuild is deferred until <code>data-dragging</code> clears. The shared subscriber helper that handles attribute writes should also gate list rebuilds — same mechanism, same guard, applied to the region instead of an individual element.</p>
 
 <h2 id="layering"><span class="rule-label">Rule 8</span> Layer stack is fixed: shell &lt; content &lt; details &lt; action</h2>
 
