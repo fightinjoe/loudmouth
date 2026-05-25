@@ -35,12 +35,13 @@ function renderBody(selectedLang) {
   `
 }
 
-export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDone, targetDeck = null) {
+export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDone, targetDeck = null, onDismiss = null) {
   let selectedLang = targetDeck?.lang ?? (SUPPORTED_LANGS.includes('ja') ? 'ja' : SUPPORTED_LANGS[0])
 
   const sheet = openBottomSheet(appEl, {
     kind: 'generate',
     bodyHTML: renderBody(selectedLang),
+    onClose: onDismiss,
     onMount: (panel) => {
       if (targetDeck) panel.dataset.hasDeck = ''
       const topicEl = panel.querySelector('#gc-topic')
@@ -105,4 +106,5 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
       })
     },
   })
+  return sheet
 }

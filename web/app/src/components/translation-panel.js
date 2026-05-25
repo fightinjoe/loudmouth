@@ -133,13 +133,14 @@ function renderBody(langFlag, langName) {
   `
 }
 
-export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) {
+export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded, onDismiss = null) {
   const langFlag = LANG_FLAGS[deck.lang] ?? '🌐'
   const langName = LANG_NAMES[deck.lang] ?? deck.lang ?? 'Unknown'
 
   const sheet = openBottomSheet(appEl, {
     kind: 'translation',
     bodyHTML: `<div class="translation-panel-inner flex-col flex-1">${renderBody(langFlag, langName)}</div>`,
+    onClose: onDismiss,
     onMount: (panel) => {
       // Re-add the `flex-col` modifier that the original template relied on.
       // openBottomSheet sets the base bottom-sheet classes; we add flex-col so
@@ -285,6 +286,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded) 
       requestAnimationFrame(() => inputEl.focus())
     },
   })
+  return sheet
 }
 
 function wireCardSwipe(cardList, onCommitAdd) {

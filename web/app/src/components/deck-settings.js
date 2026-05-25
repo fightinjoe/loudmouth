@@ -46,7 +46,7 @@ function renderBody({ name, mode, order, readingDisplay }, systemDeck) {
   `
 }
 
-export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, exportJson }, onChanged) {
+export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, updateDeckOrder, updateDeckReadingDisplay, deleteDeck, exportJson }, onChanged, onDismiss) {
   const state = {
     name: deck.name,
     mode: deck.mode || DEFAULT_MODE,
@@ -58,7 +58,10 @@ export function openDeckSettings(appEl, deck, { updateDeckMode, updateDeckName, 
     kind: 'settings',
     bodyHTML: renderBody(state, deck.system),
     onMount: (panel) => bind(panel),
+    onClose: onDismiss,
   })
+
+  return sheet
 
   function rerender() {
     // Replace the body inside the panel — keep the sheet handle. The handle

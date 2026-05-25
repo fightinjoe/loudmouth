@@ -11,6 +11,7 @@ import { createUIState, createHost, setAttrSafe } from "../js/uiState.js";
 import { createDelegate } from "../js/delegate.js";
 import navPane from "./nav-pane.js";
 import contentPane from "./content-pane.js";
+import actionPane from "./action-pane.js";
 
 const LAST_DECK_KEY = "loudmouth.lastDeckId";
 
@@ -33,13 +34,6 @@ const shellTransitions = {
   "shell/close": () => ({ exposed: "foreground" }),
 };
 
-// Action layer transitions are owned by the action pane in Step 4. For now,
-// register a minimal pair so nav/open-generate doesn't blow up.
-const actionTransitions = {
-  "action/open": (_slice, payload) => ({ ...(payload || {}) }),
-  "action/close": () => null,
-};
-
 export function initApp(params) {
   const appEl = document.getElementById("app");
 
@@ -56,14 +50,14 @@ export function initApp(params) {
   // Build the state machine with every pane's initial slice + cross-layer slices.
   const ui = createUIState({
     shell: { exposed: "foreground" },
-    action: null,
     [navPane.namespace]: navPane.initialState,
     [contentPane.namespace]: contentPane.initialState,
+    [actionPane.namespace]: actionPane.initialState,
   });
   ui.registerTransitions(shellTransitions);
-  ui.registerTransitions(actionTransitions);
   ui.registerTransitions(navPane.transitions);
   ui.registerTransitions(contentPane.transitions);
+  ui.registerTransitions(actionPane.transitions);
 
   // Shell subscriber writes the data-* attribute that the CSS uses.
   ui.subscribe("shell", (next) => {
@@ -81,9 +75,11 @@ export function initApp(params) {
     if (next.deckId && next.deckId !== prev?.deckId) setLastDeckId(next.deckId);
   });
 
-  // Bind panes.
+  // Bind panes. The action pane has no resting DOM in v1 — sub-kinds inject
+  // their own DOM via the bottom-sheet primitive when opened.
   navPane.bindEvents(navEl, createHost({ ui, delegate: shellDelegate }));
   contentPane.bindEvents(contentEl, createHost({ ui, delegate: contentDelegate }));
+  actionPane.bindEvents(null, createHost({ ui, delegate: null }));
 
   // Initial route — kick off a deck load.
   const initialDeckId = params?.id || getLastDeckId();

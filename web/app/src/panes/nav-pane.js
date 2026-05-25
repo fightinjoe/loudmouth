@@ -23,11 +23,8 @@ import {
   getStarredCards,
   getDecks,
   getRecentDecks,
-  createDeck,
-  importCards,
   updateDeckAccessTime,
 } from "../js/db.js";
-import { openGenerateCardsPanel } from "../components/generate-cards-panel.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { setListHTMLSafe } from "../js/uiState.js";
 
@@ -191,19 +188,9 @@ export default {
       ui.transition("shell/close");
     });
 
-    // Transitional: directly opens the generate-cards panel. Step 4 will
-    // route this through the action layer (action/open { kind: 'generate' }).
     delegate.register("nav/open-generate", () => {
-      const appEl = document.getElementById("app");
-      openGenerateCardsPanel(
-        appEl,
-        { createDeck, importCards },
-        async (newDeckId) => {
-          ui.transition("nav/reload");
-          ui.transition("shell/close");
-          if (newDeckId) ui.transition("content/select-deck", { id: newDeckId });
-        },
-      );
+      ui.transition("shell/close");
+      ui.transition("action/open", { kind: "generate", payload: {} });
     });
 
     return () => {

@@ -22,25 +22,10 @@
  *   content/toggle-menu            — toggle the deck-title menu
  *   content/close-menu             — close the deck-title menu
  */
-import {
-  getCards,
-  updateDeckMode,
-  updateDeckName,
-  updateDeckOrder,
-  updateDeckReadingDisplay,
-  deleteDeck,
-  createDeck,
-  importCards,
-  updateCard,
-  deleteCard,
-} from "../js/db.js";
+import { updateCard, deleteCard } from "../js/db.js";
 import { setAttrSafe, setListHTMLSafe } from "../js/uiState.js";
-import { openDeckSettings } from "../components/deck-settings.js";
 import { openCardReview } from "../components/card-review.js";
 import { openCardEditPanel } from "../components/card-edit-panel.js";
-import { openJsonPanel, toImportJson } from "../components/json-panel.js";
-import { openGenerateCardsPanel } from "../components/generate-cards-panel.js";
-import { openTranslationPanel } from "../components/translation-panel.js";
 import { renderDeckBody, renderCardsHTML } from "./content-pane-render.js";
 import { wireContentGestures } from "./content-pane-gestures.js";
 import { registerCardActions } from "./content-pane-actions.js";
@@ -144,19 +129,7 @@ export default {
     delegate.register("content/menu-settings", () => {
       ui.transition("content/close-menu");
       const { deck, cards } = ui.get("content");
-      openDeckSettings(
-        stageEl,
-        deck,
-        {
-          updateDeckMode, updateDeckName, updateDeckOrder,
-          updateDeckReadingDisplay, deleteDeck,
-          exportJson: () => openJsonPanel(stageEl, deck.name, toImportJson(cards)),
-        },
-        (changes) => {
-          ui.transition("nav/reload");
-          ui.transition("content/select-deck", { id: changes.deleted ? null : deck.id });
-        },
-      );
+      ui.transition("action/open", { kind: "settings", payload: { deck, cards } });
     });
 
     delegate.register("content/menu-edit", () => {
@@ -167,39 +140,19 @@ export default {
     delegate.register("content/close-menu", () => ui.transition("content/close-menu"));
 
     delegate.register("content/add-card", () => {
-      const { deck, cards } = ui.get("content");
-      openTranslationPanel(stageEl, deck, { importCards }, (addedCard) => {
-        ui.transition("content/cards-changed", { cards: [...cards, addedCard] });
-      });
+      const { deck } = ui.get("content");
+      ui.transition("action/open", { kind: "translation", payload: { deck } });
     });
 
     delegate.register("content/done", () => ui.transition("content/exit-edit"));
 
     delegate.register("content/import-cards", () => {
-      openGenerateCardsPanel(
-        stageEl,
-        { createDeck, importCards },
-        async (newDeckId) => {
-          ui.transition("nav/reload");
-          if (newDeckId) ui.transition("content/select-deck", { id: newDeckId });
-        },
-      );
+      ui.transition("action/open", { kind: "generate", payload: {} });
     });
 
     delegate.register("content/edit-add-cards", () => {
-      const { deck, cards } = ui.get("content");
-      const prevIds = new Set(cards.map((c) => c.id));
-      openGenerateCardsPanel(
-        stageEl,
-        { createDeck, importCards },
-        async () => {
-          const fresh = await getCards(deck.id);
-          const added = fresh.filter((c) => !prevIds.has(c.id));
-          ui.transition("content/cards-changed", { cards: [...cards, ...added] });
-          ui.transition("nav/reload");
-        },
-        deck,
-      );
+      const { deck } = ui.get("content");
+      ui.transition("action/open", { kind: "generate", payload: { targetDeck: deck } });
     });
 
     const unregisterCardActions = registerCardActions({
