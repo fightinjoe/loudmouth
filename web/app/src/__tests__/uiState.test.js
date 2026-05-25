@@ -118,18 +118,21 @@ describe("createUIState", () => {
 });
 
 describe("createHost", () => {
-  it("returns the canonical { ui, delegate, parent } shape", () => {
+  it("returns the canonical { ui, delegate, stageEl, parent } shape", () => {
     const ui = { fake: true };
     const delegate = { fake: true };
     const host = createHost({ ui, delegate });
     expect(host.ui).toBe(ui);
     expect(host.delegate).toBe(delegate);
+    expect(host.stageEl).toBe(null);
     expect(host.parent).toBe(null);
   });
 
-  it("passes through parent when supplied", () => {
+  it("passes through stageEl and parent when supplied", () => {
+    const stageEl = document.createElement("div");
     const parent = { fake: "parent" };
-    const host = createHost({ ui: {}, delegate: {}, parent });
+    const host = createHost({ ui: {}, delegate: {}, stageEl, parent });
+    expect(host.stageEl).toBe(stageEl);
     expect(host.parent).toBe(parent);
   });
 });

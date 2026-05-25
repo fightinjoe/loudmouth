@@ -19,10 +19,7 @@ const SWIPED_CLASS = "card-row-wrapper--swiped";
 
 export function registerCardActions({ host, stageEl, isEdit, resetReveal, deps }) {
   const { ui, delegate } = host;
-  const {
-    updateCard, deleteCard,
-    openCardEditPanel, openCardReview,
-  } = deps;
+  const { updateCard, deleteCard, openCardEditPanel } = deps;
 
   const actions = [
     ["content/star-card", async (_e, el) => {
@@ -98,8 +95,8 @@ export function registerCardActions({ host, stageEl, isEdit, resetReveal, deps }
         return;
       }
       const { cards, deck } = ui.get("content");
-      const idx = cards.findIndex((c) => String(c.id) === el.dataset.cardId);
-      openCardReview(stageEl, cards, deck, idx < 0 ? 0 : idx);
+      const index = cards.findIndex((c) => String(c.id) === el.dataset.cardId);
+      ui.transition("details/open", { deck, cards, index: index < 0 ? 0 : index });
     }],
   ];
 

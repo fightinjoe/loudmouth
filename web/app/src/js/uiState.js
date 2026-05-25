@@ -94,9 +94,15 @@ export function createUIState(initialByNamespace = {}) {
  * Panes never reach for globals or import other panes directly. If they
  * need something not in host, the host shape is extended (a protocol
  * change), not worked around.
+ *
+ *   ui       — the state machine
+ *   delegate — this pane's layer's click delegate
+ *   stageEl  — the application stage (#app); the layer-stack root that
+ *              transient panes (action, details) need to render into
+ *   parent   — optional; the parent pane's bound interface
  */
-export function createHost({ ui, delegate, parent }) {
-  return { ui, delegate, parent: parent || null };
+export function createHost({ ui, delegate, stageEl, parent }) {
+  return { ui, delegate, stageEl: stageEl || null, parent: parent || null };
 }
 
 /**

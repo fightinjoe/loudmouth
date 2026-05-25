@@ -432,21 +432,66 @@ ruby {
   display: inline-block;
 }
 
-/* ── Card Review Panel ── */
+/* ── Details Pane ── */
+/* The details pane is the third layer; it slides up from the bottom over
+   the content pane. Default position is off-screen; #app[data-details="open"]
+   slides it in. The pane has no scrim per the protocol. */
 
-.card-review-panel {
+#details-pane {
   top: 68px;
   border-radius: 20px 20px 0 0;
   z-index: 100;
+  transform: translateY(100%);
+  transition: transform 240ms cubic-bezier(.2,.7,.2,1);
+  overflow: hidden;
 }
 
-.card-review-panel[data-dragging] {
+#app[data-details="open"] #details-pane {
+  transform: translateY(0);
+}
+
+#details-pane[data-dragging] {
   transition: none;
 }
 
-.card-review-body {
-  padding: 1.25rem;
+/* The card-stage clips the 3-wide stack so only the current card is visible
+   at rest. */
+.details-pane .card-stage {
+  position: relative;
   overflow: hidden;
+  padding: 1.25rem 0;
+}
+
+/* 3-card stack: prev | current | next. The stack itself is 300% wide and
+   translated -33.3333% so the current card sits centered. A drag adds a
+   pixel offset on top. */
+.details-pane .card-stack {
+  position: absolute;
+  inset: 0;
+  width: 300%;
+  display: flex;
+  transform: translateX(-33.3333%);
+  transition: transform 240ms cubic-bezier(.2,.7,.2,1);
+  will-change: transform;
+}
+
+.details-pane .card-stack[data-dragging] {
+  transition: none;
+}
+
+.details-pane .card-face {
+  flex: 0 0 33.3333%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  gap: 1rem;
+}
+
+.details-pane .card-face[data-empty="true"] {
+  visibility: hidden;
 }
 
 .review-card {
@@ -466,16 +511,25 @@ ruby {
   display: none;
 }
 
-.card-review-content {
-  gap: 1rem;
-  width: 100%;
-  max-width: 320px;
+/* Static edge handles for the stack-traverse gesture. Each is a full-height
+   invisible strip on its edge. They sit above the stack so they receive
+   touch events first; click events still reach the back button (it is in
+   the title bar at a higher z-index and outside their bounds). */
+.details-pane .details-handle {
+  position: absolute;
+  top: 44px; /* below the title bar */
+  bottom: 0;
+  width: 28%;
+  z-index: 3;
 }
+.details-pane .details-handle--left { left: 0; }
+.details-pane .details-handle--right { right: 0; }
 
 /* ── Translation area ── */
 
 .review-translation {
   width: 100%;
+  max-width: 320px;
   min-height: 48px;
   border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
@@ -494,56 +548,34 @@ ruby {
 }
 
 /* Reverse mode */
-#app[data-deck-mode="reverse"] .card-review-content {
-  .review-card-text {
-    display: none;
-  }
-  .review-card-reading {
-    display: none;
-  }
-  .review-card-reverse {
-    display: block;
-  }
-  .review-translation {
-    display: none;
-  }
+#app[data-deck-mode="reverse"] .details-pane {
+  .review-card-text { display: none; }
+  .review-card-reading { display: none; }
+  .review-card-reverse { display: block; }
+  .review-translation { display: none; }
 }
 
 /* Study mode: show skeleton; reveal on press */
-#app[data-deck-mode="study"] .card-review-content {
-  .review-translation-skeleton {
-    display: flex;
-  }
-  .review-translation-text {
-    display: none;
-  }
+#app[data-deck-mode="study"] .details-pane {
+  .review-translation-skeleton { display: flex; }
+  .review-translation-text { display: none; }
 
-  &.review--revealed {
-    .review-translation {
-      background: var(--bg-surface);
-      cursor: default;
-    }
-    .review-translation-skeleton {
-      display: none;
-    }
-    .review-translation-text {
-      display: block;
-    }
+  .review-translation--revealed {
+    background: var(--bg-surface);
+    cursor: default;
+    .review-translation-skeleton { display: none; }
+    .review-translation-text { display: block; }
   }
 }
 
 /* Review mode: always show translation */
-#app[data-deck-mode="review"] .card-review-content {
+#app[data-deck-mode="review"] .details-pane {
   .review-translation {
     background: var(--bg-surface);
     cursor: default;
   }
-  .review-translation-skeleton {
-    display: none;
-  }
-  .review-translation-text {
-    display: block;
-  }
+  .review-translation-skeleton { display: none; }
+  .review-translation-text { display: block; }
 }
 
 .review-translation-skeleton-line {

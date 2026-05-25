@@ -24,7 +24,6 @@
  */
 import { updateCard, deleteCard, updateDeckCardOrder } from "../js/db.js";
 import { setAttrSafe, setListHTMLSafe } from "../js/uiState.js";
-import { openCardReview } from "../components/card-review.js";
 import { openCardEditPanel } from "../components/card-edit-panel.js";
 import { renderDeckBody, renderCardsHTML } from "./content-pane-render.js";
 import { wireContentGestures } from "./content-pane-gestures.js";
@@ -127,8 +126,7 @@ export default {
   },
 
   bindEvents(rootEl, host) {
-    const { ui, delegate } = host;
-    const stageEl = rootEl.parentElement.parentElement; // #app
+    const { ui, delegate, stageEl } = host;
     const meatEl = rootEl.querySelector('[data-region="content-body"]');
     const handleEl = rootEl.querySelector(".handle");
     const reorderHandleEl = rootEl.querySelector("#reorder-handle");
@@ -229,7 +227,7 @@ export default {
       stageEl,
       isEdit,
       resetReveal,
-      deps: { updateCard, deleteCard, openCardEditPanel, openCardReview },
+      deps: { updateCard, deleteCard, openCardEditPanel },
     });
 
     return () => {

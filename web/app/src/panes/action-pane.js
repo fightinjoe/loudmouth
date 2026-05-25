@@ -19,6 +19,7 @@
  * onClose to `action/close` so the slice stays in sync no matter how the
  * pane was dismissed (back button, scrim, swipe-down).
  */
+import { setAttrSafe } from "../js/uiState.js";
 import { openTranslationPanel } from "../components/translation-panel.js";
 import { openGenerateCardsPanel } from "../components/generate-cards-panel.js";
 import { openDeckSettings } from "../components/deck-settings.js";
@@ -34,13 +35,13 @@ import {
   getCards,
 } from "../js/db.js";
 
-function openKind(kind, payload, host, stageEl, onDismiss) {
+function openKind(kind, payload, host, hostEl, onDismiss) {
   const { ui } = host;
 
   if (kind === "translation") {
     const { deck } = payload;
     return openTranslationPanel(
-      stageEl,
+      hostEl,
       deck,
       { importCards },
       (addedCard) => {
@@ -56,7 +57,7 @@ function openKind(kind, payload, host, stageEl, onDismiss) {
   if (kind === "generate") {
     const targetDeck = payload?.targetDeck || null;
     return openGenerateCardsPanel(
-      stageEl,
+      hostEl,
       { createDeck, importCards },
       async (resultDeckId) => {
         ui.transition("nav/reload");
@@ -80,12 +81,12 @@ function openKind(kind, payload, host, stageEl, onDismiss) {
   if (kind === "settings") {
     const { deck, cards } = payload;
     return openDeckSettings(
-      stageEl,
+      hostEl,
       deck,
       {
         updateDeckMode, updateDeckName, updateDeckOrder,
         updateDeckReadingDisplay, deleteDeck,
-        exportJson: () => openJsonPanel(stageEl, deck.name, toImportJson(cards)),
+        exportJson: () => openJsonPanel(hostEl, deck.name, toImportJson(cards)),
       },
       (changes) => {
         ui.transition("nav/reload");
@@ -113,12 +114,21 @@ export default {
   },
 
   render() {
-    return "";
+    // Stable host element for sub-kinds to mount into. Sub-kinds expect a
+    // parent for appendChild; this gives them one that lives for the life
+    // of the app and is identifiable in the DOM. The data-action-state
+    // attribute on the stage drives any CSS that needs to know whether an
+    // action pane is open.
+    return `<div id="action-layer"></div>`;
   },
 
-  bindEvents(_rootEl, host) {
-    const { ui } = host;
-    const stageEl = document.getElementById("app");
+  bindEvents(rootEl, host) {
+    const { ui, stageEl } = host;
+
+    // Mirror the slice presence onto the stage so CSS can react.
+    const unsubAttr = ui.subscribe("action", (next) => {
+      setAttrSafe(stageEl, "actionState", next ? "open" : "closed");
+    });
 
     let currentHandle = null;
     let currentKey = null;
@@ -155,13 +165,14 @@ export default {
         }
       };
 
-      const handle = openKind(next.kind, next.payload || {}, host, stageEl, onDismiss);
+      const handle = openKind(next.kind, next.payload || {}, host, rootEl, onDismiss);
       currentHandle = handle;
       currentKey = nextKey;
     });
 
     return () => {
       unsub();
+      unsubAttr();
       if (currentHandle) currentHandle.close();
     };
   },

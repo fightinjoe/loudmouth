@@ -11,6 +11,7 @@ import { createUIState, createHost, setAttrSafe } from "../js/uiState.js";
 import { createDelegate } from "../js/delegate.js";
 import navPane from "./nav-pane.js";
 import contentPane from "./content-pane.js";
+import detailsPane from "./details-pane.js";
 import actionPane from "./action-pane.js";
 
 const LAST_DECK_KEY = "loudmouth.lastDeckId";
@@ -40,11 +41,15 @@ export function initApp(params) {
   // Mount the static stage scaffolding. Each pane's `render` produces its own
   // root element; they go inside #app-shell in z-order: nav (shell) → content.
   appEl.dataset.shell = "foreground";
+  appEl.dataset.details = "closed";
+  appEl.dataset.actionState = "closed";
   appEl.innerHTML = `
     <div id="app-shell" class="fixed-inset overflow-hidden">
       ${navPane.render(navPane.initialState)}
       ${contentPane.render(contentPane.initialState)}
     </div>
+    ${detailsPane.render(detailsPane.initialState)}
+    ${actionPane.render(actionPane.initialState)}
   `;
 
   // Build the state machine with every pane's initial slice + cross-layer slices.
@@ -52,11 +57,13 @@ export function initApp(params) {
     shell: { exposed: "foreground" },
     [navPane.namespace]: navPane.initialState,
     [contentPane.namespace]: contentPane.initialState,
+    [detailsPane.namespace]: detailsPane.initialState,
     [actionPane.namespace]: actionPane.initialState,
   });
   ui.registerTransitions(shellTransitions);
   ui.registerTransitions(navPane.transitions);
   ui.registerTransitions(contentPane.transitions);
+  ui.registerTransitions(detailsPane.transitions);
   ui.registerTransitions(actionPane.transitions);
 
   // Shell subscriber writes the data-* attribute that the CSS uses.
@@ -67,19 +74,23 @@ export function initApp(params) {
   // Per-layer delegates.
   const navEl = appEl.querySelector("#nav-pane");
   const contentEl = appEl.querySelector("#content-pane");
+  const detailsEl = appEl.querySelector("#details-pane");
   const shellDelegate = createDelegate(navEl);
   const contentDelegate = createDelegate(contentEl);
+  const detailsDelegate = createDelegate(detailsEl);
 
   // Persist last-loaded deck whenever content changes.
   ui.subscribe("content", (next, prev) => {
     if (next.deckId && next.deckId !== prev?.deckId) setLastDeckId(next.deckId);
   });
 
-  // Bind panes. The action pane has no resting DOM in v1 — sub-kinds inject
-  // their own DOM via the bottom-sheet primitive when opened.
-  navPane.bindEvents(navEl, createHost({ ui, delegate: shellDelegate }));
-  contentPane.bindEvents(contentEl, createHost({ ui, delegate: contentDelegate }));
-  actionPane.bindEvents(null, createHost({ ui, delegate: null }));
+  // Bind panes. The action pane has a stable host element (#action-layer)
+  // that sub-kinds mount into when opened.
+  const actionEl = appEl.querySelector("#action-layer");
+  navPane.bindEvents(navEl, createHost({ ui, delegate: shellDelegate, stageEl: appEl }));
+  contentPane.bindEvents(contentEl, createHost({ ui, delegate: contentDelegate, stageEl: appEl }));
+  detailsPane.bindEvents(detailsEl, createHost({ ui, delegate: detailsDelegate, stageEl: appEl }));
+  actionPane.bindEvents(actionEl, createHost({ ui, delegate: null, stageEl: appEl }));
 
   // Initial route — kick off a deck load.
   const initialDeckId = params?.id || getLastDeckId();
