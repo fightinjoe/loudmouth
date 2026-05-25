@@ -17,9 +17,8 @@ import { speak, ttsText } from "../js/tts.js";
 const CARD_WRAPPER_SEL = ".card-row-wrapper";
 const SWIPED_CLASS = "card-row-wrapper--swiped";
 
-export function registerCardActions({ host, stageEl, isEdit, resetReveal, deps }) {
+export function registerCardActions({ host, isEdit, resetReveal }) {
   const { ui, delegate } = host;
-  const { updateCard, deleteCard, openCardEditPanel } = deps;
 
   const actions = [
     ["content/star-card", async (_e, el) => {
@@ -49,25 +48,7 @@ export function registerCardActions({ host, stageEl, isEdit, resetReveal, deps }
       const { cards } = ui.get("content");
       const card = cards.find((c) => String(c.id) === el.dataset.cardId);
       if (!card) return;
-      openCardEditPanel(
-        stageEl,
-        card,
-        { updateCard, deleteCard },
-        (updatedCard) => {
-          const { cards: cur } = ui.get("content");
-          const idx = cur.findIndex((c) => String(c.id) === String(updatedCard.id));
-          if (idx < 0) return;
-          const next = cur.slice();
-          next[idx] = updatedCard;
-          ui.transition("content/cards-changed", { cards: next });
-        },
-        (cardId) => {
-          const { cards: cur } = ui.get("content");
-          ui.transition("content/cards-changed", {
-            cards: cur.filter((c) => String(c.id) !== String(cardId)),
-          });
-        },
-      );
+      ui.transition("action/open", { kind: "card-edit", payload: { card } });
     }],
 
     ["content/delete-card", (_e, el) => {

@@ -24,6 +24,7 @@ import { openTranslationPanel } from "../components/translation-panel.js";
 import { openGenerateCardsPanel } from "../components/generate-cards-panel.js";
 import { openDeckSettings } from "../components/deck-settings.js";
 import { openJsonPanel, toImportJson } from "../components/json-panel.js";
+import { openCardEditPanel } from "../components/card-edit-panel.js";
 import {
   createDeck,
   importCards,
@@ -32,6 +33,8 @@ import {
   updateDeckOrder,
   updateDeckReadingDisplay,
   deleteDeck,
+  updateCard,
+  deleteCard,
   getCards,
 } from "../js/db.js";
 
@@ -86,7 +89,9 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
       {
         updateDeckMode, updateDeckName, updateDeckOrder,
         updateDeckReadingDisplay, deleteDeck,
-        exportJson: () => openJsonPanel(hostEl, deck.name, toImportJson(cards)),
+        exportJson: () => ui.transition("action/open", {
+          kind: "json", payload: { title: deck.name, jsonString: toImportJson(cards) },
+        }),
       },
       (changes) => {
         ui.transition("nav/reload");
@@ -94,6 +99,37 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
       },
       onDismiss,
     );
+  }
+
+  if (kind === "card-edit") {
+    const { card } = payload;
+    return openCardEditPanel(
+      hostEl,
+      card,
+      { updateCard, deleteCard },
+      (updatedCard) => {
+        const content = ui.get("content");
+        if (!content) return;
+        const idx = content.cards.findIndex((c) => String(c.id) === String(updatedCard.id));
+        if (idx < 0) return;
+        const next = content.cards.slice();
+        next[idx] = updatedCard;
+        ui.transition("content/cards-changed", { cards: next });
+      },
+      (cardId) => {
+        const content = ui.get("content");
+        if (!content) return;
+        ui.transition("content/cards-changed", {
+          cards: content.cards.filter((c) => String(c.id) !== String(cardId)),
+        });
+      },
+      onDismiss,
+    );
+  }
+
+  if (kind === "json") {
+    const { title, jsonString } = payload;
+    return openJsonPanel(hostEl, title, jsonString, onDismiss);
   }
 
   console.warn(`action-pane: unknown kind ${kind}`);

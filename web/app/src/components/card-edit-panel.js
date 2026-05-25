@@ -14,7 +14,7 @@ function getPlainReading(reading) {
   return reading.map(([base, annotation]) => annotation || base).join('');
 }
 
-export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSave, onDelete) {
+export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSave, onDelete, onDismiss) {
   const panel = document.createElement('div')
   panel.className = 'card-edit-panel pane-screen fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
   appEl.appendChild(panel)
@@ -23,9 +23,12 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
     requestAnimationFrame(() => panel.classList.add('pane-screen--visible'))
   })
 
+  let closed = false
   function close() {
+    if (closed) return
+    closed = true
     panel.classList.remove('pane-screen--visible')
-    panel.addEventListener('transitionend', () => panel.remove(), { once: true })
+    panel.addEventListener('transitionend', () => { panel.remove(); onDismiss?.() }, { once: true })
   }
 
   panel.innerHTML = `
@@ -115,4 +118,6 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
     close()
     onDelete(card.id)
   })
+
+  return { close }
 }

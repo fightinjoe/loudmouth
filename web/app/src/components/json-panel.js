@@ -11,7 +11,7 @@ export function toImportJson(cards) {
   return JSON.stringify({ cards: cards.map(cardToExportable) }, null, 2)
 }
 
-export function openJsonPanel(appEl, title, jsonString) {
+export function openJsonPanel(appEl, title, jsonString, onDismiss) {
   const panel = document.createElement('div')
   panel.className = 'json-panel pane-screen fixed-inset bg-primary flex-col transition-sheet'
   appEl.appendChild(panel)
@@ -20,14 +20,17 @@ export function openJsonPanel(appEl, title, jsonString) {
     requestAnimationFrame(() => panel.classList.add('pane-screen--visible'))
   })
 
+  let closed = false
   function close() {
+    if (closed) return
+    closed = true
     panel.classList.remove('pane-screen--visible')
-    panel.addEventListener('transitionend', () => panel.remove(), { once: true })
+    panel.addEventListener('transitionend', () => { panel.remove(); onDismiss?.() }, { once: true })
   }
 
   panel.innerHTML = `
     <div class="pane-header flex items-center">
-      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
+      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 json-pane-back" aria-label="Back">‹</button>
       <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">${title}</span>
       <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 pane-action-text json-pane-copy-btn" id="btn-copy-json">Copy</button>
     </div>
@@ -38,7 +41,7 @@ export function openJsonPanel(appEl, title, jsonString) {
 
   panel.querySelector('.json-pane-textarea').value = jsonString
 
-  panel.querySelector('.icon_button').addEventListener('click', close)
+  panel.querySelector('.json-pane-back').addEventListener('click', close)
 
   const copyBtn = panel.querySelector('#btn-copy-json')
   copyBtn.addEventListener('click', () => {
@@ -60,4 +63,6 @@ export function openJsonPanel(appEl, title, jsonString) {
       setTimeout(() => { copyBtn.textContent = 'Copy' }, 1500)
     }
   })
+
+  return { close }
 }

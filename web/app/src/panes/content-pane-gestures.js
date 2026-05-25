@@ -102,6 +102,15 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
     if (!revealAxis) {
       if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
       revealAxis = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      // Bail out cleanly if axis is vertical — let scroll proceed without
+      // leaving data-dragging stuck on the row until touchend.
+      if (revealAxis !== "h") {
+        const row = revealTarget.querySelector(ROW_SEL);
+        delete row.dataset.dragging;
+        revealTarget = null;
+        revealAxis = null;
+        return;
+      }
     }
     if (revealAxis !== "h") return;
     e.preventDefault();
@@ -147,13 +156,23 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
 
   // ── Reorder gesture (edit mode) ─────────────────────────────────────────
   // Static handle overlays the list region. On touchstart we use
-  // elementFromPoint to find the row underneath, then translateY-drag it.
-  // On touchend, we compute the target index and fire content/reorder.
+  // elementFromPoint to find the row underneath. Then:
+  //   - clone the row as a fixed-position ghost that follows the finger
+  //   - dim the original row in place as a "placeholder"
+  //   - on touchmove, walk visible row rects to figure out where the
+  //     placeholder should be; if it should move, swap its DOM position
+  //     (siblings reflow with a CSS transition)
+  //   - on touchend, the placeholder's index IS the final position; fire
+  //     content/reorder if it differs from the start
   //
-  // Per Rule 7: both the dragged row AND the list region carry
-  // data-dragging during the drag so subscribers don't paint over us.
+  // Per Rule 7: the list region carries data-dragging during the drag so
+  // setListHTMLSafe-gated subscribers don't repaint and orphan the
+  // placeholder/ghost.
 
   const REORDER_THRESHOLD_PX = 4;
+  const REORDER_PLACEHOLDER_CLASS = "card-row-reorder-placeholder";
+  const REORDER_REORDERING_CLASS = "deck-view-list--reordering";
+  const REORDER_GHOST_CLASS = "card-row-reorder-ghost";
 
   let reorderState = null;
   function findRowAt(x, y) {
@@ -168,8 +187,25 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
     return rootEl.querySelector('[data-region="card-list"]');
   }
 
-  function rowHeight(rowEl) {
-    return rowEl.getBoundingClientRect().height || 64;
+  function visibleRows(region) {
+    return [...region.querySelectorAll("[data-card-id]")];
+  }
+
+  // Walk sibling rects to figure out which slot the ghost-midpoint is over.
+  // Returns the new index of the placeholder (in the list ignoring itself).
+  function updatePlaceholderPosition(state, ghostMidY) {
+    const region = listRegion();
+    if (!region) return state.currentIndex;
+    const siblings = visibleRows(region).filter((r) => r !== state.placeholderEl);
+    let slot = 0;
+    for (let i = 0; i < siblings.length; i++) {
+      const r = siblings[i].getBoundingClientRect();
+      if (ghostMidY > r.top + r.height / 2) slot = i + 1;
+    }
+    if (slot !== state.currentIndex) {
+      region.insertBefore(state.placeholderEl, siblings[slot] ?? null);
+    }
+    return slot;
   }
 
   reorderHandleEl.addEventListener("touchstart", (e) => {
@@ -177,16 +213,21 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
     const t = e.touches[0];
     const row = findRowAt(t.clientX, t.clientY);
     if (!row) return;
-    const allRows = [...row.parentElement.querySelectorAll("[data-card-id]")];
+    const region = listRegion();
+    if (!region) return;
+    const allRows = visibleRows(region);
+    const startIndex = allRows.indexOf(row);
     reorderState = {
-      rowEl: row,
+      placeholderEl: row,
       cardId: row.dataset.cardId,
-      startIndex: allRows.indexOf(row),
+      startIndex,
+      currentIndex: startIndex,
       startX: t.clientX,
       startY: t.clientY,
+      ghostStartTop: row.getBoundingClientRect().top,
+      ghostEl: null,
       axis: null,
       active: false,
-      rowH: rowHeight(row),
     };
   }, { passive: true });
 
@@ -202,38 +243,63 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
     }
     if (!reorderState.active) {
       reorderState.active = true;
-      reorderState.rowEl.dataset.dragging = "";
       const region = listRegion();
-      if (region) region.dataset.dragging = "";
+      const row = reorderState.placeholderEl;
+      const rect = row.getBoundingClientRect();
+      // Build the ghost as a fixed-position clone of the row.
+      const ghost = row.cloneNode(true);
+      ghost.classList.add(REORDER_GHOST_CLASS);
+      ghost.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;z-index:500;pointer-events:none;`;
+      document.body.appendChild(ghost);
+      reorderState.ghostEl = ghost;
+      // Dim the original row in place; mark the region so subscribers
+      // don't rebuild it (Rule 7).
+      row.classList.add(REORDER_PLACEHOLDER_CLASS);
+      if (region) {
+        region.classList.add(REORDER_REORDERING_CLASS);
+        region.dataset.dragging = "";
+      }
     }
-    reorderState.rowEl.style.transform = `translateY(${dy}px)`;
+    // Track the finger with the ghost.
+    reorderState.ghostEl.style.top = `${reorderState.ghostStartTop + dy}px`;
+    // Decide where the placeholder belongs now.
+    const ghostRect = reorderState.ghostEl.getBoundingClientRect();
+    reorderState.currentIndex = updatePlaceholderPosition(
+      reorderState,
+      ghostRect.top + ghostRect.height / 2,
+    );
   }, { passive: false });
 
-  function endReorder(t) {
+  function endReorder() {
     if (!reorderState) return;
-    const dy = t.clientY - reorderState.startY;
-    const row = reorderState.rowEl;
+    const { ghostEl, placeholderEl, cardId, startIndex, currentIndex } = reorderState;
     const region = listRegion();
-    const delta = Math.round(dy / reorderState.rowH);
-    const toIndex = reorderState.startIndex + delta;
-    const fromId = reorderState.cardId;
-    const committed = reorderState.axis === "v" && Math.abs(delta) >= 1;
-
-    row.style.transform = "";
-    delete row.dataset.dragging;
-    if (region) delete region.dataset.dragging;
+    if (ghostEl) ghostEl.remove();
+    placeholderEl.classList.remove(REORDER_PLACEHOLDER_CLASS);
+    if (region) {
+      region.classList.remove(REORDER_REORDERING_CLASS);
+      delete region.dataset.dragging;
+    }
+    const committed = currentIndex !== startIndex;
     reorderState = null;
-
-    if (committed) ui.transition("content/reorder", { fromId, toIndex });
+    if (committed) ui.transition("content/reorder", { fromId: cardId, toIndex: currentIndex });
   }
-  reorderHandleEl.addEventListener("touchend", (e) => endReorder(e.changedTouches[0]));
-  reorderHandleEl.addEventListener("touchcancel", (e) => {
+  reorderHandleEl.addEventListener("touchend", endReorder);
+  reorderHandleEl.addEventListener("touchcancel", () => {
     if (!reorderState) return;
-    const row = reorderState.rowEl;
+    // Cancel without committing: roll back to original DOM position.
+    const { ghostEl, placeholderEl, startIndex } = reorderState;
     const region = listRegion();
-    row.style.transform = "";
-    delete row.dataset.dragging;
-    if (region) delete region.dataset.dragging;
+    if (region) {
+      const siblings = visibleRows(region).filter((r) => r !== placeholderEl);
+      region.insertBefore(placeholderEl, siblings[startIndex] ?? null);
+    }
+    if (ghostEl) ghostEl.remove();
+    placeholderEl.classList.remove(REORDER_PLACEHOLDER_CLASS);
+    if (region) {
+      region.classList.remove(REORDER_REORDERING_CLASS);
+      delete region.dataset.dragging;
+    }
     reorderState = null;
   });
 

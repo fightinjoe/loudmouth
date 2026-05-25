@@ -22,9 +22,8 @@
  *   content/toggle-menu            — toggle the deck-title menu
  *   content/close-menu             — close the deck-title menu
  */
-import { updateCard, deleteCard, updateDeckCardOrder } from "../js/db.js";
+import { updateDeckCardOrder } from "../js/db.js";
 import { setAttrSafe, setListHTMLSafe } from "../js/uiState.js";
-import { openCardEditPanel } from "../components/card-edit-panel.js";
 import { renderDeckBody, renderCardsHTML } from "./content-pane-render.js";
 import { wireContentGestures } from "./content-pane-gestures.js";
 import { registerCardActions } from "./content-pane-actions.js";
@@ -154,8 +153,21 @@ export default {
       }
       setAttrSafe(rootEl, "editMode", next.editMode ? "" : null);
       setAttrSafe(rootEl, "menuOpen", next.menuOpen ? "" : null);
+      if (next.menuOpen && !prev?.menuOpen) positionTitleMenu();
       if (next.deck?.mode) stageEl.dataset.deckMode = next.deck.mode;
     });
+
+    // Position the title-tap menu anchored to the title button. The button
+    // is in the dynamic header (re-rendered on deck swap), so we re-query
+    // it at open time rather than holding a stale reference.
+    const menuEl = rootEl.querySelector("#deck-title-menu");
+    function positionTitleMenu() {
+      const anchor = meatEl.querySelector('[data-action="content/deck-title"]');
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      menuEl.style.top = `${rect.bottom + 4}px`;
+      menuEl.style.left = `${rect.left + rect.width / 2}px`;
+    }
 
     // Persistence: when edit mode exits with a committed order, write it.
     const unsubPersist = ui.subscribe("content", (next, prev) => {
@@ -222,13 +234,7 @@ export default {
       ui.transition("action/open", { kind: "generate", payload: { targetDeck: deck } });
     });
 
-    const unregisterCardActions = registerCardActions({
-      host,
-      stageEl,
-      isEdit,
-      resetReveal,
-      deps: { updateCard, deleteCard, openCardEditPanel },
-    });
+    const unregisterCardActions = registerCardActions({ host, isEdit, resetReveal });
 
     return () => {
       unsubContent();

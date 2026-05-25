@@ -9,8 +9,8 @@
 
 #deck-title-menu {
   position: fixed;
-  top: 64px;
-  left: 50%;
+  /* top/left are written by JS to track the title button's
+     getBoundingClientRect (see content-pane.js positionTitleMenu). */
   border-radius: var(--radius-sm);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   z-index: 300;
