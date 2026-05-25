@@ -1,0 +1,1182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pane Protocol — Loudmouth Web</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #666;
+    --accent: #2d6a4f;
+    --bg: #fafaf7;
+    --rule: #e3e1d8;
+    --code-bg: #f0eee6;
+  }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 -apple-system, "Helvetica Neue", system-ui, sans-serif; }
+  main { max-width: 740px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 32px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  h1 + .sub { color: var(--muted); margin: 0 0 32px; font-style: italic; }
+  h2 { font-size: 22px; margin: 48px 0 12px; letter-spacing: -0.01em; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+  h3 { font-size: 17px; margin: 28px 0 8px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 12px; padding-left: 24px; }
+  li { margin-bottom: 4px; }
+  code, kbd { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font: 13px/1.4 "SF Mono", Menlo, Consolas, monospace; }
+  .callout { border-left: 3px solid var(--accent); padding: 12px 16px; background: rgba(45, 106, 79, 0.04); margin: 16px 0; border-radius: 0 4px 4px 0; }
+  .callout strong { color: var(--accent); }
+  .toc { background: var(--code-bg); padding: 16px 20px 16px 40px; border-radius: 6px; margin-bottom: 32px; }
+  .toc ol { margin: 0; }
+  .toc a { color: var(--ink); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .rule-label { display: inline-block; background: var(--accent); color: white; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; letter-spacing: 0.05em; text-transform: uppercase; margin-right: 8px; vertical-align: 1px; }
+  .glossary { background: white; border: 1px solid var(--rule); border-radius: 6px; padding: 20px 24px; margin: 16px 0 32px; }
+  .glossary dt { font-weight: 600; margin-top: 10px; }
+  .glossary dt:first-child { margin-top: 0; }
+  .glossary dd { margin: 4px 0 0 0; color: var(--muted); }
+  .glossary dd code { color: var(--ink); }
+
+  /* ── Live example styles (scoped to .example) ──────────────────── */
+  .example {
+    margin: 16px 0 24px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+  }
+  .example-header {
+    padding: 8px 12px;
+    background: var(--code-bg);
+    border-bottom: 1px solid var(--rule);
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .example-stage {
+    position: relative;
+    height: 440px;
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+  /* Layer 1: nav pane (bottom of the stack) */
+  .example-stage .nav-pane {
+    position: absolute;
+    inset: 0;
+    background: #2d3138;
+    color: #d8d6cf;
+    padding: 24px 20px;
+    font-size: 14px;
+    z-index: 1;
+  }
+  .example-stage .nav-pane h4 { margin: 0 0 12px; font-size: 13px; letter-spacing: 0.1em; color: #8a857a; text-transform: uppercase; }
+  .example-stage .nav-pane .deck-item {
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 2px;
+  }
+  .example-stage .nav-pane .deck-item:hover { background: rgba(255,255,255,0.05); }
+  .example-stage .nav-pane .deck-item[data-active="true"] { background: rgba(45, 106, 79, 0.3); color: white; }
+
+  /* Layer 2: content pane */
+  .example-stage .content-pane {
+    position: absolute;
+    inset: 0;
+    background: #fafaf7;
+    transition: transform 240ms cubic-bezier(.2,.7,.2,1);
+    will-change: transform;
+    box-shadow: -8px 0 16px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    z-index: 2;
+  }
+  .example-stage .content-pane[data-dragging] { transition: none; }
+  .example-stage[data-shell="background"] .content-pane { transform: translateX(220px); }
+
+  /* Content pane title bar — visual chrome only, NOT a gesture handle */
+  .example-stage .content-pane .title-bar {
+    height: 44px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--rule);
+    background: white;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .example-stage .content-pane .title-bar button {
+    border: 0;
+    background: transparent;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .example-stage .content-pane .title-bar button:hover { background: var(--code-bg); }
+  .example-stage .content-pane .title-bar .title { flex: 1; font-weight: 600; font-size: 14px; }
+
+  /* Content shell handle — invisible strip on the left edge for the
+     "swipe right to reveal nav" gesture. Floats over the content; does not
+     consume layout space. Full pane height. */
+  .example-stage .content-pane .shell-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 24px;
+    z-index: 2;
+    /* invisible but tappable; uncomment to debug:
+       background: rgba(255, 0, 0, 0.08); */
+  }
+  /* When the shell is exposed (background), the handle expands to cover the
+     whole content pane so the user can swipe left from anywhere to bring
+     content back. */
+  .example-stage[data-shell="background"] .content-pane .shell-handle {
+    right: 0;
+    width: auto;
+  }
+  .example-stage .content-pane .body {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .example-stage .content-pane .body p { margin: 0 0 8px; }
+  .example-stage .content-pane .card-row {
+    background: white;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    color: var(--ink);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .example-stage .content-pane .card-row:hover { background: var(--code-bg); }
+  .example-stage .content-pane .card-row .meaning { color: var(--muted); font-size: 13px; }
+
+  /* Scrim above content when nav exposed */
+  .example-stage .shell-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.0);
+    pointer-events: none;
+    transition: background 240ms;
+    z-index: 1;
+  }
+  .example-stage[data-shell="background"] .shell-scrim {
+    background: rgba(0,0,0,0.25);
+    pointer-events: auto;
+  }
+
+  /* Layer 3: details pane */
+  .example-stage .details-pane {
+    position: absolute;
+    inset: 0;
+    background: #ece9df;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 240ms cubic-bezier(.2,.7,.2,1);
+    z-index: 3;
+    will-change: transform;
+  }
+  .example-stage .details-pane[data-dragging] { transition: none; }
+  .example-stage[data-details="open"] .details-pane { transform: translateX(0); }
+  /* Title bar = visual chrome only, NOT a gesture handle */
+  .example-stage .details-pane .title-bar {
+    height: 44px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+  }
+  .example-stage .details-pane .title-bar button {
+    border: 0;
+    background: transparent;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  .example-stage .details-pane .title-bar .position {
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  /* The card-stage clips the 3-wide stack so only one card is visible at rest. */
+  .example-stage .details-pane .card-stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  /* 3-card stack: prev | current | next, each 1/3 of the stack width.
+     The stack itself is 300% of the stage, translated -100% so the
+     current card sits centered. Drag translates the whole stack. */
+  .example-stage .details-pane .card-stack {
+    position: absolute;
+    inset: 0;
+    width: 300%;
+    transform: translateX(-33.3333%);
+    display: flex;
+    will-change: transform;
+    transition: transform 240ms cubic-bezier(.2,.7,.2,1);
+  }
+  .example-stage .details-pane .card-stack[data-dragging] { transition: none; }
+  /* Each card-face is one slot of the 3-wide stack. The slot itself is a
+     flex container that centers an inner .card-visual element — the actual
+     white card the user sees. */
+  .example-stage .details-pane .card-face {
+    flex: 0 0 33.3333%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 0;
+  }
+  .example-stage .details-pane .card-face .card-visual {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 40px 24px;
+    width: 80%;
+    max-width: 280px;
+    text-align: center;
+    box-sizing: border-box;
+  }
+  .example-stage .details-pane .card-face .reading { color: #8b8b8b; font-size: 12px; letter-spacing: 0.15em; margin-bottom: 8px; }
+  .example-stage .details-pane .card-face .text { font-size: 32px; font-weight: 700; }
+  .example-stage .details-pane .card-face .meaning { margin-top: 16px; color: var(--muted); font-size: 14px; }
+  /* Hide prev/next slots when no neighbor exists (set via data attr). */
+  .example-stage .details-pane .card-face[data-empty="true"] { visibility: hidden; }
+
+  /* Static gesture handles on the details pane: full-height invisible
+     strips on the left and right edges. They float above the card-stage
+     to receive touch events; clicks pass through to allow tap-to-close
+     on the title bar's back button (which lives in a higher z-index). */
+  .example-stage .details-pane .details-handle {
+    position: absolute;
+    top: 44px; /* below the title bar */
+    bottom: 0;
+    width: 28%;
+    z-index: 3;
+    /* invisible but tappable; uncomment to debug:
+       background: rgba(0, 128, 255, 0.08); */
+  }
+  .example-stage .details-pane .details-handle--left  { left: 0; }
+  .example-stage .details-pane .details-handle--right { right: 0; }
+
+  /* Layer 4: action pane (bottom sheet + scrim) */
+  .example-stage .action-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.0);
+    pointer-events: none;
+    transition: background 240ms;
+    z-index: 4;
+  }
+  .example-stage[data-action="open"] .action-scrim {
+    background: rgba(0,0,0,0.35);
+    pointer-events: auto;
+  }
+  .example-stage .action-pane {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: white;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.12);
+    transform: translateY(100%);
+    transition: transform 280ms cubic-bezier(.2,.7,.2,1);
+    z-index: 5;
+    padding: 0 0 20px;
+    will-change: transform;
+  }
+  .example-stage .action-pane[data-dragging] { transition: none; }
+  .example-stage[data-action="open"] .action-pane { transform: translateY(0); }
+  .example-stage .action-pane .sheet-handle {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+  }
+  .example-stage .action-pane .sheet-handle::before {
+    content: "";
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: #d4d2c9;
+  }
+  .example-stage .action-pane .sheet-body {
+    padding: 0 20px 8px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .example-stage .action-pane .sheet-body h5 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: 16px;
+  }
+  .example-stage .action-pane .sheet-body button {
+    border: 0;
+    background: var(--accent);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 100px;
+    margin-top: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .example-stage .action-pane .fab-row {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index: 10;
+  }
+  .example-stage .fab {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    border: 0;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  }
+
+  .example-log {
+    font: 11px/1.5 "SF Mono", Menlo, monospace;
+    background: #1a1a1a;
+    color: #b8d4c2;
+    padding: 8px 12px;
+    max-height: 110px;
+    overflow-y: auto;
+    border-top: 1px solid var(--rule);
+  }
+  .example-log .row { white-space: pre; }
+  .example-log .row .ts { color: #6a8676; margin-right: 8px; }
+  .example-log .row .verb { color: #f0c674; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Pane Protocol</h1>
+<p class="sub">How Loudmouth's web app organizes UI state, panes, gestures, and events. Read this before implementing or modifying any pane.</p>
+
+<div class="toc">
+  <ol>
+    <li><a href="#glossary">Glossary</a></li>
+    <li><a href="#why">Why this exists</a></li>
+    <li><a href="#mental-model">The mental model — four layers</a></li>
+    <li><a href="#ui-state">Rule 1 — UI state lives in one place, organized by namespace</a></li>
+    <li><a href="#transitions">Rule 2 — State only changes through named transitions</a></li>
+    <li><a href="#panes">Rule 3 — Every pane follows the same contract</a></li>
+    <li><a href="#rendering">Rule 4 — Render once, then update attributes</a></li>
+    <li><a href="#delegation">Rule 5 — One click handler per layer</a></li>
+    <li><a href="#gestures">Rule 6 — Gestures track the finger; transitions commit on release</a></li>
+    <li><a href="#dragging">Rule 7 — Subscribers never touch a dragging element</a></li>
+    <li><a href="#layering">Rule 8 — Layer stack is fixed: shell &lt; content &lt; details &lt; action</a></li>
+    <li><a href="#example">Live example</a></li>
+    <li><a href="#applying">Applying the contract to a new pane</a></li>
+    <li><a href="#anti">Things this protocol explicitly forbids</a></li>
+    <li><a href="#migration">Migration notes</a></li>
+  </ol>
+</div>
+
+<h2 id="glossary">Glossary</h2>
+
+<p>Read this section first. Every other rule uses these terms with the precise meaning given here. Past versions of the code use "pane", "drawer", "sheet", and "panel" interchangeably; this protocol settles the vocabulary.</p>
+
+<div class="glossary">
+  <dl>
+    <dt>Pane</dt>
+    <dd>The universal noun. A pane is any major surface the user sees. Specific kinds are <em>navigation pane</em>, <em>content pane</em>, <em>details pane</em>, <em>action pane</em>. Never use "drawer", "sheet", "panel", or "view" as synonyms. ("Sheet" survives only inside the action pane's implementation as <code>.sheet-handle</code> — that is historical CSS and acceptable.)</dd>
+
+    <dt>Layer</dt>
+    <dd>One of the four fixed z-stack positions in the application. There are exactly four layers, in this order from bottom to top: <em>shell</em>, <em>content</em>, <em>details</em>, <em>action</em>. A pane lives in exactly one layer. The stack order never changes (see Rule 8).</dd>
+
+    <dt>Navigation pane</dt>
+    <dd>Lives in the <em>shell</em> layer. Lists decks; sits underneath the content pane. Revealed by sliding the content pane sideways.</dd>
+
+    <dt>Content pane</dt>
+    <dd>Lives in the <em>content</em> layer. Shows the currently selected screen — a deck, a browse view, the empty state. Slides sideways to reveal the navigation pane underneath.</dd>
+
+    <dt>Details pane</dt>
+    <dd>Lives in the <em>details</em> layer. Sits over the content pane and shows one item at a time (one card's full detail view). Horizontal swipe inside the details pane navigates to the previous or next sibling item without dismissing — the pane stays open, only the item changes. A back affordance closes the layer and returns to the content pane.</dd>
+
+    <dt>Action pane</dt>
+    <dd>Lives in the <em>action</em> layer. A bottom-anchored, modal surface that slides up over a scrim. Used for transient tasks: translation, generate cards, deck settings. Dismissed by swipe-down, scrim click, or an explicit close action. At most one action pane is open at a time.</dd>
+
+    <dt>Scrim</dt>
+    <dd>A semi-transparent overlay that dims the layers underneath when a higher layer is open. The scrim is interactive: clicking it dismisses the layer above it. Both the shell-reveal and the action pane use a scrim; the details pane does not.</dd>
+
+    <dt>Handle</dt>
+    <dd>A static DOM element that exists for the sole purpose of receiving touch gestures. A handle is always present in the same place relative to its parent layer; it is never created or destroyed by content changes. Examples: the top bar of the content pane (where the swipe-to-reveal-nav gesture lives), the drag-bar at the top of an action pane.</dd>
+
+    <dt>State / slice / namespace</dt>
+    <dd>The application has one shared state object. It is divided into named <em>slices</em>; each slice belongs to a <em>namespace</em>. A namespace is the string identifier (for example <code>"shell"</code>, <code>"content"</code>, <code>"details"</code>, <code>"action"</code>); the slice is the value at that key.</dd>
+
+    <dt>Transition</dt>
+    <dd>A named, pure function that takes the current slice plus an optional payload and returns the next slice. The only blessed way to change state. Names follow the pattern <code>namespace/verb</code>, for example <code>action/open</code>.</dd>
+
+    <dt>Action (DOM)</dt>
+    <dd>An interaction declared on a DOM element via <code>data-action="namespace/verb"</code>. The per-layer click handler reads this attribute and dispatches to the registered handler. Often, but not always, an action handler simply calls the transition of the same name.</dd>
+
+    <dt>Subscriber</dt>
+    <dd>A function registered against a namespace that runs whenever that namespace's slice changes. Subscribers read the new slice and write <code>data-*</code> attributes on DOM elements — they never rebuild the DOM.</dd>
+
+    <dt>Delegate</dt>
+    <dd>The single click listener attached to a layer's root element. The delegate routes clicks to action handlers via <code>data-action</code>. There is one delegate per layer (see Rule 5).</dd>
+  </dl>
+</div>
+
+<h2 id="why">Why this exists</h2>
+
+<p>The Loudmouth web app is a mobile-first PWA built in vanilla JavaScript with no framework. Earlier code grew pane-by-pane, with each pane inventing its own way of holding state, wiring events, and reacting to gestures. The result was code that was about eighty percent right, fragile when neighbouring panes changed, and tedious to extend.</p>
+
+<p>This protocol is the smallest set of rules that, when followed, produces panes that fit together without coordination. It exists so that any contributor — human or AI — can read the rules, implement a new pane, and have it behave correctly the first time without inventing infrastructure.</p>
+
+<div class="callout">
+<strong>The single sentence summary:</strong> the app holds one shared state object split into named slices; panes declare what slice they own and what transitions they accept; the DOM is built once and then updated through attributes; one click handler per layer routes interactions; gestures animate motion under the finger but only commit changes on release.
+</div>
+
+<h2 id="mental-model">The mental model — four layers</h2>
+
+<p>Picture the app as a stage with four stacked layers. The stack order never changes.</p>
+
+<ol>
+  <li><strong>Shell layer.</strong> The navigation pane. Lowest, always present, never dismissed. Visible only when the content layer is slid aside.</li>
+  <li><strong>Content layer.</strong> The content pane. Sits over the shell. Always present; the user navigates between content screens (a deck, a browse view, an empty state) by swapping what the content pane renders, not by adding new layers.</li>
+  <li><strong>Details layer.</strong> The details pane. Optional. Sits over the content pane when the user drills into a single item. Stays open across horizontal swipes — swiping left or right inside the details pane traverses to the previous or next sibling item from the underlying content list, without dismissing.</li>
+  <li><strong>Action layer.</strong> The action pane. Optional. Sits over everything else. Bottom-anchored, modal, scrim'd. Used for transient tasks. At most one action pane open at a time. Action layer always wins the z-order — if a details pane is open and an action pane opens on top, the action pane is in front and the details pane remains intact underneath.</li>
+</ol>
+
+<p>The shared state object has one slice per layer plus any other independent concerns (for example, which deck is currently selected for the content layer to render). Each slice has a single owner — a pane module — that defines the slice's shape and the transitions that move it between states.</p>
+
+<p>Gestures animate motion under the user's finger. They temporarily move pixels. When the user lifts their finger, the gesture decides whether the motion crossed a threshold; if so, it calls a transition to record the new resting position. The state machine never sees the in-flight motion.</p>
+
+<h2 id="ui-state"><span class="rule-label">Rule 1</span> UI state lives in one place, organized by namespace</h2>
+
+<p>The application has exactly one state object. It is created at boot and lives for the life of the app. There are no per-pane state objects, no module-level mutable variables for UI state, no booleans hidden in closures.</p>
+
+<p>The object is divided into named slices called namespaces. Every namespace is owned by exactly one pane module. The shell layer's pane owns <code>shell</code>. The content layer's pane owns <code>content</code>. The details pane owns <code>details</code>. The action pane owns <code>action</code>. Two modules trying to claim the same namespace is a registration error and the app should refuse to start.</p>
+
+<p>Subscribers register against a single namespace, not the whole state object. When a slice changes, only the subscribers for that slice are notified. This is what makes the system tolerable as more panes are added — a shell toggle never re-runs content subscribers.</p>
+
+<p>Change is signalled by reference equality on the slice object. Replacing a slice with a new object of identical shape but a different reference is a change; mutating a field inside an existing slice object in place is forbidden and will not notify anyone. The discipline is: always build the next slice as a fresh object (using spread or equivalent), then hand it to the state machine to install.</p>
+
+<h2 id="transitions"><span class="rule-label">Rule 2</span> State only changes through named transitions</h2>
+
+<p>A namespace owner declares a set of transitions. A transition is a named operation that takes the current slice plus an optional payload and returns the next slice (or returns nothing to indicate the slice should be cleared). Transitions are registered at app boot.</p>
+
+<p>Names are namespaced strings of the form <code>namespace/verb</code> — for example <code>action/open</code>, <code>action/close</code>, <code>shell/toggle</code>, <code>content/select-deck</code>, <code>details/open</code>, <code>details/next</code>, <code>details/prev</code>, <code>details/close</code>. Verbs are short, descriptive, and read naturally aloud. The slash is the separator and is part of the identifier.</p>
+
+<p>Code that wants to change state calls the state machine with a transition name and a payload. It does not reach into the slice and write fields directly. This rule exists so that every state change is greppable, named, and reviewable in one pass.</p>
+
+<p>Transitions are pure functions of (previous slice, payload). They do not perform side effects, do not touch the DOM, and do not call other transitions. Side effects belong in subscribers; transitions only describe the next resting state.</p>
+
+<p>An unknown transition is an error in development and a silent no-op in production. A transition that returns the same reference as the previous slice is a no-op; subscribers are not notified.</p>
+
+<h2 id="panes"><span class="rule-label">Rule 3</span> Every pane follows the same contract</h2>
+
+<p>A pane module is a file that exports a single object with the following five fields. Every pane, without exception, exports exactly these fields. No pane invents additional exports for state, transitions, or rendering.</p>
+
+<ul>
+  <li><strong>namespace</strong> — the string this pane owns. Must be unique across the app.</li>
+  <li><strong>initialState</strong> — the slice value this pane contributes when the app boots. May be null for panes that start empty (the details and action panes both start null).</li>
+  <li><strong>transitions</strong> — the map of transition names to transition functions, as described in Rule 2.</li>
+  <li><strong>render</strong> — a function that takes the initial slice and returns the full HTML string for the pane's root element, including any handles. Called exactly once, at mount time. Pure: no DOM access, no closures over mutable state, no side effects.</li>
+  <li><strong>bindEvents</strong> — a function that takes the pane's root DOM element and the global state machine. It creates the layer's delegate, registers click actions through it, subscribes to its own namespace (and any other namespaces it needs to react to), and wires touch gestures directly onto the static handles inside its root. Returns a cleanup function.</li>
+</ul>
+
+<p>Cleanup is invoked when a pane is unmounted. In version one, persistent panes (navigation and content) are never unmounted, so their cleanup is a no-op. Transient panes (details and action) do get unmounted, and their cleanup must remove all delegate registrations, all state subscriptions, and all gesture listeners they installed.</p>
+
+<h2 id="rendering"><span class="rule-label">Rule 4</span> Render once, then update attributes</h2>
+
+<p>A pane's <code>render</code> function runs once when the pane mounts and produces the full DOM subtree as an HTML string. After that, the DOM is never rebuilt. All visible changes from state transitions happen by writing <code>data-*</code> attributes on existing elements, and letting CSS attribute selectors decide how those attribute values translate into visual changes.</p>
+
+<p>For example: when the shell namespace transitions from <code>foreground</code> to <code>background</code>, the subscriber writes <code>data-shell="background"</code> on the stage element. A CSS rule of the form <code>[data-shell="background"] .content-pane { transform: translateX(220px); }</code> does the visual work. JavaScript never sets <code>style.transform</code> or <code>style.display</code> on the resting element, and never calls <code>innerHTML</code> a second time on the same container.</p>
+
+<p>Every element a pane ever needs to show must be present in the HTML returned by <code>render</code>. Elements that should be hidden in some states are present in the DOM and hidden by CSS attribute selectors. There is no conditional omission of elements based on state.</p>
+
+<p>Lists are the one exception. When the underlying data changes — a card is added, a deck is renamed — the list region may be re-rendered by replacing its <code>innerHTML</code> with a fresh string built from the new data. The list region is a stable container; the items inside it are disposable. Event handlers for items rely on delegation (Rule 5), so re-rendering items does not require re-binding handlers. Gestures rely on static handles (Rule 6), so re-rendering items does not require re-binding gesture listeners either.</p>
+
+<h2 id="delegation"><span class="rule-label">Rule 5</span> One click handler per layer</h2>
+
+<p>Each layer has exactly one click listener, attached at boot to that layer's root element. The shell layer has its own delegate, the content layer has its own, details has its own, action has its own. There is <em>not</em> a single application-wide click handler — that would force every shell event through every content listener and would entangle layers that should stay independent.</p>
+
+<p>Every clickable element in a layer carries a <code>data-action</code> attribute. When a click bubbles up to that layer's root, the layer's handler finds the nearest ancestor with a <code>data-action</code> value and dispatches to the function registered for that value.</p>
+
+<p>Panes register their action handlers during <code>bindEvents</code>, against their own layer's delegate. Action names follow the same <code>namespace/verb</code> convention as transitions, and in many cases an action handler does nothing except call a transition with the same name. The action and the transition are different concepts — actions are how the user expresses intent through the DOM, transitions are how the state machine records that intent — but they often share a name for clarity.</p>
+
+<p>Payload data for an action lives on the same element as <code>data-action</code>, in additional <code>data-*</code> attributes. For example, a deck row might carry <code>data-action="content/select-deck"</code> and <code>data-deck-id="003-greetings"</code>. The action handler reads the relevant <code>data-*</code> values off the element it was given.</p>
+
+<p>A pane never calls <code>addEventListener('click', ...)</code> on any element it owns. Clicks are routed entirely through its layer's delegate. Re-rendered list items keep working with no rebinding because the listener is on the layer root, which never re-mounts.</p>
+
+<p>When a higher layer is open (action pane over content, for example), clicks on the higher layer's elements are caught by the higher layer's delegate first because of DOM hit-testing order. Lower layers are visually behind a scrim that intercepts clicks, so the situation does not arise in practice.</p>
+
+<h2 id="gestures"><span class="rule-label">Rule 6</span> Gestures track the finger; transitions commit on release</h2>
+
+<p>Touch gestures (swipe, drag) are not delegated. They wire directly to <em>static handles</em> using <code>touchstart</code>, <code>touchmove</code>, <code>touchend</code>, and <code>touchcancel</code>. A static handle is a DOM element whose location and existence relative to its parent layer never changes for the life of the application — for example, the top bar of the content pane, the drag-bar of the action pane. Handles are written in the pane's <code>render</code> output once and never re-created. Gestures are wired once during <code>bindEvents</code> and never re-wired.</p>
+
+<p>Gestures are <em>never</em> wired to dynamic content inside a pane (individual card rows, list items, or anything that gets re-rendered). If a piece of dynamic content needs a gesture, the pane provides a static handle that detects the gesture and uses event coordinates to identify which item was the target. The reason: re-rendering dynamic content would orphan any listeners attached to it.</p>
+
+<p>A gesture is responsible for three things and three things only.</p>
+
+<ol>
+  <li><strong>Track the finger frame-for-frame.</strong> On every <code>touchmove</code> that belongs to the gesture, the moving element gets its position updated through an inline <code>transform</code>. The position responds to the finger, not to the state machine. This is the entire animation while the finger is down.</li>
+  <li><strong>Suppress CSS transitions during the drag.</strong> While the finger is down, the dragged element carries a <code>data-dragging</code> attribute. A CSS rule disables transitions while that attribute is present, so the inline transform reflects the finger exactly without animating.</li>
+  <li><strong>Commit or snap back on release.</strong> On <code>touchend</code> (and <code>touchcancel</code>), the gesture compares the final displacement against a threshold.
+    <ul>
+      <li>If the threshold was crossed, the gesture calls a transition to record the new resting state, then removes <code>data-dragging</code>. The transition's subscriber writes the new <code>data-*</code> attribute on the stage. CSS sees the attribute change with transitions re-enabled, and the element animates from its current dragged position to its new resting position. There is no jump — the element flows continuously from where the finger left it to where the state says it belongs.</li>
+      <li>If the threshold was not crossed, the gesture removes both the inline transform and <code>data-dragging</code>. CSS animates back to the original resting position (which the data attribute already encodes).</li>
+    </ul>
+  </li>
+</ol>
+
+<p>The gesture never calls a transition during <code>touchmove</code>. The state machine is only ever told about resting positions, never about in-flight motion. This keeps the rendering layer simple and keeps subscribers fast.</p>
+
+<p>Axis lock is mandatory. On the first move that exceeds a small threshold (four pixels in either direction), the gesture decides whether the motion is horizontal or vertical. If the gesture only cares about one axis, motion on the other axis is ignored for the rest of the touch — including not preventing default — so that page scrolling is not disrupted.</p>
+
+<p>Touch cancel is handled the same as a below-threshold touch end: snap back, remove <code>data-dragging</code>, do nothing else.</p>
+
+<h2 id="dragging"><span class="rule-label">Rule 7</span> Subscribers never touch a dragging element</h2>
+
+<p>This is the protocol's load-bearing wall. State subscribers run whenever a slice changes. They write <code>data-*</code> attributes on elements. If a subscriber writes to an element while a gesture is in the middle of dragging it, the subscriber's write will fight the gesture's inline transform and produce visual chaos.</p>
+
+<p>The rule is simple: before a subscriber writes anything to a DOM element, it checks whether that element (or any ancestor) has <code>data-dragging</code> set. If so, the subscriber defers the write until after the next <code>touchend</code>. The simplest implementation is a shared helper that subscribers call instead of writing attributes directly; the helper either writes immediately or queues the write to run when <code>data-dragging</code> is cleared.</p>
+
+<p>In practice, this conflict is rare because Rule 6 forbids gestures from calling transitions during <code>touchmove</code>. The guard exists to make accidental violations harmless rather than catastrophic.</p>
+
+<h2 id="layering"><span class="rule-label">Rule 8</span> Layer stack is fixed: shell &lt; content &lt; details &lt; action</h2>
+
+<p>The four layers stack in a fixed order. Lower layers are visually behind higher layers; clicks on higher layers shadow lower layers. The stack order never changes at runtime.</p>
+
+<ul>
+  <li>The action layer is always on top. If a details pane is open and an action pane opens, the action pane sits above the details pane and the details pane is fully preserved underneath — when the action pane closes, the user returns to the same details pane in the same state.</li>
+  <li>The details layer sits above the content layer. The content pane is fully preserved underneath; closing the details pane returns the user to the same content scroll position and same selection.</li>
+  <li>The content layer sits above the shell layer. The navigation pane is preserved underneath the content pane and is revealed by sliding the content pane sideways, not by destroying it.</li>
+</ul>
+
+<p>Stacking is not flexible. The protocol does not support "details over action" or any other reordering. If a future requirement seems to need it, the protocol must be revised — do not invent ad-hoc z-index gymnastics in a pane.</p>
+
+<p>Sheets / action panes do not stack on top of each other. Opening an action pane while another is already open is an error and should be treated as "close the existing action pane, then open the new one" — never as stacking action panes on action panes.</p>
+
+<h2 id="example">Live example</h2>
+
+<p>Below is a working implementation that exercises all four layers. Use it to feel how the protocol behaves:</p>
+
+<ul>
+  <li><strong>Shell.</strong> Tap the menu icon (top-left) or drag from the left edge of the content pane to expose the nav. The shell gesture lives on a dedicated invisible left-edge handle; once the nav is exposed, the handle expands to cover the whole pane so swiping back works from anywhere. Click the scrim or swipe back to close.</li>
+  <li><strong>Content.</strong> Click a deck in the nav to switch which deck is displayed.</li>
+  <li><strong>Details.</strong> Click a card row to open the details pane. Inside, two invisible full-height edge handles own the traverse gesture: drag from the right edge leftward to go to the next card, drag from the left edge rightward to go to the previous. The three card faces (prev / current / next) move together as a stack so siblings slide visually into view. The position indicator updates after each commit. Click the back chevron to dismiss the pane.</li>
+  <li><strong>Action.</strong> Click the <strong>+</strong> floating action button (bottom-right of the content pane) to open the action pane. Dismiss by dragging the drag-bar downward, clicking the scrim, or clicking the close button inside.</li>
+</ul>
+
+<p>Watch the transition log at the bottom — every state change is named and visible. No transitions fire during a drag; they all fire on release.</p>
+
+<div class="example">
+  <div class="example-header">
+    <span>Four layers — shell, content, details, action</span>
+    <span id="example-state-readout">shell:fg · deck:001 · details:- · action:-</span>
+  </div>
+  <div class="example-stage" id="example-stage" data-shell="foreground" data-details="closed" data-action="closed">
+    <!-- Layer 1: shell -->
+    <div class="nav-pane" id="example-nav">
+      <h4>Recent</h4>
+      <div class="deck-item" data-action="content/select-deck" data-deck-id="001" data-active="true">001 &mdash; Restaurant words</div>
+      <div class="deck-item" data-action="content/select-deck" data-deck-id="002">002 &mdash; Transit phrases</div>
+      <div class="deck-item" data-action="content/select-deck" data-deck-id="003">003 &mdash; Greetings</div>
+    </div>
+
+    <!-- Layer 2: content -->
+    <div class="shell-scrim" data-action="shell/close"></div>
+    <div class="content-pane" id="example-content">
+      <!-- title bar: visual chrome + menu button click target only; NOT a gesture handle -->
+      <div class="title-bar">
+        <button data-action="shell/toggle" aria-label="Open navigation">&#9776;</button>
+        <div class="title" id="example-title">001 &mdash; Restaurant words</div>
+      </div>
+      <!-- list region — re-renders innerHTML when the deck changes -->
+      <div class="body" id="example-content-body"></div>
+      <div class="fab-row">
+        <button class="fab" data-action="action/open" aria-label="Open action pane">+</button>
+      </div>
+      <!-- static handle for the shell gesture: invisible left-edge strip,
+           expands to full pane when shell is exposed -->
+      <div class="shell-handle" id="example-shell-handle"></div>
+    </div>
+
+    <!-- Layer 3: details (always present in DOM; CSS shows/hides).
+         Title bar = visual chrome only. Two static handles (left/right edges,
+         full pane height) own the traverse gesture. The card stack contains
+         three faces (prev/current/next) that slide together during a drag. -->
+    <div class="details-pane" id="example-details">
+      <div class="title-bar">
+        <button data-action="details/close" aria-label="Close details">&lsaquo;</button>
+        <div class="position" id="example-details-position">1 of 3</div>
+        <button style="visibility:hidden">&nbsp;</button>
+      </div>
+      <div class="card-stage">
+        <!-- The stack slides as one unit during a drag. Width is 300% so the
+             prev/current/next faces sit side-by-side with current in the middle. -->
+        <div class="card-stack" id="example-details-stack">
+          <div class="card-face" data-slot="prev">
+            <div class="card-visual">
+              <div class="reading">—</div>
+              <div class="text">—</div>
+              <div class="meaning">—</div>
+            </div>
+          </div>
+          <div class="card-face" data-slot="current">
+            <div class="card-visual">
+              <div class="reading">—</div>
+              <div class="text">—</div>
+              <div class="meaning">—</div>
+            </div>
+          </div>
+          <div class="card-face" data-slot="next">
+            <div class="card-visual">
+              <div class="reading">—</div>
+              <div class="text">—</div>
+              <div class="meaning">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- static gesture handles: left edge = swipe right (prev),
+           right edge = swipe left (next). Both invisible, full pane height. -->
+      <div class="details-handle details-handle--left" id="example-details-handle-left"></div>
+      <div class="details-handle details-handle--right" id="example-details-handle-right"></div>
+    </div>
+
+    <!-- Layer 4: action (always present in DOM; CSS shows/hides) -->
+    <div class="action-scrim" data-action="action/close"></div>
+    <div class="action-pane" id="example-action">
+      <div class="sheet-handle" id="example-action-handle"></div>
+      <div class="sheet-body">
+        <h5>Action pane</h5>
+        <p>A modal surface for transient tasks. Drag the bar above downward to dismiss, click the scrim, or use the button below.</p>
+        <button data-action="action/close">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="example-log" id="example-log"></div>
+</div>
+
+<script>
+(function () {
+  // ── Tiny implementation of the protocol, scoped to this example ─────────
+  // The real implementation lives in src/js/uiState.js and src/js/delegate.js.
+
+  function createUIState(initial) {
+    let state = { ...initial };
+    const listeners = new Map();
+    const transitions = new Map();
+    return {
+      get: (ns) => ns ? state[ns] : state,
+      setNs(ns, next) {
+        if (state[ns] === next) return;
+        const prev = state[ns];
+        state = { ...state, [ns]: next };
+        (listeners.get(ns) || new Set()).forEach((fn) => fn(next, prev));
+      },
+      subscribe(ns, fn) {
+        if (!listeners.has(ns)) listeners.set(ns, new Set());
+        listeners.get(ns).add(fn);
+        return () => listeners.get(ns).delete(fn);
+      },
+      registerTransitions(map) {
+        for (const [name, fn] of Object.entries(map)) {
+          if (transitions.has(name)) throw new Error("duplicate transition: " + name);
+          transitions.set(name, fn);
+        }
+      },
+      transition(verb, payload) {
+        const fn = transitions.get(verb);
+        if (!fn) { console.warn("unknown transition:", verb); return; }
+        const ns = verb.split("/")[0];
+        const next = fn(state[ns], payload);
+        this.setNs(ns, next === undefined ? null : next);
+        log(verb, payload);
+      },
+    };
+  }
+
+  // One delegate per layer root.
+  function createDelegate(rootEl) {
+    const handlers = new Map();
+    rootEl.addEventListener("click", (e) => {
+      const el = e.target.closest("[data-action]");
+      if (!el || !rootEl.contains(el)) return;
+      const fn = handlers.get(el.dataset.action);
+      if (fn) fn(e, el);
+    });
+    return {
+      register: (action, fn) => handlers.set(action, fn),
+      unregister: (action) => handlers.delete(action),
+    };
+  }
+
+  // ── Log ────────────────────────────────────────────────────────────────
+  const logEl = document.getElementById("example-log");
+  function log(verb, payload) {
+    const ts = new Date().toLocaleTimeString([], { hour12: false });
+    const payloadStr = payload ? " " + JSON.stringify(payload) : "";
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = '<span class="ts">' + ts + '</span><span class="verb">' + verb + '</span>' + payloadStr;
+    logEl.appendChild(row);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ── Sample data ────────────────────────────────────────────────────────
+  const DECKS = {
+    "001": {
+      title: "001 — Restaurant words",
+      cards: [
+        { reading: "chī fàn le", text: "吃饭了", meaning: "Time to eat." },
+        { reading: "hǎo chī", text: "好吃", meaning: "Delicious." },
+        { reading: "mǎi dān", text: "买单", meaning: "The check, please." },
+      ],
+    },
+    "002": {
+      title: "002 — Transit phrases",
+      cards: [
+        { reading: "dào le", text: "到了", meaning: "We've arrived." },
+        { reading: "zài nǎ lǐ", text: "在哪里", meaning: "Where is it?" },
+      ],
+    },
+    "003": {
+      title: "003 — Greetings",
+      cards: [
+        { reading: "nǐ hǎo", text: "你好", meaning: "Hello." },
+        { reading: "zǎo shàng hǎo", text: "早上好", meaning: "Good morning." },
+        { reading: "wǎn ān", text: "晚安", meaning: "Good night." },
+        { reading: "míng tiān jiàn", text: "明天见", meaning: "See you tomorrow." },
+      ],
+    },
+  };
+
+  // ── Refs ───────────────────────────────────────────────────────────────
+  const stage    = document.getElementById("example-stage");
+  const navEl    = document.getElementById("example-nav");
+  const content  = document.getElementById("example-content");
+  const shellHandle = document.getElementById("example-shell-handle");
+  const titleEl  = document.getElementById("example-title");
+  const bodyEl   = document.getElementById("example-content-body");
+  const detailsEl    = document.getElementById("example-details");
+  const detailsStack = document.getElementById("example-details-stack");
+  const detailsPos   = document.getElementById("example-details-position");
+  const detailsHandleLeft  = document.getElementById("example-details-handle-left");
+  const detailsHandleRight = document.getElementById("example-details-handle-right");
+  const actionEl    = document.getElementById("example-action");
+  const actionHandle = document.getElementById("example-action-handle");
+  const readout = document.getElementById("example-state-readout");
+
+  // ── State ──────────────────────────────────────────────────────────────
+  const ui = createUIState({
+    shell:   { exposed: "foreground" },
+    content: { deckId: "001" },
+    details: null,
+    action:  null,
+  });
+
+  ui.registerTransitions({
+    "shell/toggle":   (s) => ({ exposed: s.exposed === "foreground" ? "background" : "foreground" }),
+    "shell/close":    ()  => ({ exposed: "foreground" }),
+
+    "content/select-deck": (_s, p) => ({ deckId: p.id }),
+
+    "details/open":   (_s, p) => ({ deckId: p.deckId, index: p.index }),
+    "details/next":   (s)    => s ? { ...s, index: Math.min(s.index + 1, DECKS[s.deckId].cards.length - 1) } : null,
+    "details/prev":   (s)    => s ? { ...s, index: Math.max(s.index - 1, 0) } : null,
+    "details/close":  ()     => null,
+
+    "action/open":    ()     => ({ kind: "demo" }),
+    "action/close":   ()     => null,
+  });
+
+  // Shared subscriber helper that respects [data-dragging] (Rule 7).
+  function setAttrSafe(el, key, value) {
+    let p = el;
+    while (p) { if (p.dataset && p.dataset.dragging !== undefined) return; p = p.parentElement; }
+    if (value === null || value === undefined) delete el.dataset[key];
+    else el.dataset[key] = value;
+  }
+
+  // Subscribers — never rebuild DOM, only update attributes or list innerHTML.
+  ui.subscribe("shell", (next) => {
+    setAttrSafe(stage, "shell", next.exposed);
+  });
+
+  ui.subscribe("content", (next) => {
+    const deck = DECKS[next.deckId];
+    titleEl.textContent = deck.title;
+    // List re-render is allowed (Rule 4 exception).
+    bodyEl.innerHTML = deck.cards.map((c, i) =>
+      `<div class="card-row" data-action="details/open" data-deck-id="${next.deckId}" data-index="${i}">
+        <span><strong>${c.text}</strong> <span class="meaning">${c.meaning}</span></span>
+        <span style="color:#bbb">&rsaquo;</span>
+      </div>`
+    ).join("");
+    // Update nav active state.
+    navEl.querySelectorAll(".deck-item").forEach((el) => {
+      el.dataset.active = el.dataset.deckId === next.deckId ? "true" : "false";
+    });
+    // Selecting a deck while nav is open also closes nav (UX nicety).
+    if (ui.get("shell").exposed === "background") ui.transition("shell/close");
+  });
+
+  ui.subscribe("details", (next) => {
+    setAttrSafe(stage, "details", next ? "open" : "closed");
+    if (next) renderDetailsCard(next);
+  });
+
+  ui.subscribe("action", (next) => {
+    setAttrSafe(stage, "action", next ? "open" : "closed");
+  });
+
+  // Renders all three slots of the card stack: prev (or empty), current, next (or empty).
+  // The stack is positioned so the current slot sits centered in the viewport;
+  // the visible-but-offscreen prev/next slots become the destinations of a swipe.
+  function renderDetailsCard(slice) {
+    const deck = DECKS[slice.deckId];
+    const cards = deck.cards;
+    const prev = slice.index > 0 ? cards[slice.index - 1] : null;
+    const curr = cards[slice.index];
+    const next = slice.index < cards.length - 1 ? cards[slice.index + 1] : null;
+
+    paintSlot(detailsStack.querySelector('.card-face[data-slot="prev"]'), prev);
+    paintSlot(detailsStack.querySelector('.card-face[data-slot="current"]'), curr);
+    paintSlot(detailsStack.querySelector('.card-face[data-slot="next"]'), next);
+
+    detailsPos.textContent = `${slice.index + 1} of ${cards.length}`;
+  }
+  function paintSlot(faceEl, card) {
+    if (!card) { faceEl.dataset.empty = "true"; return; }
+    delete faceEl.dataset.empty;
+    faceEl.querySelector(".reading").textContent = card.reading;
+    faceEl.querySelector(".text").textContent = card.text;
+    faceEl.querySelector(".meaning").textContent = card.meaning;
+  }
+
+  // Readout (debug).
+  function updateReadout() {
+    const s = ui.get();
+    readout.textContent =
+      "shell:" + (s.shell.exposed === "foreground" ? "fg" : "bg") +
+      " · deck:" + s.content.deckId +
+      " · details:" + (s.details ? (s.details.index + 1) : "-") +
+      " · action:" + (s.action ? "on" : "-");
+  }
+  ui.subscribe("shell", updateReadout);
+  ui.subscribe("content", updateReadout);
+  ui.subscribe("details", updateReadout);
+  ui.subscribe("action", updateReadout);
+
+  // ── Per-layer delegates ───────────────────────────────────────────────
+  // Shell layer's clickable elements (nav + scrim) live inside the stage but
+  // belong to the shell delegate.
+  const shellDelegate = createDelegate(navEl);
+  shellDelegate.register("content/select-deck", (_e, el) => ui.transition("content/select-deck", { id: el.dataset.deckId }));
+
+  // Content layer delegate — handles toggle, scrim close, card opens, action open.
+  const contentDelegate = createDelegate(stage); // stage catches content-layer clicks
+  contentDelegate.register("shell/toggle", () => ui.transition("shell/toggle"));
+  contentDelegate.register("shell/close",  () => ui.transition("shell/close"));
+  contentDelegate.register("details/open", (_e, el) =>
+    ui.transition("details/open", { deckId: el.dataset.deckId, index: parseInt(el.dataset.index, 10) })
+  );
+  contentDelegate.register("action/open",  () => ui.transition("action/open"));
+
+  // Details layer delegate.
+  const detailsDelegate = createDelegate(detailsEl);
+  detailsDelegate.register("details/close", () => ui.transition("details/close"));
+
+  // Action layer delegate.
+  const actionDelegate = createDelegate(actionEl);
+  actionDelegate.register("action/close", () => ui.transition("action/close"));
+
+  // Scrim click on action layer.
+  document.querySelector(".action-scrim").addEventListener("click", () => ui.transition("action/close"));
+
+  // ── Gestures — each wired to a static handle, never to dynamic content ─
+
+  // Shell gesture: drag content pane horizontally to expose nav.
+  // Wired to the static shell-handle (left-edge strip when closed,
+  // full-pane when open) — never to the title bar or any dynamic content.
+  wireHorizontalDragGesture({
+    element: shellHandle,
+    moveTarget: content,
+    isOpenFn: () => ui.get("shell").exposed === "background",
+    extent: 220,
+    threshold: 60,
+    onCommitOpen:  () => ui.transition("shell/toggle"),
+    onCommitClose: () => ui.transition("shell/toggle"),
+  });
+
+  // Details gesture: TWO static handles (left edge = prev, right edge = next),
+  // both full pane height. Both wire the same stack-traversal gesture; direction
+  // is decided by which handle received the touchstart, plus the sign of dx.
+  wireStackTraverseGesture({
+    handles: [detailsHandleLeft, detailsHandleRight],
+    stackEl: detailsStack,
+    threshold: 60,
+    canPrev: () => { const s = ui.get("details"); return s && s.index > 0; },
+    canNext: () => { const s = ui.get("details"); return s && s.index < DECKS[s.deckId].cards.length - 1; },
+    onCommitNext: () => ui.transition("details/next"),
+    onCommitPrev: () => ui.transition("details/prev"),
+  });
+
+  // Action gesture: drag drag-bar downward to dismiss.
+  wireVerticalDismissGesture({
+    element: actionHandle,
+    moveTarget: actionEl,
+    threshold: 60,
+    onCommitDismiss: () => ui.transition("action/close"),
+  });
+
+  // ── Gesture helpers ────────────────────────────────────────────────────
+  // Each wires touchstart/move/end/cancel on a single static element.
+
+  function wireHorizontalDragGesture(opts) {
+    const { element, moveTarget, isOpenFn, extent, threshold, onCommitOpen, onCommitClose } = opts;
+    let startX = null, startY = null, axis = null;
+    function start(x, y) { startX = x; startY = y; axis = null; }
+    function move(x, y) {
+      if (startX === null) return;
+      const dx = x - startX, dy = y - startY;
+      if (!axis) {
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+        axis = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      }
+      if (axis !== "h") return;
+      const isOpen = isOpenFn();
+      if (!isOpen && dx < 0) return;
+      if (isOpen && dx > 0) return;
+      const base = isOpen ? extent : 0;
+      const clamped = Math.max(0, Math.min(extent, base + dx));
+      moveTarget.dataset.dragging = "";
+      stage.dataset.dragging = "";
+      moveTarget.style.transform = "translateX(" + clamped + "px)";
+    }
+    function end(x) {
+      if (startX === null) return;
+      const dx = x - startX;
+      const wasOpen = isOpenFn();
+      startX = null; startY = null;
+      delete moveTarget.dataset.dragging;
+      delete stage.dataset.dragging;
+      moveTarget.style.transform = "";
+      if (axis === "h" && Math.abs(dx) >= threshold) {
+        if (!wasOpen && dx > 0) onCommitOpen();
+        else if (wasOpen && dx < 0) onCommitClose();
+      }
+      stage.dataset.shell = ui.get("shell").exposed;
+    }
+    wireTouchAndMouse(element, start, move, end);
+  }
+
+  // Stack traverse gesture — drags the entire 3-card stack so siblings slide
+  // visually into view. The stack rests at translateX(-33.3333%) so the
+  // current card is centered. A drag adds a pixel offset on top of that rest
+  // position. On commit, animate the stack the rest of the way to the
+  // neighbour slot, then fire the transition (which re-renders all three
+  // slots with the new center, and resets the stack to its rest position).
+  function wireStackTraverseGesture(opts) {
+    const { handles, stackEl, threshold, canPrev, canNext, onCommitNext, onCommitPrev } = opts;
+    let startX = null, startY = null, axis = null;
+    let stageWidth = 0;
+
+    function start(x, y) {
+      startX = x; startY = y; axis = null;
+      stageWidth = stackEl.parentElement.clientWidth;
+    }
+    function move(x, y) {
+      if (startX === null) return;
+      const dx = x - startX, dy = y - startY;
+      if (!axis) {
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+        axis = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      }
+      if (axis !== "h") return;
+      // Resist when there is no neighbour in the dragged direction.
+      let pull = dx;
+      if (dx < 0 && !canNext()) pull = dx / 4;
+      if (dx > 0 && !canPrev()) pull = dx / 4;
+      stackEl.dataset.dragging = "";
+      // Rest position is -33.3333% of stack width (= -1 stage width).
+      // Add the drag offset in pixels on top.
+      stackEl.style.transform = `translateX(calc(-33.3333% + ${pull}px))`;
+    }
+    function end(x) {
+      if (startX === null) return;
+      const dx = x - startX;
+      const _axis = axis;
+      startX = null; startY = null;
+
+      if (_axis === "h" && Math.abs(dx) >= threshold && dx < 0 && canNext()) {
+        // Animate stack one slot to the left so "next" slot lands centered.
+        delete stackEl.dataset.dragging;
+        stackEl.style.transform = "translateX(-66.6666%)";
+        afterTransition(stackEl, () => {
+          // Suppress transition while we snap back to rest at the new index.
+          stackEl.dataset.dragging = "";
+          stackEl.style.transform = "";
+          onCommitNext(); // re-renders slots with new center
+          requestAnimationFrame(() => requestAnimationFrame(() => delete stackEl.dataset.dragging));
+        });
+        return;
+      }
+      if (_axis === "h" && Math.abs(dx) >= threshold && dx > 0 && canPrev()) {
+        delete stackEl.dataset.dragging;
+        stackEl.style.transform = "translateX(0%)";
+        afterTransition(stackEl, () => {
+          stackEl.dataset.dragging = "";
+          stackEl.style.transform = "";
+          onCommitPrev();
+          requestAnimationFrame(() => requestAnimationFrame(() => delete stackEl.dataset.dragging));
+        });
+        return;
+      }
+      // Snap back to rest.
+      delete stackEl.dataset.dragging;
+      stackEl.style.transform = "";
+    }
+    handles.forEach((h) => wireTouchAndMouse(h, start, move, end));
+  }
+
+  // Run cb once after the next CSS transition on el completes (or after a fallback timeout).
+  function afterTransition(el, cb) {
+    let done = false;
+    function fire() { if (done) return; done = true; el.removeEventListener("transitionend", fire); cb(); }
+    el.addEventListener("transitionend", fire);
+    setTimeout(fire, 320);
+  }
+
+  function wireVerticalDismissGesture(opts) {
+    const { element, moveTarget, threshold, onCommitDismiss } = opts;
+    let startX = null, startY = null, axis = null;
+    function start(x, y) { startX = x; startY = y; axis = null; }
+    function move(x, y) {
+      if (startX === null) return;
+      const dx = x - startX, dy = y - startY;
+      if (!axis) {
+        if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+        axis = Math.abs(dy) > Math.abs(dx) ? "v" : "h";
+      }
+      if (axis !== "v") return;
+      if (dy < 0) return; // only down dismisses
+      moveTarget.dataset.dragging = "";
+      moveTarget.style.transform = "translateY(" + dy + "px)";
+    }
+    function end(_x, y) {
+      if (startX === null) return;
+      const dy = y - startY;
+      startX = null; startY = null;
+      delete moveTarget.dataset.dragging;
+      moveTarget.style.transform = "";
+      if (axis === "v" && dy >= threshold) onCommitDismiss();
+    }
+    wireTouchAndMouse(element, start, move, end);
+  }
+
+  // Wires both touch and mouse events to a single static element with a
+  // common start/move/end pipeline. Mouse handling is desktop convenience.
+  function wireTouchAndMouse(el, start, move, end) {
+    el.addEventListener("touchstart", (e) => start(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+    el.addEventListener("touchmove",  (e) => move(e.touches[0].clientX, e.touches[0].clientY),  { passive: true });
+    el.addEventListener("touchend",   (e) => end(e.changedTouches[0].clientX, e.changedTouches[0].clientY));
+    el.addEventListener("touchcancel",(e) => end(e.changedTouches[0].clientX, e.changedTouches[0].clientY));
+
+    let mouseDown = false;
+    el.addEventListener("mousedown", (e) => {
+      if (e.target.closest("[data-action]") && e.target !== el) return;
+      mouseDown = true;
+      start(e.clientX, e.clientY);
+    });
+    window.addEventListener("mousemove", (e) => { if (mouseDown) move(e.clientX, e.clientY); });
+    window.addEventListener("mouseup",   (e) => { if (mouseDown) { mouseDown = false; end(e.clientX, e.clientY); } });
+  }
+
+  // Boot — render initial content and readout.
+  ui.subscribe("content", () => {});
+  // Force initial subscribers to run so the list renders.
+  ui.setNs("content", { ...ui.get("content") });
+  log("boot/ready");
+  updateReadout();
+})();
+</script>
+
+<h2 id="applying">Applying the contract to a new pane</h2>
+
+<p>Suppose you need to add a new pane — say, a "Browse all cards" pane that shows a searchable list across every deck. The protocol tells you exactly what to do.</p>
+
+<ol>
+  <li><strong>Decide the layer.</strong> Browse replaces what the content pane is showing, so it lives in the content layer; it is a content-pane mode, not a new layer. If it were transient and modal it would be an action pane; if it overlaid a single item it would be a details pane. The layer choice is the most important early decision.</li>
+  <li><strong>Pick a namespace.</strong> Something like <code>browse</code>. Grep the codebase to confirm no other pane owns it. If browse is just a content-pane mode rather than a separate pane module, this step is replaced by adding fields to the content slice instead.</li>
+  <li><strong>Sketch the slice shape.</strong> What fields describe a resting state? A query string, a sort order, perhaps a selected card identifier. Write the shape as a comment in the pane file. Decide what <code>initialState</code> should be for a fresh boot.</li>
+  <li><strong>List the transitions.</strong> What named operations move the slice from one resting state to another? <code>browse/query</code> updates the search text. <code>browse/sort</code> changes the sort order. <code>browse/select</code> records which card is focused. Each is a pure function from previous slice plus payload to next slice.</li>
+  <li><strong>Write <code>render</code>.</strong> Return an HTML string for the entire pane root, including any static handles. Include all elements that any state could ever show; hide variants with CSS attribute selectors keyed off your namespace's data attributes. Do not branch inside render based on slice values except to set the initial data attribute on the root.</li>
+  <li><strong>Write <code>bindEvents</code>.</strong> Create the layer delegate (or get a reference to the existing one if this pane is part of an existing layer). Register click actions through it. Subscribe to your own namespace and write the appropriate <code>data-*</code> attributes when the slice changes. If the pane needs to react to other namespaces (for instance, dismissing itself when an action pane opens over it), subscribe to those too. If the pane needs touch gestures, wire them directly to the static handles inside the pane and follow Rule 6.</li>
+  <li><strong>Return cleanup.</strong> If the pane is persistent, return a no-op. If it can be unmounted, return a function that unregisters every action handler, every subscriber, and every gesture listener it installed.</li>
+</ol>
+
+<p>That is the whole job. Anything else the pane needs — fetching data, calling the API, working with IndexedDB — happens inside transitions and subscribers but follows no special rule from this protocol. Use the existing utilities in <code>src/js/</code>.</p>
+
+<h2 id="anti">Things this protocol explicitly forbids</h2>
+
+<ul>
+  <li>Multiple state objects, or state stored in module-level variables, or state stored only in DOM attributes without a slice backing it.</li>
+  <li>Mutating a slice in place (<code>state.action.text = "foo"</code>). Always build a new slice and install it.</li>
+  <li>Calling a transition during <code>touchmove</code>. Transitions record rest; gestures own motion.</li>
+  <li>Rebuilding a pane's DOM after mount. Use attributes and CSS, or replace a designated list region's contents only.</li>
+  <li>Wiring gestures to dynamic content (card rows, list items, anything that re-renders). Gestures wire to static handles only.</li>
+  <li>Adding <code>addEventListener('click', ...)</code> inside a pane. All clicks go through the layer's delegate.</li>
+  <li>One delegate for the whole application. Each layer has its own.</li>
+  <li>Conditionally omitting elements from <code>render</code> based on state. Render everything; hide via CSS.</li>
+  <li>Two panes claiming the same namespace, or two transitions sharing the same name.</li>
+  <li>Subscribers writing to elements that have <code>data-dragging</code> set, directly or on an ancestor.</li>
+  <li>Stacking action panes on top of action panes. At most one action pane at a time.</li>
+  <li>Reordering layers at runtime. The stack order is fixed (Rule 8).</li>
+  <li>Introducing a framework, a reactive library, or a build-time template system. Vanilla JavaScript, plain functions, plain HTML strings, plain CSS.</li>
+</ul>
+
+<h2 id="migration">Migration notes</h2>
+
+<p>This protocol replaces a patchwork of earlier conventions. While the migration is underway, both worlds will temporarily coexist; once the migration is complete, the old shapes are removed without backwards-compatibility shims.</p>
+
+<ul>
+  <li><strong>Folder layout.</strong> The end state has either <code>src/screens/</code> or <code>src/panes/</code>, not both. During migration, files may live in either; new panes go in whichever folder the migration chooses (recommend <code>src/panes/</code>, since "pane" is the protocol's universal noun). When migration is complete, the unused folder is removed and any remaining files are moved.</li>
+  <li><strong>No backwards compatibility.</strong> Once a pane has been migrated to the contract, the previous shape is deleted. Existing files and structures are fair game for renaming, rewriting, or removing — no compatibility shims, no aliases, no deprecated exports.</li>
+  <li><strong>Existing helpers.</strong> <code>app.navPane</code>, <code>app.contentPane</code>, and similar ad-hoc method bags are removed as panes migrate. The <code>app.panes</code> namespace introduced recently is also removed in favor of the state machine and per-layer delegates.</li>
+  <li><strong>Gesture factories.</strong> The existing <code>src/js/gestures.js</code> factories (<code>wireNavPaneGesture</code>, <code>wireRevealGesture</code>, <code>wireSheetDismissGesture</code>) are replaced or generalized as the new gesture helpers are written. The shape of the new helpers is driven by Rule 6.</li>
+  <li><strong>Bottom-sheet duplication.</strong> The bottom-sheet pattern currently duplicated across <code>translation-panel.js</code>, <code>generate-cards-panel.js</code>, and <code>deck-settings.js</code> is extracted into a single action-pane primitive. After extraction, those three modules become content providers for the action pane, not pane scaffolding.</li>
+</ul>
+
+<p style="margin-top: 64px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 16px;">
+  This is version one of the Pane Protocol. It will be revised as the contract is exercised by more panes. Changes to the protocol must come with a migration note in <code>web/AGENTS.md</code>.
+</p>
+
+</main>
+</body>
+</html>

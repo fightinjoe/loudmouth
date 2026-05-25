@@ -7,8 +7,9 @@
 
 /* ── Deck Title Tap Menu ── */
 
-.deck-title-menu {
+#deck-title-menu {
   position: fixed;
+  top: 64px;
   left: 50%;
   border-radius: var(--radius-sm);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
@@ -20,6 +21,7 @@
     opacity 150ms ease,
     transform 150ms ease;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .deck-title-menu--visible {
@@ -28,18 +30,19 @@
   pointer-events: auto;
 }
 
-.deck-title-menu-item {
+.menu-item {
   display: block;
+  text-align: left;
   width: 100%;
   padding: 14px 20px;
   border-bottom: 1px solid var(--border-default);
 }
 
-.deck-title-menu-item:last-child {
+.menu-item:last-child {
   border-bottom: none;
 }
 
-.deck-title-menu-item:active {
+.menu-item:active {
   background: var(--bg-primary);
 }
 

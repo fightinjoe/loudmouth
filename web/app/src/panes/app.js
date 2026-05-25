@@ -46,8 +46,12 @@ export function initApp(params) {
       scrimEl: appEl.querySelector("#content-pane-scrim"),
     },
     panes: {
-      nav: {},
-      content: {},
+      nav: {
+        // refresh: re-renders the nav pane content
+      },
+      content: {
+        // loadDeck: loads the cards for a deck into the content pane
+      },
     },
     getLastDeckId,
     setLastDeckId,
@@ -59,5 +63,5 @@ export function initApp(params) {
   app.els.scrimEl.addEventListener("click", () => app.navPane.close());
 
   const initialDeckId = params.id || getLastDeckId();
-  app.contentPane.loadDeck(initialDeckId);
+  app.panes.content.loadDeck(initialDeckId);
 }

@@ -50,6 +50,10 @@ function renderDeckHeader(deck) {
           : `<button class="icon-button" data-action="add-card" aria-label="Translate">${icon("Add")}</button>
           <button class="icon-button deck-header-done" data-action="done" aria-label="Done">${icon("Done")}</button>`
       }
+      <div id="deck-title-menu" class="bg-surface">
+        <button class="menu-item text-body1 tappable" data-menu="edit">Edit cards</button>
+        <button class="menu-item text-body1 tappable" data-menu="settings">Settings</button>
+      </div>
     </div>
   `;
 }
@@ -80,7 +84,7 @@ function renderDeckCards(deck, cards) {
 
 // ── Builder ───────────────────────────────────────────────────────────────────
 // Called once. Wires all event listeners on the stable pane element.
-// Exposes app.contentPane.loadDeck(deckId) for external callers.
+// Exposes app.panes.content.loadDeck(deckId) for external callers.
 
 const CARD_WRAPPER_SEL = ".card-row-wrapper";
 
@@ -116,6 +120,7 @@ export function initContentPane(app) {
       <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-menu="settings">Settings</button>
       <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-menu="edit">Edit cards</button>
     `;
+
     document.body.appendChild(menu);
     requestAnimationFrame(() =>
       requestAnimationFrame(() =>
@@ -137,10 +142,10 @@ export function initContentPane(app) {
           async (changes) => {
             if (changes.deleted) {
               await app.panes.nav.refresh();
-              app.contentPane.loadDeck(null);
+              app.panes.content.loadDeck(null);
             } else {
               await app.panes.nav.refresh();
-              app.contentPane.loadDeck(deck.id);
+              app.panes.content.loadDeck(deck.id);
             }
           },
         );
@@ -401,5 +406,5 @@ export function initContentPane(app) {
     );
   }
 
-  app.contentPane = { loadDeck };
+  app.panes.content.loadDeck = loadDeck;
 }
