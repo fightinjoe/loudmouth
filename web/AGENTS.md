@@ -13,13 +13,15 @@
 ## Source layout
 
 ```
-src/js/          Generic utilities and app logic (router, db, tts, import-parser, base64url, gestures, lang, utils)
-src/screens/     Full-page views — one file per route/screen
-src/components/  Reusable rendering functions for specific UI components
+src/js/          Generic utilities and app logic (router, db, tts, import-parser, base64url, lang, utils, uiState, delegate)
+src/panes/       Pane modules — one per layer of the app, conforming to the Pane Protocol
+src/components/  Reusable rendering functions for specific UI components, plus the bottom-sheet primitive
 src/styles/      CSS split by concern (see below)
 ```
 
 New files go in the appropriate folder. Do not create new top-level folders without discussion.
+
+Panes (nav, content, action, etc.) live in `src/panes/` and follow the Pane Protocol — see [Pane Protocol](#pane-protocol) below. The `src/screens/` folder is deprecated and was removed during the protocol migration.
 
 ## CSS rules
 
@@ -49,6 +51,8 @@ contentEl.classList.remove('review--revealed') // hide
 ## Rendering pattern
 
 Components in `src/components/` are pure functions that return HTML strings (template literals). They receive data, return markup — no side effects, no DOM queries.
+
+Pane modules (`src/panes/`) follow the same render-then-update discipline at a higher level: `render` runs once at mount; subsequent state changes update `data-*` attributes (or rebuild a designated list region). See `web/docs/PANE_PROTOCOL.html` Rule 4 for the full contract.
 
 ```js
 // Good
@@ -124,15 +128,27 @@ if (Math.abs(dx) >= THRESHOLD) {
 
 ## Gesture implementation
 
-All touch gesture logic lives in `src/js/gestures.js`. Do not embed gesture code in screens or components — add to the module and call it from there.
+Gestures live inside each pane's `bindEvents` and wire directly to **static handles** rendered by that pane (Rule 6 of the Pane Protocol — see `web/docs/PANE_PROTOCOL.html`). Never wire a gesture to dynamic list items or anything else that re-renders.
 
-Three factories are available:
+The old `src/js/gestures.js` factory module is **removed**. Each pane co-locates its own gesture wiring next to the contract that owns the static handle. Examples in the current tree:
 
-- **`wireNavPaneGesture(contentPaneEl, onOpen, onClose)`** — swipe-right to open / swipe-left to close the nav pane. Returns `{ open, close, setSuppressed }`. Call `setSuppressed(fn)` with a predicate to block the gesture (e.g. when a card row is revealed).
-- **`wireRevealGesture(listEl, wrapperSelector, rowSelector)`** — swipe-left on a list row to reveal buttons behind it. Returns `{ reset, isAnyOpen }`. `isAnyOpen()` returns true when any row is currently revealed — pass it to `navPane.setSuppressed` to prevent the nav pane from opening while a row is exposed.
-- **`wireSheetDismissGesture(panelEl, onDismiss)`** — swipe-down on a bottom sheet to dismiss it. Initiates only from `.sheet-handle` or `.pane-header` touches to avoid conflicting with scrollable sheet content. Applies `data-dragging` during drag; CSS rule `.bottom-sheet[data-dragging] { transition: none }` suppresses the transition.
+- `src/panes/content-pane-gestures.js` — shell swipe, card-row reveal swipe, and edit-mode reorder. All three are wired to handles rendered by the content pane.
+- `src/components/bottom-sheet.js` — swipe-down-to-dismiss, wired to `.sheet-handle` inside every action pane.
 
-All three follow the axis-lock, real-time tracking, and `data-dragging` suppression patterns described in the Swipe gesture pattern section above.
+All gestures follow the axis-lock, real-time tracking, and `data-dragging` suppression patterns described in the Swipe gesture pattern section above. They never call a transition during `touchmove` — only on `touchend`/`touchcancel` (Rule 6).
+
+## Pane Protocol
+
+The Loudmouth web app organizes UI state, panes, events, and gestures according to the Pane Protocol. The protocol is the source of truth for everything pane-shaped: state machine, named transitions, render-once-then-attributes rendering, per-layer click delegation, static-handle gestures, and the load-bearing rule that subscribers never write to `[data-dragging]` elements.
+
+**Source of truth:** `web/docs/PANE_PROTOCOL.html`. Open it in a browser — it has a working live example at the bottom that is canonical when the prose is ambiguous.
+
+When implementing a new pane, follow the contract in Rule 3 verbatim: a default export of `{ namespace, initialState, transitions, render, bindEvents }`. The `host` argument to `bindEvents` provides `ui` (the state machine) and `delegate` (the layer's single click handler). The primitives that back the protocol live in:
+
+- `src/js/uiState.js` — `createUIState`, `createHost`, `setAttrSafe`, `setListHTMLSafe`.
+- `src/js/delegate.js` — `createDelegate`.
+
+Cross-pane communication goes through `host.ui` transitions, never through method bags or direct imports of other panes.
 
 ## Testing
 
