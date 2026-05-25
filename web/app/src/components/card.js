@@ -16,12 +16,14 @@ export function renderCardRow(card, readingDisplay = "reading") {
       <div class="inset flex-row reverse items-center gap-md">
         <button
           class="icon-button bg-blue fg-white tappable"
+          data-action="content/edit-card"
           data-card-id="${card.id}"
           aria-label="Edit"
         >${icon("Edit")}</button>
 
         <button
           class="icon-button bg-yellow fg-white tappable"
+          data-action="content/star-card"
           data-card-id="${card.id}"
           aria-label="${isStarred ? "Unstar" : "Star"}"
           data-selected="${isStarred}"
@@ -29,6 +31,7 @@ export function renderCardRow(card, readingDisplay = "reading") {
 
         <button
           class="icon-button bg-danger fg-white tappable"
+          data-action="content/delete-card"
           data-card-id="${card.id}"
           aria-label="Delete"
         >${icon("Delete")}</button>
@@ -36,12 +39,14 @@ export function renderCardRow(card, readingDisplay = "reading") {
 
       <div
         class="card-row flex-row items-center bg-surface gap-auto tappable"
+        data-action="content/open-card"
         data-card-id="${card.id}"
       >
         ${renderCardContent(card, readingDisplay)}
 
         <button
           class="card-row-play fg-tertiary text-body1 shrink-0 tappable"
+          data-action="content/play-card"
           data-card-id="${card.id}"
           aria-label="Play"
         >

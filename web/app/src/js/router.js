@@ -1,4 +1,3 @@
-// import { buildNavPane } from "../panes/navPane.js";
 import { initApp } from "../panes/app.js";
 
 export function initRouter() {
