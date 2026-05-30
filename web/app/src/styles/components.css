@@ -435,7 +435,24 @@ ruby {
 /* ── Details Pane ── */
 /* The details pane is the third layer; it slides up from the bottom over
    the content pane. Default position is off-screen; #app[data-details="open"]
-   slides it in. The pane has no scrim per the protocol. */
+   slides it in. A scrim sits BETWEEN the content pane and the details pane
+   (z=99 vs z=100), dimming content while details is open. Clicking the
+   scrim fires details/close. */
+
+#details-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms;
+  z-index: 99;
+}
+
+#app[data-details="open"] #details-scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
 
 #details-pane {
   top: 68px;
@@ -900,21 +917,6 @@ ruby {
 
 #app[data-shell="background"] .content-pane {
   transform: translateX(280px);
-}
-
-/* Sits inside #app-shell between nav (z:0) and content (z:1). Visually
-   dims the nav while the shell is exposed; clicking it fires shell/close. */
-#content-pane-scrim {
-  background: rgba(0, 0, 0, 0.4);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 240ms;
-  z-index: 0;
-}
-
-#app[data-shell="background"] #content-pane-scrim {
-  opacity: 1;
-  pointer-events: auto;
 }
 
 /*-- Full-screen slide-up panel --*/

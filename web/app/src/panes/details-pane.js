@@ -106,22 +106,30 @@ export default {
   },
 
   render() {
+    // The details layer renders TWO siblings: a scrim that sits between
+    // the content pane (below) and the details pane (above), and the
+    // details pane itself. Both are siblings inside #details-layer so
+    // their z-indices are predictable. The scrim is shown by CSS when
+    // #app[data-details="open"] and dismisses on click.
     return `
-      <div id="details-pane" class="details-pane fixed-inset flex-col bg-primary">
-        <div class="details-title-bar pane-header flex items-center">
-          <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" data-action="details/close" aria-label="Back">‹</button>
-          <span class="details-position pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight"></span>
-          <span class="pane-header-spacer shrink-0"></span>
-        </div>
-        <div class="card-stage flex-1">
-          <div class="card-stack" data-region="card-stack">
-            <div class="card-face" data-slot="prev"></div>
-            <div class="card-face" data-slot="current"></div>
-            <div class="card-face" data-slot="next"></div>
+      <div id="details-layer">
+        <div id="details-scrim" class="details-scrim" data-action="details/close"></div>
+        <div id="details-pane" class="details-pane fixed-inset flex-col bg-primary">
+          <div class="details-title-bar pane-header flex items-center">
+            <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" data-action="details/close" aria-label="Back">‹</button>
+            <span class="details-position pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight"></span>
+            <span class="pane-header-spacer shrink-0"></span>
           </div>
+          <div class="card-stage flex-1">
+            <div class="card-stack" data-region="card-stack">
+              <div class="card-face" data-slot="prev"></div>
+              <div class="card-face" data-slot="current"></div>
+              <div class="card-face" data-slot="next"></div>
+            </div>
+          </div>
+          <div class="details-handle details-handle--left" aria-hidden="true"></div>
+          <div class="details-handle details-handle--right" aria-hidden="true"></div>
         </div>
-        <div class="details-handle details-handle--left" aria-hidden="true"></div>
-        <div class="details-handle details-handle--right" aria-hidden="true"></div>
       </div>
     `;
   },

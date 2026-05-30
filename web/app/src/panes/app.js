@@ -43,16 +43,9 @@ export function initApp(params) {
   appEl.dataset.shell = "foreground";
   appEl.dataset.details = "closed";
   appEl.dataset.actionState = "closed";
-  // Render order: nav (lowest), shell-reveal scrim (between nav and
-  // content), content (above scrim), then details and action layers on top.
-  // The scrim sits BEHIND the content pane in z-order — it dims the nav
-  // when exposed; the content pane is the actionable surface that the
-  // user drags back. Click on the scrim fires shell/close via the
-  // shell-layer delegate.
   appEl.innerHTML = `
     <div id="app-shell" class="fixed-inset overflow-hidden">
       ${navPane.render(navPane.initialState)}
-      <div id="content-pane-scrim" class="content-pane-scrim absolute-inset transition-opacity" data-action="shell/close"></div>
       ${contentPane.render(contentPane.initialState)}
     </div>
     ${detailsPane.render(detailsPane.initialState)}
@@ -78,16 +71,13 @@ export function initApp(params) {
     setAttrSafe(appEl, "shell", next.exposed);
   });
 
-  // Per-layer delegates. The shell delegate lives on #app-shell so it
-  // catches both nav-pane clicks AND the scrim that sits between nav
-  // and content. The content delegate stays on #content-pane.
-  const shellRootEl = appEl.querySelector("#app-shell");
+  // Per-layer delegates.
   const navEl = appEl.querySelector("#nav-pane");
   const contentEl = appEl.querySelector("#content-pane");
-  const detailsEl = appEl.querySelector("#details-pane");
-  const shellDelegate = createDelegate(shellRootEl);
+  const detailsLayerEl = appEl.querySelector("#details-layer");
+  const shellDelegate = createDelegate(navEl);
   const contentDelegate = createDelegate(contentEl);
-  const detailsDelegate = createDelegate(detailsEl);
+  const detailsDelegate = createDelegate(detailsLayerEl);
 
   // Persist last-loaded deck whenever content changes.
   ui.subscribe("content", (next, prev) => {
@@ -99,7 +89,7 @@ export function initApp(params) {
   const actionEl = appEl.querySelector("#action-layer");
   navPane.bindEvents(navEl, createHost({ ui, delegate: shellDelegate, stageEl: appEl }));
   contentPane.bindEvents(contentEl, createHost({ ui, delegate: contentDelegate, stageEl: appEl }));
-  detailsPane.bindEvents(detailsEl, createHost({ ui, delegate: detailsDelegate, stageEl: appEl }));
+  detailsPane.bindEvents(detailsLayerEl, createHost({ ui, delegate: detailsDelegate, stageEl: appEl }));
   actionPane.bindEvents(actionEl, createHost({ ui, delegate: null, stageEl: appEl }));
 
   // Initial route — kick off a deck load.
