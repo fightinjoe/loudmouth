@@ -179,10 +179,16 @@ export default {
     });
 
     // ── Swipe-down-to-dismiss on the title bar (static) ─────────────────────
+    // moveTarget MUST be #details-pane — the element the CSS slide transform
+    // and the [data-dragging] transition-suppression rule live on. Targeting
+    // the #details-layer wrapper instead would set a transform on a static,
+    // zero-size box, which makes it the containing block for the fixed pane
+    // and teleports the pane off-screen mid-drag.
+    const paneEl = rootEl.querySelector("#details-pane");
     const titleBar = rootEl.querySelector(".details-title-bar");
     wireVerticalDismiss({
       handleEl: titleBar,
-      moveTarget: rootEl,
+      moveTarget: paneEl,
       threshold: 100,
       onCommitDismiss: () => ui.transition("details/close"),
     });
