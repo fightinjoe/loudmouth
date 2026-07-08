@@ -4,6 +4,7 @@
 
 - [ ] **iOS card schema is defined in multiple places** — `Card.swift` (SwiftData model), `ImportService.swift` (`CardInput`/`CardInputExample`), and `BackupService.swift` (`CardBackup`) each independently declare the card shape. A single canonical definition should be the source of truth.
 - [ ] **`example` storage shape differs between iOS and web** — The web app stores `example` as a nested object `{ text, reading, translation }` on the card. iOS flattens it into three top-level fields on the `Card` model: `exampleText`, `exampleReading`, `exampleTranslation`. These should be reconciled so both platforms use the same shape (nested object preferred, matching the batch schema).
+- [ ] **iOS: `AddCardsView` (import + backup/restore) has no entry point** — `DeckListViewModel.showAddCards` is declared and `DeckListView` presents `AddCardsView` as a `.sheet` when it's true, but nothing in the UI ever sets `showAddCards = true`, so JSON import (a core Phase-1 feature per `BRIEF.md`) and backup/restore (the only user of `BackupService`) are unreachable in the app. Wire up a trigger — e.g. an "Import / Backup" affordance in the navigation pane — that sets `showAddCards = true`.
 
 ## Design migration
 

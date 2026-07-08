@@ -1,6 +1,10 @@
 import SwiftUI
 import SwiftData
 
+/// The **Deck settings action pane** — an *action* layer surface of the Pane
+/// Protocol (see `web/docs/PANE_PROTOCOL.html`), presented as a bottom-anchored
+/// modal `.sheet` from the content pane's title menu. Edits the deck's name,
+/// card template, order, and reading display; also hosts deck deletion.
 struct DeckSettingsView: View {
     let deck: Deck
     @Environment(\.modelContext) private var modelContext

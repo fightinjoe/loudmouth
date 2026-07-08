@@ -6,7 +6,7 @@ description: >
 
 ### Information Architecture
 
-This app organizes its UI according to the **Pane Protocol** (`web/docs/PANE_PROTOCOL.html`). That document is the source of truth for pane vocabulary, the layer stack, state, transitions, and gestures; this doc describes the product-level design that sits on top of it. Terms used here — *pane*, *layer*, *scrim*, *handle* — carry the precise meanings defined in the protocol glossary.
+This app organizes its UI according to the **Pane Protocol** (`web/docs/PANE_PROTOCOL.html`). That document is the source of truth for pane vocabulary, the layer stack, state, transitions, and gestures; this doc describes the product-level design that sits on top of it. Terms used here — *pane*, *layer*, *scrim*, *handle* — carry the precise meanings defined in the protocol glossary. For how the iOS app maps this protocol onto SwiftUI, see `ios/ARCHITECTURE.md`.
 
 **High level app structure (Phase 1):** No tab bar. The app is a stage with four fixed **layers**, bottom to top: **shell** < **content** < **details** < **action** (see Pane Protocol, Rule 8). A **pane** lives in exactly one layer:
 

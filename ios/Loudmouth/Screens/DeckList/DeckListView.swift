@@ -1,8 +1,17 @@
 import SwiftUI
 import SwiftData
 
-// Root layout: deck list on the left, card pane slides in from the right.
-// The card pane peeks at ~80px when a deck is selected.
+/// Root layout hosting the two persistent lower layers of the Pane Protocol
+/// (see `web/docs/PANE_PROTOCOL.html`): the **navigation pane** (shell layer)
+/// and the **content pane** (content layer).
+///
+/// The navigation pane (`navigationPane`) is fixed in place and always present;
+/// it lists decks grouped by language. The content pane (`contentPane`) sits
+/// over it and slides in from the right to cover it, peeking ~80px so the
+/// navigation pane stays partly visible. Sliding the content pane back aside
+/// reveals the navigation pane — the shell-reveal has no scrim (per the
+/// protocol, full-height content simply slides aside). The details and action
+/// layers are owned by the content pane's body (`CardListView`), not here.
 struct DeckListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Deck.lastAccessedAt, order: .reverse) private var decks: [Deck]
@@ -11,7 +20,8 @@ struct DeckListView: View {
 
     @State private var selectedDeck: Deck?
     @State private var selectedLang: String?
-    // slideX: how far the card pane has slid in (in points). 0 = hidden (peeking), (screenW - peekWidth) = fully open.
+    // slideX: how far the content pane has slid over the navigation pane (in
+    // points). 0 = hidden (peeking), (screenW - peekWidth) = fully covering.
     @State private var slideX: CGFloat = 0
     @State private var screenW: CGFloat = 0
     // Captured at drag start so onChanged doesn't use a moving target
@@ -19,58 +29,73 @@ struct DeckListView: View {
 
     private let peekWidth: CGFloat = 80
 
-    private var isPaneOpen: Bool { slideX > screenW * 0.5 }
+    // Is the content pane covering the navigation pane (vs. slid aside)?
+    private var isContentOpen: Bool { slideX > screenW * 0.5 }
 
-    private func openPane() {
+    // Slide the content pane over the navigation pane.
+    private func openContent() {
         withAnimation(.easeOut(duration: 0.25)) { slideX = max(screenW - peekWidth, 0) }
     }
 
-    private func closePane() {
+    // Slide the content pane aside to reveal the navigation pane.
+    private func closeContent() {
         withAnimation(.easeOut(duration: 0.25)) { slideX = 0 }
+    }
+
+    // Horizontal drag on the content pane: track the finger frame-for-frame
+    // (no `withAnimation` in `onChanged`), then commit open/closed on release.
+    // Axis-locked so a vertical drag falls through to the inner scroll view.
+    private func contentDragGesture(screenW w: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                // Ignore vertical drags so the card list can still scroll.
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                // Snapshot the committed position on the first move of the drag.
+                if abs(value.translation.width) < 20 && abs(value.translation.height) < 20 {
+                    dragBaseX = slideX
+                }
+                let proposed = dragBaseX + (-value.translation.width)
+                slideX = proposed.clamped(to: 0...(w - peekWidth))
+            }
+            .onEnded { value in
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                let dx = value.translation.width
+                let threshold = w * 0.3
+                let wasOpen = dragBaseX > w * 0.5
+                if wasOpen {
+                    if dx > threshold { closeContent() } else { openContent() }
+                } else {
+                    if dx < -threshold { openContent() } else { closeContent() }
+                }
+            }
     }
 
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
             ZStack(alignment: .leading) {
-                // ── Deck list — never moves ──
-                deckListPane
+                // ── Navigation pane (shell layer) — never moves ──
+                navigationPane
                     .frame(width: w)
 
-                // ── Card pane slides in from the right ──
+                // ── Content pane slides in from the right over the nav pane ──
                 if selectedDeck != nil || selectedLang != nil {
-                    cardPane(screenW: w)
+                    contentPane(screenW: w)
                         .frame(width: w)
                         .offset(x: w - slideX - peekWidth)
                         .shadow(color: .black.opacity(0.25), radius: 14, x: -4, y: 0)
+                        // Horizontal drag lives on the pane itself so it tracks
+                        // the finger frame-for-frame (Issue 3) and coexists with
+                        // the pane's inner scrolling via `simultaneousGesture`.
+                        .simultaneousGesture(contentDragGesture(screenW: w))
                 }
             }
             .onAppear { screenW = w }
             .onChange(of: geo.size.width) { _, new in screenW = new }
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        // On the very first event of a drag, value.translation is near zero —
-                        // use that moment to snapshot the current committed position.
-                        if abs(value.translation.width) < 20 && abs(value.translation.height) < 20 {
-                            dragBaseX = slideX
-                        }
-                        let proposed = dragBaseX + (-value.translation.width)
-                        slideX = proposed.clamped(to: 0...(w - peekWidth))
-                    }
-                    .onEnded { value in
-                        let dx = value.translation.width
-                        let threshold = w * 0.3
-                        let wasOpen = dragBaseX > w * 0.5
-                        if wasOpen {
-                            if dx > threshold { closePane() } else { openPane() }
-                        } else {
-                            if dx < -threshold { openPane() } else { closePane() }
-                        }
-                    }
-            )
         }
         .ignoresSafeArea()
+        // Action panes (action layer) reachable from the navigation pane:
+        // import cards, and the Generate cards flow (auto-opened for new decks).
         .sheet(isPresented: $viewModel.showAddCards) {
             AddCardsView()
         }
@@ -83,9 +108,9 @@ struct DeckListView: View {
         }
     }
 
-    // MARK: - Deck list pane
+    // MARK: - Navigation pane (shell layer)
 
-    private var deckListPane: some View {
+    private var navigationPane: some View {
         ZStack(alignment: .bottomLeading) {
             Theme.bgPrimary.ignoresSafeArea()
             ScrollView {
@@ -162,24 +187,31 @@ struct DeckListView: View {
         }
     }
 
-    // MARK: - Card pane
+    // MARK: - Content pane (content layer)
 
     @ViewBuilder
-    private func cardPane(screenW: CGFloat) -> some View {
+    private func contentPane(screenW: CGFloat) -> some View {
         let opacity = screenW > 0 ? Double(0.5 + 0.5 * (slideX / (screenW - peekWidth))) : 1.0
         ZStack {
             Theme.bgPrimary.ignoresSafeArea()
             if let deck = selectedDeck {
-                CardListView(deck: deck, onBack: closePane)
+                CardListView(deck: deck, onBack: closeContent)
             } else if let lang = selectedLang {
-                CardListView(lang: lang, onBack: closePane)
+                CardListView(lang: lang, onBack: closeContent)
             }
         }
         .opacity(opacity)
-        .onTapGesture {
-            if !isPaneOpen { openPane() }
+        // A transparent tap-catcher sits above the pane's content. When the
+        // pane is slid aside it is enabled and a tap brings the pane forward
+        // (Issue 4); when the pane is open it is disabled so taps reach the
+        // inner content (buttons, scrolling). It is always present — only its
+        // hit-testing toggles — so it never churns view identity mid-drag.
+        .overlay {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { openContent() }
+                .allowsHitTesting(!isContentOpen)
         }
-        .allowsHitTesting(isPaneOpen)
     }
 
     // MARK: - Helpers
@@ -188,14 +220,14 @@ struct DeckListView: View {
         selectedDeck = deck
         selectedLang = nil
         dragBaseX = screenW - peekWidth
-        openPane()
+        openContent()
     }
 
     private func selectLang(_ lang: String) {
         selectedLang = lang
         selectedDeck = nil
         dragBaseX = screenW - peekWidth
-        openPane()
+        openContent()
     }
 }
 

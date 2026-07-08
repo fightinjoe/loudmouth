@@ -1,26 +1,50 @@
 import SwiftUI
 
-struct CardReviewView: View {
+/// The **details pane** — the *details* layer of the Pane Protocol
+/// (see `web/docs/PANE_PROTOCOL.html`).
+///
+/// A bottom-anchored surface that slides up over a scrim and shows one card's
+/// full detail view. It is not full-height, so the content pane it dims shows
+/// behind the scrim. A horizontal swipe traverses to the previous or next
+/// sibling card without dismissing (`viewModel.next()` / `viewModel.prev()`,
+/// mirroring the protocol's `details/next` / `details/prev`). The pane is
+/// dismissed by the back chevron, a tap on the scrim, or a downward swipe —
+/// returning to the content pane in the same scroll position and selection.
+///
+/// Presented by its host (`CardListView`) as a `.transition(.move(edge: .bottom))`
+/// overlay; the action layer (`.sheet`) always wins the z-order above it,
+/// per Pane Protocol Rule 8.
+struct CardDetailsView: View {
     let deck: Deck?
     let cards: [Card]
     var startIndex: Int = 0
     var onDismiss: () -> Void
 
-    @StateObject private var viewModel: CardReviewViewModel
+    @StateObject private var viewModel: CardDetailsViewModel
 
-    // Pane drag state
-    @State private var paneOffset: CGFloat = 0
-    @State private var paneDragBase: CGFloat = 0
+    // Presentation driver. false = pane parked off the bottom + scrim clear;
+    // true = pane docked + scrim dimmed. Animating this both slides the pane
+    // and fades the scrim, so the two move together (Issue 2).
+    @State private var appeared = false
 
-    // Horizontal swipe state
+    // Details-pane vertical drag state (swipe-down-to-dismiss). This is an
+    // *additional* finger-tracking offset layered on top of the docked
+    // position; it is reset to 0 whenever the finger lifts.
+    @State private var detailsOffset: CGFloat = 0
+    @State private var detailsDragBase: CGFloat = 0
+
+    // Horizontal sibling-traversal swipe state
     @State private var cardDragX: CGFloat = 0
+
+    private let presentDuration: Double = 0.28
+    private let scrimOpacity: Double = 0.45
 
     init(deck: Deck?, cards: [Card], startIndex: Int = 0, onDismiss: @escaping () -> Void) {
         self.deck = deck
         self.cards = cards
         self.startIndex = startIndex
         self.onDismiss = onDismiss
-        _viewModel = StateObject(wrappedValue: CardReviewViewModel(deck: deck, cards: cards, startIndex: startIndex))
+        _viewModel = StateObject(wrappedValue: CardDetailsViewModel(deck: deck, cards: cards, startIndex: startIndex))
     }
 
     private var mode: String { deck?.mode ?? "study" }
@@ -31,17 +55,25 @@ struct CardReviewView: View {
     var body: some View {
         GeometryReader { geo in
             let paneHeight = geo.size.height * 0.92
+            // Parked position: the whole pane sits just off the bottom edge.
+            let parkedOffset = geo.size.height
+            // Docked position + the live finger-drag offset on top of it.
+            let paneY = (appeared ? 0 : parkedOffset) + max(0, detailsOffset)
 
             ZStack(alignment: .bottom) {
-                // Scrim
+                // Scrim — dims the content pane behind the (non-full-height)
+                // details pane; a tap on it closes the details layer. It fades
+                // via opacity (Issue 2) and covers the full stage so a tap
+                // anywhere outside the pane dismisses (Issue 1).
                 Color(red: 140/255, green: 140/255, blue: 115/255)
-                    .opacity(0.45)
+                    .opacity(appeared ? scrimOpacity : 0)
                     .ignoresSafeArea()
+                    .contentShape(Rectangle())
                     .onTapGesture { dismiss() }
 
-                // Pane
+                // Details pane
                 VStack(spacing: 0) {
-                    // Drag handle area — captures downward drag to dismiss
+                    // Static drag handle — captures the downward swipe-to-dismiss.
                     handleBar
                         .gesture(verticalDragGesture)
 
@@ -59,8 +91,12 @@ struct CardReviewView: View {
                         topTrailingRadius: 40
                     )
                 )
-                .offset(y: max(0, paneOffset))
+                .offset(y: paneY)
                 .gesture(verticalDragGesture)
+            }
+            .onAppear {
+                // Animate in: pane slides up while the scrim fades in together.
+                withAnimation(.easeOut(duration: presentDuration)) { appeared = true }
             }
         }
         .ignoresSafeArea()
@@ -84,7 +120,7 @@ struct CardReviewView: View {
     @ViewBuilder
     private func cardContent(card: Card, geo: GeometryProxy) -> some View {
         VStack(spacing: 0) {
-            // Header
+            // Header — back affordance (closes the details pane) + sibling position
             HStack {
                 Button(action: dismiss) {
                     Image(systemName: "chevron.left")
@@ -104,7 +140,7 @@ struct CardReviewView: View {
             .padding(.top, 4)
             .padding(.bottom, 16)
 
-            // Swipeable card area
+            // Sibling-traversal card area — horizontal swipe goes to prev/next card
             cardFace(card: card)
                 .offset(x: cardDragX)
                 .frame(maxWidth: .infinity)
@@ -240,23 +276,29 @@ struct CardReviewView: View {
 
     // MARK: - Gestures
 
+    /// Vertical swipe-down on the details pane: track the finger, then commit
+    /// (dismiss) or snap back on release. Mirrors the protocol's swipe-down
+    /// dismissal of a bottom-anchored pane.
     private var verticalDragGesture: some Gesture {
         DragGesture()
             .onChanged { value in
                 if value.translation.height < 20 && value.translation.height > -20 {
-                    paneDragBase = paneOffset
+                    detailsDragBase = detailsOffset
                 }
-                paneOffset = max(0, paneDragBase + value.translation.height)
+                detailsOffset = max(0, detailsDragBase + value.translation.height)
             }
             .onEnded { value in
                 if value.translation.height > 120 || value.predictedEndTranslation.height > 300 {
                     dismiss()
                 } else {
-                    withAnimation(.easeOut(duration: 0.25)) { paneOffset = 0 }
+                    withAnimation(.easeOut(duration: 0.25)) { detailsOffset = 0 }
                 }
             }
     }
 
+    /// Horizontal swipe: traverse to the previous/next sibling card without
+    /// dismissing (protocol `details/prev` / `details/next`). Axis-locked so a
+    /// vertical drag falls through to the dismiss gesture.
     private func horizontalDragGesture(geo: GeometryProxy) -> some Gesture {
         DragGesture()
             .onChanged { value in
@@ -275,18 +317,20 @@ struct CardReviewView: View {
                 let w = geo.size.width
                 let threshold = w * 0.3
                 if dx < -threshold && !viewModel.isLastCard {
-                    // Slide current card out to the left, then swap content and slide in from right
+                    // Swipe left → next sibling: slide current card out left,
+                    // swap content, then slide the next card in from the right.
                     withAnimation(.easeOut(duration: 0.2)) { cardDragX = -w }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        viewModel.advance()
+                        viewModel.next()
                         cardDragX = w           // new card starts offscreen right
                         withAnimation(.easeOut(duration: 0.2)) { cardDragX = 0 }
                     }
                 } else if dx > threshold && !viewModel.isFirstCard {
-                    // Slide current card out to the right, then swap content and slide in from left
+                    // Swipe right → previous sibling: slide current card out right,
+                    // swap content, then slide the previous card in from the left.
                     withAnimation(.easeOut(duration: 0.2)) { cardDragX = w }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        viewModel.previous()
+                        viewModel.prev()
                         cardDragX = -w          // new card starts offscreen left
                         withAnimation(.easeOut(duration: 0.2)) { cardDragX = 0 }
                     }
@@ -298,9 +342,19 @@ struct CardReviewView: View {
 
     // MARK: - Helpers
 
+    /// Close the details layer: slide the pane off the bottom while the scrim
+    /// fades out together (Issue 2), then hand control back to the content pane
+    /// via `onDismiss` once the animation completes.
     private func dismiss() {
-        withAnimation(.easeOut(duration: 0.25)) { paneOffset = 1000 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { onDismiss() }
+        // Animate the docked→parked slide and the drag-offset reset together,
+        // so a swipe-down dismissal flows continuously from the finger's last
+        // position to fully off-screen without a jump.
+        detailsDragBase = 0
+        withAnimation(.easeIn(duration: presentDuration)) {
+            appeared = false
+            detailsOffset = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + presentDuration) { onDismiss() }
     }
 
     private func frontText(card: Card) -> String {

@@ -12,6 +12,15 @@ private let supportedLangs: [(code: String, flag: String, name: String)] = [
     ("de", "🇩🇪", "German"),
 ]
 
+/// The **Generate cards action pane** — an *action* layer surface of the Pane
+/// Protocol (see `web/docs/PANE_PROTOCOL.html`), presented as a bottom-anchored
+/// modal `.sheet`.
+///
+/// Takes a context prompt ("greetings for morning/afternoon/evening") and adds
+/// a batch of generated cards. Reached from the navigation pane's add button
+/// (creating a new deck, with the language selector shown) or from the content
+/// pane's "Add cards" input (`targetDeck` set, language locked). The pane
+/// closes after generation completes.
 struct GenerateCardsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss

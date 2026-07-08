@@ -7,6 +7,19 @@ private var deviceSafeTop: CGFloat {
         .first?.windows.first?.safeAreaInsets.top ?? 0
 }
 
+/// The **content pane** body — the *content* layer of the Pane Protocol
+/// (see `web/docs/PANE_PROTOCOL.html`).
+///
+/// Shows the currently selected deck's (or language's / starred) card list.
+/// It is hosted inside `DeckListView`'s sliding content pane; navigating
+/// between content (a deck, a language browse, the empty state) swaps what
+/// this view renders — it does not add a layer.
+///
+/// This view is the host that opens the two higher layers:
+///   • the **details pane** (`CardDetailsView`, opened by tapping a card row), and
+///   • the **action panes** (Translation / Deck settings / Edit card), each a
+///     bottom-anchored modal `.sheet` — the action layer, which always wins the
+///     z-order (Pane Protocol Rule 8).
 struct CardListView: View {
     var deck: Deck?
     var lang: String?
@@ -15,7 +28,8 @@ struct CardListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allCards: [Card]
 
-    @State private var reviewStartIndex: Int?
+    // Sibling index the details pane opens on; nil = details layer closed.
+    @State private var detailsStartIndex: Int?
     @State private var editingCard: Card?
     @State private var showSettings = false
     @State private var showTranslation = false
@@ -63,7 +77,9 @@ struct CardListView: View {
             ZStack(alignment: .top) {
                 Theme.bgPrimary.ignoresSafeArea()
                 VStack(spacing: 0) {
-                    // Header
+                    // Header — back affordance (closes the content pane, revealing
+                    // the navigation pane), deck-title menu, and the "+" add button
+                    // that opens the Translation action pane.
                     HStack {
                         Button(action: { onBack?() }) {
                             Image(systemName: "chevron.left")
@@ -130,7 +146,7 @@ struct CardListView: View {
                                     )
                                     .background(Theme.bgSurface)
                                     .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
-                                    .onTapGesture { reviewStartIndex = index }
+                                    .onTapGesture { detailsStartIndex = index }
                                 }
                             }
                             .padding(.horizontal, 20)
@@ -140,6 +156,8 @@ struct CardListView: View {
                     }
                 }
             }
+            // Action panes (action layer) — bottom-anchored modal sheets,
+            // contextual to this content pane. At most one is open at a time.
             .sheet(item: $editingCard) { card in
                 CardEditView(card: card)
             }
@@ -153,19 +171,20 @@ struct CardListView: View {
             }
             .tint(Theme.accent)
 
-            // Card review pane overlay
-            if let startIndex = reviewStartIndex {
-                CardReviewView(
+            // Details pane (details layer) — bottom-anchored over a scrim,
+            // opened by tapping a card row. It owns its own enter/exit
+            // animation (pane slides, scrim fades), so no transition is applied
+            // here; `onDismiss` fires only after that exit animation completes.
+            if let startIndex = detailsStartIndex {
+                CardDetailsView(
                     deck: deck,
                     cards: cards,
                     startIndex: startIndex,
-                    onDismiss: { reviewStartIndex = nil }
+                    onDismiss: { detailsStartIndex = nil }
                 )
-                .transition(.move(edge: .bottom))
                 .zIndex(10)
             }
         }
-        .animation(.easeOut(duration: 0.3), value: reviewStartIndex != nil)
     }
 
     private func playCard(_ card: Card) {
