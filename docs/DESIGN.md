@@ -6,21 +6,30 @@ description: >
 
 ### Information Architecture
 
-**High level app structure (Phase 1):** No tab bar. Two main, stacked panes. The bottom navigation pane (fixed in place), and the top content pane. The content pane is shown by default, but will slide off to the right to reveal the navigation pane. The content pane content changes based on items clicked on the navigation pane. Additionally, there is a contextual action pane that slides up from the bottom. This is contextual to the content on the pane showing on the screen and appears when clicking an action on that pane, such as translating, generating cards, reviewing individual cards, editing settings, etc.
+This app organizes its UI according to the **Pane Protocol** (`web/docs/PANE_PROTOCOL.html`). That document is the source of truth for pane vocabulary, the layer stack, state, transitions, and gestures; this doc describes the product-level design that sits on top of it. Terms used here — *pane*, *layer*, *scrim*, *handle* — carry the precise meanings defined in the protocol glossary.
 
-**Navigation pane:** This pane allows for navigation between different content in the app. The content to navigate between are different card decks. It has a "Recent" section which lists the last 3 decks that have been viewed, and a section for each language for which at least one deck exists. Each language section shows up to 5 decks (most recently created). If there are more than 5 decks for a langauge, a `All ${language} decks` link appears. Clicking this link brinks in the deck pane, showing the list of all decks. If any card has been starred for a given langauge, then the dynamic "starred" deck appears at the top of the section for the language the deck belongs to. The navigation pane can be seen here: https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=106-1189&t=glPczHFNXaQtaweV-11
+**High level app structure (Phase 1):** No tab bar. The app is a stage with four fixed **layers**, bottom to top: **shell** < **content** < **details** < **action** (see Pane Protocol, Rule 8). A **pane** lives in exactly one layer:
 
-**Deck pane:** This pane shows all of the cards for a given deck. In the header of the deck on the left is a menu button (clicking it slides the deck panel out of the way revealing the navigation panel - swiping right from the left edge of the content pane also has the same effect) and on the right is an add button (clicking it brings up the action pane with an interface for translating and a card to the deck). Between both buttons is the title of the deck. Clicking on the title reveals a menu of two options: "Settings" and "Edit cards". Settings slides up the action pane with the form fields for editing the deck, and "Edit cards" changes the cards on the deck pane so that they can be dragged to be reordered. The "add button" changes to a "confirm button" that saves the changes. Additionally, a text input appears at the bottom of the screen with the placeholder text "Add cards". Clicking on it slides up the action pane with content for contextual card generation. Mocks for the Deck Pane can be seen here: https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=189-9779&t=glPczHFNXaQtaweV-11
+- **Navigation pane** (shell layer) — fixed in place, always present, revealed by sliding the content pane sideways.
+- **Content pane** (content layer) — shown by default; slides off to the right to reveal the navigation pane underneath. Its content changes based on the deck selected in the navigation pane. Navigating between content screens (a deck, a browse view, the empty state) swaps what the content pane renders — it does not add a layer.
+- **Details pane** (details layer) — optional; sits over the content pane to show one card's full detail view. A horizontal swipe inside the details pane traverses to the previous or next sibling card without dismissing; a back affordance closes the layer and returns to the content pane. There is no scrim behind the details pane.
+- **Action pane** (action layer) — optional; a bottom-anchored, modal surface that slides up over a **scrim**. Contextual to the pane beneath it, opened by an action such as translating, generating cards, or editing settings. At most one action pane is open at a time; it always wins the z-order.
 
-**Translation vs. Generate are separate entry points:**
-- **Translation action pane** = single word/phrase → one or more result cards (ambiguous word sense → multiple results). Surfaced in the action pane. **Entry point: "+" FAB in the Content pane header (top-right)** — tapping it slides up the Translation sheet. This header of the translation action pane always shows the deck's fixed language and doubles.
-- **Generate cards** = placeholder context prompt ("greetings for morning/afternoon/evening") → batch of cards added to the deck. **Entry point: "Add cards" text input (bottom)**. Also auto-opens for new/empty decks, which can be created by clicking the "+" add FAB on the bottom-left of the navigation pane. When opened for a new/empty deck, there is a language selector below the textarea. The empty state experience is here: https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=189-9780&t=glPczHFNXaQtaweV-11
+**Navigation pane:** This pane (shell layer) allows for navigation between different content in the app. The content to navigate between are different card decks. It has a "Recent" section which lists the last 3 decks that have been viewed, and a section for each language for which at least one deck exists. Each language section shows up to 5 decks (most recently created). If there are more than 5 decks for a langauge, a `All ${language} decks` link appears. Clicking this link brings up the all-decks list in the content pane. If any card has been starred for a given langauge, then the dynamic "starred" deck appears at the top of the section for the language the deck belongs to. The navigation pane can be seen here: https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=106-1189&t=glPczHFNXaQtaweV-11
 
-**Language pair:** The "🇯🇵 Japanese" header in the Translation sheet is a display-only label showing the current deck's fixed language (flag + language name). It is NOT tappable and has no picker. Language is fixed at deck creation via the Generate cards sheet language selector. There is no way to reach the Translation tray without being inside a specific deck, and all cards in a deck share the same language.
+**Deck view (content pane):** The deck is a mode of the content pane that shows all of the cards for a given deck. In the header on the left is a menu button (clicking it slides the content pane out of the way to reveal the navigation pane — swiping right from the left edge of the content pane also has the same effect) and on the right is an add button (clicking it opens the action pane with an interface for translating a word/phrase and adding a card to the deck). Between both buttons is the title of the deck. Clicking on the title reveals a menu of two options: "Settings" and "Edit cards". Settings opens the action pane with the form fields for editing the deck, and "Edit cards" changes the cards in the content pane so that they can be dragged to be reordered. The "add button" changes to a "confirm button" that saves the changes. Additionally, a text input appears at the bottom of the content pane with the placeholder text "Add cards". Clicking on it opens the action pane with content for contextual card generation. Mocks for the deck view can be seen here: https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=189-9779&t=glPczHFNXaQtaweV-11
+
+**Details pane:** Tapping a card row in the content pane opens the details pane (details layer) over the content pane, showing that card's full detail view. Swiping left or right inside the details pane traverses to the next or previous sibling card in the deck without dismissing — the pane stays open, only the card changes. A back affordance closes the pane and returns to the content pane in the same scroll position and selection. The details pane has no scrim.
+
+**Translation vs. Generate are separate action panes:**
+- **Translation action pane** = single word/phrase → one or more result cards (ambiguous word sense → multiple results). **Entry point: "+" add button in the content pane header (top-right)** — tapping it opens the Translation action pane. Its header always shows the deck's fixed language.
+- **Generate cards action pane** = placeholder context prompt ("greetings for morning/afternoon/evening") → batch of cards added to the deck. **Entry point: "Add cards" text input (bottom of the content pane)**. Also auto-opens for new/empty decks, which can be created by clicking the "+" add button on the bottom-left of the navigation pane. When opened for a new/empty deck, there is a language selector below the textarea. The empty state experience is here: https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=189-9780&t=glPczHFNXaQtaweV-11
+
+**Language pair:** The "🇯🇵 Japanese" header in the Translation action pane is a display-only label showing the current deck's fixed language (flag + language name). It is NOT tappable and has no picker. Language is fixed at deck creation via the Generate cards action pane's language selector. There is no way to reach the Translation action pane without being inside a specific deck, and all cards in a deck share the same language.
 
 ### Interaction States — Translation action pane
 
-The Translation action pane is a bottom sheet (white card, 40px top-radius, sits above a scrim over the Deck screen). It is triggered by tapping the "+" FAB in the header of the content pane. The translation action pane header shows a back FAB (left) and the deck's fixed language label (e.g. "🇯🇵 Japanese") — display only, not tappable.
+The Translation action pane (action layer) is a bottom-anchored modal surface (white card, 40px top-radius) that slides up over a scrim covering the content pane. It is triggered by tapping the "+" add button in the header of the content pane. Its header shows a back button (left) and the deck's fixed language label (e.g. "🇯🇵 Japanese") — display only, not tappable.
 
 **Empty:** Large text input area (32px Roboto Flex Light, `--text-body`), placeholder in `--text-secondary`. "Translate" pill button bottom-right, grayed (`--gray-400` bg, `--gray-400` text).
 
@@ -42,28 +51,28 @@ The Translation action pane is a bottom sheet (white card, 40px top-radius, sits
 - Play icon: 24px, right-aligned, `--text-caption`
 - Multiple results when input is ambiguous by sense (noun vs. verb etc.) — controlled by the translation API skill rules
 
-**Swipe to add (top card):** The top card is swipeable. Reveal on drag: green ✓ (add) left-side, red × (dismiss) + blue ✏ (edit) right-side. Swipe right past threshold → card added to current deck and removed from list. Tap the card row → same as swipe-right (add immediately). After all cards added/dismissed, sheet returns to empty state.
+**Swipe to add (top card):** The top card is swipeable. Reveal on drag: green ✓ (add) left-side, red × (dismiss) + blue ✏ (edit) right-side. Swipe right past threshold → card added to current deck and removed from list. Tap the card row → same as swipe-right (add immediately). After all cards added/dismissed, the action pane returns to empty state.
 
 **"Translate" pill (re-translate):** Floats bottom-right of the result area, grayed. Tapping clears results and re-runs translation with the current input. This is NOT a "new word" button — it's a retry/re-run for the same input.
 
-**After add:** Card slides out of the list. If more cards remain, the list updates. When the last card is added or dismissed, the input clears and sheet returns to empty state, ready for the next word.
+**After add:** Card slides out of the list. If more cards remain, the list updates. When the last card is added or dismissed, the input clears and the action pane returns to empty state, ready for the next word.
 
 **Error — timeout (504):** Skeleton resolves to: `Could not generate — try again. [↻]`
 **Error — rate limited (429):** Same, with "Try again in 60 seconds."
 **Error — network:** "No connection." No retry button.
 **Empty result (0 valid cards):** "No result — try rephrasing." with ↻ retry.
-**Edge: deck with no language set** (e.g. legacy data migration): language pill shows "🌐 Set language" — tapping opens Generate cards sheet (not Translation sheet) so user can set the language first.
+**Edge: deck with no language set** (e.g. legacy data migration): language pill shows "🌐 Set language" — tapping opens the Generate cards action pane (not the Translation action pane) so the user can set the language first.
 
-**Dismissal:** The action pane can be dismissed by swiping down
+**Dismissal:** The action pane can be dismissed by swiping down, clicking the scrim, or an explicit close action.
 
 ### Generate Cards action pane
 
-This can be triggered in two ways:
+The Generate cards action pane (action layer) can be triggered in two ways:
 
-1. From the Navigation Pane by clicking the ADD FAB in the bottom left. This slides in the Content Pane with the Generate Cards action pane already exposed. Clicking GENERATE calls the `/generate-cards` API, then based on the response creates an appropriately named deck with the cards appended.
+1. From the navigation pane by clicking the add button in the bottom left. This brings up the content pane with the Generate cards action pane already open. Clicking GENERATE calls the `/generate-cards` API, then based on the response creates an appropriately named deck with the cards appended.
 2. By clicking into the "Add cards" text input at the bottom of the content pane when in "edit" mode. Clicking GENERATE calls the `/generate-cards` API, and adds the cards returned in the response to the current deck
 
-Layout: bottom sheet, same beige/white motif as Translation sheet (40px top-radius, `--bg-primary` background on inner card).
+Layout: bottom-anchored modal surface over a scrim, same beige/white motif as the Translation action pane (40px top-radius, `--bg-primary` background on inner card).
 
 ```
 ┌─── Add cards ──────────────────── [+] ───┐
@@ -86,4 +95,4 @@ Layout: bottom sheet, same beige/white motif as Translation sheet (40px top-radi
 
 After Generate: the action pane closes after generation completes. (No inline preview in this flow — the generated cards land directly in the deck.)
 
-**Dismissal:** The action pane can be dismissed by swiping down
+**Dismissal:** The action pane can be dismissed by swiping down, clicking the scrim, or an explicit close action.
