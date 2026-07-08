@@ -13,18 +13,18 @@ export function toImportJson(cards) {
 
 export function openJsonPanel(appEl, title, jsonString, onDismiss) {
   const panel = document.createElement('div')
-  panel.className = 'json-panel pane-screen fixed-inset bg-primary flex-col transition-sheet'
+  panel.className = 'json-panel pane-full fixed-inset bg-primary flex-col transition-sheet'
   appEl.appendChild(panel)
 
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => panel.classList.add('pane-screen--visible'))
+    requestAnimationFrame(() => panel.classList.add('pane-full--visible'))
   })
 
   let closed = false
   function close() {
     if (closed) return
     closed = true
-    panel.classList.remove('pane-screen--visible')
+    panel.classList.remove('pane-full--visible')
     panel.addEventListener('transitionend', () => { panel.remove(); onDismiss?.() }, { once: true })
   }
 

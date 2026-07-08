@@ -12,15 +12,15 @@ export function openAddCardsPanel(appEl, closePicker, onImportDone, { getDecks, 
   let parseErrors = initialErrors || []
 
   const panel = document.createElement('div')
-  panel.className = 'add-cards-panel pane-screen fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
+  panel.className = 'add-cards-panel pane-full fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
   appEl.appendChild(panel)
 
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => panel.classList.add('pane-screen--visible'))
+    requestAnimationFrame(() => panel.classList.add('pane-full--visible'))
   })
 
   function close() {
-    panel.classList.remove('pane-screen--visible')
+    panel.classList.remove('pane-full--visible')
     panel.addEventListener('transitionend', () => panel.remove(), { once: true })
   }
 

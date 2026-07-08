@@ -919,14 +919,14 @@ ruby {
   transform: translateX(280px);
 }
 
-/*-- Full-screen slide-up panel --*/
+/*-- Full-height slide-up pane (action-layer content providers) --*/
 
-.pane-screen {
+.pane-full {
   transform: translateY(100%);
   z-index: 100;
 }
 
-.pane-screen--visible {
+.pane-full--visible {
   transform: translateY(0);
 }
 

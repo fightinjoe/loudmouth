@@ -16,18 +16,18 @@ function getPlainReading(reading) {
 
 export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSave, onDelete, onDismiss) {
   const panel = document.createElement('div')
-  panel.className = 'card-edit-panel pane-screen fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
+  panel.className = 'card-edit-panel pane-full fixed-inset bg-primary flex-col transition-sheet overflow-y-auto'
   appEl.appendChild(panel)
 
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => panel.classList.add('pane-screen--visible'))
+    requestAnimationFrame(() => panel.classList.add('pane-full--visible'))
   })
 
   let closed = false
   function close() {
     if (closed) return
     closed = true
-    panel.classList.remove('pane-screen--visible')
+    panel.classList.remove('pane-full--visible')
     panel.addEventListener('transitionend', () => { panel.remove(); onDismiss?.() }, { once: true })
   }
 

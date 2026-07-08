@@ -162,34 +162,42 @@
   .example-stage .content-pane .card-row:hover { background: var(--code-bg); }
   .example-stage .content-pane .card-row .meaning { color: var(--muted); font-size: 13px; }
 
-  /* Scrim above content when nav exposed */
-  .example-stage .shell-scrim {
+  /* The shell-reveal has NO scrim: full-height content simply slides aside
+     to expose the nav underneath. */
+
+  /* Layer 3: details scrim + details pane.
+     The details pane is bottom-anchored and NOT full-height (it starts below
+     the stage top), so a scrim dims the content pane peeking out behind it.
+     Scrim sits just under the details pane in z-order and dismisses on click. */
+  .example-stage .details-scrim {
     position: absolute;
     inset: 0;
     background: rgba(0,0,0,0.0);
     pointer-events: none;
     transition: background 240ms;
-    z-index: 1;
+    z-index: 3;
   }
-  .example-stage[data-shell="background"] .shell-scrim {
-    background: rgba(0,0,0,0.25);
+  .example-stage[data-details="open"] .details-scrim {
+    background: rgba(0,0,0,0.35);
     pointer-events: auto;
   }
-
-  /* Layer 3: details pane */
   .example-stage .details-pane {
     position: absolute;
-    inset: 0;
+    left: 0;
+    right: 0;
+    top: 40px;   /* not full-height — content shows behind the scrim above */
+    bottom: 0;
     background: #ece9df;
+    border-radius: 16px 16px 0 0;
     display: flex;
     flex-direction: column;
-    transform: translateX(100%);
+    transform: translateY(100%);   /* slides up from the bottom */
     transition: transform 240ms cubic-bezier(.2,.7,.2,1);
-    z-index: 3;
+    z-index: 4;
     will-change: transform;
   }
   .example-stage .details-pane[data-dragging] { transition: none; }
-  .example-stage[data-details="open"] .details-pane { transform: translateX(0); }
+  .example-stage[data-details="open"] .details-pane { transform: translateY(0); }
   /* Title bar = visual chrome only, NOT a gesture handle */
   .example-stage .details-pane .title-bar {
     height: 44px;
@@ -279,14 +287,15 @@
   .example-stage .details-pane .details-handle--left  { left: 0; }
   .example-stage .details-pane .details-handle--right { right: 0; }
 
-  /* Layer 4: action pane (bottom sheet + scrim) */
+  /* Layer 4: action pane (bottom sheet + scrim).
+     Always on top — sits above the details layer (z 3–4) per Rule 8. */
   .example-stage .action-scrim {
     position: absolute;
     inset: 0;
     background: rgba(0,0,0,0.0);
     pointer-events: none;
     transition: background 240ms;
-    z-index: 4;
+    z-index: 5;
   }
   .example-stage[data-action="open"] .action-scrim {
     background: rgba(0,0,0,0.35);
@@ -302,7 +311,7 @@
     box-shadow: 0 -8px 24px rgba(0,0,0,0.12);
     transform: translateY(100%);
     transition: transform 280ms cubic-bezier(.2,.7,.2,1);
-    z-index: 5;
+    z-index: 6;
     padding: 0 0 20px;
     will-change: transform;
   }
@@ -420,13 +429,13 @@
     <dd>Lives in the <em>content</em> layer. Shows the currently selected screen — a deck, a browse view, the empty state. Slides sideways to reveal the navigation pane underneath.</dd>
 
     <dt>Details pane</dt>
-    <dd>Lives in the <em>details</em> layer. Sits over the content pane and shows one item at a time (one card's full detail view). Horizontal swipe inside the details pane navigates to the previous or next sibling item without dismissing — the pane stays open, only the item changes. A back affordance closes the layer and returns to the content pane.</dd>
+    <dd>Lives in the <em>details</em> layer. A bottom-anchored surface that slides up over a scrim and shows one item at a time (one card's full detail view). It is not full-height; the content pane it dims is visible behind the scrim. Horizontal swipe inside the details pane navigates to the previous or next sibling item without dismissing — the pane stays open, only the item changes. A back affordance (or a click on the scrim) closes the layer and returns to the content pane.</dd>
 
     <dt>Action pane</dt>
     <dd>Lives in the <em>action</em> layer. A bottom-anchored, modal surface that slides up over a scrim. Used for transient tasks: translation, generate cards, deck settings. Dismissed by swipe-down, scrim click, or an explicit close action. At most one action pane is open at a time.</dd>
 
     <dt>Scrim</dt>
-    <dd>A semi-transparent overlay that dims the layers underneath when a higher layer is open. The scrim is interactive: clicking it dismisses the layer above it. Both the shell-reveal and the action pane use a scrim; the details pane does not.</dd>
+    <dd>A semi-transparent overlay that dims the layers underneath when a higher layer is open. The scrim is interactive: clicking it dismisses the layer above it. Both the details pane and the action pane slide up over a scrim; the shell-reveal does not (full-height content simply slides aside to expose the navigation pane underneath).</dd>
 
     <dt>Handle</dt>
     <dd>A static DOM element that exists for the sole purpose of receiving touch gestures. A handle is always present in the same place relative to its parent layer; it is never created or destroyed by content changes. Examples: the top bar of the content pane (where the swipe-to-reveal-nav gesture lives), the drag-bar at the top of an action pane.</dd>
@@ -465,7 +474,7 @@
 <ol>
   <li><strong>Shell layer.</strong> The navigation pane. Lowest, always present, never dismissed. Visible only when the content layer is slid aside.</li>
   <li><strong>Content layer.</strong> The content pane. Sits over the shell. Always present; the user navigates between content screens (a deck, a browse view, an empty state) by swapping what the content pane renders, not by adding new layers.</li>
-  <li><strong>Details layer.</strong> The details pane. Optional. Sits over the content pane when the user drills into a single item. Stays open across horizontal swipes — swiping left or right inside the details pane traverses to the previous or next sibling item from the underlying content list, without dismissing.</li>
+  <li><strong>Details layer.</strong> The details pane. Optional. Bottom-anchored and scrim'd; slides up over the content pane when the user drills into a single item, and is not full-height (the dimmed content shows behind it). Stays open across horizontal swipes — swiping left or right inside the details pane traverses to the previous or next sibling item from the underlying content list, without dismissing. A back affordance or a scrim click closes it.</li>
   <li><strong>Action layer.</strong> The action pane. Optional. Sits over everything else. Bottom-anchored, modal, scrim'd. Used for transient tasks. At most one action pane open at a time. Action layer always wins the z-order — if a details pane is open and an action pane opens on top, the action pane is in front and the details pane remains intact underneath.</li>
 </ol>
 
@@ -626,8 +635,7 @@
       <div class="deck-item" data-action="content/select-deck" data-deck-id="003">003 &mdash; Greetings</div>
     </div>
 
-    <!-- Layer 2: content -->
-    <div class="shell-scrim" data-action="shell/close"></div>
+    <!-- Layer 2: content. The shell-reveal has no scrim. -->
     <div class="content-pane" id="example-content">
       <!-- title bar: visual chrome + menu button click target only; NOT a gesture handle -->
       <div class="title-bar">
@@ -645,9 +653,12 @@
     </div>
 
     <!-- Layer 3: details (always present in DOM; CSS shows/hides).
-         Title bar = visual chrome only. Two static handles (left/right edges,
-         full pane height) own the traverse gesture. The card stack contains
+         The details scrim is a sibling that sits just below the pane; it dims
+         the content peeking out behind the bottom-anchored pane and closes the
+         layer on click. Title bar = visual chrome only. Two static handles
+         (left/right edges) own the traverse gesture. The card stack contains
          three faces (prev/current/next) that slide together during a drag. -->
+    <div class="details-scrim" data-action="details/close"></div>
     <div class="details-pane" id="example-details">
       <div class="title-bar">
         <button data-action="details/close" aria-label="Close details">&lsaquo;</button>
@@ -913,21 +924,22 @@
   ui.subscribe("action", updateReadout);
 
   // ── Per-layer delegates ───────────────────────────────────────────────
-  // Shell layer's clickable elements (nav + scrim) live inside the stage but
-  // belong to the shell delegate.
+  // Shell layer's clickable elements (the nav deck items) belong to the shell
+  // delegate. The shell-reveal has no scrim, so there is no scrim click here.
   const shellDelegate = createDelegate(navEl);
   shellDelegate.register("content/select-deck", (_e, el) => ui.transition("content/select-deck", { id: el.dataset.deckId }));
 
-  // Content layer delegate — handles toggle, scrim close, card opens, action open.
+  // Content layer delegate — handles toggle, card opens, action open.
   const contentDelegate = createDelegate(stage); // stage catches content-layer clicks
   contentDelegate.register("shell/toggle", () => ui.transition("shell/toggle"));
-  contentDelegate.register("shell/close",  () => ui.transition("shell/close"));
   contentDelegate.register("details/open", (_e, el) =>
     ui.transition("details/open", { deckId: el.dataset.deckId, index: parseInt(el.dataset.index, 10) })
   );
   contentDelegate.register("action/open",  () => ui.transition("action/open"));
 
-  // Details layer delegate.
+  // Details layer delegate — the back button lives inside the pane, so it is
+  // caught here. The details scrim is a sibling of the pane (not inside it),
+  // so its click is wired directly below, mirroring the action scrim.
   const detailsDelegate = createDelegate(detailsEl);
   detailsDelegate.register("details/close", () => ui.transition("details/close"));
 
@@ -935,7 +947,9 @@
   const actionDelegate = createDelegate(actionEl);
   actionDelegate.register("action/close", () => ui.transition("action/close"));
 
-  // Scrim click on action layer.
+  // Scrim clicks — each scrim is a stage-level sibling of its pane, so it is
+  // wired directly rather than through the pane's delegate.
+  document.querySelector(".details-scrim").addEventListener("click", () => ui.transition("details/close"));
   document.querySelector(".action-scrim").addEventListener("click", () => ui.transition("action/close"));
 
   // ── Gestures — each wired to a static handle, never to dynamic content ─

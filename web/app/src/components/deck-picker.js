@@ -104,7 +104,7 @@ export async function openDeckPicker(
 
   const panel = document.createElement("div");
   panel.className =
-    "deck-picker-panel pane-screen fixed-inset bg-primary flex-col transition-sheet";
+    "deck-picker-panel pane-full fixed-inset bg-primary flex-col transition-sheet";
   panel.innerHTML = `
     <div class="pane-header flex items-center">
       <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Back">‹</button>
@@ -121,12 +121,12 @@ export async function openDeckPicker(
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      panel.classList.add("pane-screen--visible");
+      panel.classList.add("pane-full--visible");
     });
   });
 
   function close() {
-    panel.classList.remove("pane-screen--visible");
+    panel.classList.remove("pane-full--visible");
     panel.addEventListener("transitionend", () => panel.remove(), {
       once: true,
     });
