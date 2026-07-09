@@ -141,7 +141,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded, 
     kind: 'translation',
     bodyHTML: `<div class="translation-panel-inner flex-col flex-1">${renderBody(langFlag, langName)}</div>`,
     onClose: onDismiss,
-    onMount: (panel) => {
+    onMount: (panel, _scrim, close) => {
       // Re-add the `flex-col` modifier that the original template relied on.
       // openBottomSheet sets the base bottom-sheet classes; we add flex-col so
       // the translation panel's internal layout works.
@@ -282,7 +282,7 @@ export function openTranslationPanel(appEl, deck, { importCards }, onCardAdded, 
         wireCardSwipe(cardList, addCard)
       }
 
-      panel.querySelector('.translation-back').addEventListener('click', sheet.close)
+      panel.querySelector('.translation-back').addEventListener('click', close)
       requestAnimationFrame(() => inputEl.focus())
     },
   })

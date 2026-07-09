@@ -81,10 +81,13 @@ struct CardListView: View {
                     // the navigation pane), deck-title menu, and the "+" add button
                     // that opens the Translation action pane.
                     HStack {
+                        // Left icon-button reveals the navigation pane — mirrors
+                        // the web header's hamburger Menu button (white circle,
+                        // green/`--fg-emphasis` glyph).
                         Button(action: { onBack?() }) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Theme.textBody)
+                            Image(systemName: "line.3.horizontal")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(Theme.accent)
                                 .frame(width: 44, height: 44)
                                 .background(Circle().fill(Theme.bgSurface))
                         }
@@ -114,10 +117,12 @@ struct CardListView: View {
                                 .foregroundStyle(Theme.accent)
                                 .frame(width: 44, height: 44)
                         } else if deck != nil {
+                            // Add button — white circle, green/`--fg-emphasis`
+                            // glyph, matching the web header's Add icon-button.
                             Button { showTranslation = true } label: {
                                 Image(systemName: "plus")
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .foregroundStyle(Theme.textBody)
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundStyle(Theme.accent)
                                     .frame(width: 44, height: 44)
                                     .background(Circle().fill(Theme.bgSurface))
                             }
@@ -135,6 +140,10 @@ struct CardListView: View {
                         Spacer()
                     } else {
                         ScrollView {
+                            // Cards form one connected list: 6pt gaps, flat white
+                            // surfaces, and only the outermost corners rounded —
+                            // matching the web `.deck-view-list` / `.card-row-wrapper`
+                            // (no per-row drop shadow, no per-row rounding).
                             VStack(spacing: 6) {
                                 ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                                     CardRowView(
@@ -145,7 +154,10 @@ struct CardListView: View {
                                         onEdit: { editingCard = card }
                                     )
                                     .background(Theme.bgSurface)
-                                    .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+                                    .clipShape(ListRowShape(
+                                        isFirst: index == 0,
+                                        isLast: index == cards.count - 1
+                                    ))
                                     .onTapGesture { detailsStartIndex = index }
                                 }
                             }
@@ -198,5 +210,26 @@ struct CardListView: View {
 
     private func toggleStar(_ card: Card) {
         card.starredAt = card.starredAt == nil ? .now : nil
+    }
+}
+
+/// Rounds only the corners a card needs given its position in the connected
+/// list: top corners on the first row, bottom corners on the last, all four on
+/// a lone card, none in the middle. Mirrors the web `.card-row-wrapper:first/
+/// last-child` corner rules.
+private struct ListRowShape: Shape {
+    let isFirst: Bool
+    let isLast: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var corners: UIRectCorner = []
+        if isFirst { corners.insert([.topLeft, .topRight]) }
+        if isLast { corners.insert([.bottomLeft, .bottomRight]) }
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: Theme.radius, height: Theme.radius)
+        )
+        return Path(path.cgPath)
     }
 }

@@ -943,7 +943,7 @@ ruby {
   width: 44px;
   height: 44px;
 
-  &:[data-selected='true'] {
+  &[data-selected='true'] {
     color: var(--fg-emphasis);
   }
 }

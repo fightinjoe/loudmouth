@@ -152,7 +152,11 @@ Cross-pane communication goes through `host.ui` transitions, never through metho
 
 ## Testing
 
-Tests live in `src/__tests__/`. Use Vitest. Run with `npm test`.
+**Unit tests** live in `src/__tests__/`. Use Vitest. Run with `npm test`. (Vitest is scoped to `src/__tests__/` by `vitest.config.js` so it never loads the Playwright specs.)
+
+**End-to-end smoke tests** live in `e2e/`. Use Playwright against the production build. Run with `npm run test:e2e`; `npm run test:all` runs unit + e2e. `e2e/action-panes.smoke.spec.js` opens every action-pane kind in a real browser and fails on ANY console error or uncaught exception — the guard for runtime-only bugs (e.g. a temporal-dead-zone `ReferenceError` in an `onMount` closure) that unit tests and the build don't catch. Both run in CI on every PR touching `web/app/**` (`.github/workflows/web-app-ci.yml`).
+
+The app exposes `window.__loudmouth = { ui, db }` (see `src/panes/app.js`) so e2e tests drive `action/open` transitions and seed decks the same way the app does internally. It's inert in production. When you add a new action-pane kind, add it to the `KINDS` list in the smoke spec.
 
 ## Docs to keep current
 

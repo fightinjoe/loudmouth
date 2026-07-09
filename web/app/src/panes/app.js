@@ -13,6 +13,7 @@ import navPane from "./nav-pane.js";
 import contentPane from "./content-pane.js";
 import detailsPane from "./details-pane.js";
 import actionPane from "./action-pane.js";
+import * as db from "../js/db.js";
 
 const LAST_DECK_KEY = "loudmouth.lastDeckId";
 
@@ -95,4 +96,9 @@ export function initApp(params) {
   // Initial route — kick off a deck load.
   const initialDeckId = params?.id || getLastDeckId();
   if (initialDeckId) ui.transition("content/select-deck", { id: initialDeckId });
+
+  // Expose the state machine + db for end-to-end smoke tests, which drive
+  // transitions and seed data the same way the app does internally.
+  // Harmless in prod (nothing reads this outside tests).
+  window.__loudmouth = { ui, db };
 }

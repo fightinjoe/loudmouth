@@ -42,7 +42,7 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
     kind: 'generate',
     bodyHTML: renderBody(selectedLang),
     onClose: onDismiss,
-    onMount: (panel) => {
+    onMount: (panel, _scrim, close) => {
       if (targetDeck) panel.dataset.hasDeck = ''
       const topicEl = panel.querySelector('#gc-topic')
       const generateBtn = panel.querySelector('#gc-generate-btn')
@@ -59,7 +59,7 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
         panel.querySelector('#gc-lang-name').textContent = LANG_NAMES[selectedLang] ?? selectedLang
       })
 
-      panel.querySelector('.generate-cards-back').addEventListener('click', sheet.close)
+      panel.querySelector('.generate-cards-back').addEventListener('click', close)
 
       generateBtn.addEventListener('click', async () => {
         const topic = topicEl.value.trim()
@@ -94,13 +94,13 @@ export function openGenerateCardsPanel(appEl, { createDeck, importCards }, onDon
 
         if (targetDeck) {
           await importCards(cards, targetDeck.id)
-          sheet.close()
+          close()
           onDone(targetDeck.id)
         } else {
           const deckName = topic.length > 30 ? topic.slice(0, 30).trimEnd() + '…' : topic
           const deck = await createDeck(deckName, selectedLang)
           await importCards(cards, deck.id)
-          sheet.close()
+          close()
           onDone(deck.id)
         }
       })
