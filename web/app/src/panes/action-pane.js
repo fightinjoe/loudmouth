@@ -95,7 +95,13 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
       },
       (changes) => {
         ui.transition("nav/reload");
-        ui.transition("content/select-deck", { id: changes.deleted ? null : deck.id });
+        if (changes.deleted) {
+          ui.transition("content/select-deck", { id: null });
+        } else {
+          // Deck id is unchanged, but a field (e.g. mode) may have changed —
+          // force a re-fetch so the content pane picks up the new value.
+          ui.transition("content/reload-deck");
+        }
       },
       onDismiss,
     );

@@ -11,10 +11,12 @@
  *     editMode:  boolean,             // edit-cards mode toggle
  *     menuOpen:  boolean,             // deck-title menu toggle
  *     isStarred: boolean,             // viewing a starred deck
+ *     reload:    number,              // bump to force a re-fetch of the current deck
  *   }
  *
  * Transitions:
  *   content/select-deck { id }     — request a load; subscriber fetches and fires content/loaded
+ *   content/reload-deck            — re-fetch the current deck (deckId unchanged); picks up in-place field changes (e.g. mode)
  *   content/loaded { deck, cards, isStarred } — replace deck + cards
  *   content/cards-changed { cards } — replace cards (after add/edit/delete)
  *   content/toggle-edit            — flip editMode
@@ -40,10 +42,16 @@ export default {
     editOrder: null,
     menuOpen: false,
     isStarred: false,
+    reload: 0,
   },
 
   transitions: {
     "content/select-deck": (slice, { id }) => ({ ...slice, deckId: id }),
+    // Force a reload of the currently-selected deck even when deckId is
+    // unchanged — used after an in-place mutation of deck fields (e.g. mode)
+    // so the deck object is re-fetched from the DB. `reload` is bumped to a
+    // fresh value so the load subscriber's dedup guard doesn't bail.
+    "content/reload-deck": (slice) => ({ ...slice, reload: (slice.reload || 0) + 1 }),
     "content/loaded": (slice, { deck, cards, isStarred }) => ({
       ...slice,
       deck,
@@ -180,7 +188,7 @@ export default {
     // Effect subscriber: when deckId changes, load the deck.
     let inflight = 0;
     const unsubLoad = ui.subscribe("content", async (next, prev) => {
-      if (next.deckId === prev?.deckId) return;
+      if (next.deckId === prev?.deckId && next.reload === prev?.reload) return;
       const stamp = ++inflight;
       const data = await loadDeckData(next.deckId);
       if (stamp !== inflight) return;

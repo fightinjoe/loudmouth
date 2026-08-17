@@ -233,10 +233,10 @@ ruby {
 #app[data-deck-mode="reverse"] .deck-view-list {
   .card-row .card-primary {
     .card-text {
-      display: auto;
+      display: none;
     }
     .card-translation {
-      display: none;
+      display: auto;
     }
   }
   .card-row .card-secondary {

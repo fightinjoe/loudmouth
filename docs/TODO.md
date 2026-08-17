@@ -1,5 +1,9 @@
 # TODO
 
+## Rename
+
+- [ ] **Rename "card" → "term" and "deck" → "phrase book" across the codebase** — Product docs (`BRIEF.md`, `DESIGN.md`, `CARD_SCHEMA.md`) now use "term" and "phrase book" terminology (product renamed to Catchphrase). Code still uses the old vocabulary and needs to catch up: IndexedDB table/field names (`cards`, `decks`, `deckIds`), API route/param names (`/generate-cards`, `#deck?cards=` URI import hash), web app variables/components (`web/app/src/panes/*.js`), iOS models (`Card.swift`, deck-related view models), and `docs/CARD_SCHEMA.md`'s filename. Decide whether to keep external-facing API param names stable for backwards compatibility with existing import links, or do a clean break.
+
 ## Inconsistencies
 
 - [ ] **iOS card schema is defined in multiple places** — `Card.swift` (SwiftData model), `ImportService.swift` (`CardInput`/`CardInputExample`), and `BackupService.swift` (`CardBackup`) each independently declare the card shape. A single canonical definition should be the source of truth.
@@ -40,5 +44,9 @@ Neither web nor iOS currently has an in-app Generate Cards flow. The current imp
 - [ ] Expand the generate card API to pass in existing words so duplicates aren't created
 - [ ] Add "suggested title" to the response when generating cards. The title should be as short as possible, and prepended with an emoji if an appropriate one exists
 - [ ] Add suggested decks when there are none
+
+## Deferred from v2 graph-of-relations design
+
+- [ ] **Add a traversal cost/rate guardrail once `/find-related` is validated** — Currently only the pre-existing API gateway rate limit (60 req/min, `api/config/api-gateway.yaml`) guards LLM call cost during graph traversal. Explicitly deferred during `/plan-eng-review` (2026-07-27): "For personal testing and refining the API, I want to avoid any type of limit for the time being. Only once I have an API that works well and I've personally tested do I want to return to the question of limiting the depth of graph traversal." Add a client-side traversal cap or debounce (e.g. disable further expand after N nodes in a session, or debounce rapid taps) once `/find-related` clustering quality is personally validated and the app is ready for a second user. Depends on: `/find-related` shipping and being personally validated first (see `awheeler-v2-design-20260727-184331.md`).
 
 ## Bugs

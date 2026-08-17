@@ -1,31 +1,31 @@
 ---
 name: card-schema
 description: >
-  The Loudmouth card batch schema — the interchange format between external generators
-  (AI tools, the /generate-cards API) and the app. Load this doc when generating cards,
-  validating card JSON, building import/export logic, or writing prompts that produce cards.
+  The Catchphrase term batch schema — the interchange format between external generators
+  (AI tools, the /generate-cards API) and the app. Load this doc when generating terms,
+  validating term JSON, building import/export logic, or writing prompts that produce terms.
 ---
 
-# Card Batch Schema
+# Term Batch Schema
 
-The card batch format is the interchange format between external generators (AI tools, the `/generate-cards` API) and the app. Cards are imported as a JSON batch; the app assigns `id` and `importedAt` at import time.
+The term batch format is the interchange format between external generators (AI tools, the `/generate-cards` API) and the app. Terms are imported as a JSON batch; the app assigns `id` and `importedAt` at import time.
 
 ## Batch envelope
 
 ```json
 {
-  "cards": [ ...card objects... ]
+  "cards": [ ...term objects... ]
 }
 ```
 
-## Card object
+## Term object
 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `lang` | `"zh"` \| `"ja"` | ✅ | Language code |
 | `text` | string | ✅ | Word or phrase in the target language |
 | `translation` | string | ✅ | English translation (1–2 most common senses) |
-| `type` | `"word"` \| `"phrase"` \| `"sentence"` | — | Card type |
+| `type` | `"word"` \| `"phrase"` \| `"sentence"` | — | Term type |
 | `reading` | `ReadingToken[]` | — | Structured phonetic reading (see below) |
 | `romanization` | string | — | Latin-alphabet transcription (romaji for `ja`; optional, primarily useful for Japanese) |
 | `notes` | string | — | Grammatical notes, register, collocations, or disambiguation |
@@ -113,7 +113,7 @@ The app renders `reading` as ruby text (e.g. `<ruby>菜<rt>cài</rt></ruby>`). `
 
 ## URI import encoding
 
-To import cards via URL (the preferred mobile path), base64url-encode the compact JSON and append it to the app URL:
+To import terms via URL (the preferred mobile path), base64url-encode the compact JSON and append it to the app URL:
 
 ```
 https://loudmouth-gilt.vercel.app/#deck?cards=<base64url-encoded-batch-json>
@@ -123,4 +123,4 @@ Base64url encoding: standard base64, then replace `+` with `-`, `/` with `_`, st
 
 ## Validation
 
-Required per card: `lang`, `text`, `translation`. All other fields optional.
+Required per term: `lang`, `text`, `translation`. All other fields optional.
