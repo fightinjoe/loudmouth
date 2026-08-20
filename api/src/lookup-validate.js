@@ -1,48 +1,61 @@
 /**
- * Validates, parses, and CLAMPS the raw string returned by the LLM for /lookup.
- * See docs/API_DESIGN.md §6.
+ * Validates, parses, and FINISHES the raw string returned by the LLM for
+ * /lookup. See docs/API_DESIGN.md "3. Finish [service]".
  *
  * Philosophy:
  *   - Malformed structure (bad JSON, wrong types, invalid cards) → THROW.
  *     The handler maps a throw to 502 "Invalid response from LLM". A truncated
- *     response (the max_tokens trap, §2.F) fails JSON.parse here → 502.
+ *     response (the max_tokens trap) fails JSON.parse here → 502.
  *   - Over-production → CLAMP, don't throw. Too many blocks/groups/cards is the
- *     model being generous, not broken; trim to the caps and log.
- *   - Thin groups → DROP the group, keep the rest. A group under 3 cards is
- *     dropped rather than shipped (groups are NOT word/phrase-typed — a group
- *     may mix words and phrases; only the count floor gates it).
+ *     model being generous, not broken; trim to the caps, keep the model's
+ *     returned order, drop from the end, and log a warning.
+ *   - A group with zero cards after clamping → DROP the group (no other
+ *     minimum enforced).
+ *   - `context` is service-set, never model-emitted: a block card gets the
+ *     input term's parenthetical (if any); a group card gets its group's title.
+ *   - An invalid per-card `formality` is STRIPPED (not thrown) — the card
+ *     itself may still be well-formed.
  *
  * PIPELINE
  *   raw string
  *     │  strip code fences, JSON.parse            (throw → 502)
  *     ▼
- *   { seed, blocks[] }
+ *   { blocks[] }
  *     │  clamp blocks to MAX_BLOCKS
- *     │  per block: validate primary Card, validate + filter groups,
- *     │             enforce running group budget
+ *     │  per block: validate card, validate + clamp groups,
+ *     │             enforce running group budget, set context
  *     ▼
- *   clamped LookupResponse   +   warnings[] (for the handler to log)
+ *   clamped { blocks[] }   +   warnings[] (for the handler to log)
  */
 
 const { validateCard } = require('./card-validate');
-const {
-  MAX_BLOCKS,
-  MAX_GROUPS_TOTAL,
-  MAX_CARDS_PER_GROUP,
-  MIN_CARDS_PER_GROUP,
-} = require('./lookup-prompt');
+const { MAX_BLOCKS, MAX_GROUPS_TOTAL, MAX_CARDS_PER_GROUP } = require('./lookup-prompt');
+
+// Output-only formality values a /lookup card may carry (docs/API_DESIGN.md
+// "formality"). `vulgar` is a valid CARD_SCHEMA value in general but is not a
+// valid /lookup output — stripped like any other out-of-range value.
+const CARD_FORMALITIES = ['casual', 'polite', 'formal', 'slang'];
+
+function stripInvalidFormality(card, prefix, warnings) {
+  if (card.formality !== undefined && !CARD_FORMALITIES.includes(card.formality)) {
+    warnings.push(`${prefix}.formality stripped (invalid value "${card.formality}")`);
+    delete card.formality;
+  }
+}
 
 /**
  * @param {string} raw
- * @returns {{ response: object, warnings: string[] }}
+ * @param {{ context?: string }} [opts]   the input term's parsed parenthetical,
+ *   set (per docs/API_DESIGN.md "Card") on every block card's `context`.
+ * @returns {{ response: { blocks: object[] }, warnings: string[] }}
  * @throws {Error} on structurally invalid / truncated responses
  */
-function validateLookupResponse(raw) {
+function validateLookupResponse(raw, { context = '' } = {}) {
   if (typeof raw !== 'string') {
     throw new Error(`Expected string from LLM, got ${typeof raw}`);
   }
 
-  let cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
   let parsed;
   try {
@@ -56,10 +69,6 @@ function validateLookupResponse(raw) {
     throw new Error('Response is not a JSON object');
   }
 
-  if (typeof parsed.seed !== 'string' || !parsed.seed.trim()) {
-    throw new Error('"seed" must be a non-empty string');
-  }
-
   let { blocks } = parsed;
   if (!Array.isArray(blocks) || blocks.length === 0) {
     throw new Error('"blocks" must be a non-empty array');
@@ -67,13 +76,13 @@ function validateLookupResponse(raw) {
 
   const warnings = [];
 
-  // Clamp block count.
+  // Clamp block count — keep the first MAX_BLOCKS, in returned order.
   if (blocks.length > MAX_BLOCKS) {
     warnings.push(`clamped blocks ${blocks.length} → ${MAX_BLOCKS}`);
     blocks = blocks.slice(0, MAX_BLOCKS);
   }
 
-  let groupBudget = MAX_GROUPS_TOTAL; // shared across all blocks (§2.B)
+  let groupBudget = MAX_GROUPS_TOTAL; // shared across all blocks
 
   const validatedBlocks = blocks.map((block, bi) => {
     const prefix = `blocks[${bi}]`;
@@ -82,15 +91,17 @@ function validateLookupResponse(raw) {
       throw new Error(`${prefix} must be an object`);
     }
 
-    // Primary card (throws on malformed). There is no block-level `sense` field —
-    // blocks are distinguished by order (§G1); any meaning label lives on
-    // `primary.definition`.
-    validateCard(block.primary, `${prefix}.primary`);
+    // Block card (throws on malformed).
+    validateCard(block.card, `${prefix}.card`);
+    const card = { ...block.card };
+    stripInvalidFormality(card, `${prefix}.card`, warnings);
 
-    // A primary never carries a group context (§5). The model shouldn't emit
-    // one, but strip it defensively if present.
-    if (block.primary.context !== undefined) {
-      delete block.primary.context;
+    // Service sets `context` on a block card from the input parenthetical —
+    // the model never emits it; overwrite/strip unconditionally.
+    if (context) {
+      card.context = context;
+    } else {
+      delete card.context;
     }
 
     const rawGroups = Array.isArray(block.groups) ? block.groups : [];
@@ -102,30 +113,30 @@ function validateLookupResponse(raw) {
         break;
       }
       const gPrefix = `${prefix}.groups[${gi}]`;
-      const group = rawGroups[gi];
-      const kept = validateAndCleanGroup(group, gPrefix, warnings);
+      const kept = validateAndCleanGroup(rawGroups[gi], gPrefix, warnings);
       if (kept) {
         groups.push(kept);
         groupBudget--;
       }
     }
 
-    return { primary: block.primary, groups };
+    return { card, groups };
   });
 
   return {
-    response: { seed: parsed.seed, blocks: validatedBlocks },
+    response: { blocks: validatedBlocks },
     warnings,
   };
 }
 
 /**
- * Validate one group. Returns the cleaned group, or null to signal "drop it".
- * Drops (not throws) on: not an object, missing title, or fewer than
- * MIN_CARDS_PER_GROUP valid cards. Throws only on a structurally invalid Card
- * (which indicates a broken response, not a droppable group).
+ * Validate + clean one group. Returns the cleaned group, or null to signal
+ * "drop it". Drops (not throws) on: not an object, missing title, or zero
+ * cards after clamping — no other minimum is enforced (docs/API_DESIGN.md
+ * "3. Finish"). Throws only on a structurally invalid Card within the kept
+ * cards, which indicates a broken response, not a droppable group.
  *
- * Groups are NOT word/phrase-typed — a group may mix words and phrases (§G2), so
+ * Groups are NOT word/phrase-typed — a group may mix words and phrases — so
  * there is no type check here. The service sets each card's `context` to the
  * group `title` (the model does not emit `context`).
  */
@@ -138,32 +149,35 @@ function validateAndCleanGroup(group, prefix, warnings) {
     warnings.push(`${prefix} dropped (title must be a non-empty string)`);
     return null;
   }
-  if (!Array.isArray(group.cards) || group.cards.length === 0) {
-    warnings.push(`${prefix} dropped (no cards)`);
+  if (!Array.isArray(group.cards)) {
+    warnings.push(`${prefix} dropped (cards must be an array)`);
     return null;
   }
 
   const title = group.title.trim();
   let cards = group.cards;
 
-  // Clamp card count.
+  // Clamp card count — keep the first MAX_CARDS_PER_GROUP, in returned order.
   if (cards.length > MAX_CARDS_PER_GROUP) {
     warnings.push(`${prefix} clamped cards ${cards.length} → ${MAX_CARDS_PER_GROUP}`);
     cards = cards.slice(0, MAX_CARDS_PER_GROUP);
   }
 
-  // Validate each card (throws on malformed).
-  cards.forEach((card, ci) => validateCard(card, `${prefix}.cards[${ci}]`));
-
-  // Service sets `context` on every group card from the group title. The model
-  // does not emit `context`; overwrite unconditionally so the title is the single
-  // source of truth.
-  cards = cards.map((c) => ({ ...c, context: title }));
-
-  if (cards.length < MIN_CARDS_PER_GROUP) {
-    warnings.push(`${prefix} dropped (${cards.length} < ${MIN_CARDS_PER_GROUP} cards)`);
+  if (cards.length === 0) {
+    warnings.push(`${prefix} dropped (empty)`);
     return null;
   }
+
+  // Validate each kept card (throws on malformed).
+  cards.forEach((card, ci) => validateCard(card, `${prefix}.cards[${ci}]`));
+
+  cards = cards.map((c) => {
+    const cleaned = { ...c };
+    stripInvalidFormality(cleaned, `${prefix}.cards`, warnings);
+    // Service sets `context` on every group card from the group title.
+    cleaned.context = title;
+    return cleaned;
+  });
 
   return { title, cards };
 }

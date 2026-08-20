@@ -51,8 +51,8 @@ function validateCard(card, prefix) {
     throw new Error(`${prefix} must be an object`);
   }
 
-  if (card.lang !== 'zh' && card.lang !== 'ja') {
-    throw new Error(`${prefix}.lang must be "zh" or "ja"`);
+  if (!['zh', 'ja', 'es', 'cs'].includes(card.lang)) {
+    throw new Error(`${prefix}.lang must be one of "zh", "ja", "es", "cs"`);
   }
   if (typeof card.text !== 'string' || !card.text.trim()) {
     throw new Error(`${prefix}.text must be a non-empty string`);
@@ -65,6 +65,11 @@ function validateCard(card, prefix) {
   // optional per CARD_SCHEMA; validate the token shape whenever present.
   if (card.reading !== undefined) {
     validateReadingTokens(card.reading, `${prefix}.reading`);
+  }
+
+  if (card.formality !== undefined
+    && !['casual', 'polite', 'formal', 'slang', 'vulgar'].includes(card.formality)) {
+    throw new Error(`${prefix}.formality must be one of "casual", "polite", "formal", "slang", "vulgar" if present`);
   }
 
   if (card.type !== undefined && !['word', 'phrase', 'sentence'].includes(card.type)) {

@@ -3,7 +3,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "FUNCTION_TARGET=translate npx @google-cloud/functions-framework"
+    "dev": "FUNCTION_TARGET=translate npx @google-cloud/functions-framework",
+    "test": "node --test test/"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

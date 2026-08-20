@@ -1,138 +1,148 @@
 /**
- * Builds the single-call /lookup prompt (v0 — see docs/API_DESIGN.md §4, §5).
+ * Builds the single-call /lookup prompt (docs/API_DESIGN.md "2. Generate [model]"
+ * + "Model behavior").
  *
- * One prompt does everything: disambiguate the input into 1..N word-senses (blocks),
- * emit a primary Card per block, and emit deck-context-biased related groups whose
- * cards are saveable Card objects. The planner+fillers fan-out (docs/FANOUT_DESIGN.md)
- * is a deferred optimization; this builder is the v0 baseline.
- *
- * DATA FLOW
- *   { input, context, deck }                     input/context already split from the
- *        │                                         raw seed on the FIRST '(' (§2.A)
- *        ▼
- *   buildLookupPrompt() ── one prompt string ──▶ LLM ──▶ LookupResponse JSON (§3)
- *
- *   input   = the term to translate            e.g. "dinner", "surf"
- *   context = disambiguation/bias, if any      e.g. "v. to ride a wave",
- *             (never translated itself)              "ordering at a restaurant"
+ * One prompt turns { term, context, language, ability, formality, audience }
+ * into the blocks-and-groups JSON in a single LLM call: disambiguate the term
+ * into meanings, translate each to its intent, and cluster related cards into
+ * themed groups. The prompt is shared verbatim across all three `llm` backends
+ * via LLM_REGISTRY — it must not special-case any backend.
  */
 
-// Caps + ranges from docs/API_DESIGN.md §2.B (kept in one place so the prompt and
-// the validator/clamps agree).
+// Caps from docs/API_DESIGN.md "Outputs" (kept here so the prompt and the
+// validator/finish layer — lookup-validate.js — agree).
 const MAX_BLOCKS = 4;
 const MAX_GROUPS_TOTAL = 8;
 const MAX_CARDS_PER_GROUP = 10;
-const MIN_CARDS_PER_GROUP = 3;
 
-const LANG_NAMES = { zh: 'Mandarin Chinese', ja: 'Japanese' };
+const LANG_NAMES = { zh: 'Mandarin Chinese', ja: 'Japanese', es: 'Spanish', cs: 'Czech' };
 const LANG_LEVELS = { zh: 'HSK 1–4', ja: 'JLPT N5–N3' };
 
 /**
- * Per-language ReadingToken instructions (mirrors cards-prompt.js so /lookup and
- * /generate-cards annotate identically).
+ * Per-language ReadingToken instructions (docs/CARD_SCHEMA.md "Reading tokens").
+ * zh/ja mirror cards-prompt.js so /lookup and /generate-cards annotate
+ * identically; other scripts get a single unannotated token per CARD_SCHEMA's
+ * "Other scripts" rule.
  */
 function readingInstructions(lang) {
-  return lang === 'zh'
-    ? `an array of ReadingToken pairs, one per character. Each token is [base, annotation] where base is the character and annotation is its tone-marked pinyin. Example for 菜单: [["菜","cài"],["单","dān"]]`
-    : `an array of ReadingToken pairs. Each token is [base, annotation|null]. Kanji get a hiragana annotation; kana and katakana use null. Example for 注文: [["注","ちゅう"],["文","もん"]]  Example for おすすめ: [["おすすめ",null]]`;
+  if (lang === 'zh') {
+    return `an array of ReadingToken pairs, one per character. Each token is [base, annotation] where base is the character and annotation is its tone-marked pinyin. Example for 晚餐: [["晚","wǎn"],["餐","cān"]]`;
+  }
+  if (lang === 'ja') {
+    return `an array of ReadingToken pairs. Each token is [base, annotation|null]. Kanji get a hiragana annotation; kana and katakana use null. Example for 注文: [["注","ちゅう"],["文","もん"]]  Example for おすすめ: [["おすすめ",null]]`;
+  }
+  return `a single-element array containing the whole word or phrase as one unannotated token: [base, null]. Example for "café": [["café",null]]`;
 }
 
 function cardReadingExample(lang) {
-  return lang === 'zh'
-    ? `[["晚","wǎn"],["餐","cān"]]`
-    : `[["注","ちゅう"],["文","もん"],["してもいいですか",null]]`;
+  if (lang === 'zh') return `[["晚","wǎn"],["餐","cān"]]`;
+  if (lang === 'ja') return `[["注","ちゅう"],["文","もん"],["してもいいですか",null]]`;
+  return `[["café",null]]`;
 }
 
 /**
- * VIBE → a natural-language register description for the prompt.
- * formality + audience set tone; ability caps difficulty (docs/API_DESIGN.md G4).
+ * `ability` → a natural-language difficulty ceiling. Anchored at `none`
+ * (docs/API_DESIGN.md "ability"): zero prior ability, so favor the single
+ * most common word/phrase, minimal/no compound structure, no abbreviations.
  */
-function describeDeck(deck) {
-  const { ability, formality, audience, freeText } = deck;
-  const lines = [
-    `- Learner ability: ${ability} — this CAPS difficulty (vocabulary + grammar complexity), it does not change how many cards you produce.`,
-    `- Formality: ${formality}; Audience: ${audience} — together these set the register/tone (e.g. "casual conversation with strangers", "formal speech with staff").`,
-  ];
-  if (freeText && freeText.trim()) {
-    lines.push(`- Situation notes: ${freeText.trim()} — spread the groups across the registers this implies rather than averaging into one bland middle.`);
+function describeAbility(ability) {
+  switch (ability) {
+    case 'none':
+      return 'Learner ability: none — the learner has ZERO prior ability in this language. This is a floor: favor the single most common word/phrase for the intent, minimal or no compound structure, and no abbreviations.';
+    case 'intermediate':
+      return 'Learner ability: intermediate — compound sentences and less common vocabulary are fine.';
+    case 'advanced':
+      return 'Learner ability: advanced — idiomatic phrasing, complex constructions, and lower-frequency words are fine.';
+    case 'beginner':
+    default:
+      return 'Learner ability: beginner — common words, short sentences, and simple grammar.';
   }
-  return lines.join('\n');
 }
 
 /**
- * @param {{ input: string, context?: string, deck: object }} args
+ * Options block: ability caps difficulty (never intent); formality is a soft
+ * register anchor that may spill toward MORE formal (never toward slang);
+ * slang is only ever an option when the requested formality is casual.
+ */
+function describeOptions({ ability, formality, audience }) {
+  const lines = [
+    `${describeAbility(ability)} \`ability\` affects word/phrase choice and sentence complexity on every card — block and group alike — never the translated intent.`,
+    `Formality: ${formality} — anchor the register here. It is a strong suggestion, not a filter: include a neighboring register when \`audience: ${audience}\` makes it useful (e.g. casual + staff still surfaces the polite form a shop sign would use). Any spillover moves only toward MORE FORMAL — never toward slang.`,
+    `Audience: ${audience} — who the learner is speaking to; this is what makes a neighboring register useful.`,
+  ];
+  if (formality === 'casual') {
+    lines.push('Because the requested formality is casual, slang is a valid optional register at your discretion — tag such cards `formality: "slang"`. Slang is only ever available when the input formality is casual.');
+  } else {
+    lines.push('Do not produce slang or tag anything `formality: "slang"` — the requested formality does not permit it.');
+  }
+  return lines.map((l) => `- ${l}`).join('\n');
+}
+
+/**
+ * @param {{ term: string, context?: string, language: string, ability: string, formality: string, audience: string }} args
  * @returns {string} the prompt string
  */
-function buildLookupPrompt({ input, context, deck }) {
-  const lang = deck.language;
-  const langName = LANG_NAMES[lang] || lang;
-  const level = LANG_LEVELS[lang] || 'common, high-frequency';
-  const readingExample = cardReadingExample(lang);
+function buildLookupPrompt({ term, context, language, ability, formality, audience }) {
+  const langName = LANG_NAMES[language] || language;
+  const level = LANG_LEVELS[language] || 'common, high-frequency';
+  const readingExample = cardReadingExample(language);
 
-  const contextLine = context && context.trim()
-    ? `\nContext (disambiguation / bias — NEVER translate this, use it only to pin the sense and bias the groups): ${context.trim()}`
+  const contextLine = context
+    ? `\nContext (disambiguation / bias — NEVER translate this, use it only to pin the intended sense): ${context}`
     : '';
 
-  return `You are a language look-up engine for a travel phrasebook app. Given an English term, you return its ${langName} translation(s) PLUS related groups of vocabulary the learner might want, biased by their deck's context.
+  return `You are a language look-up engine for a travel phrasebook app. Translate the INTENT of the term below — the implied meaning or situation that emerges from reading the term, context, audience, and formality together — not necessarily the literal dictionary word. Example: "bathroom" for audience: staff leads with トイレ ("toilet"), not the literal loanword バスルーム.
 
-Term to look up (translate from English into ${langName}): ${input}${contextLine}
+Term to translate into ${langName}: ${term}${contextLine}
 
-## Deck context (bias every choice by this)
+## Options (bias every choice by these)
 
-${describeDeck(deck)}
+${describeOptions({ ability, formality, audience })}
 
-Context is the CENTER OF GRAVITY, not a hard filter.
+## Step 1 — disambiguate into blocks
 
-## Step 1 — disambiguate into blocks (word-senses)
+Split the term into its distinct meanings, one block per meaning, in order (most look-ups are a single block). Only split on meanings that give GENUINELY DIFFERENT translations (e.g. "surf" → ride a wave / ocean foam / browse the web) — do not split on trivial nuances. If Context is given, use it to pin the intended sense. **Hard cap: ${MAX_BLOCKS} blocks.**
 
-Split the term into its distinct, meaningfully-different senses. Produce one "block" per sense.
-- Only split on senses that yield MEANINGFULLY DIFFERENT ${langName} translations (e.g. "switch" = the device vs. to change; "bank" = finance vs. river). Do not over-split trivial nuances.
-- If a Context is given, use it to PIN the sense (e.g. "surf" + "v. to ride a wave" → only the verb).
-- Most look-ups are a single block. **Hard cap: ${MAX_BLOCKS} blocks.**
+Each block's \`card\` is the phrase a person would actually use for that meaning — the direct translation. When you produce MORE THAN ONE block, set that block's \`card.definition\` to a short English gloss distinguishing its meaning (e.g. "the toilet / restroom" vs. "bath / shower room"), so the senses stay distinguishable once saved. An unambiguous term yields exactly ONE block with NO \`definition\`.
 
-For each block emit a "primary" — the direct translation as a Card (schema below). The blocks are shown to the user in order; there is NO separate block label. When you produced MORE THAN ONE block, set each primary's \`definition\` to a short English gloss naming that block's meaning (e.g. "the physical device" vs. "to change/swap") so the senses stay distinguishable once saved. Omit \`definition\` entirely when the term was unambiguous (a single block). NEVER set \`context\` on a primary.
+## Step 2 — group by theme, not by form
 
-## Step 2 — related groups (per block)
-
-For each block, produce related "groups" of vocabulary the learner would find useful in this deck's situation.
-- **Total groups across ALL blocks: hard cap ${MAX_GROUPS_TOTAL}.** Typical single-sense look-up: 2–4. Very constrained term: 0–1. Rich multi-sense term: spread the ${MAX_GROUPS_TOTAL}-group budget across blocks (blocks SHARE the budget; they do NOT each get ${MAX_GROUPS_TOTAL}).
-- Each group has a \`title\` — a short, human-scannable heading describing its CONTENT ("Ordering at a restaurant", "Teasing your host family"), not a persona or the deck settings.
-- **Cards per group: aim ${MIN_CARDS_PER_GROUP}–8** (up to ${MAX_CARDS_PER_GROUP}). **Do NOT create a group with fewer than ${MIN_CARDS_PER_GROUP} cards** — a group that thin isn't differentiated or substantial enough to exist; fold it into another group or drop it.
-- **Distinct, not divergent:** every card in a group is clearly related to the group's \`title\`, and the cards are distinct from ONE ANOTHER — avoid near-duplicates. Do NOT emit "Check, please!", "check (the bill)", and "May I have the check?" as three cards in one group; that is one idea. Pick the single best phrasing and move on.
-- A card's term may be a word OR a phrase — groups are NOT split by word-vs-phrase, and a group may contain both. Do not label cards or groups with a type.
+For each block, cluster related cards the learner would find useful into themed groups.
+- **Total groups across ALL blocks: hard cap ${MAX_GROUPS_TOTAL}** (blocks SHARE this budget — they do not each get ${MAX_GROUPS_TOTAL}). **Cards per group: hard cap ${MAX_CARDS_PER_GROUP}.** No minimum — a block may have zero, one, or several groups.
+- A group is a THEME, not a grammatical category: it may freely mix words and phrases. NEVER split them apart just because they are different grammatical forms.
+- Combine or separate by cohesion and volume: small, unified content shares ONE group (e.g. "bathroom" → a single "Using the toilet" group of words and phrases); expansive content splits into distinct groups, each rich enough to stand alone (e.g. "dinner" → a "Meal words" group and a "Dining phrases" group).
+- Give each group a short, content-scannable, **ENGLISH** \`title\` (e.g. "Ordering at a restaurant") — always English regardless of ${langName}, since it's a UI heading, not translated content.
+- Keep every card distinct from the others in its group and across the whole look-up — no near-duplicates (e.g. do not emit "Check, please!", "check (the bill)", and "May I have the check?" as three cards; pick the single best phrasing).
 
 ## Content quality bar (non-negotiable)
 
-- Favor common, conversational, everyday content in the ${level} range unless the term demands otherwise.
-- Would a real person actually SAY this to someone they're trying to connect with? Reject technically-correct-but-stiff, textbook, or exam-flavored content.
-- No near-duplicate cards across groups either, within this look-up.
+- Favor common, conversational language a person would actually SAY to someone they're trying to connect with, in the ${level} range unless the term demands otherwise.
+- Reject stiff, textbook, or exam-flavored content.
 
-## Card schema (every primary AND every group card)
+## Card schema (every block \`card\` AND every group card)
 
 {
-  "lang": "${lang}",
-  "text": "the word or phrase in ${langName} characters",
+  "lang": "${language}",
+  "text": "the word or phrase in ${langName}",
   "translation": "clear, natural English (1–2 most common senses only)",
   "reading": ${readingExample},
-  "definition": "optional — pinned sense gloss; set on a disambiguated primary, usually omit on group cards",
-  "notes": "optional — grammar, register, collocations; omit if not useful",
-  "example": { "text": "optional example sentence", "reading": ${readingExample}, "translation": "optional English" }
+  "definition": "optional — pinned-sense gloss; set on a disambiguated block card, usually omit on group cards",
+  "formality": "optional — this card's own register (\\"casual\\" | \\"polite\\" | \\"formal\\" | \\"slang\\"), only when the word has a register worth marking; omit for words with no register variant (e.g. 水 \\"water\\")",
+  "notes": "optional — grammar, collocations, or usage tips; never register (that's \`formality\`)"
 }
 
-- \`reading\` — ALWAYS include. Must be a ReadingToken array: ${readingInstructions(lang)}
-- Omit any optional field entirely — do NOT emit empty strings, empty arrays, or null.
-- Do NOT include a card \`type\`, a group \`type\`, or a card \`context\` field — the service adds the group heading to each card afterward; repeating it wastes output.
-- Do NOT include \`id\` or \`importedAt\` — the app assigns those.
+- \`reading\` — ALWAYS include. Must be a ReadingToken array: ${readingInstructions(language)}
+- Omit every optional field entirely when not applicable — never emit empty strings, empty arrays, or null.
+- Do NOT include \`context\`, \`id\`, \`importedAt\`, or a card \`type\` — the service fills \`context\` in afterward; the rest are assigned at import time.
 
 ## Output format
 
-Respond with ONLY this JSON object. No markdown code fences, no prose.
+Respond with ONLY raw JSON — no markdown code fences, no prose, no leading or trailing text.
 
 {
-  "seed": "${input}${context && context.trim() ? ` (${context.trim()})` : ''}",
   "blocks": [
     {
-      "primary": { ...Card... },
+      "card": { ...Card... },
       "groups": [
         { "title": "…", "cards": [ { ...Card... } ] }
       ]
@@ -147,5 +157,4 @@ module.exports = {
   MAX_BLOCKS,
   MAX_GROUPS_TOTAL,
   MAX_CARDS_PER_GROUP,
-  MIN_CARDS_PER_GROUP,
 };

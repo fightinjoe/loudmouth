@@ -1,131 +1,143 @@
 /**
- * /lookup handler (v0 — single LLM call). See docs/API_DESIGN.md §4.
+ * /lookup handler. See docs/API_DESIGN.md "Internal flow".
  *
  * REQUEST FLOW
- *   POST /lookup { seed, deck, llm? }
+ *   POST /lookup { term, language, ability?, formality?, audience?, llm? }
  *        │
- *        │  validate request (400 on bad seed/deck/enum/llm)
- *        │  parseSeed: split seed on FIRST '(' → { input, context }   (§2.A)
+ *        │  1. PARSE (lookup-parse.js): validate + apply defaults, split
+ *        │     term on first "(" → { term, context }             → 400
  *        ▼
- *   buildLookupPrompt({ input, context, deck })
- *        │  ONE LLM call, maxOutputTokens: 8192   (T2 — avoid 1024 truncation → 502)
+ *   buildLookupPrompt({ term, context, language, ability, formality, audience })
+ *        │  2. GENERATE — ONE LLM call, maxOutputTokens: 20000, 15s timeout
+ *        │     LLM-throws and LLM-times-out are distinct code paths, both → 502
  *        ▼
- *   validateLookupResponse(raw)   parse + validate + CLAMP; throw → 502
- *        │  log any clamp/drop warnings
+ *   validateLookupResponse(raw, { context })   3. FINISH: parse + validate +
+ *        │  clamp caps + set `context`; throw → 502
  *        ▼
- *   200 LookupResponse
+ *   200 { blocks: [...] }
  */
 
+const { parseLookupRequest } = require('./lookup-parse');
 const { buildLookupPrompt } = require('./lookup-prompt');
 const { validateLookupResponse } = require('./lookup-validate');
 
-const DEFAULT_LLM = 'claude';
+// Worst case ~84 cards (4 blocks + 8 groups x 10 cards) at ~150 tokens/card ==
+// ~12.6k tokens of content; 20000 gives headroom over that ceiling
+// (docs/API_DESIGN.md "Output token budget"). The wrapper default (1024)
+// truncates well before this → invalid JSON → 502.
+const LOOKUP_MAX_TOKENS = 20000;
 
-// Explicit large budget — the single call emits primaries + up to 8 groups × up
-// to 10 cards, each with reading-token arrays. callAnthropic defaults to 1024,
-// which truncates → invalid JSON → 502 (docs/API_DESIGN.md §2.F).
-const LOOKUP_MAX_TOKENS = 8192;
+// Request timeout budget (docs/API_DESIGN.md "Latency budget": target p50 <4s,
+// timeout at 15s → 502, same path as a hard LLM error).
+const LOOKUP_TIMEOUT_MS = 15000;
 
-const ABILITIES = ['none', 'beginner', 'intermediate', 'advanced'];
-const FORMALITIES = ['casual', 'textbook', 'formal'];
-const AUDIENCES = ['stranger', 'staff', 'acquaintance', 'family'];
-const LANGS = ['zh', 'ja'];
+/** Distinguishes a timeout from any other LLM failure (both currently map to
+ * the same 502, but on separate catch branches so they can diverge later). */
+class LookupTimeoutError extends Error {}
 
-/**
- * Split a raw seed into the term to translate and its (optional) context, on the
- * FIRST '(' only (docs/API_DESIGN.md §2.A). Anything after a second '(' is ignored;
- * a trailing ')' and surrounding whitespace are stripped from the context.
- *
- *   "dinner"                                  → { input: "dinner",           context: "" }
- *   "surf (v. to ride a wave)"                → { input: "surf",             context: "v. to ride a wave" }
- *   "I'll have this one (ordering at a rest.)" → { input: "I'll have this one", context: "ordering at a rest." }
- *   "a (b) (c)"                               → { input: "a",                context: "b" }
- *
- * @param {string} seed
- * @returns {{ input: string, context: string }}
- */
-function parseSeed(seed) {
-  const [rawInput, rawContext = ''] = seed.split('(');
-  return {
-    input: rawInput.trim(),
-    context: rawContext.replace(/\)\s*$/, '').trim(),
-  };
+function callWithTimeout(handler, prompt, opts, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new LookupTimeoutError(`LLM request timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    handler(prompt, opts).then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
 }
 
 /**
- * @param {object} body   parsed request body
- * @returns {string|null} an error message, or null if valid
+ * Pure core: runs GENERATE + FINISH for an already-parsed request. Reused by
+ * the /lookup route handler and the eval harness (evals/lookup.eval.js).
+ * Throws an Error with a `.status` (400/502) on any failure.
+ *
+ * @param {{ term: string, context: string, language: string, ability: string, formality: string, audience: string, llm: string }} parsedRequest
+ * @param {Record<string, Function>} registry   LLM_REGISTRY
+ * @param {{ timeoutMs?: number }} [opts]
+ * @returns {Promise<{ blocks: object[] }>}
  */
-function validateRequest(body) {
-  if (!body || typeof body !== 'object') return 'Request body must be a JSON object';
+async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEOUT_MS } = {}) {
+  const { term, context, language, ability, formality, audience, llm } = parsedRequest;
 
-  const { seed, deck } = body;
-  if (typeof seed !== 'string' || !seed.trim()) return 'Missing or empty field: seed';
-
-  if (!deck || typeof deck !== 'object') return 'Missing or invalid deck';
-  if (!LANGS.includes(deck.language)) return 'deck.language must be "zh" or "ja"';
-  if (!ABILITIES.includes(deck.ability)) return `deck.ability must be one of ${ABILITIES.join(', ')}`;
-  if (!FORMALITIES.includes(deck.formality)) return `deck.formality must be one of ${FORMALITIES.join(', ')}`;
-  if (!AUDIENCES.includes(deck.audience)) return `deck.audience must be one of ${AUDIENCES.join(', ')}`;
-  if (deck.freeText !== undefined && typeof deck.freeText !== 'string') {
-    return 'deck.freeText must be a string if present';
+  const handler = registry[llm];
+  if (!handler) {
+    const err = new Error(`Unknown LLM: ${llm}`);
+    err.status = 400;
+    err.supported = Object.keys(registry);
+    throw err;
   }
-  return null;
+
+  const prompt = buildLookupPrompt({ term, context, language, ability, formality, audience });
+
+  let raw;
+  try {
+    raw = await callWithTimeout(handler, prompt, { maxOutputTokens: LOOKUP_MAX_TOKENS }, timeoutMs);
+  } catch (err) {
+    if (err instanceof LookupTimeoutError) {
+      console.error({ event: 'llm_timeout', route: 'lookup', llm, error: err.message });
+    } else {
+      console.error({ event: 'llm_error', route: 'lookup', llm, error: err.message, stack: err.stack });
+    }
+    const wrapped = new Error('LLM request failed');
+    wrapped.status = 502;
+    throw wrapped;
+  }
+
+  let result;
+  try {
+    result = validateLookupResponse(raw, { context });
+  } catch (err) {
+    console.error({ event: 'validation_error', route: 'lookup', llm, raw, error: err.message });
+    const wrapped = new Error('Invalid response from LLM');
+    wrapped.status = 502;
+    throw wrapped;
+  }
+
+  if (result.warnings.length > 0) {
+    console.warn({ event: 'lookup_clamped', llm, term, warnings: result.warnings });
+  }
+
+  const { blocks } = result.response;
+  const groupCount = blocks.reduce((n, b) => n + b.groups.length, 0);
+  console.log({ event: 'lookup_ok', llm, language, blocks: blocks.length, groups: groupCount, term });
+
+  return result.response;
 }
 
 /**
  * @param {object} req
  * @param {object} res
- * @param {Record<string, Function>} registry   LLM_REGISTRY (name → handler(prompt, opts))
- * @param {string} defaultLlm
+ * @param {Record<string, Function>} registry   LLM_REGISTRY
+ * @param {{ timeoutMs?: number }} [opts]        override for tests
  */
-async function handleLookup(req, res, registry, defaultLlm = DEFAULT_LLM) {
+async function handleLookup(req, res, registry, opts = {}) {
   const body = req.body || {};
 
-  const validationError = validateRequest(body);
-  if (validationError) {
-    return res.status(400).json({ error: validationError });
+  const parsed = parseLookupRequest(body);
+  if (parsed.error) {
+    return res.status(400).json({
+      error: parsed.error,
+      ...(parsed.supported ? { supported: parsed.supported } : {}),
+    });
   }
 
-  const llm = body.llm || defaultLlm;
-  const handler = registry[llm];
-  if (!handler) {
-    return res.status(400).json({ error: `Unknown LLM: ${llm}`, supported: Object.keys(registry) });
-  }
-
-  const { input, context } = parseSeed(body.seed);
-  if (!input) {
-    // e.g. seed was "(just context)" — nothing to translate.
-    return res.status(400).json({ error: 'Missing or empty field: seed (no term before "(")' });
-  }
-
-  const prompt = buildLookupPrompt({ input, context, deck: body.deck });
-
-  let raw;
   try {
-    raw = await handler(prompt, { maxOutputTokens: LOOKUP_MAX_TOKENS });
+    const response = await performLookup(parsed.value, registry, opts);
+    return res.status(200).json(response);
   } catch (err) {
-    console.error({ event: 'llm_error', route: 'lookup', llm, error: err.message, stack: err.stack });
-    return res.status(502).json({ error: 'LLM request failed' });
+    const status = err.status || 500;
+    return res.status(status).json({
+      error: err.message,
+      ...(err.supported ? { supported: err.supported } : {}),
+    });
   }
-
-  let result;
-  try {
-    result = validateLookupResponse(raw);
-  } catch (err) {
-    console.error({ event: 'validation_error', route: 'lookup', llm, raw, error: err.message });
-    return res.status(502).json({ error: 'Invalid response from LLM' });
-  }
-
-  if (result.warnings.length > 0) {
-    console.warn({ event: 'lookup_clamped', llm, seed: body.seed, warnings: result.warnings });
-  }
-
-  const blocks = result.response.blocks;
-  const groupCount = blocks.reduce((n, b) => n + b.groups.length, 0);
-  console.log({ event: 'lookup_ok', llm, lang: body.deck.language, blocks: blocks.length, groups: groupCount, input });
-
-  return res.status(200).json(result.response);
 }
 
-module.exports = { handleLookup, parseSeed, validateRequest, LOOKUP_MAX_TOKENS };
+module.exports = {
+  handleLookup,
+  performLookup,
+  LOOKUP_MAX_TOKENS,
+  LOOKUP_TIMEOUT_MS,
+  LookupTimeoutError,
+};
