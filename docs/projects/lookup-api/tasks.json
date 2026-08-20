@@ -86,7 +86,7 @@
         "Runnable pre-deploy and produces a pass/fail report"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on LK-004."
     }
   ]

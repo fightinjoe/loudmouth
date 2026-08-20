@@ -4,7 +4,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "FUNCTION_TARGET=translate npx @google-cloud/functions-framework",
-    "test": "node --test test/"
+    "test": "node --test test/",
+    "eval:lookup": "node ../evals/lookup.eval.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
