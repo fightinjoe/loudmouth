@@ -2,6 +2,7 @@ const { buildPrompt } = require('./prompt');
 const { validateResponse } = require('./validate');
 const { buildCardsPrompt } = require('./cards-prompt');
 const { validateCardsResponse } = require('./cards-validate');
+const { handleLookup } = require('./lookup');
 const { callAnthropic } = require('./llms/anthropic');
 const { callOpenAI } = require('./llms/openai');
 const { callGenAI } = require('./llms/genai');
@@ -113,6 +114,9 @@ exports.translate = async (req, res) => {
 
   const path = req.path || '/';
 
+  if (path === '/lookup') {
+    return handleLookup(req, res, LLM_REGISTRY);
+  }
   if (path === '/translate' || path === '/') {
     return handleTranslate(req, res);
   }

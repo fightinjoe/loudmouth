@@ -1,98 +1,86 @@
 ---
 name: design
 description: >
-  Outline of the UX design for the web and iOS app. Both interfaces are the same except where explicitly noted.
+  High-level UX design for the web and iOS app (public name: Catchphrase; code name: Loudmouth).
+  Describes app structure, panes, and the core interaction model at the altitude needed to write an
+  engineering design. Both interfaces are the same except where explicitly noted. For the end-to-end
+  interaction nuance (step-by-step flows, states, copy) see `docs/journeys.md`; for pane vocabulary and
+  gestures see the Pane Protocol; for data shapes see `docs/CARD_SCHEMA.md`.
 ---
+
+> **Naming.** **Loudmouth** is the internal code name (repo, packages, identifiers). **Catchphrase** is
+> the public product name used in all user-facing copy. The collection noun is **phrasebook** (one word).
 
 ### Information Architecture
 
-This app organizes its UI according to the **Pane Protocol** (`web/docs/PANE_PROTOCOL.html`). That document is the source of truth for pane vocabulary, the layer stack, state, transitions, and gestures; this doc describes the product-level design that sits on top of it. Terms used here — *pane*, *layer*, *scrim*, *handle* — carry the precise meanings defined in the protocol glossary. For how the iOS app maps this protocol onto SwiftUI, see `ios/ARCHITECTURE.md`.
+This app organizes its UI according to the **Pane Protocol** (`web/docs/PANE_PROTOCOL.html`), the source of truth for pane vocabulary, the layer stack, state, transitions, and gestures; this doc describes the product-level design on top of it. Terms — *pane*, *layer*, *scrim*, *handle* — carry their protocol meanings. For how iOS maps this protocol onto SwiftUI, see `ios/ARCHITECTURE.md`.
 
-**High level app structure (Phase 1):** No tab bar. The app is a stage with four fixed **layers**, bottom to top: **shell** < **content** < **details** < **action** (see Pane Protocol, Rule 8). A **pane** lives in exactly one layer:
+**High-level app structure (Phase 1):** No tab bar. The app is a stage with four fixed **layers**, bottom to top: **shell** < **content** < **details** < **action** (Pane Protocol, Rule 8). A **pane** lives in exactly one layer:
 
-- **Navigation pane** (shell layer) — fixed in place, always present, revealed by sliding the content pane sideways.
-- **Content pane** (content layer) — shown by default; slides off to the right to reveal the navigation pane underneath. Its content changes based on the phrase book selected in the navigation pane. Navigating between content screens (a phrase book, a browse view, the empty state) swaps what the content pane renders — it does not add a layer.
-- **Details pane** (details layer) — optional; a bottom-anchored surface that slides up over a scrim to show one term's full detail view. It is not full-height, so the content pane it dims is visible behind the scrim. A horizontal swipe inside the details pane traverses to the previous or next sibling term without dismissing; a back affordance (or a scrim click) closes the layer and returns to the content pane.
-- **Action pane** (action layer) — optional; a bottom-anchored, modal surface that slides up over a **scrim**. Contextual to the pane beneath it, opened by an action such as translating, generating terms, or editing settings. At most one action pane is open at a time; it always wins the z-order.
+- **Navigation pane** (shell layer) — fixed, always present, revealed by sliding the content pane sideways.
+- **Content pane** (content layer) — shown by default; slides right to reveal the navigation pane. Its content changes based on the phrasebook selected. Switching between content screens (a phrasebook, a browse view, the landing page) swaps what the content pane renders — it does not add a layer.
+- **Details pane** (details layer) — optional; bottom-anchored surface over a scrim showing one term's full detail. Not full-height. A horizontal swipe inside traverses to the previous/next sibling term without dismissing; a back affordance or scrim click closes it and returns to the content pane.
+- **Action pane** (action layer) — optional; a bottom-anchored, modal surface over a **scrim**, contextual to the pane beneath it. At most one is open at a time; it always wins z-order. It can be dismissed by swiping down, tapping the scrim, or an explicit close. The action pane is not a single screen but a **host for several content modes** and a small internal navigation stack (see *Action pane* below).
 
-**Navigation pane:** This pane (shell layer) allows for navigation between different content in the app. The content to navigate between are different phrase books. It has a "Recent" section which lists the last 3 phrase books that have been viewed, and a section for each language for which at least one phrase book exists. Each language section shows up to 5 phrase books (most recently created). If there are more than 5 phrase books for a langauge, a `All ${language} phrase books` link appears. Clicking this link brings up the all-phrase-books list in the content pane. If any term has been starred for a given langauge, then the dynamic "starred" phrase book appears at the top of the section for the language the phrase book belongs to. The navigation pane can be seen here: https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=106-1189&t=glPczHFNXaQtaweV-11
+### Pane naming — component vs. content
 
-**Phrase book view (content pane):** The phrase book is a mode of the content pane that shows all of the terms for a given phrase book. In the header on the left is a menu button (clicking it slides the content pane out of the way to reveal the navigation pane — swiping right from the left edge of the content pane also has the same effect) and on the right is an add button (clicking it opens the action pane with an interface for translating a word/phrase and adding a term to the phrase book). Between both buttons is the title of the phrase book. Clicking on the title reveals a menu of two options: "Settings" and "Edit terms". Settings opens the action pane with the form fields for editing the phrase book, and "Edit terms" changes the terms in the content pane so that they can be dragged to be reordered. The "add button" changes to a "confirm button" that saves the changes. Additionally, a text input appears at the bottom of the content pane with the placeholder text "Add terms". Clicking on it opens the action pane with content for contextual term generation. Mocks for the phrase book view can be seen here: https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=189-9779&t=glPczHFNXaQtaweV-11
+Every pane has a **component name** (its fixed identity, layer, and behavior) and a **content name** (which screen it is currently rendering). One component hosts many content modes — e.g. the action pane hosts *Input*, *Translation*, *Group*, *New-phrasebook*, and *Review* content. Don't conflate the two.
 
-**Details pane:** Tapping a term row in the content pane opens the details pane (details layer), a bottom-anchored surface that slides up over a scrim to show that term's full detail view. It is not full-height; the content pane it dims shows behind the scrim. Swiping left or right inside the details pane traverses to the next or previous sibling term in the phrase book without dismissing — the pane stays open, only the term changes. A back affordance or a click on the scrim closes the pane and returns to the content pane in the same scroll position and selection.
+### Navigation pane
 
-**Translation vs. Generate are separate action panes:**
-- **Translation action pane** = single word/phrase → one or more result terms (ambiguous word sense → multiple results). **Entry point: "+" add button in the content pane header (top-right)** — tapping it opens the Translation action pane. Its header always shows the phrase book's fixed language.
-- **Generate terms action pane** = placeholder context prompt ("greetings for morning/afternoon/evening") → batch of terms added to the phrase book. **Entry point: "Add terms" text input (bottom of the content pane)**. Also auto-opens for new/empty phrase books, which can be created by clicking the "+" add button on the bottom-left of the navigation pane. When opened for a new/empty phrase book, there is a language selector below the textarea. The empty state experience is here: https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/Loudmouth?node-id=189-9780&t=glPczHFNXaQtaweV-11
+Navigation between phrasebooks (shell layer). It shows a **Recent** section (most-recently-viewed phrasebooks) and a **Suggested phrasebooks** section of curated, static seed collections the user can preview and add. A per-language organization applies once the user has phrasebooks: a section per language, up to a handful each, with an `All ${language} phrasebooks` link into a browse list in the content pane when there are more. If any term is starred for a language, a dynamic **Starred** phrasebook appears at the top of that language's section. The landing page (logo, tagline, Recent, Suggested) is the navigation pane's default content; its empty state swaps only the call-to-action copy.
 
-**Language pair:** The "🇯🇵 Japanese" header in the Translation action pane is a display-only label showing the current phrase book's fixed language (flag + language name). It is NOT tappable and has no picker. Language is fixed at phrase book creation via the Generate terms action pane's language selector. There is no way to reach the Translation action pane without being inside a specific phrase book, and all terms in a phrase book share the same language.
+### Content pane — phrasebook view
 
-### Interaction States — Translation action pane
+The primary content mode: all terms for one phrasebook. Header: a **menu** button (left; slides the content pane aside to reveal the navigation pane — swiping right from the left edge does the same), the phrasebook **title** (center; tapping it opens a menu with **Edit terms**), and no add button. **Edit terms** switches the term list into a drag-to-reorder mode.
 
-The Translation action pane (action layer) is a bottom-anchored modal surface (white term, 40px top-radius) that slides up over a scrim covering the content pane. It is triggered by tapping the "+" add button in the header of the content pane. Its header shows a back button (left) and the phrase book's fixed language label (e.g. "🇯🇵 Japanese") — display only, not tappable.
+Terms are shown grouped. Each saved term carries an optional **group context** (e.g. "Ordering at a restaurant") that determines its section; terms with no context render in an **untitled group** at the top with no header. **Ordering differs by section:** the untitled top section (standalone look-up terms) is **newest-first** (a new look-up term prepends to the top); within every **named** group, order is **oldest-first** (newest on the bottom). (Reconciles DESIGN's group-order rule with journeys.md J3's "new term appears at the top.")
 
-**Empty:** Large text input area (32px Roboto Flex Light, `--text-body`), placeholder in `--text-secondary`. "Translate" pill button bottom-right, grayed (`--gray-400` bg, `--gray-400` text).
+A bottom **action bar** with two actions is the phrasebook's control surface:
 
-**Typing:** Multi-line text area (grows with content). "Translate" pill activates when field is non-empty (`--bg-accent` bg, `--fg-emphasis` text, drop-shadow). No "Go" key submission — user taps "Translate" explicitly.
+- **Add** — opens the action pane at **Input mode** (the look-up stack below) to translate and add terms.
+- **Review** — opens the action pane's **Review mode**.
 
-**Loading (~500ms–2s):** Skeleton term row(s) with shimmer appear in the result area below a "Swipe or tap to add term" hint. "Translate" pill grays out while in-flight.
+There is no header "+" add button and no "Add terms" text input; the bottom bar is the sole term-adding entry point.
 
-**Result (success):** Term list appears below the "Swipe or tap to add term" hint. Each result term row:
-```
-┌─────────────────────────────────────────────┐
-│  [reading]          CJK text       [▶ play] │
-│  English meaning                            │
-└─────────────────────────────────────────────┘
-```
-- Top term: `border-radius: 20px 20px 0 0`; bottom term: `border-radius: 0 0 20px 20px`; middle terms: no radius
-- CJK text: 24px `--text-body`, Roboto Flex + Noto Sans JP
-- Reading (ruby): 14px `--text-caption`, above each character column
-- English meaning: 14px `--text-caption`, below the character row
-- Play icon: 24px, right-aligned, `--text-caption`
-- Multiple results when input is ambiguous by sense (noun vs. verb etc.) — controlled by the translation API skill rules
+### Details pane
 
-**Swipe to add (top term):** The top term is swipeable. Reveal on drag: green ✓ (add) left-side, red × (dismiss) + blue ✏ (edit) right-side. Swipe right past threshold → term added to current phrase book and removed from list. Tap the term row → same as swipe-right (add immediately). After all terms added/dismissed, the action pane returns to empty state.
+Tapping a term row opens the details pane (details layer) — a bottom-anchored surface over a scrim showing that term's full detail. Not full-height. Swiping left/right traverses sibling terms without dismissing; a back affordance or scrim click returns to the content pane at the same scroll position.
 
-**"Translate" pill (re-translate):** Floats bottom-right of the result area, grayed. Tapping clears results and re-runs translation with the current input. This is NOT a "new word" button — it's a retry/re-run for the same input.
+### Action pane
 
-**After add:** Term slides out of the list. If more terms remain, the list updates. When the last term is added or dismissed, the input clears and the action pane returns to empty state, ready for the next word.
+The action pane is a **surface that hosts content modes** — bottom-anchored, modal over a scrim, dismissible by swipe-down or scrim tap. It is the single surface for capturing language and for reviewing it. Its content modes:
 
-**Error — timeout (504):** Skeleton resolves to: `Could not generate — try again. [↻]`
-**Error — rate limited (429):** Same, with "Try again in 60 seconds."
-**Error — network:** "No connection." No retry button.
-**Empty result (0 valid terms):** "No result — try rephrasing." with ↻ retry.
-**Edge: phrase book with no language set** (e.g. legacy data migration): language pill shows "🌐 Set language" — tapping opens the Generate terms action pane (not the Translation action pane) so the user can set the language first.
+- The **look-up stack** — *Input → Translation → Group*, a sequential stack where "back" pops one step.
+- **New-phrasebook** — a standalone mode (not part of any stack).
+- **Review** — a standalone mode (not part of any stack).
 
-**Dismissal:** The action pane can be dismissed by swiping down, clicking the scrim, or an explicit close action.
+There is no separate "translate" vs. "generate" pane — one look-up flow, augmented by AI-clustered related content.
 
-### Generate Terms action pane
+**Look-up stack modes:**
 
-The Generate terms action pane (action layer) can be triggered in two ways:
+1. **Input** — a word/phrase field, the **VIBE** settings, and a **History** of recent look-ups. Submitting (keyboard **return** — there is no on-screen submit button) advances to Translation. Back here dismisses the pane.
+2. **Translation** — the primary translation for the input, plus **related groups**: AI-clustered sets of related words/phrases, biased by the phrasebook's context (the "find-related" mechanic). Back → Input.
+3. **Group** — the full contents of one related group. Back → Translation.
 
-1. From the navigation pane by clicking the add button in the bottom left. This brings up the content pane with the Generate terms action pane already open. Clicking GENERATE calls the `/generate-cards` API, then based on the response creates an appropriately named phrase book with the terms appended.
-2. By clicking into the "Add terms" text input at the bottom of the content pane when in "edit" mode. Clicking GENERATE calls the `/generate-cards` API, and adds the terms returned in the response to the current phrase book
+**New-phrasebook mode** — reached from the navigation pane (creating a new phrasebook) or from a suggested phrasebook (a confirm variant). Sets the phrasebook's **language** and the learner's **ability**.
 
-Layout: bottom-anchored modal surface over a scrim, same beige/white motif as the Translation action pane (40px top-radius, `--bg-primary` background on inner term).
+**Review mode** — see [Review mode](#review-mode) below.
 
-```
-┌─── Add terms ──────────────────── [+] ───┐
-│  Share a situation or context            │
-│  ┌────────────────────────────────────┐  │
-│  │  Greetings for morning, afternoon… │  │
-│  └────────────────────────────────────┘  │
-│  🇯🇵 Japanese  ▲▼        [  Generate  ]   │
-└──────────────────────────────────────────┘
-```
+**Saving.** Each result card has a bookmark that **commits the term to the phrasebook immediately** (no staging/approval). A header badge counts terms added since the pane opened and doubles as a one-tap return to the phrasebook. A card's **🔍** re-seeds a fresh look-up from that card (popping back to Input with the card's text prefilled, plus the source group name as parenthetical context).
 
-- Title: "Add terms" (not "Generate"), centered, 24px, back-chevron left
-- Instruction label: "Share a situation or context", 14px `--bg-secondary` (muted), centered above input
-- Input: multi-line textarea, 124px tall, 20px inner padding, inset shadow (`inset 0 1px 4px rgba(0,0,0,0.15)`), `--bg-surface` (white) or `--beige-100` background, `border-radius: 20px` (verify exact shade from Figma — `--beige-50` does not exist in token system)
-- Placeholder: 16px `--gray-300` (muted)
-- Language selector: flag emoji + language name + ▲▼ sort icon (unfold), bottom-left
-- Generate button: bottom-right, `border-radius: 100px`
-  - Disabled (empty input): `--border-default` bg (gray-300), `--text-tertiary` text (gray-400) — `--tint-black-100` not in token system, use closest semantic equivalent
-  - Enabled (filled): `--bg-accent` bg, `--fg-emphasis` text, `drop-shadow: 0 4px 5px rgba(0,0,0,0.15)`
+**Deferred creation.** Choosing language/ability and running look-ups does **not** create a phrasebook. It is persisted only when the **first term is saved**. Before that, dismissing returns to the navigation pane with nothing created — there are no drafts. (For suggested phrasebooks, the creation commit is the preview's **Save** action instead.)
 
-After Generate: the action pane closes after generation completes. (No inline preview in this flow — the generated terms land directly in the phrase book.)
+**Language & ability.** Both are set at creation and are **immutable** thereafter (cannot be changed once the phrasebook exists). Language is the phrasebook's fixed target language; the "🇯🇵 Japanese" header label elsewhere is display-only. **Ability** (None / Beginner / Intermediate / Advanced) is the learner's proficiency and **biases generation**; the last ability used for a language becomes that language's default. **VIBE** (Formality + Audience) is the *tone* of the translation — a separate, editable per-phrasebook default surfaced in Input mode.
 
-**Dismissal:** The action pane can be dismissed by swiping down, clicking the scrim, or an explicit close action.
+### Suggested phrasebooks
+
+Curated, static seed collections shown in the navigation pane. Tapping one opens a confirm sheet (language/ability), then a **read-only preview** of the fully-populated phrasebook with a **Save** action; Save is the creation commit, after which it moves from Suggested into the user's library. Suggested content is fully context-grouped, and there is a distinct pre-authored seed per `{language, ability}` pairing. (Seed content is a placeholder pending the generation API.)
+
+### Review mode
+
+A flashcard content mode of the **action pane**, entered from a phrasebook's **Review** action, covering the whole phrasebook at once. Cards flip between prompt and answer with a manual reveal; a direction toggle flips prompt↔answer (target ↔ English), and per-card audio plays the target pronunciation. **Swipe left/right** advances/reverses through the deck. The deck **does not loop** and has no end-of-deck summary — it hard-stops at the first and last card. Review settings (e.g. direction) persist per phrasebook.
+
+---
+
+See `docs/journeys.md` for the detailed step-by-step flows, interaction states, exact copy, and open questions behind each of the above.

@@ -1,0 +1,212 @@
+{
+  "project": "phrasebook-lookup-ux",
+  "description": "Build the action-pane look-up stack (Input/Translation/Group) wired to /lookup, per docs/journeys.md — web first, then iOS port.",
+  "tasks": [
+    {
+      "id": "PH-001",
+      "title": "Web data model: phrasebook VIBE + ability + language fields",
+      "description": "As a user, I want VIBE and ability persisted on my phrasebook so my tuning choices carry forward across look-ups.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Phrasebook record gains formality/audience (mutable, default polite/staff) and ability (immutable after creation, default beginner) fields in the IndexedDB/Dexie schema",
+        "language field confirmed immutable after creation (extend existing behavior if not already enforced)",
+        "App-level 'last ability used per language' preference store added, read to pre-fill new-phrasebook creation for a previously-used language",
+        "Migration backfills existing phrasebooks with the default values",
+        "Unit tests cover: field persistence, immutability enforcement, preference store round-trip"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Foundation for PH-002 and PH-005. See journeys.md 'VIBE model' and 'Ability field' sections. Defaults are polite/staff/beginner per the reconciled API_DESIGN.md defaults, not the Casual/Strangers/None shown in the Figma mocks."
+    },
+    {
+      "id": "PH-002",
+      "title": "Web: action-pane stack scaffold + Input mode wired to /lookup",
+      "description": "As a user, I want to type a term and submit on return to trigger a look-up, so I can start exploring without a separate button.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Action-pane component built with an internal push/pop content stack (not sibling modals) — bottom-anchored, over scrim, drag-down dismiss",
+        "Input mode (stack level 1): term field, VIBE settings group (expanded on phrasebook's first translation, collapsed to one-line summary after), HISTORY of recent look-ups shown when field is empty",
+        "Submission fires only on keyboard return — no on-screen Translate button, no live/debounced firing while typing",
+        "Back in Input mode dismisses the whole action pane",
+        "Submitting calls /lookup with the phrasebook's language/ability/formality/audience plus the typed term"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Depends on PH-001 (VIBE data) and lookup-api's LK-004 (working /lookup endpoint) — cross-project dependency. See journeys.md 'Action-pane content stack' + 'VIBE model' + Journey 1 steps 3-4."
+    },
+    {
+      "id": "PH-003",
+      "title": "Web: Translation mode — primary card, related groups, save + basket badge",
+      "description": "As a user, I want to see a primary translation plus related groups and save any card with one tap, so exploring and curating feel like one motion.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Translation mode (stack level 2): loading skeleton of 3 term cards, then primary result card (translation, action row: play/save/search/overflow) plus related-group list (title, count tag, preview rows)",
+        "Tapping 🔖 commits the term to the phrasebook immediately (no approval step); card tints and bookmark fills",
+        "Header basket badge appears once ≥1 term is saved and increments per save (session-scoped delta since the action pane opened)",
+        "Tapping the badge, or swiping the action pane down, dismisses the whole stack straight to the phrasebook view",
+        "Dismissible first-run coach-mark call-outs point at save and related-groups actions, and auto-dismiss once their action is performed",
+        "Back → Input mode"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Depends on PH-002. See journeys.md Journey 1 steps 5-7 + 'Save model & basket badge'."
+    },
+    {
+      "id": "PH-004",
+      "title": "Web: Group mode + 🔍 re-seed action",
+      "description": "As a user, I want to drill into a group's full term list and re-seed a narrower look-up from any card, so I can chain explorations.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Tapping a group in Translation mode pushes Group mode (stack level 3) showing the full term list, same action row/save behavior as Translation mode",
+        "🔍 on any term card (Translation or Group mode) pops the stack to Input mode and prefills the input with the card's text plus its source group name in parentheses (e.g. 'I'll have this one (ordering at a restaurant)'); on a primary card with no group, prefills with just the card's text",
+        "Basket badge persists and stays accurate across all stack depths",
+        "Back → Translation mode"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Depends on PH-003. See journeys.md Journey 1 steps 8-9 + '🔍 Magnifying-glass action (re-seed)'."
+    },
+    {
+      "id": "PH-005",
+      "title": "Web: New-phrasebook creation flow",
+      "description": "As a user, I want to set language and ability once when creating a phrasebook, so my first look-up is already tuned to my level.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "New-phrasebook action-pane mode: Language select + Your ability select (default Beginner, or the last-used ability for that language if set), 'Create your first phrasebook' button",
+        "Language and ability become immutable once the phrasebook is created",
+        "After creation, the app opens directly into Input mode (stack level 1) with VIBE shown expanded",
+        "Creating a phrasebook updates the per-language 'last ability used' preference"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Depends on PH-001, PH-002. See journeys.md Journey 1 steps 1-3 + 'Ability field'."
+    },
+    {
+      "id": "PH-006",
+      "title": "Web: grouped-term persistence in phrasebook view",
+      "description": "As a user, I want terms saved from a group to show under that group's name in my phrasebook, so I can see where each term came from.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Terms saved from a group are stored with their source group's title (reuse CARD_SCHEMA.md's context field) and rendered under a matching section header in the phrasebook view",
+        "The standalone primary look-up term (not from a group) is rendered ungrouped",
+        "Phrasebook list-row treatment (blue-tinted, inline play only) is visually distinct from the action-pane result-card treatment (white/cream, full action row)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Depends on PH-004 and the existing phrasebook content-pane view. See journeys.md Journey 1 step 10 + key detail 4."
+    },
+    {
+      "id": "PH-007",
+      "title": "Web: Add flow from an existing phrasebook",
+      "description": "As a user with an existing phrasebook, I want Add to open the same look-up stack, so adding terms feels identical to creating a phrasebook.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Bottom action bar's 'Add' opens the Input→Translation→Group stack (reuses PH-002–004 unchanged)",
+        "Input mode opens with VIBE collapsed (phrasebook has translated before) and HISTORY populated with recent look-ups",
+        "A newly saved standalone (non-group) term is prepended (newest-first) under a 'Translations' section at the top of the phrasebook",
+        "Group-sourced saves still land under their existing group section (or create it if new)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on PH-002–006. See journeys.md Journey 3."
+    },
+    {
+      "id": "PH-008",
+      "title": "Web: Suggested phrasebook preview + confirm flow",
+      "description": "As a user, I want to preview a suggested phrasebook's terms and confirm my language/ability before adding it, so I know what I'm getting.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Landing page renders a static, hand-curated SUGGESTED PHRASEBOOKS list with a 'View' action per row",
+        "Tapping View opens a Confirm mode (reuses the New-phrasebook action-pane content, confirm-specific copy) with editable Language + Your ability",
+        "Confirming opens a read-only phrasebook preview (grouped terms, blue 'Save' pill in header) that is not yet in the library",
+        "Save commits the phrasebook: it appears at the top of RECENT and is removed from SUGGESTED",
+        "OPEN QUESTIONS to resolve during implementation (see journeys.md Journey 2, not yet Figma-resolved): whether Add/Review are active or disabled in the unsaved preview; whether preview terms are editable before Save; how suggested-row subtitle counts are seeded pre-content"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on PH-005 (reuses New-phrasebook/confirm action-pane content). See journeys.md Journey 2. Suggested-phrasebook seed content itself (curating the actual static list) is out of scope for this task — track separately once content is available."
+    },
+    {
+      "id": "PH-009",
+      "title": "Web: Review mode (flashcard flip, direction toggle, audio)",
+      "description": "As a user, I want to flip through my phrasebook as flashcards with manual reveal and audio, so I can self-test.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Review is a standalone content mode of the action pane (not part of the look-up stack); × closes back to the phrasebook",
+        "Flashcard shows the prompt side; answer side is hidden (skeleton) until the reveal (eye) toggle is tapped",
+        "Direction toggle in the header flips which side is prompt vs. answer, mid-session",
+        "🔊 plays target-language audio for the current card",
+        "OPEN QUESTIONS to resolve during implementation (see journeys.md Journey 4, not yet Figma-resolved): how the user advances between cards; whether there's an end-of-deck state or it loops; whether the direction toggle persists as a per-phrasebook default; which subset of terms is reviewed"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Not dependent on /lookup or PH-001–008; independent slice, same Figma pass. See journeys.md Journey 4."
+    },
+    {
+      "id": "PH-010",
+      "title": "iOS: data model port (VIBE + ability + language fields)",
+      "description": "Port PH-001's schema fields to the iOS SwiftData model.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "SwiftData phrasebook model gains formality/audience (mutable, default polite/staff) and ability/language (immutable after creation, default beginner) fields",
+        "Per-language 'last ability used' preference stored (UserDefaults or equivalent)",
+        "Migration backfills existing phrasebooks",
+        "Unit tests mirror PH-001's coverage"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on PH-001 as the settled reference implementation."
+    },
+    {
+      "id": "PH-011",
+      "title": "iOS: action-pane stack (Input/Translation/Group) wired to /lookup",
+      "description": "Port PH-002–004's look-up stack to iOS.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Mirrors PH-002, PH-003, and PH-004's acceptance criteria on iOS (bottom sheet stack, Input/Translation/Group content modes, save + basket badge, 🔍 re-seed)",
+        "Reuses the web implementation's settled interaction model (stack push/pop semantics, badge behavior, re-seed prefill logic) rather than re-deriving from journeys.md independently"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on PH-002, PH-003, PH-004, PH-010, and lookup-api's LK-004."
+    },
+    {
+      "id": "PH-012",
+      "title": "iOS: New-phrasebook creation + grouped-term persistence + Add flow",
+      "description": "Port PH-005–007 to iOS.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Mirrors PH-005 (creation flow), PH-006 (grouped-term section persistence), and PH-007 (Add-from-existing-phrasebook flow) on iOS"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on PH-005, PH-006, PH-007, PH-011."
+    },
+    {
+      "id": "PH-013",
+      "title": "iOS: Suggested phrasebook preview + confirm flow",
+      "description": "Port PH-008 to iOS.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Mirrors PH-008's acceptance criteria on iOS",
+        "Resolves the same open questions using whatever decisions were made during the web implementation of PH-008"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Depends on PH-008, PH-012."
+    },
+    {
+      "id": "PH-014",
+      "title": "iOS: Review mode",
+      "description": "Port PH-009 to iOS.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Mirrors PH-009's acceptance criteria on iOS",
+        "Resolves the same open questions using whatever decisions were made during the web implementation of PH-009"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Depends on PH-009. Independent of the rest of the iOS port."
+    }
+  ]
+}

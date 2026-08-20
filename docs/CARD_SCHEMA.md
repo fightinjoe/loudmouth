@@ -28,7 +28,10 @@ The term batch format is the interchange format between external generators (AI 
 | `type` | `"word"` \| `"phrase"` \| `"sentence"` | — | Term type |
 | `reading` | `ReadingToken[]` | — | Structured phonetic reading (see below) |
 | `romanization` | string | — | Latin-alphabet transcription (romaji for `ja`; optional, primarily useful for Japanese) |
-| `notes` | string | — | Grammatical notes, register, collocations, or disambiguation |
+| `definition` | string | — | The word's meaning — present only when disambiguation is needed (see [Definition vs. translation vs. notes](#definition-vs-translation-vs-notes)) |
+| `formality` | `casual` \| `polite` \| `formal` \| `slang` \| `vulgar` | — | The card's register — present only when the word has a register worth marking (see [Formality](#formality)) |
+| `context` | string | — | The group/situation label this term was discovered under (see [Group context](#group-context)) |
+| `notes` | string | — | Grammatical notes, collocations, or usage tips (not register — see `formality`) |
 | `example` | object | — | Example sentence (see below) |
 
 ## Reading tokens
@@ -46,10 +49,58 @@ The term batch format is the interchange format between external generators (AI 
 
 The app renders `reading` as ruby text (e.g. `<ruby>菜<rt>cài</rt></ruby>`). `romanization` is a separate optional field for Latin-alphabet transcription and is independent of `reading`.
 
+## Definition vs. translation vs. notes
+
+Three text fields carry meaning, and they are **not** interchangeable:
+
+- **`translation`** (required) — the English equivalent of the term: the dictionary word (e.g.
+  `"to surf"`). Always present.
+- **`definition`** (optional) — the word's meaning, present **only when disambiguation is needed**.
+  An unambiguous term ("toilet") has none. An ambiguous one carries the meaning that distinguishes it:
+  `"bathroom"` → `"bath / shower room"`; `"surf"` → one of `"n. ocean waves"` / `"v. ride a wave"` /
+  `"v. browse the internet"`. This keeps a phrasebook holding two `surf` cards distinguishable.
+- **`notes`** (optional) — grammar, collocations, or usage tips (e.g. `"used with the particle を"`).
+  Register does **not** go here — it has its own field, `formality`.
+
+So a single card can carry translation + definition + notes:
+
+```json
+{ "translation": "to surf", "definition": "v. ride a wave", "notes": "sports context" }
+```
+
+## Formality
+
+`formality` records the card's **register**: `casual` \| `polite` \| `formal` \| `slang` \| `vulgar`.
+The scale runs formal → polite → casual → slang → vulgar; `vulgar` is the crude end (curse words and
+language inappropriate outside close, trusted relationships) and implies slang.
+
+- Present **only when the word has a register worth marking** — common in Japanese (トイレ `casual` /
+  お手洗い `polite`), and omitted for words with no register variant (水 "water") and usually for
+  non-Japanese languages.
+- This is the same concept as the `/lookup` API's `formality` **input**, reported here per card. The
+  input has three values (`casual` \| `polite` \| `formal`); the per-card output adds `slang` and
+  `vulgar`, which you can't request directly.
+- Situational nuance a single value can't capture (e.g. a vulgar phrase that endears close friends but
+  offends strangers) belongs in `notes`, not here.
+
+## Group context
+
+`context` is the **title of the group a term was discovered under** during a look-up — the situational
+heading it belongs to, e.g. `"Ordering at a restaurant"` or `"Teasing your host family"`.
+
+- Set on cards saved **from a group**; it preserves the card's situational origin so the app can show
+  provenance, cluster in Browse, or re-seed a narrower look-up from the card.
+- **Omit on primary/direct-translation cards** — a primary translation has no parent group.
+- Free-form human-scannable text, not an id; independent of `deckIds` (a phrasebook may hold cards from
+  many different `context` groups).
+- In the `/lookup` API the **service** copies the group's `title` into each group card's `context`; the
+  model does not emit it (see `docs/API_DESIGN.md`, "Model behavior" / "Internal flow").
+
 ## Constraints
 
 - `id` and `importedAt` are **never** included in the batch — the app assigns them at import time.
 - `reading` and `romanization` are independent optional fields. For Japanese, `reading` contains annotated tokens (hiragana over kanji); `romanization` is romaji. Both may be present simultaneously.
+- `definition`, `formality`, and `context` are independent optional fields. `definition` is the word's meaning (present only when disambiguation is needed); `formality` is the card's register (present only when the word has one worth marking); `context` records the group a term was discovered under (omitted on primaries). Any combination may be present.
 - Omit optional fields entirely rather than including them as empty arrays, empty strings, or `null`.
 
 ## Example (zh)
@@ -70,6 +121,7 @@ The app renders `reading` as ruby text (e.g. `<ruby>菜<rt>cài</rt></ruby>`). `
       "text": "我想点菜",
       "reading": [["我", "wǒ"], ["想", "xiǎng"], ["点", "diǎn"], ["菜", "cài"]],
       "translation": "I'd like to order",
+      "context": "Ordering at a restaurant",
       "notes": "Standard phrase to get a waiter's attention when ordering",
       "example": {
         "text": "服务员，我想点菜。",
@@ -91,7 +143,8 @@ The app renders `reading` as ruby text (e.g. `<ruby>菜<rt>cài</rt></ruby>`). `
       "type": "word",
       "text": "おすすめ",
       "reading": [["おすすめ", null]],
-      "translation": "recommendation; recommended dish",
+      "translation": "recommendation, recommended dish",
+      "context": "Reading a menu",
       "notes": "Often seen on menus as おすすめ料理"
     },
     {
@@ -123,4 +176,6 @@ Base64url encoding: standard base64, then replace `+` with `-`, `/` with `_`, st
 
 ## Validation
 
-Required per term: `lang`, `text`, `translation`. All other fields optional.
+Required per term: `lang`, `text`, `translation`. All other fields optional. `definition` and
+`context`, when present, must be non-empty strings; `formality`, when present, must be one of
+`casual` \| `polite` \| `formal` \| `slang` \| `vulgar`.

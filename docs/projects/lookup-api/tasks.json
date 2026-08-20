@@ -1,0 +1,93 @@
+{
+  "project": "lookup-api",
+  "description": "Build the /lookup endpoint per docs/API_DESIGN.md, replacing /translate and /generate-cards, plus its eval harness.",
+  "tasks": [
+    {
+      "id": "LK-001",
+      "title": "Parse layer: term/context split + input validation",
+      "description": "As a developer, I want a parse layer that splits term into term+context and validates every input parameter, so malformed or oversized requests are rejected with 400 before any model call.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Splits term on the first '(' into term + context",
+        "Missing closing ')' is not an error — everything after '(' becomes context as-is",
+        "Extra/nested parens in context are stripped, not parsed (e.g. 'term (b (c))' → context 'b c')",
+        "term > 200 characters → 400",
+        "Missing required term or language → 400",
+        "Invalid enum value for language/ability/formality/audience/llm → 400",
+        "Defaults applied per API_DESIGN.md Inputs table (ability=beginner, formality=polite, audience=staff, llm=google)",
+        "node:test suite scaffolded (package.json test script) with unit tests covering every 'parse term' and route-level 400 row in API_DESIGN.md's Test coverage table"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Foundation for LK-002. Spec: API_DESIGN.md 'term and context' + Inputs table + Parse step. Supersedes old T0/T1 code — do not reuse api/src as a starting point per this project's PRD."
+    },
+    {
+      "id": "LK-002",
+      "title": "Prompt + Generate call (single LLM call, token/latency budget)",
+      "description": "As a developer, I want a single LLM call that turns the parsed term+options into the blocks-and-groups JSON per the Model behavior spec, so the service has raw model output to validate and finish.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Prompt implements every rule in API_DESIGN.md's Model behavior section: intent translation, disambiguation into ≤4 ordered blocks, theme grouping (≤8 groups total, ≤10 cards/group), English group titles, register soft-anchor with the slang-never-spills-in rule, ability difficulty scaling including the 'none' floor, content quality bar, raw-JSON-only output",
+        "maxOutputTokens set to 20000",
+        "Request timeout set to 15s",
+        "Prompt is shared verbatim across all three llm backends via the existing LLM_REGISTRY dispatch",
+        "LLM-throws and LLM-times-out are distinguishable code paths (both currently surface as 502, but must not be the same catch branch, to allow future differentiated handling)",
+        "Manual/integration check: calling with term=bathroom, language=ja, formality=casual, audience=staff returns a shape matching API_DESIGN.md Example 1"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Depends on LK-001. Supersedes old T1/T2 code."
+    },
+    {
+      "id": "LK-003",
+      "title": "Response validation + Finish layer",
+      "description": "As a developer, I want deterministic post-processing that validates the model's response and enforces every output limit, so the client never receives an out-of-contract shape.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "Malformed or truncated model JSON → 502 'Invalid response'",
+        "Every card validated against the shared card validator (per-field guard) → 502 on invalid card",
+        "Bad formality value on a card → rejected or stripped",
+        "Trim to ≤4 blocks, ≤8 groups total, ≤10 cards/group — keeps items in the model's returned order, drops from the end",
+        "Boundary-exact cases (=4 blocks, =8 groups, =10 cards) produce no trim",
+        "Empty group is dropped (no other minimum enforced)",
+        "context is set: block card gets the input parenthetical, group card gets its group's title",
+        "Unit tests cover every 'validate + finish' row in API_DESIGN.md's Test coverage table, including the CRITICAL ones"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Depends on LK-002. Supersedes old T1 code (validate/finish portion)."
+    },
+    {
+      "id": "LK-004",
+      "title": "/lookup route wiring",
+      "description": "As the app (client), I want a working /lookup HTTP endpoint, so I can call it end-to-end instead of the legacy /translate and /generate-cards endpoints.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "/lookup route wired into api/src/index.js router with the same 204/405/404 behavior as existing routes",
+        "Unknown llm value → 400",
+        "Full happy-path request returns a valid { blocks } response end to end",
+        "node:test suite passes; every CRITICAL row in API_DESIGN.md's Test coverage table is green",
+        "Manual curl smoke test against all 3 worked examples in API_DESIGN.md (bathroom, dinner, water) returns plausible output"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Depends on LK-003. Last backend-only, curl-demoable slice — legacy endpoints untouched here (retirement is scoped to the client-rebuild project)."
+    },
+    {
+      "id": "LK-005",
+      "title": "Eval harness",
+      "description": "As a QA engineer, I want a pre-deploy eval harness for /lookup, so structural, correctness, and quality regressions are caught before they reach learners.",
+      "type": "feature",
+      "acceptanceCriteria": [
+        "evals/lookup.eval.js checks structural invariants: ≤4 blocks, ≤8 groups, ≤10 cards, no near-duplicate cards, valid schema",
+        "Reading-correctness check against a golden set of known words/readings",
+        "LLM-judge pass on the conversational quality bar ('would a person say this to someone they want to connect with?')",
+        "Golden-set sampling strategy is documented (representative subset per axis, per API_DESIGN.md's Deferred note — not the full 576-combination cross-product)",
+        "Runnable pre-deploy and produces a pass/fail report"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Depends on LK-004."
+    }
+  ]
+}
