@@ -53,6 +53,6 @@ per the protocol.
 
 ## Known gaps
 
-Tracked in [`docs/TODO.md`](../docs/TODO.md) — e.g. the "All ${language} decks"
-overflow link, the "Add cards" text-input entry point for Generate, and
-edit-mode reorder drag are not yet implemented on iOS.
+The "All ${language} decks" overflow link, the "Add cards" text-input entry
+point for Generate, and edit-mode reorder drag are not yet implemented on
+iOS.

@@ -3,12 +3,12 @@ import { test, expect } from '@playwright/test'
 /**
  * Runtime smoke test for the action-pane sub-kinds.
  *
- * Every action pane (translation, generate, settings, card-edit, json) is
- * opened in a real browser and must mount, render, and close without emitting
- * a single console error or uncaught exception. This is the guard for the
- * class of bug where a pane throws only at runtime — e.g. a temporal-dead-zone
- * ReferenceError when an onMount closure evaluates a not-yet-initialized
- * binding. Unit tests and the build do not exercise that path; this does.
+ * Every action pane (settings, card-edit, json) is opened in a real browser
+ * and must mount, render, and close without emitting a single console error
+ * or uncaught exception. This is the guard for the class of bug where a pane
+ * throws only at runtime — e.g. a temporal-dead-zone ReferenceError when an
+ * onMount closure evaluates a not-yet-initialized binding. Unit tests and the
+ * build do not exercise that path; this does.
  *
  * The test drives the app the way the app drives itself: it fires
  * `action/open` transitions through the exposed state machine and seeds a deck
@@ -19,11 +19,16 @@ import { test, expect } from '@playwright/test'
 // Every kind the action pane can open, with the payload shape each expects.
 // `needsDeck`/`needsCard` mark kinds that require seeded data in the payload.
 const KINDS = [
-  { kind: 'generate', payload: {}, label: 'generate (new deck)' },
-  { kind: 'generate', needsDeck: true, label: 'generate (into deck)' },
-  { kind: 'translation', needsDeck: true, label: 'translation' },
   { kind: 'settings', needsDeck: true, needsCards: true, label: 'settings' },
   { kind: 'card-edit', needsCard: true, label: 'card-edit' },
+  { kind: 'review', needsDeck: true, needsCards: true, label: 'review' },
+  { kind: 'lookup', needsDeck: true, label: 'lookup (input mode)' },
+  { kind: 'new-phrasebook', payload: {}, label: 'new-phrasebook' },
+  {
+    kind: 'new-phrasebook',
+    payload: { suggestion: { id: 'seed-greetings-ja', emoji: '👋', title: 'Greetings', lang: 'ja', terms: [] } },
+    label: 'new-phrasebook (confirm suggestion)',
+  },
   {
     kind: 'json',
     payload: { title: 'Test', jsonString: '{"cards":[]}' },

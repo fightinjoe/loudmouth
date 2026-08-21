@@ -1,94 +1,89 @@
-# Translation API
+# Catchphrase Lookup API
 
-A Node.js Cloud Run function that translates text and generates language flashcards via multiple LLM backends, with an API Gateway handling rate limiting.
+A Node.js Cloud Run function that serves `/lookup` — translation + AI-clustered related terms —
+via multiple LLM backends, with an API Gateway handling rate limiting.
+
+See `docs/API_DESIGN.md` for the endpoint contract (inputs, outputs, internal flow, model
+behavior) and `docs/CARD_SCHEMA.md` for the `Card` shape.
 
 ## Project structure
 
 ```
-translation-api/
+api/
 ├── config/
 │   └── api-gateway.yaml      # OpenAPI 2.0 spec + rate limiting (60 req/min)
 ├── src/
-│   ├── index.js              # Cloud Run entry point, path routing
-│   ├── prompt.js             # Prompt builder for /translate
-│   ├── validate.js           # Response validator for /translate
-│   ├── cards-prompt.js       # Prompt builder for /generate-cards
-│   ├── cards-validate.js     # Response validator for /generate-cards
+│   ├── index.js               # Cloud Run entry point, path routing
+│   ├── lookup.js               # /lookup route handler (parse → generate → finish)
+│   ├── lookup-parse.js         # Request validation + defaults
+│   ├── lookup-prompt.js        # Prompt builder for the single model call
+│   ├── lookup-validate.js      # Response validator, limits, context assignment
+│   ├── card-validate.js        # Shared Card-shape validators (docs/CARD_SCHEMA.md)
+│   ├── test/
+│   │   └── lookup.test.js      # Unit tests (node --test)
 │   ├── package.json
 │   └── llms/
-│       ├── anthropic.js      # Claude via Anthropic SDK
-│       ├── openai.js         # GPT-4o via OpenAI SDK
-│       └── genai.js          # Gemini via Google GenAI SDK
-├── deploy.sh                 # Idempotent GCP deploy script
+│       ├── anthropic.js        # Claude via Anthropic SDK
+│       ├── openai.js           # GPT-4o via OpenAI SDK
+│       └── genai.js            # Gemini via Google GenAI SDK
+├── evals/
+│   └── lookup.eval.js          # LLM-judge + golden-set eval harness
+├── deploy.sh                   # Idempotent GCP deploy script
 └── README.md
 ```
 
-## Endpoints
+## Endpoint
 
-Both endpoints are served from the same Cloud Run function, routed by path.
+### `POST /lookup`
 
-### `POST /translate`
-
-Translates text into a target language.
+Looks up a term and returns a direct translation plus AI-clustered related groups.
 
 **Request:**
 ```json
 {
-  "text": "hello",
-  "targetLanguage": "Japanese",
-  "llm": "claude"
-}
-```
-
-**Response:**
-```json
-{
-  "translations": [
-    {
-      "translation": "Hello / Hi",
-      "lang": "Japanese",
-      "text": "こんにちは",
-      "ruby_markup": "<ruby>こんにちは</ruby>"
-    }
-  ]
-}
-```
-
-### `POST /generate-cards`
-
-Generates language flashcards in the Loudmouth card batch schema (see `docs/card-batch-schema.md`).
-
-**Request:**
-```json
-{
-  "lang": "zh",
-  "topic": "ordering food at a restaurant",
-  "count": 15,
+  "term": "bathroom",
+  "language": "ja",
+  "ability": "beginner",
+  "formality": "casual",
+  "audience": "staff",
   "llm": "google"
 }
 ```
 
-- `lang` — required, `"zh"` or `"ja"`
-- `topic` — required, freeform description of card content
-- `count` — optional, integer 1–50 (default: 15)
-- `llm` — optional, `"google"` | `"claude"` | `"chatgpt"` (default: `"google"`)
+- `term` — required, max 200 characters. May carry a parenthetical for context, e.g.
+  `"surf (v. to ride a wave)"`.
+- `language` — required, `"zh"` \| `"ja"` \| `"es"` \| `"cs"`.
+- `ability` — optional, `"none"` \| `"beginner"` \| `"intermediate"` \| `"advanced"` (default `"beginner"`).
+- `formality` — optional, `"casual"` \| `"polite"` \| `"formal"` (default `"polite"`).
+- `audience` — optional, `"stranger"` \| `"staff"` \| `"acquaintance"` \| `"family"` (default `"staff"`).
+- `llm` — optional, `"google"` \| `"claude"` \| `"chatgpt"` (default `"google"`).
 
 **Response:**
 ```json
 {
-  "cards": [
+  "blocks": [
     {
-      "lang": "zh",
-      "type": "word",
-      "text": "菜单",
-      "reading": "càidān",
-      "translation": "menu"
+      "card": {
+        "lang": "ja",
+        "text": "トイレ",
+        "reading": [["トイレ", null]],
+        "translation": "toilet, restroom",
+        "definition": "the toilet / restroom (not the bath)",
+        "formality": "casual"
+      },
+      "groups": [
+        {
+          "title": "Using the toilet",
+          "cards": ["..."]
+        }
+      ]
     }
   ]
 }
 ```
 
-See `docs/card-batch-schema.md` for the full schema reference.
+See `docs/API_DESIGN.md` for the full contract, including disambiguation, group limits
+(≤4 blocks, ≤8 groups total, ≤10 cards/group), and worked examples.
 
 ## First-time setup
 
@@ -151,19 +146,23 @@ npm run dev
 The function will be available at `http://localhost:8080`. Test it:
 
 ```bash
-curl -X POST http://localhost:8080/translate \
+curl -X POST http://localhost:8080/lookup \
   -H 'Content-Type: application/json' \
-  -d '{"text": "hello", "targetLanguage": "Japanese", "llm": "claude"}'
-
-curl -X POST http://localhost:8080/generate-cards \
-  -H 'Content-Type: application/json' \
-  -d '{"lang": "zh", "topic": "ordering food at a restaurant"}'
+  -d '{"term": "bathroom", "language": "ja", "formality": "casual", "audience": "staff"}'
 ```
 
 For Anthropic and OpenAI locally, set the env vars directly:
 
 ```bash
 ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... npm run dev
+```
+
+### Tests and evals
+
+```bash
+cd src
+npm test              # unit tests (node --test)
+npm run eval:lookup   # LLM-judge + golden-set eval harness (evals/lookup.eval.js)
 ```
 
 ## Testing the deployed service
@@ -176,58 +175,37 @@ export GATEWAY_URL=https://YOUR_GATEWAY_HOST
 
 The gateway URL is `https://translation-api-gateway-2qqw247r.uc.gateway.dev`
 
-### `/translate`
-
 ```bash
-curl -s -X POST $GATEWAY_URL/translate \
+curl -s -X POST $GATEWAY_URL/lookup \
   -H 'Content-Type: application/json' \
-  -d '{"text": "hello", "targetLanguage": "Japanese", "llm": "claude"}' | jq .
+  -d '{"term": "bathroom", "language": "ja", "formality": "casual", "audience": "staff"}' | jq .
 
-curl -s -X POST $GATEWAY_URL/translate \
+curl -s -X POST $GATEWAY_URL/lookup \
   -H 'Content-Type: application/json' \
-  -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "google"}' | jq .
+  -d '{"term": "hello", "language": "es", "llm": "claude"}' | jq .
 
-curl -s -X POST $GATEWAY_URL/translate \
+curl -s -X POST $GATEWAY_URL/lookup \
   -H 'Content-Type: application/json' \
-  -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "chatgpt"}' | jq .
-```
-
-### `/generate-cards`
-
-```bash
-# Default (google, 15 cards)
-curl -s -X POST $GATEWAY_URL/generate-cards \
-  -H 'Content-Type: application/json' \
-  -d '{"lang": "zh", "topic": "ordering food at a restaurant"}' | jq .
-
-# Japanese, 10 cards, Claude
-curl -s -X POST $GATEWAY_URL/generate-cards \
-  -H 'Content-Type: application/json' \
-  -d '{"lang": "ja", "topic": "common verbs for daily routines", "count": 10, "llm": "claude"}' | jq .
+  -d '{"term": "surf (v. to ride a wave)", "language": "cs", "llm": "chatgpt"}' | jq .
 ```
 
 ### Error handling
 
 ```bash
 # Unknown LLM → 400
-curl -s -X POST $GATEWAY_URL/translate \
+curl -s -X POST $GATEWAY_URL/lookup \
   -H 'Content-Type: application/json' \
-  -d '{"text": "hello", "targetLanguage": "Spanish", "llm": "gpt-5"}' | jq .
+  -d '{"term": "hello", "language": "es", "llm": "gpt-5"}' | jq .
 
 # Missing field → 400
-curl -s -X POST $GATEWAY_URL/translate \
+curl -s -X POST $GATEWAY_URL/lookup \
   -H 'Content-Type: application/json' \
-  -d '{"text": "hello", "llm": "claude"}' | jq .
+  -d '{"term": "hello"}' | jq .
 
-# Invalid lang → 400
-curl -s -X POST $GATEWAY_URL/generate-cards \
+# Invalid language → 400
+curl -s -X POST $GATEWAY_URL/lookup \
   -H 'Content-Type: application/json' \
-  -d '{"lang": "fr", "topic": "food"}' | jq .
-
-# Missing topic → 400
-curl -s -X POST $GATEWAY_URL/generate-cards \
-  -H 'Content-Type: application/json' \
-  -d '{"lang": "zh"}' | jq .
+  -d '{"term": "hello", "language": "fr"}' | jq .
 ```
 
 View live logs:

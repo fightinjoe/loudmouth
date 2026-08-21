@@ -20,9 +20,8 @@ const LANG_LEVELS = { zh: 'HSK 1–4', ja: 'JLPT N5–N3' };
 
 /**
  * Per-language ReadingToken instructions (docs/CARD_SCHEMA.md "Reading tokens").
- * zh/ja mirror cards-prompt.js so /lookup and /generate-cards annotate
- * identically; other scripts get a single unannotated token per CARD_SCHEMA's
- * "Other scripts" rule.
+ * zh/ja get explicit annotation rules; other scripts get a single unannotated
+ * token per CARD_SCHEMA's "Other scripts" rule.
  */
 function readingInstructions(lang) {
   if (lang === 'zh') {

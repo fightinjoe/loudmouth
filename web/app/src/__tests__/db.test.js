@@ -1,11 +1,13 @@
+// @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import Dexie from 'dexie';
 import {
   createDeck, getDecks, getCards, getCardsByLang, importCards,
-  updateDeckMode, updateDeckOrder, updateDeckAccessTime, getRecentDecks, restoreAllData, createDb, applyCardOrder,
+  updateDeckMode, updateDeckOrder, updateDeckVibe, updateDeckAccessTime, getRecentDecks, restoreAllData, createDb, applyCardOrder,
 } from '../js/db.js';
 import { DEFAULT_MODE, MODES } from '../js/modes.js';
+import { getLastAbility, setLastAbility } from '../js/preferences.js';
 
 let store;
 
@@ -13,13 +15,14 @@ beforeEach(async () => {
   const idb = new IDBFactory();
   store = createDb({ indexedDB: idb, IDBKeyRange });
   await store.open();
+  localStorage.clear();
 });
 
 // --- createDeck ---
 
 describe('createDeck', () => {
   it('creates a deck with padded counter and slug', async () => {
-    const deck = await createDeck('Restaurant Words', 'zh', store);
+    const deck = await createDeck('Restaurant Words', 'zh', {}, store);
     expect(deck.id).toBe('001-restaurant-words');
     expect(deck.name).toBe('Restaurant Words');
     expect(deck.lang).toBe('zh');
@@ -27,20 +30,131 @@ describe('createDeck', () => {
   });
 
   it('increments counter across calls', async () => {
-    const d1 = await createDeck('Alpha', 'zh', store);
-    const d2 = await createDeck('Beta', 'ja', store);
+    const d1 = await createDeck('Alpha', 'zh', {}, store);
+    const d2 = await createDeck('Beta', 'ja', {}, store);
     expect(d1.id).toBe('001-alpha');
     expect(d2.id).toBe('002-beta');
   });
 
   it('sets default mode on created deck', async () => {
-    const deck = await createDeck('My Deck', 'zh', store);
+    const deck = await createDeck('My Deck', 'zh', {}, store);
     expect(deck.mode).toBe(DEFAULT_MODE);
   });
 
   it('sets default order on created deck', async () => {
-    const deck = await createDeck('My Deck', 'zh', store);
+    const deck = await createDeck('My Deck', 'zh', {}, store);
     expect(deck.order).toBe('default');
+  });
+});
+
+// --- createDeck: VIBE + ability (PH-001) ---
+
+describe('createDeck VIBE + ability defaults', () => {
+  it('seeds default formality/audience/ability on a new deck', async () => {
+    const deck = await createDeck('My Deck', 'zh', {}, store);
+    expect(deck.formality).toBe('polite');
+    expect(deck.audience).toBe('staff');
+    expect(deck.ability).toBe('beginner');
+  });
+
+  it('respects an explicit ability override', async () => {
+    const deck = await createDeck('My Deck', 'zh', { ability: 'advanced' }, store);
+    expect(deck.ability).toBe('advanced');
+  });
+
+  it('falls back to the last-used ability for that language when none is given', async () => {
+    setLastAbility('zh', 'intermediate');
+    const deck = await createDeck('My Deck', 'zh', {}, store);
+    expect(deck.ability).toBe('intermediate');
+  });
+
+  it('does not fall back across languages', async () => {
+    setLastAbility('zh', 'intermediate');
+    const deck = await createDeck('My Deck', 'ja', {}, store);
+    expect(deck.ability).toBe('beginner');
+  });
+
+  it('updates the last-used-ability preference after creating', async () => {
+    await createDeck('My Deck', 'zh', { ability: 'advanced' }, store);
+    expect(getLastAbility('zh')).toBe('advanced');
+  });
+});
+
+// --- updateDeckVibe ---
+
+describe('updateDeckVibe', () => {
+  it('persists formality and audience', async () => {
+    const deck = await createDeck('My Deck', 'zh', {}, store);
+    await updateDeckVibe(deck.id, { formality: 'casual', audience: 'family' }, store);
+    const updated = await store.decks.get(deck.id);
+    expect(updated.formality).toBe('casual');
+    expect(updated.audience).toBe('family');
+  });
+
+  it('updates only the given field', async () => {
+    const deck = await createDeck('My Deck', 'zh', {}, store);
+    await updateDeckVibe(deck.id, { formality: 'formal' }, store);
+    const updated = await store.decks.get(deck.id);
+    expect(updated.formality).toBe('formal');
+    expect(updated.audience).toBe('staff');
+  });
+});
+
+// --- v7 migration backfill ---
+
+describe('v7 migration backfill', () => {
+  it('backfills formality/audience/ability on a pre-v7 deck', async () => {
+    const idb = new IDBFactory();
+    const idbKeyRange = IDBKeyRange;
+
+    // Build a fresh db at v6 only (no VIBE/ability fields) and seed a deck
+    // the old way, mirroring the pre-v7 shape.
+    const legacy = new Dexie('loudmouth', { indexedDB: idb, IDBKeyRange: idbKeyRange });
+    legacy.version(6).stores({
+      cards: 'id, lang, *deckIds, createdAt',
+      decks: 'id, lang, createdAt, lastAccessedAt',
+    });
+    await legacy.open();
+    await legacy.table('decks').add({
+      id: '001-legacy-deck',
+      name: 'Legacy Deck',
+      lang: 'zh',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      system: false,
+      mode: DEFAULT_MODE,
+      order: 'default',
+      readingDisplay: 'reading',
+    });
+    legacy.close();
+
+    // Reopen the same underlying database through the full (v1-v7) schema —
+    // Dexie runs the v7 upgrade against the existing v6 data.
+    const upgraded = createDb({ indexedDB: idb, IDBKeyRange: idbKeyRange });
+    await upgraded.open();
+    const migrated = await upgraded.table('decks').get('001-legacy-deck');
+    expect(migrated.formality).toBe('polite');
+    expect(migrated.audience).toBe('staff');
+    expect(migrated.ability).toBe('beginner');
+  });
+});
+
+// --- last-ability preference store ---
+
+describe('getLastAbility / setLastAbility', () => {
+  it('round-trips per language', () => {
+    setLastAbility('ja', 'advanced');
+    expect(getLastAbility('ja')).toBe('advanced');
+  });
+
+  it('returns undefined for a language with no recorded preference', () => {
+    expect(getLastAbility('cs')).toBeUndefined();
+  });
+
+  it('keeps preferences independent per language', () => {
+    setLastAbility('zh', 'beginner');
+    setLastAbility('ja', 'advanced');
+    expect(getLastAbility('zh')).toBe('beginner');
+    expect(getLastAbility('ja')).toBe('advanced');
   });
 });
 
@@ -48,15 +162,15 @@ describe('createDeck', () => {
 
 describe('getDecks', () => {
   it('returns user decks', async () => {
-    await createDeck('My Deck', 'zh', store);
+    await createDeck('My Deck', 'zh', {}, store);
     const decks = await getDecks('zh', {}, store);
     expect(decks).toHaveLength(1);
     expect(decks[0].id).toBe('001-my-deck');
   });
 
   it('filters by language', async () => {
-    await createDeck('ZH Deck', 'zh', store);
-    await createDeck('JA Deck', 'ja', store);
+    await createDeck('ZH Deck', 'zh', {}, store);
+    await createDeck('JA Deck', 'ja', {}, store);
     const zh = await getDecks('zh', {}, store);
     expect(zh).toHaveLength(1);
     expect(zh[0].lang).toBe('zh');
@@ -67,7 +181,7 @@ describe('getDecks', () => {
 
 describe('updateDeckMode', () => {
   it('updates deck mode', async () => {
-    const deck = await createDeck('My Deck', 'zh', store);
+    const deck = await createDeck('My Deck', 'zh', {}, store);
     await updateDeckMode(deck.id, MODES.REVERSE, store);
     const updated = await store.decks.get(deck.id);
     expect(updated.mode).toBe(MODES.REVERSE);
@@ -78,7 +192,7 @@ describe('updateDeckMode', () => {
 
 describe('updateDeckOrder', () => {
   it('updates deck order', async () => {
-    const deck = await createDeck('My Deck', 'zh', store);
+    const deck = await createDeck('My Deck', 'zh', {}, store);
     await updateDeckOrder(deck.id, 'random', store);
     const updated = await store.decks.get(deck.id);
     expect(updated.order).toBe('random');
@@ -121,7 +235,7 @@ describe('applyCardOrder', () => {
 
 describe('updateDeckAccessTime', () => {
   it('stores an ISO 8601 timestamp on the deck record', async () => {
-    const deck = await createDeck('My Deck', 'zh', store);
+    const deck = await createDeck('My Deck', 'zh', {}, store);
     await updateDeckAccessTime(deck.id, store);
     const updated = await store.decks.get(deck.id);
     expect(updated.lastAccessedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
@@ -132,9 +246,9 @@ describe('updateDeckAccessTime', () => {
 
 describe('getRecentDecks', () => {
   it('returns n decks sorted by lastAccessedAt newest first', async () => {
-    const d1 = await createDeck('Alpha', 'zh', store);
-    const d2 = await createDeck('Beta', 'zh', store);
-    const d3 = await createDeck('Gamma', 'zh', store);
+    const d1 = await createDeck('Alpha', 'zh', {}, store);
+    const d2 = await createDeck('Beta', 'zh', {}, store);
+    const d3 = await createDeck('Gamma', 'zh', {}, store);
     await store.decks.update(d1.id, { lastAccessedAt: '2026-01-01T00:00:00.000Z' });
     await store.decks.update(d2.id, { lastAccessedAt: '2026-03-01T00:00:00.000Z' });
     await store.decks.update(d3.id, { lastAccessedAt: '2026-02-01T00:00:00.000Z' });
@@ -145,16 +259,16 @@ describe('getRecentDecks', () => {
   });
 
   it('falls back to createdAt when lastAccessedAt is absent', async () => {
-    const d1 = await createDeck('Older', 'zh', store);
+    const d1 = await createDeck('Older', 'zh', {}, store);
     // small delay to ensure different createdAt
     await new Promise(r => setTimeout(r, 2));
-    const d2 = await createDeck('Newer', 'zh', store);
+    const d2 = await createDeck('Newer', 'zh', {}, store);
     const recent = await getRecentDecks(1, store);
     expect(recent[0].id).toBe(d2.id);
   });
 
   it('decks without lastAccessedAt are valid (null is acceptable)', async () => {
-    const deck = await createDeck('No Access', 'zh', store);
+    const deck = await createDeck('No Access', 'zh', {}, store);
     const updated = await store.decks.get(deck.id);
     expect(updated.lastAccessedAt).toBeUndefined();
     // getRecentDecks should still work without error
@@ -182,7 +296,7 @@ describe('importCards', () => {
   });
 
   it('assigns only the given deck id', async () => {
-    const deck = await createDeck('Greetings', 'zh', store);
+    const deck = await createDeck('Greetings', 'zh', {}, store);
     await importCards([sampleCard], deck.id, store);
     const cards = await store.cards.toArray();
     expect(cards[0].deckIds).toEqual([deck.id]);
@@ -206,8 +320,8 @@ describe('importCards', () => {
 
 describe('getCards', () => {
   it('returns only cards belonging to the given deck', async () => {
-    const deck1 = await createDeck('Deck A', 'zh', store);
-    const deck2 = await createDeck('Deck B', 'zh', store);
+    const deck1 = await createDeck('Deck A', 'zh', {}, store);
+    const deck2 = await createDeck('Deck B', 'zh', {}, store);
     await importCards([{ lang: 'zh', type: 'word', text: 'A', translation: 'a' }], deck1.id, store);
     await importCards([{ lang: 'zh', type: 'word', text: 'B', translation: 'b' }], deck2.id, store);
 

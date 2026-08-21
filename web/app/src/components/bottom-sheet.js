@@ -7,7 +7,7 @@
  *
  * Usage:
  *   const sheet = openBottomSheet(appEl, {
- *     kind: 'translation',           // adds class `translation-panel`
+ *     kind: 'settings',              // adds class `deck-settings-panel`
  *     bodyHTML: '<div>...</div>',    // pane contents below the handle
  *     onClose: () => {},             // optional, fires after fade-out
  *     onMount: (panel, scrim) => {}, // wire interactions, capture refs
@@ -20,14 +20,16 @@
  */
 
 const KIND_TO_PANEL_CLASS = {
-  translation: "translation-panel",
-  generate: "generate-cards-panel",
   settings: "deck-settings-panel",
+  review: "review-panel",
+  lookup: "lookup-panel",
+  "new-phrasebook": "new-phrasebook-panel",
 };
 const KIND_TO_SCRIM_CLASS = {
-  translation: "translation-scrim",
-  generate: "generate-cards-scrim",
   settings: "deck-settings-scrim",
+  review: "review-scrim",
+  lookup: "lookup-scrim",
+  "new-phrasebook": "new-phrasebook-scrim",
 };
 
 export function openBottomSheet(appEl, { kind, bodyHTML, onClose, onMount }) {

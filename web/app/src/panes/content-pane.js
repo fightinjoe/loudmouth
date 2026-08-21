@@ -24,7 +24,7 @@
  *   content/toggle-menu            — toggle the deck-title menu
  *   content/close-menu             — close the deck-title menu
  */
-import { updateDeckCardOrder } from "../js/db.js";
+import { createDeck, importCards, updateDeckAccessTime, updateDeckCardOrder } from "../js/db.js";
 import { setAttrSafe, setListHTMLSafe } from "../js/uiState.js";
 import { renderDeckBody, renderCardsHTML } from "./content-pane-render.js";
 import { wireContentGestures } from "./content-pane-gestures.js";
@@ -224,20 +224,38 @@ export default {
 
     delegate.register("content/close-menu", () => ui.transition("content/close-menu"));
 
-    delegate.register("content/add-card", () => {
-      const { deck } = ui.get("content");
-      ui.transition("action/open", { kind: "translation", payload: { deck } });
-    });
-
     delegate.register("content/done", () => ui.transition("content/confirm-edit"));
 
-    delegate.register("content/import-cards", () => {
-      ui.transition("action/open", { kind: "generate", payload: {} });
+    delegate.register("content/review", () => {
+      const { deck, cards } = ui.get("content");
+      ui.transition("action/open", { kind: "review", payload: { deck, cards } });
     });
 
-    delegate.register("content/edit-add-cards", () => {
-      const { deck } = ui.get("content");
-      ui.transition("action/open", { kind: "generate", payload: { targetDeck: deck } });
+    delegate.register("content/add", () => {
+      const { deck, cards } = ui.get("content");
+      ui.transition("action/open", {
+        kind: "lookup",
+        payload: { deck, hasTranslatedBefore: cards.length > 0 },
+      });
+    });
+
+    delegate.register("content/save-preview", async () => {
+      const { deck: preview, cards: previewCards } = ui.get("content");
+      if (!preview?.preview) return;
+      // Commit the suggested phrasebook for real: create the deck, import
+      // its seed terms fresh (stripping the temp preview-only ids/createdAt
+      // so importCards assigns real ones — see suggested-phrasebooks.js),
+      // and access-stamp it so it lands at the top of RECENT (docs/journeys.md
+      // Journey 2 step 4: "moves out of Suggested and into Recent").
+      const realDeck = await createDeck(preview.name, preview.lang, {
+        ability: preview.ability,
+        seedId: preview.seedId,
+      });
+      const cleanCards = previewCards.map(({ id: _id, createdAt: _createdAt, deckIds: _deckIds, ...rest }) => rest);
+      await importCards(cleanCards, realDeck.id);
+      await updateDeckAccessTime(realDeck.id);
+      ui.transition("nav/reload");
+      ui.transition("content/select-deck", { id: realDeck.id });
     });
 
     const unregisterCardActions = registerCardActions({ host, isEdit, resetReveal });

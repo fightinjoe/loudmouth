@@ -15,18 +15,20 @@
  *   nav/refresh — replaces `items` from a payload of pre-loaded data.
  *
  * Actions registered on the shell delegate:
- *   nav/open-deck      — payload from element data-deck-id
- *   nav/open-generate  — opens the generate-cards action pane
+ *   nav/open-deck             — payload from element data-deck-id
+ *   nav/open-new-phrasebook   — opens the New-phrasebook action pane
  */
 import {
   getCards,
   getStarredCards,
   getDecks,
   getRecentDecks,
+  getSeededDeckIds,
   updateDeckAccessTime,
 } from "../js/db.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { setListHTMLSafe } from "../js/uiState.js";
+import { SUGGESTED_PHRASEBOOKS, pendingSuggestions } from "../js/suggested-phrasebooks.js";
 
 // ── Pure renderers ───────────────────────────────────────────────────────────
 
@@ -49,10 +51,33 @@ function renderDeckRow(deck, count) {
   `;
 }
 
+function renderSuggestedRow(suggestion) {
+  const langName = LANG_NAMES[suggestion.lang] ?? suggestion.lang;
+  const count = suggestion.terms.length;
+  const noun = suggestion.terms.every((t) => t.type === "word") ? "words" : "words & phrases";
+  return `
+    <div class="deck-picker-row suggested-row flex items-center justify-between">
+      <div class="flex-col">
+        <span class="text-h2 fg-body">${suggestion.emoji} ${suggestion.title}</span>
+        <span class="text-body2 fg-secondary">${langName} · ${count} ${noun}</span>
+      </div>
+      <button class="suggested-row-view-btn tappable" data-action="nav/view-suggested" data-suggestion-id="${suggestion.id}">View</button>
+    </div>
+  `;
+}
+
 function renderItemsHTML(items) {
   return items.map((item) => {
     if (item.kind === "header") return renderHeader(item.title);
     if (item.kind === "deck") return renderDeckRow(item.deck, item.count);
+    if (item.kind === "suggested") {
+      return `
+        ${renderHeader(item.title)}
+        <div class="deck-picker-lang-group">
+          ${item.suggestions.map(renderSuggestedRow).join("")}
+        </div>
+      `;
+    }
     if (item.kind === "lang-group") {
       return `
         ${renderHeader(item.title)}
@@ -89,6 +114,12 @@ async function loadNavItems() {
       const cards = await getCards(deck.id);
       items.push({ kind: "deck", deck, count: cards.length });
     }
+  }
+
+  const seededDeckIds = await getSeededDeckIds();
+  const suggestions = pendingSuggestions(seededDeckIds);
+  if (suggestions.length) {
+    items.push({ kind: "suggested", title: "Suggested phrasebooks", suggestions });
   }
 
   const allDecks = await getDecks(null, { includeSystem: false });
@@ -148,7 +179,7 @@ export default {
           <span class="pane-header-spacer shrink-0"></span>
         </div>
         <div class="deck-list flex-1 overflow-y-auto" data-region="nav-list">${renderListHTML(initial.items)}</div>
-        <button class="nav-pane-add-fab flex items-center justify-center bg-accent fg-surface text-h2 shrink-0 tappable" data-action="nav/open-generate" aria-label="Add deck">＋</button>
+        <button class="nav-pane-add-fab flex items-center justify-center bg-accent fg-surface text-h2 shrink-0 tappable" data-action="nav/open-new-phrasebook" aria-label="New phrasebook">＋</button>
       </div>
     `;
   },
@@ -178,7 +209,6 @@ export default {
     // Initial load.
     ui.transition("nav/reload");
 
-    // Action handlers (shell delegate).
     delegate.register("nav/open-deck", (_e, el) => {
       const id = el.dataset.deckId;
       if (id && !id.startsWith("lang:") && !id.startsWith("starred:")) {
@@ -188,16 +218,24 @@ export default {
       ui.transition("shell/close");
     });
 
-    delegate.register("nav/open-generate", () => {
+    delegate.register("nav/open-new-phrasebook", () => {
       ui.transition("shell/close");
-      ui.transition("action/open", { kind: "generate", payload: {} });
+      ui.transition("action/open", { kind: "new-phrasebook", payload: {} });
+    });
+
+    delegate.register("nav/view-suggested", (_e, el) => {
+      const suggestion = SUGGESTED_PHRASEBOOKS.find((s) => s.id === el.dataset.suggestionId);
+      if (!suggestion) return;
+      ui.transition("shell/close");
+      ui.transition("action/open", { kind: "new-phrasebook", payload: { suggestion } });
     });
 
     return () => {
       unsubItems();
       unsubReload();
       delegate.unregister("nav/open-deck");
-      delegate.unregister("nav/open-generate");
+      delegate.unregister("nav/open-new-phrasebook");
+      delegate.unregister("nav/view-suggested");
     };
   },
 };

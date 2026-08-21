@@ -7,11 +7,9 @@ Always load these docs when context is relevant:
 |-----|------|--------------|
 | Product brief | `docs/BRIEF.md` | Goals, user, phases, schema, architecture decisions |
 | UX design spec | `docs/DESIGN.md` | Navigation structure, interaction states, action panes, UI layout |
-| TODO / backlog | `docs/TODO.md` | Known bugs, inconsistencies, design migration gaps, improvements |
 | API design (current) | `docs/API_DESIGN.md` | The `/lookup` endpoint — contract, execution model, prompt/validation design, tests. Source of truth for the new API. |
 | Fan-out design (deferred) | `docs/FANOUT_DESIGN.md` | Planner + parallel-fillers optimization for `/lookup`; load only when building the fan-out |
-| API reference (legacy) | `api/README.md` | Legacy `/translate` + `/generate-cards` — being retired; superseded by API_DESIGN.md |
-| Card schema | `docs/CARD_SCHEMA.md` | Card batch JSON format, field definitions (incl. `definition`/`context`), import examples |
+| API reference | `api/README.md` | Endpoint reference, deploy/dev setup, and gateway config for the `/lookup` service; see `docs/API_DESIGN.md` for the endpoint contract itself. |
 
 ## gstack
 

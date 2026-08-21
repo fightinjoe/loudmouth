@@ -2,8 +2,7 @@
  * Shared card-shape validators.
  *
  * Single source of truth for the CARD_SCHEMA term shape (docs/CARD_SCHEMA.md).
- * Used by both the legacy /generate-cards path (cards-validate.js) and the new
- * /lookup path (lookup-validate.js) so the card rules never drift between them.
+ * Used by lookup-validate.js so the card rules stay in one place.
  *
  * Each validator throws a descriptive Error on the first violation; callers map
  * a throw to a 502 "Invalid response from LLM".
@@ -61,8 +60,8 @@ function validateCard(card, prefix) {
     throw new Error(`${prefix}.translation must be a non-empty string`);
   }
 
-  // reading — required by the legacy /generate-cards prompt, but structurally
-  // optional per CARD_SCHEMA; validate the token shape whenever present.
+  // reading is structurally optional per CARD_SCHEMA; validate the token shape
+  // whenever present.
   if (card.reading !== undefined) {
     validateReadingTokens(card.reading, `${prefix}.reading`);
   }

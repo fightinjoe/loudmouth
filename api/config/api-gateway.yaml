@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
-  title: Translation API
-  description: Routes translation and card generation requests to multiple LLM backends
+  title: Catchphrase Lookup API
+  description: Routes /lookup requests to a Cloud Run service backed by multiple LLM backends
   version: "1.0"
 
 host: "translation-api-gateway-2qqw247r.uc.gateway.dev"
@@ -12,17 +12,17 @@ x-google-backend:
   address: https://YOUR_CLOUD_RUN_URL
 
 paths:
-  /translate:
+  /lookup:
     options:
       summary: CORS preflight
-      operationId: translateOptions
+      operationId: lookupOptions
       parameters: []
       responses:
         204:
           description: CORS preflight response
     post:
-      summary: Translate text using a specified LLM
-      operationId: translate
+      summary: Look up a term and return translation blocks with related groups
+      operationId: lookup
       consumes:
         - application/json
       produces:
@@ -34,138 +34,133 @@ paths:
           schema:
             type: object
             required:
-              - text
-              - targetLanguage
-              - llm
+              - term
+              - language
             properties:
-              text:
+              term:
                 type: string
-                description: The text to translate
-              targetLanguage:
+                description: >
+                  The word or phrase to translate. May carry a parenthetical for context,
+                  e.g. "surf (v. to ride a wave)". Max 200 characters.
+              language:
                 type: string
-                description: The target language for translation
-              llm:
-                type: string
-                description: The LLM to use for translation
-                enum:
-                  - google
-                  - claude
-                  - chatgpt
-      responses:
-        200:
-          description: Successful translation
-          schema:
-            type: object
-            properties:
-              translations:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    translation:
-                      type: string
-                    lang:
-                      type: string
-                    text:
-                      type: string
-                    ruby_markup:
-                      type: string
-                      x-nullable: true
-        400:
-          description: Bad request (missing fields or unknown LLM)
-        502:
-          description: LLM or validation error
-
-  /generate-cards:
-    options:
-      summary: CORS preflight
-      operationId: generateCardsOptions
-      parameters: []
-      responses:
-        204:
-          description: CORS preflight response
-    post:
-      summary: Generate language flashcards using a specified LLM
-      operationId: generateCards
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          required: true
-          schema:
-            type: object
-            required:
-              - lang
-              - topic
-            properties:
-              lang:
-                type: string
-                description: Target language code
+                description: Target language
                 enum:
                   - zh
                   - ja
-              topic:
+                  - es
+                  - cs
+              ability:
                 type: string
-                description: Topic or instruction for card generation (e.g. "ordering food at a restaurant")
-              count:
-                type: integer
-                description: Number of cards to generate (default 15, max 50)
-                minimum: 1
-                maximum: 50
+                description: Learner ability, limits output difficulty (default "beginner")
+                enum:
+                  - none
+                  - beginner
+                  - intermediate
+                  - advanced
+              formality:
+                type: string
+                description: Register to anchor the output (default "polite")
+                enum:
+                  - casual
+                  - polite
+                  - formal
+              audience:
+                type: string
+                description: Who the learner is speaking to (default "staff")
+                enum:
+                  - stranger
+                  - staff
+                  - acquaintance
+                  - family
               llm:
                 type: string
-                description: The LLM to use (default "google")
+                description: Which model backend generates the response (default "google")
                 enum:
                   - google
                   - claude
                   - chatgpt
       responses:
         200:
-          description: Successfully generated card batch
+          description: Successful lookup
           schema:
             type: object
             properties:
-              cards:
+              blocks:
                 type: array
+                description: At most 4 blocks, one per distinct meaning of `term`
                 items:
                   type: object
-                  required:
-                    - lang
-                    - text
-                    - reading
-                    - translation
                   properties:
-                    lang:
-                      type: string
-                      description: '"zh" or "ja"'
-                    type:
-                      type: string
-                      description: '"word", "phrase", or "sentence"'
-                    text:
-                      type: string
-                      description: Word or phrase in the target language
-                    reading:
-                      type: string
-                      description: Pinyin (zh) or hiragana (ja) reading
-                    translation:
-                      type: string
-                      description: English translation
-                    notes:
-                      type: string
-                      description: Optional grammatical notes or usage context
-                    example:
-                      type: object
-                      properties:
-                        text:
-                          type: string
-                        reading:
-                          type: string
-                        translation:
-                          type: string
+                    card:
+                      $ref: '#/definitions/Card'
+                    groups:
+                      type: array
+                      description: At most 8 groups total across all blocks
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                            description: English heading, e.g. "Ordering at a restaurant"
+                          cards:
+                            type: array
+                            description: At most 10 cards per group
+                            items:
+                              $ref: '#/definitions/Card'
         400:
-          description: Bad request (invalid lang, missing topic, unknown LLM, count out of range)
+          description: Bad request (missing/invalid field, unknown llm)
         502:
-          description: LLM or validation error
+          description: LLM request failed or returned an invalid response
+
+definitions:
+  Card:
+    type: object
+    required:
+      - lang
+      - text
+      - translation
+    properties:
+      lang:
+        type: string
+        enum: [zh, ja, es, cs]
+      type:
+        type: string
+        enum: [word, phrase, sentence]
+      text:
+        type: string
+        description: Word or phrase in the target language
+      reading:
+        type: array
+        description: ReadingToken[] — [base, annotation|null] pairs (docs/CARD_SCHEMA.md)
+        items:
+          type: array
+          items: {}
+      romanization:
+        type: string
+      translation:
+        type: string
+        description: English translation
+      definition:
+        type: string
+        description: The word's meaning; present only when disambiguation is needed
+      formality:
+        type: string
+        enum: [casual, polite, formal, slang]
+      context:
+        type: string
+        description: The parenthetical term context, or the parent group's title
+      notes:
+        type: string
+      example:
+        type: object
+        properties:
+          text:
+            type: string
+          reading:
+            type: array
+            items:
+              type: array
+              items: {}
+          translation:
+            type: string

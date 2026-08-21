@@ -32,7 +32,12 @@ vi.mock("../panes/content-pane-gestures.js", () => ({
 vi.mock("../panes/content-pane-actions.js", () => ({
   registerCardActions: () => () => {},
 }));
-vi.mock("../js/db.js", () => ({ updateDeckCardOrder: vi.fn() }));
+const { createDeck, importCards, updateDeckAccessTime } = vi.hoisted(() => ({
+  createDeck: vi.fn(async (name, lang, opts) => ({ id: "real-001", name, lang, ability: opts?.ability, seedId: opts?.seedId })),
+  importCards: vi.fn(async () => {}),
+  updateDeckAccessTime: vi.fn(async () => {}),
+}));
+vi.mock("../js/db.js", () => ({ updateDeckCardOrder: vi.fn(), createDeck, importCards, updateDeckAccessTime }));
 
 import contentPane from "../panes/content-pane.js";
 import { createUIState, createHost } from "../js/uiState.js";
@@ -102,5 +107,113 @@ describe("content pane — deck mode (card template) reactivity", () => {
     mounted.ui.transition("content/reload-deck");
     const after = mounted.ui.get("content").reload;
     expect(after).toBe(before + 1);
+  });
+});
+
+describe("content pane — Add/Review entry points (PH-002/PH-007/PH-009)", () => {
+  it("content/add opens the lookup action pane for the selected deck, with hasTranslatedBefore=false for an empty phrasebook", async () => {
+    const { ui, rootEl } = mountPane();
+    ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+
+    const opens = [];
+    const realTransition = ui.transition;
+    ui.transition = (verb, payload) => {
+      if (verb === "action/open") opens.push(payload);
+      return realTransition(verb, payload);
+    };
+
+    // Inject a real 'content/add' trigger the way renderDeckBody would —
+    // this suite mocks the render module, so we supply just the button the
+    // delegate needs, then click it for real to exercise the actual
+    // registered handler (not a re-implementation of its logic).
+    const btn = document.createElement("button");
+    btn.dataset.action = "content/add";
+    rootEl.appendChild(btn);
+    btn.click();
+
+    expect(opens).toHaveLength(1);
+    expect(opens[0]).toEqual({
+      kind: "lookup",
+      payload: { deck: expect.objectContaining({ id: "d1" }), hasTranslatedBefore: false },
+    });
+  });
+
+  it("content/review opens the review action pane for the selected deck", async () => {
+    const { ui, rootEl } = mountPane();
+    ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+
+    const opens = [];
+    const realTransition = ui.transition;
+    ui.transition = (verb, payload) => {
+      if (verb === "action/open") opens.push(payload);
+      return realTransition(verb, payload);
+    };
+
+    const btn = document.createElement("button");
+    btn.dataset.action = "content/review";
+    rootEl.appendChild(btn);
+    btn.click();
+
+    expect(opens).toHaveLength(1);
+    expect(opens[0].kind).toBe("review");
+    expect(opens[0].payload.deck).toEqual(expect.objectContaining({ id: "d1" }));
+  });
+});
+
+describe("content pane — save-preview (PH-008)", () => {
+  beforeEach(() => {
+    createDeck.mockClear();
+    importCards.mockClear();
+    updateDeckAccessTime.mockClear();
+  });
+
+  it("persists an unsaved preview deck: creates it, imports clean cards, stamps access, and selects the real deck", async () => {
+    const { ui, rootEl } = mountPane();
+    const previewDeck = {
+      id: "preview:seed-greetings-ja",
+      name: '"Greetings" phrasebook',
+      lang: "ja",
+      ability: "beginner",
+      preview: true,
+      seedId: "seed-greetings-ja",
+    };
+    const previewCards = [
+      { id: "preview-0", createdAt: "1970-01-01T00:00:00.000Z", deckIds: [], lang: "ja", text: "こんにちは", translation: "hello" },
+    ];
+    ui.transition("content/loaded", { deck: previewDeck, cards: previewCards, isStarred: false });
+
+    const btn = document.createElement("button");
+    btn.dataset.action = "content/save-preview";
+    rootEl.appendChild(btn);
+    btn.click();
+
+    await vi.waitFor(() => expect(ui.get("content").deckId).toBe("real-001"));
+
+    expect(createDeck).toHaveBeenCalledWith('"Greetings" phrasebook', "ja", {
+      ability: "beginner",
+      seedId: "seed-greetings-ja",
+    });
+    // The preview-only id/createdAt/deckIds are stripped before persisting —
+    // importCards must assign real ones (see content-pane.js comment).
+    const [savedCards, savedDeckId] = importCards.mock.calls[0];
+    expect(savedCards).toEqual([{ lang: "ja", text: "こんにちは", translation: "hello" }]);
+    expect(savedDeckId).toBe("real-001");
+    expect(updateDeckAccessTime).toHaveBeenCalledWith("real-001");
+  });
+
+  it("is a no-op when the current deck is not a preview", async () => {
+    const { ui, rootEl } = mountPane();
+    ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+
+    const btn = document.createElement("button");
+    btn.dataset.action = "content/save-preview";
+    rootEl.appendChild(btn);
+    btn.click();
+    await flush();
+
+    expect(createDeck).not.toHaveBeenCalled();
   });
 });

@@ -37,6 +37,16 @@ counts seeded pre-content?) and Journey 4 (card-advance mechanism, end-of-deck s
 direction toggle persists per-phrasebook, which subset is reviewed). These are implementation-time
 decisions, not blockers to task creation — flagged per task below.
 
+**Current state (as of this review).** `/lookup` is fully built and evaluated (lookup-api's LK-001–005
+all pass). `web/app/` has zero `/lookup` wiring — its action pane only implements the legacy
+`translation`/`generate`/`settings`/`card-edit`/`json` kinds against the retired `/translate` and
+`/generate-cards` endpoints. Per this PRD's owner: web/ is stale and broken relative to `journeys.md`
+and breaking changes are acceptable. **PH-000** (new) deletes the legacy generation UI and its API
+routes up front so the rebuild isn't built alongside dead code; JSON/URI import
+(`json-panel.js`/`card-edit-panel.js`/`add-cards-panel.js`/`deck-picker.js`) is untouched — it's a
+separate, still-open secondary capture path per `docs/BRIEF.md` Open Questions, not superseded by
+`journeys.md`.
+
 ## User Stories
 
 ### Journey 1 — Creating a phrasebook

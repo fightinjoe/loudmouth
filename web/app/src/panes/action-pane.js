@@ -2,11 +2,10 @@
  * Action pane — Pane Protocol contract for the `action` namespace.
  *
  * Layer: action. A bottom-anchored, modal surface that slides up over a
- * scrim. Used for transient tasks: translation, generate-cards, settings.
+ * scrim. Used for transient tasks: deck settings, card edit, JSON export.
  *
  * Slice shape:
- *   null when no action pane is open, or
- *   { kind: 'translation' | 'generate' | 'settings', payload: object }
+ *   { kind: 'settings' | 'card-edit' | 'json' | 'review' | 'lookup' | 'new-phrasebook', payload: object }
  *
  * Transitions:
  *   action/open  ({ kind, payload })  — open a kind; if one is already
@@ -20,14 +19,15 @@
  * pane was dismissed (back button, scrim, swipe-down).
  */
 import { setAttrSafe } from "../js/uiState.js";
-import { openTranslationPanel } from "../components/translation-panel.js";
-import { openGenerateCardsPanel } from "../components/generate-cards-panel.js";
 import { openDeckSettings } from "../components/deck-settings.js";
 import { openJsonPanel, toImportJson } from "../components/json-panel.js";
 import { openCardEditPanel } from "../components/card-edit-panel.js";
+import { openReviewPanel } from "../components/review-panel.js";
+import { openLookupPanel } from "../components/lookup-panel.js";
+import { openNewPhrasebookPanel } from "../components/new-phrasebook-panel.js";
+import { DEFAULT_MODE } from "../js/modes.js";
 import {
   createDeck,
-  importCards,
   updateDeckMode,
   updateDeckName,
   updateDeckOrder,
@@ -35,51 +35,10 @@ import {
   deleteDeck,
   updateCard,
   deleteCard,
-  getCards,
 } from "../js/db.js";
 
 function openKind(kind, payload, host, hostEl, onDismiss) {
   const { ui } = host;
-
-  if (kind === "translation") {
-    const { deck } = payload;
-    return openTranslationPanel(
-      hostEl,
-      deck,
-      { importCards },
-      (addedCard) => {
-        const content = ui.get("content");
-        if (content?.deck?.id === deck.id) {
-          ui.transition("content/cards-changed", { cards: [...content.cards, addedCard] });
-        }
-      },
-      onDismiss,
-    );
-  }
-
-  if (kind === "generate") {
-    const targetDeck = payload?.targetDeck || null;
-    return openGenerateCardsPanel(
-      hostEl,
-      { createDeck, importCards },
-      async (resultDeckId) => {
-        ui.transition("nav/reload");
-        if (resultDeckId) {
-          if (!targetDeck) {
-            ui.transition("content/select-deck", { id: resultDeckId });
-          } else {
-            const content = ui.get("content");
-            if (content?.deck?.id === targetDeck.id) {
-              const fresh = await getCards(targetDeck.id);
-              ui.transition("content/cards-changed", { cards: fresh });
-            }
-          }
-        }
-      },
-      targetDeck,
-      onDismiss,
-    );
-  }
 
   if (kind === "settings") {
     const { deck, cards } = payload;
@@ -105,6 +64,86 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
       },
       onDismiss,
     );
+  }
+
+  if (kind === "review") {
+    const { deck, cards } = payload;
+    return openReviewPanel(hostEl, deck, cards, onDismiss);
+  }
+
+  if (kind === "lookup") {
+    const { deck, hasTranslatedBefore } = payload;
+    return openLookupPanel(
+      hostEl,
+      deck,
+      { hasTranslatedBefore },
+      (savedCard) => {
+        const content = ui.get("content");
+        if (content?.deck?.id === deck.id) {
+          ui.transition("content/cards-changed", { cards: [...content.cards, savedCard] });
+        }
+      },
+      onDismiss,
+      () => {
+        // Deck was auto-named from its first saved term (see
+        // lookup-panel.js maybeAutoNameDeck) — refresh nav + the content
+        // pane's header so the new name shows immediately.
+        ui.transition("nav/reload");
+        const content = ui.get("content");
+        if (content?.deck?.id === deck.id) ui.transition("content/reload-deck");
+      },
+    );
+  }
+
+  if (kind === "new-phrasebook") {
+    const { suggestion } = payload;
+    let sheetHandle;
+    sheetHandle = openNewPhrasebookPanel(
+      hostEl,
+      { createDeck },
+      (deck) => {
+        ui.transition("nav/reload");
+        ui.transition("content/select-deck", { id: deck.id });
+        ui.transition("action/open", {
+          kind: "lookup",
+          payload: { deck, hasTranslatedBefore: false },
+        });
+      },
+      onDismiss,
+      suggestion,
+      suggestion
+        ? ({ lang, ability }) => {
+            // Journey 2 Confirm mode: no deck is created yet — the content
+            // pane renders an unsaved preview (deck.preview: true) built
+            // straight from the suggestion's placeholder seed terms. The
+            // preview is only persisted when the user taps Save (see
+            // content-pane.js's 'content/save-preview' handler).
+            const previewDeck = {
+              id: `preview:${suggestion.id}`,
+              name: suggestion.title,
+              lang,
+              ability,
+              formality: "polite",
+              audience: "staff",
+              mode: DEFAULT_MODE,
+              order: "default",
+              readingDisplay: "reading",
+              system: false,
+              preview: true,
+              seedId: suggestion.id,
+            };
+            const previewCards = suggestion.terms.map((term, i) => ({
+              id: `preview-${i}`,
+              createdAt: new Date(0).toISOString(),
+              deckIds: [],
+              ...term,
+            }));
+            ui.transition("content/loaded", { deck: previewDeck, cards: previewCards, isStarred: false });
+            sheetHandle.close();
+          }
+        : undefined,
+    );
+    return sheetHandle;
   }
 
   if (kind === "card-edit") {

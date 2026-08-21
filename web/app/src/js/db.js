@@ -1,5 +1,13 @@
 import Dexie from "dexie";
 import { DEFAULT_MODE, MODES } from "./modes.js";
+import { getLastAbility, setLastAbility } from "./preferences.js";
+
+// VIBE + ability defaults per docs/API_DESIGN.md's /lookup Inputs table —
+// authoritative over the Casual/Strangers/None values shown in the Figma
+// mocks (docs/journeys.md 'Defaults note').
+const DEFAULT_FORMALITY = "polite";
+const DEFAULT_AUDIENCE = "staff";
+const DEFAULT_ABILITY = "beginner";
 
 function createDb(options = {}) {
   const instance = new Dexie("loudmouth", options);
@@ -97,6 +105,26 @@ function createDb(options = {}) {
         });
     });
 
+  // v7 — added deck-level VIBE (formality/audience, mutable) and ability
+  //      (immutable after creation) fields for the /lookup phrasebook flow.
+  //      See docs/journeys.md 'VIBE model' + 'Ability field'.
+  instance
+    .version(7)
+    .stores({
+      cards: "id, lang, *deckIds, createdAt",
+      decks: "id, lang, createdAt, lastAccessedAt",
+    })
+    .upgrade((tx) => {
+      return tx
+        .table("decks")
+        .toCollection()
+        .modify((deck) => {
+          if (!deck.formality) deck.formality = DEFAULT_FORMALITY;
+          if (!deck.audience) deck.audience = DEFAULT_AUDIENCE;
+          if (!deck.ability) deck.ability = DEFAULT_ABILITY;
+        });
+    });
+
   return instance;
 }
 
@@ -139,10 +167,21 @@ async function nextDeckCounter(store) {
 
 /**
  * Creates a user deck with an ID like '001-restaurant-words'.
+ *
+ * `ability` is immutable after creation (like `lang`) — pass it explicitly
+ * to override the per-language "last ability used" preference, which is
+ * otherwise read as the default and updated to whatever ability is used
+ * here. `formality`/`audience` (VIBE) are mutable and always seeded at
+ * their app-wide defaults (Polite/Staff) — see docs/journeys.md 'VIBE model'.
+ *
+ * `seedId`, when given, marks the deck as created from a static suggested
+ * phrasebook (docs/journeys.md Journey 2) — used to dedupe an already-added
+ * suggestion out of the SUGGESTED list. See `getSeededDeckIds`.
  */
-export async function createDeck(name, lang, store = db) {
+export async function createDeck(name, lang, { ability, seedId } = {}, store = db) {
   const counter = await nextDeckCounter(store);
   const id = `${counter}-${slugify(name)}`;
+  const resolvedAbility = ability || getLastAbility(lang) || DEFAULT_ABILITY;
   const deck = {
     id,
     name,
@@ -152,9 +191,35 @@ export async function createDeck(name, lang, store = db) {
     mode: DEFAULT_MODE,
     order: "default",
     readingDisplay: "reading",
+    formality: DEFAULT_FORMALITY,
+    audience: DEFAULT_AUDIENCE,
+    ability: resolvedAbility,
+    ...(seedId ? { seedId } : {}),
   };
   await store.decks.add(deck);
+  setLastAbility(lang, resolvedAbility);
   return deck;
+}
+
+/**
+ * Returns the Set of `seedId`s already materialized as real decks — used to
+ * filter an already-added suggestion out of the SUGGESTED list (docs/journeys.md
+ * Journey 2 key detail 3: "Suggested list dedupes on add").
+ */
+export async function getSeededDeckIds(store = db) {
+  const decks = await store.decks.filter((d) => !!d.seedId).toArray();
+  return new Set(decks.map((d) => d.seedId));
+}
+
+/**
+ * Updates a deck's VIBE (formality/audience). Mutable, unlike `ability`
+ * and `lang`, which are set once at creation and never change.
+ */
+export async function updateDeckVibe(deckId, { formality, audience }, store = db) {
+  const fields = {};
+  if (formality !== undefined) fields.formality = formality;
+  if (audience !== undefined) fields.audience = audience;
+  await store.decks.update(deckId, fields);
 }
 
 /**
@@ -312,6 +377,23 @@ export async function importCards(cards, deckId = null, store = db) {
       deckIds: deckId ? [deckId] : [],
     });
   }
+}
+
+/**
+ * Saves a single term card to a phrasebook, committing immediately (no
+ * staging/approval step) — used by the /lookup save (🔖) action. Unlike
+ * `importCards`, returns the persisted card (with its assigned id/createdAt)
+ * so the caller can reflect it in UI state right away.
+ */
+export async function saveTermCard(card, deckId, store = db) {
+  const saved = {
+    id: uuid(),
+    createdAt: isoNow(),
+    ...card,
+    deckIds: deckId ? [deckId] : [],
+  };
+  await store.cards.add(saved);
+  return saved;
 }
 
 /**
