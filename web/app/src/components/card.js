@@ -38,14 +38,13 @@ export function renderCardRow(card, readingDisplay = "reading") {
       </div>
 
       <div
-        class="card-row flex-row items-center bg-surface gap-auto tappable"
-        data-action="content/open-card"
+        class="card-row flex-row items-center gap-auto"
         data-card-id="${card.id}"
       >
         ${renderCardContent(card, readingDisplay)}
 
         <button
-          class="card-row-play fg-tertiary text-body1 shrink-0 tappable"
+          class="card-row-play fg-accent text-body1 shrink-0 tappable"
           data-action="content/play-card"
           data-card-id="${card.id}"
           aria-label="Play"

@@ -32,34 +32,58 @@ import { SUGGESTED_PHRASEBOOKS, pendingSuggestions } from "../js/suggested-phras
 
 // ── Pure renderers ───────────────────────────────────────────────────────────
 
+function renderHero() {
+  return `
+    <div class="nav-hero flex-col">
+      <span class="nav-hero-logo text-h1 font-bold fg-accent">CatchPhrase</span>
+      <span class="nav-hero-tagline text-body1 fg-secondary font-light">Collect the language you need, avoid the rest!</span>
+    </div>
+  `;
+}
+
+// Empty-state-only banner (docs/journeys.md Journey 1 step 1). The empty
+// state and populated landing share this component; once the user has any
+// phrasebook the banner steps aside for the FAB as the add entry point.
+function renderCtaBanner(hasDecks) {
+  if (hasDecks) return "";
+  return `
+    <div class="nav-cta-banner flex items-center justify-between">
+      <div class="nav-cta-banner-text flex-col">
+        <span class="text-body1 font-semibold fg-surface">No phrasebooks</span>
+        <span class="text-body2 fg-surface">Create your first!</span>
+      </div>
+      <button class="nav-cta-banner-btn tappable" data-action="nav/open-new-phrasebook">New phrasebook</button>
+    </div>
+  `;
+}
+
 function renderHeader(title) {
   return `
-    <div class="deck-picker-section-header flex items-baseline justify-between section-label">
+    <div class="deck-picker-section-header section-label">
       ${title}
     </div>
   `;
 }
 
-function renderDeckRow(deck, count) {
+function renderDeckRow(deck, count, subtitle) {
   return `
     <div class="deck-picker-row flex items-center tappable" data-action="nav/open-deck" data-deck-id="${deck.id}">
-      <div class="flex-row gap-md justify-center">
+      <div class="flex-col">
         <span class="text-h2 fg-body">${deck.name}</span>
-        <span class="text-body2 fg-secondary">${count} card${count !== 1 ? "s" : ""}</span>
+        <span class="text-body2 fg-secondary">${subtitle ?? `${count} card${count !== 1 ? "s" : ""}`}</span>
       </div>
     </div>
   `;
 }
 
 function renderSuggestedRow(suggestion) {
-  const langName = LANG_NAMES[suggestion.lang] ?? suggestion.lang;
   const count = suggestion.terms.length;
   const noun = suggestion.terms.every((t) => t.type === "word") ? "words" : "words & phrases";
   return `
     <div class="deck-picker-row suggested-row flex items-center justify-between">
       <div class="flex-col">
         <span class="text-h2 fg-body">${suggestion.emoji} ${suggestion.title}</span>
-        <span class="text-body2 fg-secondary">${langName} · ${count} ${noun}</span>
+        <span class="text-body2 fg-secondary">${count} ${noun}</span>
       </div>
       <button class="suggested-row-view-btn tappable" data-action="nav/view-suggested" data-suggestion-id="${suggestion.id}">View</button>
     </div>
@@ -69,7 +93,7 @@ function renderSuggestedRow(suggestion) {
 function renderItemsHTML(items) {
   return items.map((item) => {
     if (item.kind === "header") return renderHeader(item.title);
-    if (item.kind === "deck") return renderDeckRow(item.deck, item.count);
+    if (item.kind === "deck") return renderDeckRow(item.deck, item.count, item.subtitle);
     if (item.kind === "suggested") {
       return `
         ${renderHeader(item.title)}
@@ -82,7 +106,7 @@ function renderItemsHTML(items) {
       return `
         ${renderHeader(item.title)}
         <div class="deck-picker-lang-group">
-          ${item.rows.map((r) => renderDeckRow(r.deck, r.count)).join("")}
+          ${item.rows.map((r) => renderDeckRow(r.deck, r.count, r.subtitle)).join("")}
         </div>
       `;
     }
@@ -102,6 +126,10 @@ function renderListHTML(items) {
   );
 }
 
+function nounFor(cards) {
+  return cards.every((c) => c.type === "word") ? "words" : "words & phrases";
+}
+
 // ── Data loader ──────────────────────────────────────────────────────────────
 
 async function loadNavItems() {
@@ -112,7 +140,13 @@ async function loadNavItems() {
     items.push({ kind: "header", title: "Most recent" });
     for (const deck of recent) {
       const cards = await getCards(deck.id);
-      items.push({ kind: "deck", deck, count: cards.length });
+      const langName = LANG_NAMES[deck.lang] ?? deck.lang;
+      items.push({
+        kind: "deck",
+        deck,
+        count: cards.length,
+        subtitle: `${langName} · ${cards.length} ${nounFor(cards)}`,
+      });
     }
   }
 
@@ -141,11 +175,12 @@ async function loadNavItems() {
       rows.push({
         deck: { id: `starred:${lang}`, name: "★ Starred", lang },
         count: starred.length,
+        subtitle: `${starred.length} ${nounFor(starred)}`,
       });
     }
     for (const deck of decks) {
       const cards = await getCards(deck.id);
-      rows.push({ deck, count: cards.length });
+      rows.push({ deck, count: cards.length, subtitle: `${cards.length} ${nounFor(cards)}` });
     }
 
     items.push({
@@ -171,13 +206,11 @@ export default {
   },
 
   render(initial) {
+    const hasDecks = initial.items.some((i) => i.kind === "deck");
     return `
       <div id="nav-pane" class="nav-pane flex-col bg-primary overflow-y-auto">
-        <div class="pane-header">
-          <span class="pane-header-spacer shrink-0"></span>
-          <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">Decks</span>
-          <span class="pane-header-spacer shrink-0"></span>
-        </div>
+        ${renderHero()}
+        <div data-region="nav-banner">${renderCtaBanner(hasDecks)}</div>
         <div class="deck-list flex-1 overflow-y-auto" data-region="nav-list">${renderListHTML(initial.items)}</div>
         <button class="nav-pane-add-fab flex items-center justify-center bg-accent fg-surface text-h2 shrink-0 tappable" data-action="nav/open-new-phrasebook" aria-label="New phrasebook">＋</button>
       </div>
@@ -187,13 +220,14 @@ export default {
   bindEvents(rootEl, host) {
     const { ui, delegate } = host;
     const listRegion = rootEl.querySelector('[data-region="nav-list"]');
+    const bannerRegion = rootEl.querySelector('[data-region="nav-banner"]');
 
-    // Re-render the list when items change.
+    // Re-render the list + banner when items change.
     const unsubItems = ui.subscribe("nav", (next, prev) => {
-      if (!listRegion) return;
-      if (next?.items !== prev?.items) {
-        setListHTMLSafe(listRegion, renderListHTML(next?.items ?? []));
-      }
+      if (next?.items === prev?.items) return;
+      const items = next?.items ?? [];
+      if (listRegion) setListHTMLSafe(listRegion, renderListHTML(items));
+      if (bannerRegion) bannerRegion.innerHTML = renderCtaBanner(items.some((i) => i.kind === "deck"));
     });
 
     // Effect subscriber: when reloadAt bumps, re-read from db and refresh.

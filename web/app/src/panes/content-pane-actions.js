@@ -14,9 +14,6 @@
 import { toggleCardStar } from "../js/db.js";
 import { speak, ttsText } from "../js/tts.js";
 
-const CARD_WRAPPER_SEL = ".card-row-wrapper";
-const SWIPED_CLASS = "card-row-wrapper--swiped";
-
 export function registerCardActions({ host, isEdit, resetReveal }) {
   const { ui, delegate } = host;
 
@@ -66,18 +63,6 @@ export function registerCardActions({ host, isEdit, resetReveal }) {
       const { cards } = ui.get("content");
       const card = cards.find((c) => String(c.id) === el.dataset.cardId);
       if (card) speak(ttsText(card), card.lang);
-    }],
-
-    ["content/open-card", (_e, el) => {
-      if (isEdit()) return;
-      const wrapper = el.closest(CARD_WRAPPER_SEL);
-      if (wrapper?.classList.contains(SWIPED_CLASS)) {
-        resetReveal();
-        return;
-      }
-      const { cards, deck } = ui.get("content");
-      const index = cards.findIndex((c) => String(c.id) === el.dataset.cardId);
-      ui.transition("details/open", { deck, cards, index: index < 0 ? 0 : index });
     }],
   ];
 

@@ -11,7 +11,6 @@ import { createUIState, createHost, setAttrSafe } from "../js/uiState.js";
 import { createDelegate } from "../js/delegate.js";
 import navPane from "./nav-pane.js";
 import contentPane from "./content-pane.js";
-import detailsPane from "./details-pane.js";
 import actionPane from "./action-pane.js";
 import * as db from "../js/db.js";
 
@@ -39,32 +38,34 @@ const shellTransitions = {
 export function initApp(params) {
   const appEl = document.getElementById("app");
 
+  // Fresh installs / no last-loaded deck land on the nav pane's landing
+  // view (docs/journeys.md Journey 1 step 1) rather than an empty content
+  // pane — the shell only starts "foreground" once there's a deck to show.
+  const initialDeckId = params?.id || getLastDeckId();
+  const initialShell = initialDeckId ? "foreground" : "background";
+
   // Mount the static stage scaffolding. Each pane's `render` produces its own
   // root element; they go inside #app-shell in z-order: nav (shell) → content.
-  appEl.dataset.shell = "foreground";
-  appEl.dataset.details = "closed";
+  appEl.dataset.shell = initialShell;
   appEl.dataset.actionState = "closed";
   appEl.innerHTML = `
     <div id="app-shell" class="fixed-inset overflow-hidden">
       ${navPane.render(navPane.initialState)}
       ${contentPane.render(contentPane.initialState)}
     </div>
-    ${detailsPane.render(detailsPane.initialState)}
     ${actionPane.render(actionPane.initialState)}
   `;
 
   // Build the state machine with every pane's initial slice + cross-layer slices.
   const ui = createUIState({
-    shell: { exposed: "foreground" },
+    shell: { exposed: initialShell },
     [navPane.namespace]: navPane.initialState,
     [contentPane.namespace]: contentPane.initialState,
-    [detailsPane.namespace]: detailsPane.initialState,
     [actionPane.namespace]: actionPane.initialState,
   });
   ui.registerTransitions(shellTransitions);
   ui.registerTransitions(navPane.transitions);
   ui.registerTransitions(contentPane.transitions);
-  ui.registerTransitions(detailsPane.transitions);
   ui.registerTransitions(actionPane.transitions);
 
   // Shell subscriber writes the data-* attribute that the CSS uses.
@@ -75,10 +76,8 @@ export function initApp(params) {
   // Per-layer delegates.
   const navEl = appEl.querySelector("#nav-pane");
   const contentEl = appEl.querySelector("#content-pane");
-  const detailsLayerEl = appEl.querySelector("#details-layer");
   const shellDelegate = createDelegate(navEl);
   const contentDelegate = createDelegate(contentEl);
-  const detailsDelegate = createDelegate(detailsLayerEl);
 
   // Persist last-loaded deck whenever content changes.
   ui.subscribe("content", (next, prev) => {
@@ -90,11 +89,9 @@ export function initApp(params) {
   const actionEl = appEl.querySelector("#action-layer");
   navPane.bindEvents(navEl, createHost({ ui, delegate: shellDelegate, stageEl: appEl }));
   contentPane.bindEvents(contentEl, createHost({ ui, delegate: contentDelegate, stageEl: appEl }));
-  detailsPane.bindEvents(detailsLayerEl, createHost({ ui, delegate: detailsDelegate, stageEl: appEl }));
   actionPane.bindEvents(actionEl, createHost({ ui, delegate: null, stageEl: appEl }));
 
   // Initial route — kick off a deck load.
-  const initialDeckId = params?.id || getLastDeckId();
   if (initialDeckId) ui.transition("content/select-deck", { id: initialDeckId });
 
   // Expose the state machine + db for end-to-end smoke tests, which drive

@@ -342,7 +342,7 @@ function renderInputFrame(state, deck, badge) {
       <div class="lookup-input-wrap" data-has-value="${hasValue}">
         <div class="lookup-input-field-row flex items-center">
           <input
-            class="lookup-input-field flex-1 text-h1"
+            class="lookup-input-field flex-1 text-entry"
             type="text"
             placeholder="Enter word or phrase"
             autocomplete="off"

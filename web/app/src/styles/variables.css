@@ -8,18 +8,13 @@
   --gray-300: 0 0 88;
   --gray-400: 0 0 75;
   --gray-500: 220 16 47;
-  --gray-600: 220 19 35;
   --gray-900: 220 47 11;
 
-  --green-600: 153 40 30;
-  --green-100: 153 40 80;
-
-  --amber-500: 38 71 49;
+  --blue-500: 207 100 56;
+  --blue-100: 207 55 94;
 
   --red-500: 13 100 56;
 
-  --blue-500: 207 100 56;
-  
   --yellow-500: 53 100 56;
 
   --font-family: "Roboto Flex", "Noto Sans JP", sans-serif;
@@ -33,25 +28,30 @@
   --fg-tertiary: hsl(var(--gray-400));
   --fg-caption: hsl(var(--gray-500));
 
-  --fg-emphasis: hsl(var(--green-600));
-
   --bg-primary: hsl(var(--beige-100));
   --bg-secondary: hsl(var(--beige-400));
   --bg-surface: hsl(var(--white));
-  --bg-accent: hsl(var(--green-100));
 
   --bg-blue: hsl(var(--blue-500));
+  --bg-blue-tint: hsl(var(--blue-100));
   --bg-red: hsl(var(--red-500));
   --bg-yellow: hsl(var(--yellow-500));
 
   --border-default: hsl(var(--gray-300));
 
-  --accent: hsl(var(--green-600));
-  --accent-star: hsl(var(--amber-500));
+  --accent: hsl(var(--blue-500));
   --danger: hsl(var(--red-500));
 
-  --radius: 20px;
-  --radius-sm: 8px;
+  /* Saved-state tint for lookup result cards (docs/journeys.md Journey 1
+     step 7: "highlighted (cream/yellow tint)" on save). Reuses the beige
+     primitive rather than introducing a one-off color. */
+  --bg-saved: hsl(var(--beige-400));
+
+  --radius: 24px;      /* sheets, cards, full-width primary buttons */
+  --radius-sm: 12px;   /* selects, small surfaces */
+  --radius-pill: 999px; /* pill buttons, badges, chips */
+
+  --shadow-float: 0 8px 24px hsl(var(--gray-900) / 0.14);
 
   --swipe-reveal-width: 160px;
 

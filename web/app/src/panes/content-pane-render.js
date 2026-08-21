@@ -111,9 +111,11 @@ export function renderDeckBody(deck, cards) {
     </div>
     ${deck.system || deck.preview
       ? ""
-      : `<div class="deck-view-action-bar shrink-0 flex items-center gap-md px-5 py-4">
-           <button class="deck-view-action-btn flex-1 text-body1 fg-tertiary surface-field" data-action="content/add" aria-label="Add">+ Add</button>
-           <button class="deck-view-action-btn flex-1 text-body1 fg-tertiary surface-field" data-action="content/review" aria-label="Review">⧉ Review</button>
+      : `<div class="deck-view-action-bar shrink-0 flex items-center justify-center">
+           <div class="deck-view-action-pill flex items-center">
+             <button class="deck-view-action-btn flex items-center gap-sm" data-action="content/add" aria-label="Add">+ Add</button>
+             <button class="deck-view-action-btn flex items-center gap-sm" data-action="content/review" aria-label="Review">⧉ Review</button>
+           </div>
          </div>`}
   `;
 }
