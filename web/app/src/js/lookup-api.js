@@ -3,9 +3,14 @@
  * Gateway the legacy /translate client used (see git history of the deleted
  * translation-panel.js) — the gateway now also routes /lookup to the same
  * Cloud Run service (api/config/api-gateway.yaml).
+ *
+ * Base URL is overridable for local development against `cd api/src &&
+ * npm run dev` (see README.md "Local development against a local API").
+ * Set `VITE_API_URL` in `.env.local` (gitignored) to point at
+ * `http://localhost:8080` instead of the deployed gateway.
  */
 
-const GATEWAY_URL = "https://translation-api-gateway-2qqw247r.uc.gateway.dev";
+const GATEWAY_URL = import.meta.env.VITE_API_URL || "https://translation-api-gateway-2qqw247r.uc.gateway.dev";
 
 /**
  * Calls /lookup and returns the parsed `{ blocks }` response.

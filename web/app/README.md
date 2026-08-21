@@ -21,6 +21,25 @@ npm run dev
 
 Opens at `http://localhost:5173`.
 
+## Testing against a local API
+
+By default the app calls the deployed Cloud API Gateway. To test against a
+locally running API instead:
+
+```bash
+cp .env.local.example .env.local   # sets VITE_API_URL=http://localhost:8080
+```
+
+Then run both dev servers (in separate terminals):
+
+```bash
+cd api/src && npm run dev     # serves the API on http://localhost:8080
+cd web/app && npm run dev     # picks up VITE_API_URL from .env.local
+```
+
+`.env.local` is gitignored (`*.local`); Vite restarts pick up changes to it
+automatically. Remove or edit the file to switch back to the deployed API.
+
 ## Build
 
 ```bash
