@@ -68,6 +68,7 @@ function describeOptions({ ability, formality, audience }) {
     `${describeAbility(ability)} \`ability\` affects word/phrase choice and sentence complexity on every card — block and group alike — never the translated intent.`,
     `Formality: ${formality} — anchor the register here. It is a strong suggestion, not a filter: include a neighboring register when \`audience: ${audience}\` makes it useful (e.g. casual + staff still surfaces the polite form a shop sign would use). Any spillover moves only toward MORE FORMAL — never toward slang.`,
     `Audience: ${audience} — who the learner is speaking to; this is what makes a neighboring register useful.`,
+    'Audience and formality shape how cards are phrased; they do not eliminate useful topic branches. For example, staff-oriented settings may make rental and safety phrases polite, but should not exclude related vocabulary or small-talk groups when they are useful.',
   ];
   if (formality === 'casual') {
     lines.push('Because the requested formality is casual, slang is a valid optional register at your discretion — tag such cards `formality: "slang"`. Slang is only ever available when the input formality is casual.');
@@ -104,14 +105,22 @@ Split the term into its distinct meanings, one block per meaning, in order (most
 
 Each block's \`card\` is the phrase a person would actually use for that meaning — the direct translation. When you produce MORE THAN ONE block, set that block's \`card.definition\` to a short English gloss distinguishing its meaning (e.g. "the toilet / restroom" vs. "bath / shower room"), so the senses stay distinguishable once saved. An unambiguous term yields exactly ONE block with NO \`definition\`.
 
-## Step 2 — group by theme, not by form
+## Step 2 — build diverse related groups
 
-For each block, cluster related cards the learner would find useful into themed groups.
-- **Total groups across ALL blocks: hard cap ${MAX_GROUPS_TOTAL}** (blocks SHARE this budget — they do not each get ${MAX_GROUPS_TOTAL}). **Cards per group: hard cap ${MAX_CARDS_PER_GROUP}.** No minimum — a block may have zero, one, or several groups.
-- A group is a THEME, not a grammatical category: it may freely mix words and phrases. NEVER split them apart just because they are different grammatical forms.
-- Combine or separate by cohesion and volume: small, unified content shares ONE group (e.g. "bathroom" → a single "Using the toilet" group of words and phrases); expansive content splits into distinct groups, each rich enough to stand alone (e.g. "dinner" → a "Meal words" group and a "Dining phrases" group).
+For each block, first identify the major situations and conversational goals naturally associated with the seed, then cluster related cards into themed groups.
+- **Broad topics:** generate 3–5 distinct groups per block when the topic naturally supports them. **Narrow everyday words:** generate 1–3 groups. Do not stop after two groups for a broad topic such as surf, dinner, travel, shopping, or transportation.
+- **Total groups across ALL blocks: hard cap ${MAX_GROUPS_TOTAL}** (blocks SHARE this budget — they do not each get ${MAX_GROUPS_TOTAL}). **Cards per group: hard cap ${MAX_CARDS_PER_GROUP}.** Aim for 4–6 distinct cards per group when the topic supports it.
+- A group is organized primarily by SITUATION or CONVERSATIONAL GOAL, not a grammatical category: it may freely mix words and phrases. NEVER split them apart merely because they are different grammatical forms.
+- Separate groups when the learner would use them in different situations, even if they share the same broad topic. Do not combine groups merely because their cards are related.
+- Ensure the full response includes both useful vocabulary and usable phrases when the topic supports both. Avoid near-duplicate cards across sibling groups.
 - Give each group a short, content-scannable, **ENGLISH** \`title\` (e.g. "Ordering at a restaurant") — always English regardless of ${langName}, since it's a UI heading, not translated content.
 - Keep every card distinct from the others in its group and across the whole look-up — no near-duplicates (e.g. do not emit "Check, please!", "check (the bill)", and "May I have the check?" as three cards; pick the single best phrasing).
+
+For a broad seed such as "surf", one translation block may include groups such as "Surf basics", "Beach and wave conditions", "Equipment and rentals", "Beach safety", and "Small talk about surfing". These are groups, not separate translation blocks. Do not interpret them as separate meanings unless the seed has genuinely different translations, such as "surf" meaning ride waves versus browse the internet.
+
+## Coverage check
+
+Before returning the JSON, check that broad seeds have 3–5 distinct groups, that the groups represent different situations or conversational goals rather than synonyms, and that cards are distributed across the groups instead of concentrated in one bucket. Do not invent a second translation block just to create variety.
 
 ## Content quality bar (non-negotiable)
 

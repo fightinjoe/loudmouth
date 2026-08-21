@@ -303,6 +303,18 @@ describe('validateLookupResponse', () => {
     assert.match(prompt, /hiragana and katakana NEVER get an annotation/);
     assert.match(prompt, /do not split it into individual characters/);
   });
+
+  test('prompt asks broad seeds for diverse situation-based groups while keeping terms and phrases together', () => {
+    const prompt = buildLookupPrompt({
+      term: 'surf', context: '', language: 'ja', ability: 'beginner', formality: 'polite', audience: 'staff',
+    });
+    assert.match(prompt, /Broad topics.*3–5 distinct groups/s);
+    assert.match(prompt, /Narrow everyday words.*1–3 groups/s);
+    assert.match(prompt, /may freely mix words and phrases/);
+    assert.match(prompt, /Surf basics.*Beach and wave conditions.*Equipment and rentals/s);
+    assert.match(prompt, /Do not invent a second translation block just to create variety/);
+    assert.match(prompt, /do not eliminate useful topic branches/);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -113,7 +113,9 @@ behavior**).
 `title` is always **English**, regardless of `language` — it's a UI heading, not translated content.
 
 **limits:** at most **8 groups total** across all blocks (they share the budget); at most **10 cards per
-group**. No minimum — a block may have 0 or more groups, and there is no floor on the number of cards in a group.
+group**. There is no hard minimum — a narrow block may have 0 or more groups, and there is no floor on
+the number of cards in a group. For broad topics, the model should generally target 3–5 groups and 4–6
+cards per group when the topic supports it.
 
 ### Card
 
@@ -230,13 +232,16 @@ order (at most 4). Only split on meanings that give genuinely different translat
 wave / ocean foam / browse the web). A block whose meaning needs spelling out carries a `definition` on
 its card; an unambiguous term yields one block with no `definition`.
 
-**Group by theme, not by form.** For each block, cluster related cards into themed groups (at most 8
-total across all blocks; ≤10 cards each). A group holds cards on one theme and **may mix words and
-phrases** — never split them apart just because they are different grammatical forms. Combine or
-separate by cohesion and volume: small, unified content shares one group ("bathroom" → a single
-"Using the toilet" group of words and phrases); expansive content splits into distinct groups
-("dinner" → a "Meal words" group and a "Dining phrases" group, each rich enough to stand alone). Give
-each group a short, content-scannable, **English** `title` (see **Outputs**). A block may have a single group.
+**Build diverse situation-based groups.** For each block, first identify the major situations and
+conversational goals naturally associated with the seed, then cluster related cards into themed groups
+(at most 8 total across all blocks; ≤10 cards each). Broad topics should generally produce 3–5 distinct
+groups per block; narrow everyday words should generally produce 1–3. A group is organized primarily
+by situation or conversational goal, not grammatical form, and **may mix words and phrases** — never
+split them apart merely because they are different grammatical forms. Separate groups when the learner
+would use them in different situations, even if they share the same broad topic. Aim for 4–6 distinct
+cards per group when the topic supports it, including both useful vocabulary and usable phrases across
+the response. Do not invent a second translation block just to create variety. Give each group a short,
+content-scannable, **English** `title` (see **Outputs**). A narrow block may have a single group.
 
 **Register (`formality`) is a soft anchor.** Bias toward the requested register, but include a
 neighboring register when the `audience` makes it useful (request `casual` + `audience: staff` → also
@@ -245,6 +250,10 @@ moves toward `slang`; a card is tagged `slang` only when the input `formality` w
 `formality` under **Inputs**). Tag each card with its own `formality` (`casual` \| `polite` \| `formal` \|
 `slang`) only when the word has a register worth marking; omit it otherwise (most non-Japanese words, and
 words like 水 "water" with no register variants).
+
+Audience and formality shape how cards are phrased; they do not eliminate useful topic branches. For
+example, a staff-oriented lookup may make rental and safety phrases polite, but should not exclude
+related vocabulary or small-talk groups when those are useful.
 
 **Content quality bar.** Favor common, conversational language a person would actually say to someone
 they are trying to connect with; reject stiff, textbook, or exam-flavored content. Keep cards distinct
