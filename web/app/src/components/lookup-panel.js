@@ -470,10 +470,12 @@ function renderBlock(block, blockIndex, deck, savedKeys) {
 function renderGroupSummary(group, blockIndex, groupIndex) {
   const allWords = group.cards.every((c) => c.type === "word");
   const countLabel = `${group.cards.length} ${allWords ? "word" : "phrase"}${group.cards.length === 1 ? "" : "s"}`;
+  // Group previews are a compact glance, not a study surface — always plain
+  // text here (never ruby), even when the underlying card has a `reading`.
   const preview = group.cards.slice(0, 3).map((c) => `
-    <div class="lookup-group-preview-row flex items-center justify-between">
-      <span class="text-body2 fg-body">${esc(c.translation)}</span>
-      <span class="text-body2 fg-secondary">${sourceHTML(c)}</span>
+    <div class="lookup-group-preview-row flex-col">
+      <span class="lookup-group-preview-translation">${esc(c.translation)}</span>
+      <span class="lookup-group-preview-source">${esc(c.text)}</span>
     </div>
   `).join("");
 
@@ -485,10 +487,11 @@ function renderGroupSummary(group, blockIndex, groupIndex) {
       data-group-index="${groupIndex}"
     >
       <div class="lookup-group-summary-header flex items-center justify-between">
-        <span class="lookup-group-title text-body1 font-semibold fg-body">${esc(group.title)}</span>
-        <span class="lookup-group-count text-body2 fg-secondary">${countLabel}</span>
+        <span class="lookup-group-title">${esc(group.title)}</span>
+        <span class="lookup-group-count flex items-center">${icon("web-stories", { size: "sm" })}${countLabel}</span>
       </div>
-      ${preview}
+      <div class="lookup-group-preview flex-col">${preview}</div>
+      <div class="lookup-group-fade" aria-hidden="true"></div>
     </button>
   `;
 }

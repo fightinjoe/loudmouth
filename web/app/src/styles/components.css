@@ -164,7 +164,11 @@
 
 rt {
   font-family: var(--font-family);
-  font-size: var(--text-size-body2);
+  /* Relative, not fixed: a fixed size (formerly --text-size-body2) matched
+     the 24px headword context it was authored for but rendered as tall as
+     its own base text in smaller contexts (e.g. 18px lookup-group preview
+     rows) — the reading no longer read as ruby, just a second full line. */
+  font-size: 0.55em;
   color: var(--fg-caption);
   font-weight: 400;
   line-height: 1.2;
@@ -917,18 +921,86 @@ ruby {
   color: hsl(var(--red-500));
 }
 
+/* ── Phrase group summary (Figma "Phrase group", node 581:10511) ──
+   White card (not a gray tint — it sits on the gray-100 action-pane body,
+   so white is what gives it definition), uppercase condensed caption
+   header with a blue pill word/phrase count, and up to 3 stacked
+   translation/source previews. */
 .lookup-group-summary {
   width: 100%;
+  /* Buttons default to align-items: flex-start (UA stylesheet), which
+     shrink-wraps flex-col children to content width instead of the usual
+     flexbox stretch — breaking justify-between on the header row below. */
+  align-items: stretch;
   text-align: left;
   border-radius: var(--radius-sm);
-  padding: 14px 16px;
-  background: hsl(var(--gray-900) / 0.04);
-  gap: 8px;
+  /* No bottom padding: the fade (below) supplies the visual bottom edge.
+     min-height (Figma's typical 3-preview card height) gives short previews
+     blank buffer for the fade to sit in; longer previews let it lightly
+     touch the last line, hinting more terms are cut off below. */
+  padding: 20px 10px 0 20px;
+  min-height: 220px;
+  background: var(--bg-surface);
+  gap: 16px;
   position: relative;
+  overflow: hidden;
+}
+
+.lookup-group-fade {
+  position: absolute;
+  left: 20px;
+  right: 10px;
+  bottom: 0;
+  height: 58px;
+  background: linear-gradient(to bottom, hsl(var(--white) / 0), hsl(var(--white)));
+  pointer-events: none;
+}
+
+.lookup-group-summary-header {
+  gap: 6px;
+}
+
+.lookup-group-title {
+  flex: 1;
+  font-family: var(--font-family-condensed);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 18px;
+  text-transform: uppercase;
+  color: var(--fg-caption);
+}
+
+.lookup-group-count {
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-blue-tint);
+  color: var(--accent);
+  font-size: 0.875rem;
+  line-height: 18.8px;
+  white-space: nowrap;
+}
+
+.lookup-group-preview {
+  gap: 16px;
+  width: 100%;
 }
 
 .lookup-group-preview-row {
-  padding: 2px 0;
+  gap: 10px;
+  padding-left: 20px;
+  font-family: var(--font-family-manrope);
+  font-size: 1.125rem;
+  line-height: 1.2222;
+}
+
+.lookup-group-preview-translation {
+  color: var(--fg-body);
+}
+
+.lookup-group-preview-source {
+  color: var(--fg-caption);
 }
 
 .lookup-error {
