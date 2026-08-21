@@ -41,7 +41,11 @@ export function openBottomSheet(appEl, { kind, bodyHTML, onClose, onMount, size 
   appEl.appendChild(scrim);
 
   const panel = document.createElement("div");
-  panel.className = `${panelClass} bottom-sheet bg-primary transition-sheet${size === "full" ? " bottom-sheet--full" : ""}`;
+  // Full-height panes (lookup, review) get their background from
+  // .bottom-sheet--full (Figma gray-100) instead — bg-primary is the beige
+  // default for content-hugging panes (settings, new-phrasebook).
+  const bgClass = size === "full" ? "" : "bg-primary";
+  panel.className = `${panelClass} bottom-sheet ${bgClass} transition-sheet${size === "full" ? " bottom-sheet--full" : ""}`.replace(/\s+/g, " ").trim();
   panel.innerHTML = `<div class="sheet-handle"></div>${bodyHTML}`;
   appEl.appendChild(panel);
 

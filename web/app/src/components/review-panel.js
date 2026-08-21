@@ -55,11 +55,24 @@ export function openReviewPanel(appEl, deck, cards, onDismiss) {
 
   return sheet;
 
-  function rerender() {
+  function rerender(enterDir) {
     const inner = sheet.panel.querySelector(".review-panel-inner");
     if (!inner) return;
     inner.innerHTML = renderBody(ordered, state, deck.lang);
     bind(sheet.panel, sheet.close);
+    if (!enterDir) return;
+    // Card advanced via swipe — start the new card offset in the direction
+    // it swiped in from, then release to the base transition next frame so
+    // it slides to rest instead of snapping in (bug: "smooth animation from
+    // one card to the next").
+    const wrap = inner.querySelector(".review-card-wrap");
+    if (!wrap) return;
+    wrap.classList.add(enterDir === "left" ? "review-card-wrap--from-right" : "review-card-wrap--from-left");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        wrap.classList.remove("review-card-wrap--from-right", "review-card-wrap--from-left");
+      });
+    });
   }
 
   function bind(panel, close) {
@@ -79,16 +92,13 @@ export function openReviewPanel(appEl, deck, cards, onDismiss) {
     panel.querySelector('[data-action="review/play"]')?.addEventListener("click", () => {
       const card = ordered[state.index];
       if (!card) return;
-      const promptSide = state.reversed ? "target" : "source";
-      const speakSide = state.revealed
-        ? (promptSide === "target" ? "source" : "target")
-        : promptSide;
-      if (speakSide === "target") {
-        speak(ttsText(card), card.lang);
-      }
-      // English side has no TTS — no-op (Web Speech is target-language only
-      // per web/AGENTS.md "Audio is mobile-only" / lang.js scope).
+      // Always reads the term's target-language pronunciation, regardless
+      // of which side is currently the prompt/answer (direction toggle) or
+      // revealed — audio is a fixed per-card action, not tied to layout.
+      speak(ttsText(card), card.lang);
     });
+
+    wirePeekReveal(panel.querySelector(".review-card-wrap"));
 
     wireSwipeAdvance(panel.querySelector(".review-card-wrap"), {
       onCommit: (dir) => {
@@ -96,9 +106,42 @@ export function openReviewPanel(appEl, deck, cards, onDismiss) {
         if (next < 0 || next >= ordered.length) return; // no loop, no-op at boundary
         state.index = next;
         state.revealed = false;
-        rerender();
+        rerender(dir);
       },
     });
+  }
+
+  // Tap-and-hold on the redacted (skeleton) answer peeks the translation
+  // while held, hiding it again on release — a momentary reveal distinct
+  // from the persistent eye-toggle. No-op once already revealed. Touch is
+  // the real target (mobile-only per web/AGENTS.md); mouse events are
+  // added alongside so the gesture also works for desktop/dev browser use.
+  function wirePeekReveal(wrap) {
+    const skeleton = wrap?.querySelector(".review-answer-skeleton");
+    if (!skeleton) return;
+
+    let active = false;
+    const end = () => {
+      if (!active) return;
+      active = false;
+      if (!state.revealed) wrap.dataset.revealed = "false";
+      document.removeEventListener("touchend", end);
+      document.removeEventListener("touchcancel", end);
+      document.removeEventListener("mouseup", end);
+    };
+
+    const begin = (e) => {
+      if (state.revealed) return; // already permanently revealed
+      if (e.cancelable) e.preventDefault();
+      active = true;
+      wrap.dataset.revealed = "true";
+      document.addEventListener("touchend", end);
+      document.addEventListener("touchcancel", end);
+      document.addEventListener("mouseup", end);
+    };
+
+    skeleton.addEventListener("touchstart", begin, { passive: false });
+    skeleton.addEventListener("mousedown", begin);
   }
 
   function wireSwipeAdvance(el, { onCommit }) {
@@ -167,8 +210,13 @@ function renderBody(ordered, state, deckLang) {
   }
 
   const flag = LANG_FLAGS[deckLang] ?? "";
+  // promptLang: language of the term currently shown in the card (the
+  // header direction-toggle button — swaps which language is on top).
+  // answerLang: language of the hidden text below the card (the reveal
+  // toggle button) — always the opposite of promptLang.
+  const promptLang = state.reversed ? (LANG_NAMES[deckLang] ?? deckLang) : "English";
+  const promptFlag = state.reversed ? flag : "🇬🇧";
   const answerLang = state.reversed ? "English" : (LANG_NAMES[deckLang] ?? deckLang);
-  const answerFlag = state.reversed ? "🇬🇧" : flag;
 
   const sourceHTML = Array.isArray(card.reading) ? renderRuby(card.reading) : (card.text || "");
   const promptHTML = state.reversed ? sourceHTML : esc(card.translation || "");
@@ -179,8 +227,8 @@ function renderBody(ordered, state, deckLang) {
       leading: headerIconButton("close", { action: "review/close", label: "Close" }),
       title: `<span class="pane-header-title flex-1"></span>`,
       trailing: `<button class="review-direction-toggle flex items-center tappable" data-action="review/toggle-direction" aria-label="Toggle direction">
-        <span class="review-direction-flag">${answerFlag}</span>
-        <span class="review-direction-lang text-body2 fg-secondary">${answerLang}</span>
+        <span class="review-direction-flag">${promptFlag}</span>
+        <span class="review-direction-lang text-body2 fg-secondary">${promptLang}</span>
         ${icon("swap-vert", { size: "sm", className: "review-direction-icon" })}
       </button>`,
     })}
@@ -188,7 +236,7 @@ function renderBody(ordered, state, deckLang) {
       <div class="review-card bg-surface flex-col items-center justify-center">
         <div class="review-prompt text-h2 fg-body">${promptHTML}</div>
       </div>
-      <div class="review-answer-region flex-col">
+      <div class="review-answer-region">
         <div class="review-answer-skeleton flex-col" aria-hidden="true">
           <div class="review-skeleton-bar"></div>
           <div class="review-skeleton-bar review-skeleton-bar--short"></div>
