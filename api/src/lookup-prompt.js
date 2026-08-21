@@ -28,7 +28,7 @@ function readingInstructions(lang) {
     return `an array of ReadingToken pairs, one per character. Each token is [base, annotation] where base is the character and annotation is its tone-marked pinyin. Example for 晚餐: [["晚","wǎn"],["餐","cān"]]`;
   }
   if (lang === 'ja') {
-    return `an array of ReadingToken pairs. Each token is [base, annotation|null]. Kanji get a hiragana annotation; kana and katakana use null. Example for 注文: [["注","ちゅう"],["文","もん"]]  Example for おすすめ: [["おすすめ",null]]`;
+    return `an array of ReadingToken pairs. Each token is [base, annotation|null]. Kanji get a hiragana annotation; hiragana and katakana NEVER get an annotation (always null). Keep each contiguous kana/katakana run as one token; do not split it into individual characters. Examples: 注文 → [["注","ちゅう"],["文","もん"]]; サーフィンをする → [["サーフィンをする",null]]; おすすめ → [["おすすめ",null]]`;
   }
   return `a single-element array containing the whole word or phrase as one unannotated token: [base, null]. Example for "café": [["café",null]]`;
 }

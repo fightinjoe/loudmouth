@@ -1,3 +1,5 @@
+import { renderPaneHeader, headerIconButton, headerTitle } from './pane-header.js'
+
 function cardToExportable(card) {
   const c = { lang: card.lang, text: card.text, translation: card.translation }
   if (card.reading) c.reading = card.reading
@@ -29,11 +31,11 @@ export function openJsonPanel(appEl, title, jsonString, onDismiss) {
   }
 
   panel.innerHTML = `
-    <div class="pane-header flex items-center">
-      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 json-pane-back" aria-label="Back">‹</button>
-      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">${title}</span>
-      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 pane-action-text json-pane-copy-btn" id="btn-copy-json">Copy</button>
-    </div>
+    ${renderPaneHeader({
+      leading: headerIconButton('back', { label: 'Back', className: 'fg-accent json-pane-back' }),
+      title: headerTitle(title, { className: 'font-semibold bg-none no-tap-highlight' }),
+      trailing: `<button class="icon-button fg-accent pane-action-text json-pane-copy-btn" id="btn-copy-json">Copy</button>`,
+    })}
     <div class="json-pane-body flex-1 flex-col">
       <textarea class="json-pane-textarea flex-1 surface-field text-area-fixed text-body2 font-mono leading-entry" readonly spellcheck="false"></textarea>
     </div>

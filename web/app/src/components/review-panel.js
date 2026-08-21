@@ -3,6 +3,8 @@ import { speak, ttsText } from "../js/tts.js";
 import { applyCardOrder } from "../js/db.js";
 import { renderRuby } from "./card.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
+import { icon } from "./icon.js";
+import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header.js";
 
 // Swipe-to-advance threshold — same value as the reveal-swipe gesture
 // elsewhere in the app (content-pane-gestures.js REVEAL_THRESHOLD), kept
@@ -43,6 +45,7 @@ export function openReviewPanel(appEl, deck, cards, onDismiss) {
 
   const sheet = openBottomSheet(appEl, {
     kind: "review",
+    size: "full",
     bodyHTML: `<div class="review-panel-inner flex-col flex-1">${renderBody(ordered, state, deck.lang)}</div>`,
     onClose: onDismiss,
     onMount: (panel, _scrim, close) => {
@@ -153,11 +156,10 @@ function renderBody(ordered, state, deckLang) {
   const card = ordered[state.index];
   if (!card) {
     return `
-      <div class="pane-header flex items-center">
-        <button class="icon-button" data-action="review/close" aria-label="Close">×</button>
-        <span class="pane-header-title flex-1 text-center text-header fg-body">Review</span>
-        <span class="pane-header-spacer shrink-0"></span>
-      </div>
+      ${renderPaneHeader({
+        leading: headerIconButton("close", { action: "review/close", label: "Close" }),
+        title: headerTitle("Review"),
+      })}
       <div class="review-empty text-center fg-secondary flex-1 flex-col items-center justify-center">
         <p>No cards to review.</p>
       </div>
@@ -173,31 +175,33 @@ function renderBody(ordered, state, deckLang) {
   const answerHTML = state.reversed ? esc(card.translation || "") : sourceHTML;
 
   return `
-    <div class="pane-header flex items-center">
-      <button class="icon-button" data-action="review/close" aria-label="Close">×</button>
-      <span class="pane-header-title flex-1"></span>
-      <button class="review-direction-toggle flex items-center tappable" data-action="review/toggle-direction" aria-label="Toggle direction">
+    ${renderPaneHeader({
+      leading: headerIconButton("close", { action: "review/close", label: "Close" }),
+      title: `<span class="pane-header-title flex-1"></span>`,
+      trailing: `<button class="review-direction-toggle flex items-center tappable" data-action="review/toggle-direction" aria-label="Toggle direction">
         <span class="review-direction-flag">${answerFlag}</span>
         <span class="review-direction-lang text-body2 fg-secondary">${answerLang}</span>
-        <span class="review-direction-icon text-icon-sm">⇅</span>
-      </button>
-    </div>
-    <div class="review-card-wrap flex-1 flex-col items-center justify-center">
-      <div class="review-card bg-surface flex-col items-center justify-center" data-revealed="${state.revealed}">
+        ${icon("swap-vert", { size: "sm", className: "review-direction-icon" })}
+      </button>`,
+    })}
+    <div class="review-card-wrap flex-1 flex-col items-center justify-center" data-revealed="${state.revealed}">
+      <div class="review-card bg-surface flex-col items-center justify-center">
         <div class="review-prompt text-h2 fg-body">${promptHTML}</div>
-        <div class="review-divider"></div>
-        <div class="review-answer-skeleton flex-col items-center">
-          <div class="review-skeleton-line"></div>
+      </div>
+      <div class="review-answer-region flex-col">
+        <div class="review-answer-skeleton flex-col" aria-hidden="true">
+          <div class="review-skeleton-bar"></div>
+          <div class="review-skeleton-bar review-skeleton-bar--short"></div>
         </div>
-        <div class="review-answer text-h2 fg-accent">${answerHTML}</div>
+        <div class="review-answer text-card-title fg-accent">${answerHTML}</div>
       </div>
     </div>
     <div class="review-controls flex items-center justify-between">
-      <button class="review-reveal-toggle flex items-center tappable" data-action="review/toggle-reveal">
-        <span class="review-reveal-icon text-icon">${state.revealed ? "🙈" : "👁️"}</span>
+      <button class="review-reveal-toggle flex items-center tappable" data-action="review/toggle-reveal" aria-label="Reveal answer">
+        <span class="review-reveal-icon">${state.revealed ? icon("visibility-off", { size: "sm" }) : icon("visibility", { size: "sm" })}</span>
         <span class="review-reveal-label text-body2 fg-secondary">${answerLang}</span>
       </button>
-      <button class="icon-button review-play" data-action="review/play" aria-label="Play audio">🔊</button>
+      <button class="icon-button review-play" data-action="review/play" aria-label="Play audio">${icon("sound")}</button>
     </div>
   `;
 }

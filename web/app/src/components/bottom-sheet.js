@@ -32,7 +32,7 @@ const KIND_TO_SCRIM_CLASS = {
   "new-phrasebook": "new-phrasebook-scrim",
 };
 
-export function openBottomSheet(appEl, { kind, bodyHTML, onClose, onMount }) {
+export function openBottomSheet(appEl, { kind, bodyHTML, onClose, onMount, size = "hug" }) {
   const panelClass = KIND_TO_PANEL_CLASS[kind] || `${kind}-panel`;
   const scrimClass = KIND_TO_SCRIM_CLASS[kind] || `${kind}-scrim`;
 
@@ -41,7 +41,7 @@ export function openBottomSheet(appEl, { kind, bodyHTML, onClose, onMount }) {
   appEl.appendChild(scrim);
 
   const panel = document.createElement("div");
-  panel.className = `${panelClass} bottom-sheet bg-primary transition-sheet`;
+  panel.className = `${panelClass} bottom-sheet bg-primary transition-sheet${size === "full" ? " bottom-sheet--full" : ""}`;
   panel.innerHTML = `<div class="sheet-handle"></div>${bodyHTML}`;
   appEl.appendChild(panel);
 

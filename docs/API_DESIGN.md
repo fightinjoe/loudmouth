@@ -196,6 +196,7 @@ Test coverage).
 
 Deterministic post-processing, no model:
 - **Validate** the response shape; a malformed or truncated response is a `502`.
+- **Normalize Japanese readings** — kana and katakana never receive ruby annotations, and adjacent unannotated Japanese reading tokens are merged so model tokenization cannot produce per-character kana ruby output.
 - **Check limits** — verify (and trip) ≤4 blocks, ≤8 groups total, ≤10 cards per group. These caps are
   also stated directly in the prompt (see **Model behavior**), so trimming here is a backstop for
   non-compliant model output, not the primary limiting mechanism — trimming is exceptional, not expected

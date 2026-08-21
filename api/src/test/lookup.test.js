@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 
 const { parseTerm, parseLookupRequest } = require('../lookup-parse');
 const { validateLookupResponse } = require('../lookup-validate');
+const { buildLookupPrompt } = require('../lookup-prompt');
 const { handleLookup } = require('../lookup');
 
 // ---------------------------------------------------------------------------
@@ -266,6 +267,41 @@ describe('validateLookupResponse', () => {
     const raw = JSON.stringify({ blocks: [{ card: makeCard({ formality: 'slang' }), groups: [] }] });
     const { response } = validateLookupResponse(raw);
     assert.equal(response.blocks[0].card.formality, 'slang');
+  });
+
+  test('Japanese kana readings never get ruby and adjacent unannotated tokens are merged', () => {
+    const raw = JSON.stringify({
+      blocks: [{
+        card: makeCard({
+          text: 'サーフィンをする',
+          reading: [['サ', null], ['ー', null], ['フ', null], ['ィ', null], ['ン', null], ['を', null], ['す', 'す'], ['る', null]],
+        }),
+        groups: [{
+          title: 'Surfing',
+          cards: [makeCard({
+            text: '波に乗る',
+            reading: [['食べる', 'たべる'], ['波', 'なみ'], ['に', null], ['乗', 'の'], ['る', null]],
+            example: {
+              text: 'サーフィンをする',
+              reading: [['サ', null], ['ー', null], ['フ', null], ['ィ', null], ['ン', null], ['を', null]],
+            },
+          })],
+        }],
+      }],
+    });
+
+    const { response } = validateLookupResponse(raw);
+    assert.deepEqual(response.blocks[0].card.reading, [['サーフィンをする', null]]);
+    assert.deepEqual(response.blocks[0].groups[0].cards[0].reading, [['食べる', null], ['波', 'なみ'], ['に', null], ['乗', 'の'], ['る', null]]);
+    assert.deepEqual(response.blocks[0].groups[0].cards[0].example.reading, [['サーフィンを', null]]);
+  });
+
+  test('Japanese prompt groups kana and forbids kana ruby', () => {
+    const prompt = buildLookupPrompt({
+      term: 'surf', context: '', language: 'ja', ability: 'beginner', formality: 'polite', audience: 'staff',
+    });
+    assert.match(prompt, /hiragana and katakana NEVER get an annotation/);
+    assert.match(prompt, /do not split it into individual characters/);
   });
 });
 

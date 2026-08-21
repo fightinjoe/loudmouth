@@ -8,16 +8,24 @@
   --gray-300: 0 0 88;
   --gray-400: 0 0 75;
   --gray-500: 220 16 47;
+  --gray-100: 218 29 96; /* Figma gray-100 #f1f4f9 — action-pane body */
   --gray-900: 220 47 11;
 
   --blue-500: 207 100 56;
-  --blue-100: 207 55 94;
+  --blue-300: 207 100 76;  /* Figma text/emphasis-secondary #85c8ff — term reading */
+  --blue-100: 207 100 96;  /* Figma blue-50 #ebf6ff — term card tint */
 
   --red-500: 13 100 56;
 
   --yellow-500: 53 100 56;
+  --yellow-100: 53 100 91;  /* Figma yellow-100 #fffad1 — nav gradient base */
+
+  --gray-200-tint: 216 26 58; /* Figma gray-200 tint rgba(115,137,181,…) — review skeleton */
+  --gray-100-tint: 220 31 62; /* Figma gray-100 tint rgba(128,148,188,0.1) — VIBE row dividers */
 
   --font-family: "Roboto Flex", "Noto Sans JP", sans-serif;
+  --font-family-manrope: "Manrope", "Noto Sans JP", sans-serif;
+  --font-family-condensed: "Roboto Condensed", "Noto Sans JP", sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
@@ -34,6 +42,7 @@
 
   --bg-blue: hsl(var(--blue-500));
   --bg-blue-tint: hsl(var(--blue-100));
+  --fg-reading: hsl(var(--blue-300));
   --bg-red: hsl(var(--red-500));
   --bg-yellow: hsl(var(--yellow-500));
 

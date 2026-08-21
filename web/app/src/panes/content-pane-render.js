@@ -6,28 +6,19 @@
  */
 import { renderCardRow } from "../components/card.js";
 import { icon } from "../components/icon.js";
-
-export function renderEmptyState() {
-  return `
-    <div class="deck-view-empty text-center fg-secondary">
-      <p>No decks yet.</p>
-    </div>
-  `;
-}
+import { renderPaneHeader, headerIconButton, headerTitle, headerSpacer } from "../components/pane-header.js";
 
 export function renderHeader(deck) {
   if (!deck) return "";
-  return `
-    <div class="pane-header flex items-center">
-      <button class="icon-button" data-action="content/menu" aria-label="Menu">${icon("Menu")}</button>
-      <button class="pane-header-title flex-1 text-center text-header fg-body tappable" data-action="content/deck-title">${deck.name}</button>
-      ${deck.preview
-        ? `<button class="deck-header-save-pill tappable" data-action="content/save-preview" aria-label="Save">Save</button>`
-        : deck.system
-        ? `<span class="pane-header-spacer shrink-0"></span>`
-        : `<button class="icon-button deck-header-done" data-action="content/done" aria-label="Done">${icon("Done")}</button>`}
-    </div>
-  `;
+  return renderPaneHeader({
+    leading: headerIconButton("menu", { action: "content/menu", label: "Menu" }),
+    title: headerTitle(deck.name, { action: "content/deck-title" }),
+    trailing: deck.preview
+      ? `<button class="deck-header-save-pill tappable" data-action="content/save-preview" aria-label="Save">Save</button>`
+      : deck.system
+      ? headerSpacer()
+      : `<button class="icon-button deck-header-done" data-action="content/done" aria-label="Done">${icon("check")}</button>`,
+  });
 }
 
 /**
@@ -103,7 +94,7 @@ function escSection(str) {
 }
 
 export function renderDeckBody(deck, cards) {
-  if (!deck) return renderEmptyState();
+  if (!deck) return "";
   return `
     ${renderHeader(deck)}
     <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto" data-region="card-list">
@@ -113,8 +104,8 @@ export function renderDeckBody(deck, cards) {
       ? ""
       : `<div class="deck-view-action-bar shrink-0 flex items-center justify-center">
            <div class="deck-view-action-pill flex items-center">
-             <button class="deck-view-action-btn flex items-center gap-sm" data-action="content/add" aria-label="Add">+ Add</button>
-             <button class="deck-view-action-btn flex items-center gap-sm" data-action="content/review" aria-label="Review">⧉ Review</button>
+             <button class="deck-view-action-btn flex-col items-center" data-action="content/add" aria-label="Add">${icon("add")}<span>Add</span></button>
+             <button class="deck-view-action-btn flex-col items-center" data-action="content/review" aria-label="Review">${icon("review")}<span>Review</span></button>
            </div>
          </div>`}
   `;

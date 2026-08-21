@@ -1,3 +1,4 @@
+import { renderPaneHeader, headerIconButton, headerTitle } from './pane-header.js'
 import { openJsonPanel, toImportJson } from './json-panel.js'
 
 function esc(str) {
@@ -32,11 +33,11 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
   }
 
   panel.innerHTML = `
-    <div class="pane-header flex items-center">
-      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0" aria-label="Cancel">‹</button>
-      <span class="pane-header-title flex-1 text-center text-header font-semibold fg-body bg-none no-tap-highlight">Edit Card</span>
-      <button class="icon-button fg-accent text-icon flex items-center justify-center shrink-0 pane-action-text card-edit-save-btn" id="btn-save-card">Save</button>
-    </div>
+    ${renderPaneHeader({
+      leading: headerIconButton('back', { label: 'Cancel', className: 'fg-accent' }),
+      title: headerTitle('Edit Card', { className: 'font-semibold bg-none no-tap-highlight' }),
+      trailing: `<button class="icon-button fg-accent pane-action-text card-edit-save-btn" id="btn-save-card">Save</button>`,
+    })}
     <div class="card-edit-body flex-col">
       <div class="card-edit-field flex-col">
         <label class="section-label card-edit-label" for="edit-text">Text</label>

@@ -19,7 +19,7 @@ export function renderCardRow(card, readingDisplay = "reading") {
           data-action="content/edit-card"
           data-card-id="${card.id}"
           aria-label="Edit"
-        >${icon("Edit")}</button>
+        >${icon("edit")}</button>
 
         <button
           class="icon-button bg-yellow fg-white tappable"
@@ -27,67 +27,55 @@ export function renderCardRow(card, readingDisplay = "reading") {
           data-card-id="${card.id}"
           aria-label="${isStarred ? "Unstar" : "Star"}"
           data-selected="${isStarred}"
-        >${icon("Star")}</button>
+        >${icon("star")}</button>
 
         <button
           class="icon-button bg-danger fg-white tappable"
           data-action="content/delete-card"
           data-card-id="${card.id}"
           aria-label="Delete"
-        >${icon("Delete")}</button>
+        >${icon("delete")}</button>
       </div>
 
-      <div
-        class="card-row flex-row items-center gap-auto"
-        data-card-id="${card.id}"
-      >
+      <div class="card-row flex-col" data-card-id="${card.id}">
         ${renderCardContent(card, readingDisplay)}
-
-        <button
-          class="card-row-play fg-accent text-body1 shrink-0 tappable"
-          data-action="content/play-card"
-          data-card-id="${card.id}"
-          aria-label="Play"
-        >
-          ▶
-        </button>
-
         <div class="card-row-reorder-handle shrink-0" aria-hidden="true">
-          ${icon("Reorder")}
+          ${icon("reorder")}
         </div>
       </div>
     </div>
   `;
 }
 
-// renderCardContent is shared by renderCard and renderCardRow. It renders two
-// parallel representations of the card — .card-primary and .card-secondary —
-// so that CSS ancestor selectors ([data-mode="..."]) can show/hide the correct
-// one without any JS involvement. Both contain .card-translation intentionally:
-// .card-primary shows it in reverse mode; .card-secondary shows it in review mode.
-//
-// The star prefix (★) is prepended in JS rather than CSS because it modifies
-// text content, not display — CSS cannot prepend to text nodes.
+// Phrasebook term card — matches the Figma "Term" component (node 606:6505):
+// the English translation on top, a divider with an inline audio control, then
+// the target-language term (blue) with its reading below. The star prefix (★)
+// is prepended in JS because it is text content, not a display toggle.
 function renderCardContent(card, readingDisplay = "reading") {
-  const reading = card[readingDisplay] || "";
   const isStarred = !!card.state?.starredAt;
   const starPrefix = isStarred ? "★ " : "";
 
-  // Use ruby rendering if structured tokens are available and we are displaying 'reading'
+  // Furigana ruby only when displaying 'reading' and structured tokens exist;
+  // otherwise the reading renders as a plain line below the term.
   const hasRuby = readingDisplay === "reading" && Array.isArray(card.reading);
-  const displayText = hasRuby
-    ? starPrefix + renderRuby(card.reading)
-    : starPrefix + card.text;
+  const cjk = hasRuby ? renderRuby(card.reading) : card.text;
+  const reading = card[readingDisplay] || "";
 
   return `
-    <div class="card-content flex-col gap-sm" ${hasRuby ? "data-has-ruby" : ""}>
-      <div class="card-primary text-h2">
-        <span class="card-text fg-body">${displayText}</span>
-        <span class="card-translation">${card.translation}</span>
+    <div class="card-term flex-col" ${hasRuby ? "data-has-ruby" : ""}>
+      <div class="card-term-english text-card-title fg-body">${card.translation || ""}</div>
+      <div class="card-term-divider flex items-center gap-sm">
+        <span class="card-term-rule flex-1"></span>
+        <button
+          class="card-row-play icon-button fg-tertiary shrink-0 tappable"
+          data-action="content/play-card"
+          data-card-id="${card.id}"
+          aria-label="Play"
+        >${icon("sound")}</button>
       </div>
-      <div class="card-secondary flex-col text-body2 fg-caption">
-        <span class="card-reading">${reading}</span>
-        <span class="card-translation">${card.translation}</span>
+      <div class="card-term-target flex-col">
+        <div class="card-term-cjk text-card-title fg-accent">${starPrefix}${cjk}</div>
+        <div class="card-term-reading text-body1">${reading}</div>
       </div>
     </div>
   `;

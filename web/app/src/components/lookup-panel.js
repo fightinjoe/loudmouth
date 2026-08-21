@@ -11,6 +11,8 @@ import { speak, ttsText } from "../js/tts.js";
 import { renderRuby } from "./card.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { PLACEHOLDER_DECK_NAME } from "./new-phrasebook-panel.js";
+import { icon } from "./icon.js";
+import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header.js";
 
 const AUDIENCE_LABELS = {
   stranger: "strangers",
@@ -56,6 +58,7 @@ export function openLookupPanel(appEl, deck, opts, onSaved, onDismiss, onDeckRen
 
   const sheet = openBottomSheet(appEl, {
     kind: "lookup",
+    size: "full",
     bodyHTML: `<div class="lookup-panel-inner flex-col flex-1">${renderStack(state, deck)}</div>`,
     onClose: onDismiss,
     onMount: (panel) => {
@@ -319,13 +322,11 @@ function renderBadge(count) {
 }
 
 function renderHeader({ backLabel, title, badge, extra = "" }) {
-  return `
-    <div class="pane-header flex items-center">
-      <button class="icon-button lookup-back" data-action="lookup/back" aria-label="${backLabel}">‹</button>
-      <span class="pane-header-title flex-1 text-center text-header fg-body">${title}</span>
-      <div class="lookup-header-right flex items-center gap-sm">${badge}${extra}</div>
-    </div>
-  `;
+  return renderPaneHeader({
+    leading: headerIconButton("back", { action: "lookup/back", label: backLabel, className: "lookup-back" }),
+    title: headerTitle(title),
+    trailing: `<div class="lookup-header-right flex items-center gap-sm">${badge}${extra}</div>`,
+  });
 }
 
 function renderInputFrame(state, deck, badge) {
@@ -337,40 +338,52 @@ function renderInputFrame(state, deck, badge) {
   const vibeSummary = `${FORMALITY_SUMMARY[deck.formality] ?? deck.formality} conversation with ${AUDIENCE_LABELS[deck.audience] ?? deck.audience}`;
 
   return `
-    ${renderHeader({ backLabel: "Close", title: `${flag} ${langName}`, badge })}
     <div class="lookup-input-body flex-col flex-1">
-      <div class="lookup-input-wrap" data-has-value="${hasValue}">
-        <div class="lookup-input-field-row flex items-center">
-          <input
-            class="lookup-input-field flex-1 text-entry"
-            type="text"
-            placeholder="Enter word or phrase"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-          />
-          <button class="lookup-input-clear icon-button" data-action="lookup/clear" aria-label="Clear">×</button>
-        </div>
-      </div>
+      <div class="lookup-input-surface flex-col">
+        ${renderHeader({ backLabel: "Close", title: `${flag} ${langName}`, badge })}
+        <div class="lookup-input-form flex-col">
+          <div class="lookup-input-wrap" data-has-value="${hasValue}">
+            <div class="lookup-input-field-row flex items-center">
+              <input
+                class="lookup-input-field flex-1 text-entry"
+                type="text"
+                placeholder="Enter word or phrase"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+              <button class="lookup-input-clear icon-button" data-action="lookup/clear" aria-label="Clear">${icon("close", { size: "sm" })}</button>
+            </div>
+          </div>
 
-      <div class="lookup-vibe-group" data-expanded="${state.vibeExpanded}">
-        <button class="lookup-vibe-summary tappable" data-action="lookup/vibe-toggle">
-          <span class="lookup-vibe-summary-label text-body1 fg-body">${esc(vibeSummary)}</span>
-        </button>
-        <div class="lookup-vibe-expanded flex-col">
-          <div class="section-label">VIBE</div>
-          <label class="lookup-vibe-row flex items-center justify-between">
-            <span class="text-body1 fg-body">Formality</span>
-            <select class="lookup-vibe-select" data-action="lookup/formality">
-              ${["casual", "polite", "formal"].map((v) => `<option value="${v}" ${deck.formality === v ? "selected" : ""}>${FORMALITY_LABELS[v]}</option>`).join("")}
-            </select>
-          </label>
-          <label class="lookup-vibe-row flex items-center justify-between">
-            <span class="text-body1 fg-body">Audience</span>
-            <select class="lookup-vibe-select" data-action="lookup/audience">
-              ${["stranger", "staff", "acquaintance", "family"].map((v) => `<option value="${v}" ${deck.audience === v ? "selected" : ""}>${cap(AUDIENCE_LABELS[v])}</option>`).join("")}
-            </select>
-          </label>
+          <div class="lookup-vibe-group" data-expanded="${state.vibeExpanded}">
+            <button class="lookup-vibe-summary flex items-center tappable" data-action="lookup/vibe-toggle" aria-label="Edit VIBE settings">
+              <span class="lookup-vibe-label">VIBE</span>
+              <span class="lookup-vibe-summary-label">${esc(vibeSummary)}</span>
+              ${icon("unfold-more", { className: "lookup-vibe-chevron" })}
+            </button>
+            <div class="lookup-vibe-expanded flex-col">
+              <div class="section-label">VIBE</div>
+              <label class="lookup-vibe-row flex items-center justify-between">
+                <span class="lookup-vibe-row-label">Formality</span>
+                <span class="lookup-vibe-select-wrap flex items-center">
+                  <select class="lookup-vibe-select" data-action="lookup/formality">
+                    ${["casual", "polite", "formal"].map((v) => `<option value="${v}" ${deck.formality === v ? "selected" : ""}>${FORMALITY_LABELS[v]}</option>`).join("")}
+                  </select>
+                  ${icon("unfold-more", { className: "lookup-vibe-chevron" })}
+                </span>
+              </label>
+              <label class="lookup-vibe-row flex items-center justify-between">
+                <span class="lookup-vibe-row-label">Audience</span>
+                <span class="lookup-vibe-select-wrap flex items-center">
+                  <select class="lookup-vibe-select" data-action="lookup/audience">
+                    ${["stranger", "staff", "acquaintance", "family"].map((v) => `<option value="${v}" ${deck.audience === v ? "selected" : ""}>${cap(AUDIENCE_LABELS[v])}</option>`).join("")}
+                  </select>
+                  ${icon("unfold-more", { className: "lookup-vibe-chevron" })}
+                </span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -441,7 +454,7 @@ function renderCoachMark(key, text, dismissed) {
   return `
     <div class="lookup-coach flex items-center justify-between" data-coach="${key}">
       <span class="text-body2 fg-secondary">${esc(text)}</span>
-      <button class="lookup-coach-dismiss icon-button" data-action="lookup/dismiss-coach" data-coach-key="${key}" aria-label="Dismiss">×</button>
+      <button class="lookup-coach-dismiss icon-button" data-action="lookup/dismiss-coach" data-coach-key="${key}" aria-label="Dismiss">${icon("close", { size: "sm" })}</button>
     </div>
   `;
 }
@@ -502,9 +515,9 @@ function renderCard(card, { blockIndex, groupIndex, cardIndex, groupTitle, saved
         <span class="lookup-card-text text-h2 fg-accent">${sourceHTML(card)}</span>
       </div>
       <div class="lookup-card-actions flex items-center justify-end gap-sm">
-        <button class="icon-button lookup-card-play" data-action="lookup/play" ${dataAttrs} aria-label="Play audio">🔊</button>
-        <button class="icon-button lookup-card-save" data-action="lookup/save" ${dataAttrs} ${savedAttr} aria-label="Save to phrasebook">🔖</button>
-        <button class="icon-button lookup-card-reseed" data-action="lookup/reseed" ${dataAttrs} ${reseedGroupTitleAttr} aria-label="Search from this card">🔍</button>
+        <button class="icon-button lookup-card-play" data-action="lookup/play" ${dataAttrs} aria-label="Play audio">${icon("sound")}</button>
+        <button class="icon-button lookup-card-save" data-action="lookup/save" ${dataAttrs} ${savedAttr} aria-label="Save to phrasebook">${saved ? icon("book-selected") : icon("book")}</button>
+        <button class="icon-button lookup-card-reseed" data-action="lookup/reseed" ${dataAttrs} ${reseedGroupTitleAttr} aria-label="Search from this card">${icon("search")}</button>
       </div>
     </div>
   `;

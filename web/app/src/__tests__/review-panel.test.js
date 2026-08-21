@@ -38,7 +38,7 @@ function swipe(el, dx) {
 describe("openReviewPanel", () => {
   it("renders the prompt hidden behind a skeleton until revealed", () => {
     openReviewPanel(appEl, deck, cards, () => {});
-    const card = appEl.querySelector(".review-card");
+    const card = appEl.querySelector(".review-card-wrap");
     expect(card.dataset.revealed).toBe("false");
     expect(appEl.querySelector(".review-prompt").textContent).toBe("dinner");
   });
@@ -46,9 +46,9 @@ describe("openReviewPanel", () => {
   it("toggle-reveal flips data-revealed", () => {
     openReviewPanel(appEl, deck, cards, () => {});
     appEl.querySelector('[data-action="review/toggle-reveal"]').click();
-    expect(appEl.querySelector(".review-card").dataset.revealed).toBe("true");
+    expect(appEl.querySelector(".review-card-wrap").dataset.revealed).toBe("true");
     appEl.querySelector('[data-action="review/toggle-reveal"]').click();
-    expect(appEl.querySelector(".review-card").dataset.revealed).toBe("false");
+    expect(appEl.querySelector(".review-card-wrap").dataset.revealed).toBe("false");
   });
 
   it("toggle-direction swaps prompt and answer sides", () => {
@@ -63,9 +63,9 @@ describe("openReviewPanel", () => {
   it("toggle-direction resets reveal state", () => {
     openReviewPanel(appEl, deck, cards, () => {});
     appEl.querySelector('[data-action="review/toggle-reveal"]').click();
-    expect(appEl.querySelector(".review-card").dataset.revealed).toBe("true");
+    expect(appEl.querySelector(".review-card-wrap").dataset.revealed).toBe("true");
     appEl.querySelector('[data-action="review/toggle-direction"]').click();
-    expect(appEl.querySelector(".review-card").dataset.revealed).toBe("false");
+    expect(appEl.querySelector(".review-card-wrap").dataset.revealed).toBe("false");
   });
 
   it("swiping left advances to the next card", () => {

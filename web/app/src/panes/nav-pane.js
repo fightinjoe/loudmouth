@@ -29,6 +29,8 @@ import {
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { setListHTMLSafe } from "../js/uiState.js";
 import { SUGGESTED_PHRASEBOOKS, pendingSuggestions } from "../js/suggested-phrasebooks.js";
+import { icon } from "../components/icon.js";
+import { renderPhrasebookRow } from "../components/phrasebook-row.js";
 
 // ── Pure renderers ───────────────────────────────────────────────────────────
 
@@ -66,28 +68,23 @@ function renderHeader(title) {
 }
 
 function renderDeckRow(deck, count, subtitle) {
-  return `
-    <div class="deck-picker-row flex items-center tappable" data-action="nav/open-deck" data-deck-id="${deck.id}">
-      <div class="flex-col">
-        <span class="text-h2 fg-body">${deck.name}</span>
-        <span class="text-body2 fg-secondary">${subtitle ?? `${count} card${count !== 1 ? "s" : ""}`}</span>
-      </div>
-    </div>
-  `;
+  return renderPhrasebookRow({
+    title: deck.name,
+    subtitle: subtitle ?? `${count} card${count !== 1 ? "s" : ""}`,
+    chevron: true,
+    rowAction: "nav/open-deck",
+    rowAttrs: `data-deck-id="${deck.id}"`,
+  });
 }
 
 function renderSuggestedRow(suggestion) {
   const count = suggestion.terms.length;
   const noun = suggestion.terms.every((t) => t.type === "word") ? "words" : "words & phrases";
-  return `
-    <div class="deck-picker-row suggested-row flex items-center justify-between">
-      <div class="flex-col">
-        <span class="text-h2 fg-body">${suggestion.emoji} ${suggestion.title}</span>
-        <span class="text-body2 fg-secondary">${count} ${noun}</span>
-      </div>
-      <button class="suggested-row-view-btn tappable" data-action="nav/view-suggested" data-suggestion-id="${suggestion.id}">View</button>
-    </div>
-  `;
+  return renderPhrasebookRow({
+    title: `${suggestion.emoji} ${suggestion.title}`,
+    subtitle: `${count} ${noun}`,
+    pill: { label: "View", action: "nav/view-suggested", attrs: `data-suggestion-id="${suggestion.id}"` },
+  });
 }
 
 function renderItemsHTML(items) {
@@ -212,7 +209,7 @@ export default {
         ${renderHero()}
         <div data-region="nav-banner">${renderCtaBanner(hasDecks)}</div>
         <div class="deck-list flex-1 overflow-y-auto" data-region="nav-list">${renderListHTML(initial.items)}</div>
-        <button class="nav-pane-add-fab flex items-center justify-center bg-accent fg-surface text-h2 shrink-0 tappable" data-action="nav/open-new-phrasebook" aria-label="New phrasebook">＋</button>
+        <button class="nav-pane-add-fab flex items-center justify-center bg-accent fg-surface shrink-0 tappable" data-action="nav/open-new-phrasebook" aria-label="New phrasebook">${icon("add", { size: "lg" })}</button>
       </div>
     `;
   },

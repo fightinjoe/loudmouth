@@ -1,5 +1,6 @@
 import { MODES as MODES_MAP, MODE_LABELS, DEFAULT_MODE } from '../js/modes.js'
 import { openBottomSheet } from './bottom-sheet.js'
+import { icon } from './icon.js'
 
 const MODES = Object.values(MODES_MAP)
 const ORDERS = ['default', 'random', 'reverse']
@@ -18,21 +19,21 @@ function renderBody({ name, mode, order, readingDisplay }, systemDeck) {
       <span class="deck-settings-label text-body1 font-medium fg-body">Card template</span>
       <span class="deck-settings-value deck-settings-value--accent flex items-center text-body1 font-medium fg-accent" id="ds-mode-value">
         ${MODE_LABELS[mode]}
-        <span class="deck-settings-chevron text-icon-sm">⌃</span>
+        ${icon('next', { size: 'sm', className: 'deck-settings-chevron' })}
       </span>
     </div>
     <div class="deck-settings-row flex items-center justify-between tappable" id="ds-order-row">
       <span class="deck-settings-label text-body1 font-medium fg-body">Card order</span>
       <span class="deck-settings-value deck-settings-value--accent flex items-center text-body1 font-medium fg-accent" id="ds-order-value">
         ${ORDER_LABELS[order]}
-        <span class="deck-settings-chevron text-icon-sm">⌃</span>
+        ${icon('next', { size: 'sm', className: 'deck-settings-chevron' })}
       </span>
     </div>
     <div class="deck-settings-row flex items-center justify-between tappable" id="ds-reading-display-row">
       <span class="deck-settings-label text-body1 font-medium fg-body">Reading</span>
       <span class="deck-settings-value deck-settings-value--accent flex items-center text-body1 font-medium fg-accent" id="ds-reading-display-value">
         ${READING_DISPLAY_LABELS[readingDisplay]}
-        <span class="deck-settings-chevron text-icon-sm">⌃</span>
+        ${icon('next', { size: 'sm', className: 'deck-settings-chevron' })}
       </span>
     </div>
     <div class="deck-settings-row flex items-center justify-between tappable" id="ds-export-row">

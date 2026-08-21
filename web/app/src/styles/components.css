@@ -1,3 +1,14 @@
+/* ── Icons ── */
+
+.icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.icon--sm { width: 18px; height: 18px; }
+.icon--lg { width: 28px; height: 28px; }
+
 /* ── Nav Shell ── */
 
 .content-pane > .meat {
@@ -59,13 +70,15 @@
 
 /* ── Edit mode header toggle ── */
 
-.deck-header-done {
-  display: none;
+/* Keep the Done button's 44px slot reserved even when hidden so the centered
+   title stays centered in non-edit mode (toggle visibility, not display). */
+#content-pane .deck-header-done {
+  visibility: hidden;
   color: var(--accent);
 }
 
 #content-pane[data-edit-mode] .deck-header-done {
-  display: flex;
+  visibility: visible;
 }
 #content-pane[data-edit-mode] #btn-deck-add {
   display: none;
@@ -98,13 +111,13 @@
 
 .card-row-reorder-handle {
   display: none;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  align-items: center;
   padding: 0.5rem;
   color: var(--fg-tertiary);
-}
-
-.card-row-reorder-handle svg {
-  width: 44px;
-  height: 44px;
 }
 
 #content-pane[data-edit-mode] .card-row-reorder-handle {
@@ -142,7 +155,9 @@
 }
 
 .deck-view-list {
-  padding: 0 1.25rem 1.25rem;
+  /* extra bottom padding so the final card scrolls clear of the floating
+     action pill (pill ~50px + 20px bottom gap + breathing room) */
+  padding: 0 1.25rem 96px;
 }
 
 /*-- Cards --*/
@@ -160,95 +175,28 @@ ruby {
   ruby-position: over;
 }
 
-/* Hide plain reading if ruby is active */
-.card-content[data-has-ruby] .card-reading {
+/* Hide the plain reading line when furigana ruby is shown inline */
+.card-term[data-has-ruby] .card-term-reading {
   display: none;
 }
 
-#app[data-deck-mode="study"] .deck-view-list {
-  .card-row .card-primary {
-    .card-text {
-      display: auto;
-    }
-    .card-translation {
-      display: none;
-    }
-  }
-  .card-row .card-secondary {
-    .card-reading {
-      display: auto;
-    }
-    .card-translation {
-      display: none;
-    }
-  }
-}
-
-#app[data-deck-mode="review"] .deck-view-list {
-  .card-row .card-primary {
-    .card-text {
-      display: auto;
-    }
-    .card-translation {
-      display: none;
-    }
-  }
-  .card-row .card-secondary {
-    .card-reading {
-      display: auto;
-    }
-    .card-translation {
-      display: auto;
-    }
-  }
-}
-
-#app[data-deck-mode="reverse"] .deck-view-list {
-  .card-row .card-primary {
-    .card-text {
-      display: none;
-    }
-    .card-translation {
-      display: auto;
-    }
-  }
-  .card-row .card-secondary {
-    .card-reading {
-      display: none;
-    }
-    .card-translation {
-      display: none;
-    }
-  }
-}
-
-/* ── Card Row Swipe-to-Edit ── */
+/* ── Phrasebook term card (Figma "Term", node 606:6505) ──
+   Separate rounded cards with a vertical gap: English translation on top,
+   a divider with an inline audio control, then the target term (blue) with
+   its reading below. Swipe reveals edit/star/delete behind the card. */
 
 .card-row-wrapper {
   position: relative;
-
-  /* Radius + divider are scoped per logical section (bounded by
-     .deck-view-section-header siblings, or the list edges), not just the
-     whole list's first/last row — a phrasebook can mix an ungrouped
-     "Translations" run with grouped sections (docs/journeys.md Journey 3). */
-  &:first-child .card-row,
-  .deck-view-section-header + & .card-row {
-    border-radius: var(--radius) var(--radius) 0 0;
-  }
-  &:last-child .card-row,
-  &:has(+ .deck-view-section-header) .card-row {
-    border-radius: 0 0 var(--radius) var(--radius);
-  }
-  &:not(:has(+ .deck-view-section-header)) + .card-row-wrapper .card-row {
-    border-top: 1px solid hsl(var(--white) / 0.7);
-  }
+}
+.card-row-wrapper + .card-row-wrapper {
+  margin-top: 8px;
 }
 
 .card-row {
   position: relative;
   z-index: 1;
-  min-height: 64px;
-  padding: 0.5rem 0.75rem 0.5rem 1rem;
+  padding: 12px;
+  border-radius: 16px;
   background: var(--bg-blue-tint);
   transition: transform 250ms ease;
 }
@@ -261,8 +209,36 @@ ruby {
   transform: translateX(calc(-1 * var(--swipe-reveal-width)));
 }
 
+.card-term,
+.card-term-english,
+.card-term-cjk {
+  width: 100%;
+  word-break: break-word;
+}
+
+.card-term-divider {
+  padding: 6px 0;
+}
+
+.card-term-rule {
+  height: 1px;
+  background: hsl(var(--gray-900) / 0.12);
+}
+
+.card-term-target {
+  padding-top: 10px;
+  gap: 3px;
+}
+
+.card-term-reading {
+  color: var(--fg-reading);
+}
+
 .card-row-play {
-  padding: 0.5rem;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--fg-tertiary);
 }
 
 .deck-view-empty {
@@ -340,6 +316,17 @@ ruby {
   transform: translateY(0);
 }
 
+/* Full-height action pane (lookup, review): covers everything except the
+   service bar / status-bar gap at the top (Figma action panes at ~874−68).
+   Content-hugging panes (new-phrasebook, settings) omit this. */
+.bottom-sheet--full {
+  top: max(env(safe-area-inset-top, 0px), 44px);
+  height: auto;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+}
+
 .bottom-sheet[data-dragging] {
   transition: none;
 }
@@ -370,8 +357,7 @@ ruby {
 
 .deck-settings-chevron {
   opacity: 0.7;
-  transform: rotate(180deg);
-  display: inline-block;
+  transform: rotate(90deg);
 }
 
 /* ── Card Edit Panel ── */
@@ -442,6 +428,8 @@ ruby {
   position: absolute;
   inset: 0;
   z-index: 0;
+  /* Figma landing gradient: white → yellow-100 (#fffad1), top to bottom. */
+  background: linear-gradient(to bottom, hsl(var(--white)), hsl(var(--yellow-100)));
 }
 
 /* Content pane covers the full shell, slides right to reveal nav pane */
@@ -464,6 +452,19 @@ ruby {
   transform: translateX(280px);
 }
 
+/* Landing page: with no phrasebook selected the content pane renders nothing
+   and must not paint over the nav pane beneath it (docs/journeys.md Journey 1
+   step 1 — the nav landing fills the screen). Make it fully transparent and
+   click-through so the nav owns the surface. */
+.content-pane[data-empty] {
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+.content-pane[data-empty] .meat {
+  background: transparent;
+}
+
 /*-- Full-height slide-up pane (action-layer content providers) --*/
 
 .pane-full {
@@ -482,6 +483,9 @@ ruby {
 }
 
 .icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   color: var(--accent);
   border-radius: var(--radius-pill);
@@ -489,7 +493,14 @@ ruby {
   height: 44px;
 }
 
-/* .tappable is added to pane-header-title buttons in JS */
+/* Centered pane title — Figma Header (node 443:6726): Roboto Condensed, 22px.
+   .tappable is added to title buttons in JS. */
+.pane-header-title {
+  font-family: var(--font-family-condensed);
+  font-size: 1.375rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
 
 .pane-header-spacer {
   width: 44px;
@@ -497,37 +508,42 @@ ruby {
 
 /* ── Deck view bottom action bar (Review; Add joins in PH-006) ── */
 
+/* Floating pill over the scrolling card list (Figma Action bar, node
+   606:6511: absolute, bottom 20px, centered). The bar is click-through so
+   taps fall to the list beneath; only the pill itself is interactive. The
+   list carries bottom padding (below) so the last card clears the pill. */
 .deck-view-action-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
   padding: 0 0 20px;
+  pointer-events: none;
 }
-
 .deck-view-action-pill {
+  pointer-events: auto;
   background: var(--bg-surface);
   border-radius: var(--radius-pill);
   box-shadow: var(--shadow-float);
-  padding: 4px;
+  gap: 10px;
+  padding: 8px 20px;
 }
 
+/* Figma "Action" (node 476:2663): icon stacked above a 20px accent label,
+   fixed 100px width, no divider between the two actions. */
 .deck-view-action-btn {
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-pill);
+  width: 100px;
+  gap: 2px;
   color: var(--accent);
-  font-weight: 600;
-}
-
-.deck-view-action-btn + .deck-view-action-btn {
-  border-left: 1px solid var(--border-default);
-  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
-}
-.deck-view-action-btn:first-child:not(:last-child) {
-  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+  font-size: 20px;
+  font-weight: 400;
 }
 
 /* ── Review Panel (Journey 4) ── */
 
 .review-panel {
   z-index: 151;
-  min-height: 70vh;
   padding-bottom: env(safe-area-inset-bottom, 24px);
 }
 
@@ -547,46 +563,50 @@ ruby {
 
 .review-card {
   width: 100%;
-  min-height: 260px;
+  min-height: 200px;
   border-radius: var(--radius);
   padding: 32px 24px;
-  gap: 16px;
   text-align: center;
 }
 
-.review-divider {
-  width: 40px;
-  height: 1px;
-  background: hsl(var(--gray-900) / 0.15);
+/* The revealed answer sits BELOW the flashcard (Figma Review frames), not
+   inside it — the card holds only the prompt. The answer region reserves
+   height with a shimmer skeleton so revealing doesn't shift the layout. */
+.review-answer-region {
+  width: 100%;
+  min-height: 64px;
+  padding: 20px 24px 0;
+  gap: 8px;
+  align-items: flex-start;
+  text-align: left;
 }
 
-/* Answer side hidden behind a skeleton until revealed — class toggle on the
-   stable .review-card container, per web/AGENTS.md "Use CSS class toggles
-   for transient state" (never swap innerHTML for this). */
 .review-answer-skeleton {
   display: flex;
+  width: 100%;
+  gap: 8px;
 }
 .review-answer {
   display: none;
+  width: 100%;
 }
-.review-card[data-revealed="true"] .review-answer-skeleton {
+.review-card-wrap[data-revealed="true"] .review-answer-skeleton {
   display: none;
 }
-.review-card[data-revealed="true"] .review-answer {
+.review-card-wrap[data-revealed="true"] .review-answer {
   display: block;
 }
 
-.review-skeleton-line {
-  width: 60%;
-  height: 20px;
-  border-radius: 10px;
-  background: hsl(var(--gray-900) / 0.1);
-  animation: review-shimmer 1.2s ease-in-out infinite;
+/* Hidden-answer placeholder — two rounded bars (Figma "Translation (hidden)",
+   node 588:5080): full-width + short, gray-200 tint. */
+.review-skeleton-bar {
+  height: 24px;
+  border-radius: 4px;
+  background: hsl(var(--gray-200-tint) / 0.2);
+  width: 100%;
 }
-
-@keyframes review-shimmer {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+.review-skeleton-bar--short {
+  width: 46%;
 }
 
 .review-controls {
@@ -604,10 +624,20 @@ ruby {
 
 /* ── Lookup Panel (Journeys 1/3 — Input/Translation/Group stack) ── */
 
-.lookup-panel {
+/* Higher specificity (2 classes) so this reliably beats the .bg-primary
+   utility class applied by the shared bottom-sheet primitive — otherwise
+   source order (utilities.css loads after components.css) lets the beige
+   default win. Top radius matches Figma's "Create Phrasebook pane" (40px)
+   so the nested white Look-up surface can nest flush into it below. */
+.bottom-sheet.lookup-panel {
   z-index: 151;
-  max-height: 90vh;
+  background: hsl(var(--gray-100));
+  border-radius: 40px 40px 0 0;
   padding-bottom: env(safe-area-inset-bottom, 24px);
+}
+
+.lookup-panel-inner {
+  min-height: 0;
 }
 
 .lookup-header-right {
@@ -626,25 +656,70 @@ ruby {
   font-weight: 600;
 }
 
+/* Input mode is two deliberate surfaces from the Figma Look-up component:
+   white header/term/VIBE surface above a gray-100 history surface. */
 .lookup-input-body {
-  padding: 0 20px 20px;
-  gap: 20px;
+  min-height: 0;
+  gap: 0;
   overflow-y: auto;
 }
 
+/* Flush with the panel's top edge (no gap/color-seam above it) and rounded
+   on all corners per Figma's "Look-up" surface (node 573:19892) — the
+   panel's own 40px top radius (above) matches so they nest seamlessly. */
+.lookup-input-surface {
+  flex-shrink: 0;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-radius: 40px;
+  background: var(--bg-surface);
+}
+
+/* The drag gripper overlays the white surface instead of taking its own
+   flex row above it — that flex space exposed the panel's background
+   between the gripper and the surface, breaking the "flush to the top"
+   look. Scoped to lookup only; other sheet kinds keep the default. */
+.lookup-panel .sheet-handle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  margin: 0;
+}
+
+.lookup-input-surface .pane-header {
+  padding: 20px;
+}
+
+.lookup-input-form {
+  gap: 20px;
+}
+
+.lookup-input-wrap {
+  padding: 0 20px;
+}
+
 .lookup-input-field-row {
-  border-bottom: 1px solid hsl(var(--gray-900) / 0.15);
-  padding-bottom: 8px;
+  min-height: 82px;
+  border-bottom: 1px solid hsl(var(--gray-300));
+  padding-bottom: 10px;
 }
 
 .lookup-input-field {
   border: none;
   outline: none;
   background: transparent;
+  color: var(--fg-body);
   font-weight: 300;
 }
 
-.lookup-input-clear {
+.lookup-input-field::placeholder {
+  color: hsl(220 20 80); /* Figma placeholder #cbd2e1 */
+  opacity: 1;
+}
+
+.lookup-input-wrap .lookup-input-clear {
   display: none;
   width: 32px;
   height: 32px;
@@ -654,15 +729,47 @@ ruby {
   display: flex;
 }
 
+/* Collapsed settings: VIBE label · summary · blue double-chevron. */
 .lookup-vibe-summary {
   width: 100%;
+  min-height: 24px;
+  gap: 10px;
+  padding: 0 20px;
+  background: transparent;
   text-align: left;
-  padding: 8px 0;
+}
+
+.lookup-vibe-label {
+  flex: 1;
+  font-family: var(--font-family-condensed);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--fg-caption);
+}
+
+.lookup-vibe-summary-label {
+  font-family: var(--font-family-manrope);
+  font-size: 0.875rem;
+  line-height: 1.1786;
+  color: var(--fg-caption);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.lookup-vibe-chevron {
+  color: var(--accent);
 }
 
 .lookup-vibe-expanded {
   display: none;
-  gap: 8px;
+  gap: 0;
+  padding: 0 20px;
+}
+
+/* Must outrank the .flex-col utility class carried by the render helper. */
+.lookup-vibe-group:not([data-expanded="true"]) .lookup-vibe-expanded {
+  display: none;
 }
 
 .lookup-vibe-group[data-expanded="true"] .lookup-vibe-summary {
@@ -672,13 +779,59 @@ ruby {
   display: flex;
 }
 
+.lookup-vibe-expanded .section-label {
+  padding: 0 0 12px;
+}
+
+/* Figma "Select" row (node 581:4280): 52px tall, 16px vertical padding,
+   Manrope 18px/22px label + blue value, gray-100-tint divider. */
 .lookup-vibe-row {
-  padding: 4px 0;
+  min-height: 52px;
+  padding: 16px 0;
+  border-bottom: 1px solid hsl(var(--gray-100-tint) / 0.1);
+}
+
+.lookup-vibe-row-label {
+  flex: 1;
+  font-family: var(--font-family-manrope);
+  font-size: 1.125rem;
+  line-height: 1.375rem;
+  color: var(--fg-body);
+}
+
+.lookup-vibe-select-wrap {
+  gap: 2px;
+  color: var(--accent);
+}
+
+.lookup-vibe-select {
+  appearance: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-family-manrope);
+  font-size: 1.125rem;
+  line-height: 1.375rem;
+  text-align: right;
+  text-align-last: right;
+}
+
+.lookup-vibe-select-wrap .lookup-vibe-chevron {
+  pointer-events: none;
 }
 
 .lookup-history {
   display: none;
-  gap: 2px;
+  flex-shrink: 0;
+  gap: 16px;
+  padding: 20px;
+}
+/* Must outrank the .flex-col utility class carried by the render helper
+   (same collision as .lookup-vibe-expanded above) — otherwise the "HISTORY"
+   heading shows even with zero entries. */
+.lookup-history:not([data-visible="true"]) {
+  display: none;
 }
 .lookup-history[data-visible="true"] {
   display: flex;
@@ -686,7 +839,7 @@ ruby {
 
 .lookup-history-item {
   text-align: left;
-  padding: 10px 0;
+  padding: 0 0 8px;
   border-bottom: 1px solid hsl(var(--gray-900) / 0.06);
 }
 
@@ -834,7 +987,15 @@ ruby {
 }
 
 .suggested-row-view-btn {
-  padding: 0.375rem 0;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: hsl(var(--blue-500) / 0.1);
   color: var(--accent);
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.deck-picker-chevron {
+  flex-shrink: 0;
 }

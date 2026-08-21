@@ -28,7 +28,7 @@
  *   clamped { blocks[] }   +   warnings[] (for the handler to log)
  */
 
-const { validateCard } = require('./card-validate');
+const { validateCard, normalizeJapaneseReadingTokens } = require('./card-validate');
 const { MAX_BLOCKS, MAX_GROUPS_TOTAL, MAX_CARDS_PER_GROUP } = require('./lookup-prompt');
 
 // Output-only formality values a /lookup card may carry (docs/API_DESIGN.md
@@ -41,6 +41,22 @@ function stripInvalidFormality(card, prefix, warnings) {
     warnings.push(`${prefix}.formality stripped (invalid value "${card.formality}")`);
     delete card.formality;
   }
+}
+
+function normalizeCard(card) {
+  const normalized = { ...card };
+  if (normalized.lang === 'ja' && normalized.reading !== undefined) {
+    normalized.reading = normalizeJapaneseReadingTokens(normalized.reading);
+  }
+  if (normalized.example?.reading !== undefined) {
+    normalized.example = {
+      ...normalized.example,
+      reading: normalized.lang === 'ja'
+        ? normalizeJapaneseReadingTokens(normalized.example.reading)
+        : normalized.example.reading,
+    };
+  }
+  return normalized;
 }
 
 /**
@@ -93,7 +109,7 @@ function validateLookupResponse(raw, { context = '' } = {}) {
 
     // Block card (throws on malformed).
     validateCard(block.card, `${prefix}.card`);
-    const card = { ...block.card };
+    const card = normalizeCard(block.card);
     stripInvalidFormality(card, `${prefix}.card`, warnings);
 
     // Service sets `context` on a block card from the input parenthetical —
@@ -172,7 +188,7 @@ function validateAndCleanGroup(group, prefix, warnings) {
   cards.forEach((card, ci) => validateCard(card, `${prefix}.cards[${ci}]`));
 
   cards = cards.map((c) => {
-    const cleaned = { ...c };
+    const cleaned = normalizeCard(c);
     stripInvalidFormality(cleaned, `${prefix}.cards`, warnings);
     // Service sets `context` on every group card from the group title.
     cleaned.context = title;

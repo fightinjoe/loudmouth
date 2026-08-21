@@ -29,6 +29,7 @@ import { setAttrSafe, setListHTMLSafe } from "../js/uiState.js";
 import { renderDeckBody, renderCardsHTML } from "./content-pane-render.js";
 import { wireContentGestures } from "./content-pane-gestures.js";
 import { registerCardActions } from "./content-pane-actions.js";
+import { getLookupHistory } from "../js/preferences.js";
 import { loadDeckData } from "./content-pane-load.js";
 
 export default {
@@ -112,9 +113,9 @@ export default {
 
   render(initial) {
     return `
-      <div id="content-pane" class="content-pane absolute-inset flex-col bg-primary transition-transform">
+      <div id="content-pane" class="content-pane absolute-inset flex-col bg-surface transition-transform"${initial.deck ? "" : " data-empty"}>
         <div class="handle"></div>
-        <div class="meat screen flex-1 flex-col bg-primary overflow-hidden" data-region="content-body">
+        <div class="meat screen flex-1 flex-col bg-surface overflow-hidden" data-region="content-body">
           ${renderDeckBody(initial.deck, initial.cards)}
         </div>
         <!-- Static reorder handle. Always in the DOM; CSS only enables
@@ -160,6 +161,7 @@ export default {
       }
       setAttrSafe(rootEl, "editMode", next.editMode ? "" : null);
       setAttrSafe(rootEl, "menuOpen", next.menuOpen ? "" : null);
+      setAttrSafe(rootEl, "empty", next.deck ? null : "");
       if (next.menuOpen && !prev?.menuOpen) positionTitleMenu();
       if (next.deck?.mode) stageEl.dataset.deckMode = next.deck.mode;
     });
@@ -233,9 +235,13 @@ export default {
 
     delegate.register("content/add", () => {
       const { deck, cards } = ui.get("content");
+      // A phrasebook can have prior look-ups without saved cards. History is
+      // therefore the durable first-use signal for VIBE's initial state; cards
+      // retain compatibility with phrasebooks created before lookup history.
+      const hasTranslatedBefore = cards.length > 0 || getLookupHistory(deck.id).length > 0;
       ui.transition("action/open", {
         kind: "lookup",
-        payload: { deck, hasTranslatedBefore: cards.length > 0 },
+        payload: { deck, hasTranslatedBefore },
       });
     });
 

@@ -36,6 +36,27 @@ function validateReadingTokens(value, prefix) {
   }
 }
 
+// Japanese ruby is only valid for kanji-only tokens. Models also sometimes
+// split a kana-only phrase into one token per character, so coalesce adjacent
+// unannotated tokens at the service boundary before returning a card.
+function normalizeJapaneseReadingTokens(value) {
+  const normalized = value.map(([base, annotation]) => [
+    base,
+    /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+$/u.test(base) ? annotation : null,
+  ]);
+
+  const merged = [];
+  for (const token of normalized) {
+    const previous = merged[merged.length - 1];
+    if (previous && previous[1] === null && token[1] === null) {
+      previous[0] += token[0];
+    } else {
+      merged.push(token);
+    }
+  }
+  return merged;
+}
+
 /**
  * Validates a single Card object against CARD_SCHEMA (docs/CARD_SCHEMA.md).
  *
@@ -95,4 +116,4 @@ function validateCard(card, prefix) {
   }
 }
 
-module.exports = { validateCard, validateReadingTokens };
+module.exports = { validateCard, validateReadingTokens, normalizeJapaneseReadingTokens };
