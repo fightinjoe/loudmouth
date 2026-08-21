@@ -3,9 +3,15 @@
  *
  * Two gestures, both wired directly to static handles per Rule 6:
  *
- *   - Shell swipe: drag the left-edge `.handle` to toggle shell exposure.
- *     The gesture animates the content pane's transform; on touchend it
- *     calls `shell/toggle` if displacement crossed the threshold.
+ *   - Shell swipe: drag the shell-level `.shell-swipe-handle` (a sibling of
+ *     nav-pane/content-pane, not nested inside either — see panes.css) to
+ *     toggle shell exposure. Its position/width flip via the `[data-shell]`
+ *     attribute selector: a left-edge strip opens the nav pane (swipe right
+ *     from the left edge), a right-edge strip closes it back to the content
+ *     pane (swipe left from the right edge) now that the nav pane is
+ *     full-bleed and no longer peeks the content pane in from an edge. The
+ *     gesture animates the content pane's transform; on touchend it calls
+ *     `shell/toggle` if displacement crossed the threshold.
  *
  *   - Reveal swipe: drag a card row leftward to expose action buttons.
  *     Wired on the pane root (static), uses event-target hit-testing to
@@ -19,7 +25,6 @@
  * currently exposed (used to short-circuit card-row click handlers).
  */
 
-const NAV_PANE_WIDTH = 280;
 const OPEN_THRESHOLD = 100;
 const REVEAL_WIDTH = 160;
 const REVEAL_THRESHOLD = 80;
@@ -29,13 +34,16 @@ const SWIPED_CLASS = "card-row-wrapper--swiped";
 
 export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isEdit }) {
   // ── Shell swipe ─────────────────────────────────────────────────────────
-  let shellStartX = null, shellStartY = null, shellAxis = null;
+  let shellStartX = null, shellStartY = null, shellAxis = null, shellPaneWidth = 0;
   function shellIsOpen() { return ui.get("shell")?.exposed === "background"; }
 
   handleEl.addEventListener("touchstart", (e) => {
     shellStartX = e.touches[0].clientX;
     shellStartY = e.touches[0].clientY;
     shellAxis = null;
+    // The content pane's own width — it now slides its full width off
+    // screen (full-bleed nav) rather than a fixed 280px peek.
+    shellPaneWidth = rootEl.getBoundingClientRect().width;
   }, { passive: true });
 
   handleEl.addEventListener("touchmove", (e) => {
@@ -50,8 +58,8 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
     const open = shellIsOpen();
     if (!open && dx < 0) return;
     if (open && dx > 0) return;
-    const base = open ? NAV_PANE_WIDTH : 0;
-    const clamped = Math.max(0, Math.min(NAV_PANE_WIDTH, base + dx));
+    const base = open ? shellPaneWidth : 0;
+    const clamped = Math.max(0, Math.min(shellPaneWidth, base + dx));
     rootEl.dataset.dragging = "";
     rootEl.style.transform = `translateX(${clamped}px)`;
   }, { passive: false });

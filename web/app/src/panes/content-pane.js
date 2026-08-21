@@ -1,7 +1,9 @@
 /**
  * Content pane — Pane Protocol contract for the `content` namespace.
  *
- * Layer: content. Renders the currently selected deck (or empty state).
+ * Layer: content. Renders the currently selected deck, a browse view
+ * (all phrasebooks / suggested phrasebooks, entered from the nav pane's
+ * "View all" links), or the empty state.
  *
  * Slice shape:
  *   {
@@ -12,10 +14,11 @@
  *     menuOpen:  boolean,             // deck-title menu toggle
  *     isStarred: boolean,             // viewing a starred deck
  *     reload:    number,              // bump to force a re-fetch of the current deck
+ *     browse:    { title, groupsHtml } | null, // browse-view content, replaces the deck body while set
  *   }
  *
  * Transitions:
- *   content/select-deck { id }     — request a load; subscriber fetches and fires content/loaded
+ *   content/select-deck { id }     — request a load; subscriber fetches and fires content/loaded; exits browse
  *   content/reload-deck            — re-fetch the current deck (deckId unchanged); picks up in-place field changes (e.g. mode)
  *   content/loaded { deck, cards, isStarred } — replace deck + cards
  *   content/cards-changed { cards } — replace cards (after add/edit/delete)
@@ -23,14 +26,17 @@
  *   content/exit-edit              — exit edit mode
  *   content/toggle-menu            — toggle the deck-title menu
  *   content/close-menu             — close the deck-title menu
+ *   content/browse { title, groupsHtml } — enter a browse view (nav's "View all")
+ *   content/browse-back            — exit the browse view, returning to the current deck
  */
 import { createDeck, importCards, updateDeckAccessTime, updateDeckCardOrder } from "../js/db.js";
 import { setAttrSafe, setListHTMLSafe } from "../js/uiState.js";
-import { renderDeckBody, renderCardsHTML } from "./content-pane-render.js";
+import { renderDeckBody, renderCardsHTML, renderBrowseBody } from "./content-pane-render.js";
 import { wireContentGestures } from "./content-pane-gestures.js";
 import { registerCardActions } from "./content-pane-actions.js";
 import { getLookupHistory } from "../js/preferences.js";
 import { loadDeckData } from "./content-pane-load.js";
+import { SUGGESTED_PHRASEBOOKS } from "../js/suggested-phrasebooks.js";
 
 export default {
   namespace: "content",
@@ -44,10 +50,21 @@ export default {
     menuOpen: false,
     isStarred: false,
     reload: 0,
+    browse: null,
   },
 
   transitions: {
-    "content/select-deck": (slice, { id }) => ({ ...slice, deckId: id }),
+    "content/select-deck": (slice, { id }) => ({
+      ...slice,
+      deckId: id,
+      browse: null,
+      // Blank the stale deck immediately when switching decks while the
+      // browse view is visible on-screen (Rule 7 isn't in play here — this
+      // is a state transition, not a gesture — but showing the *previous*
+      // deck's content while the new one loads would be actively wrong).
+      // Re-selecting the deck already loaded needn't blank anything.
+      ...(id !== slice.deckId ? { deck: null, cards: [] } : {}),
+    }),
     // Force a reload of the currently-selected deck even when deckId is
     // unchanged — used after an in-place mutation of deck fields (e.g. mode)
     // so the deck object is re-fetched from the DB. `reload` is bumped to a
@@ -61,6 +78,7 @@ export default {
       editMode: false,
       editOrder: null,
       menuOpen: false,
+      browse: null,
     }),
     "content/cards-changed": (slice, { cards }) => ({ ...slice, cards }),
 
@@ -109,12 +127,13 @@ export default {
 
     "content/toggle-menu": (slice) => ({ ...slice, menuOpen: !slice.menuOpen }),
     "content/close-menu": (slice) => ({ ...slice, menuOpen: false }),
+    "content/browse": (slice, payload) => ({ ...slice, browse: payload }),
+    "content/browse-back": (slice) => ({ ...slice, browse: null }),
   },
 
   render(initial) {
     return `
       <div id="content-pane" class="content-pane absolute-inset flex-col bg-surface transition-transform"${initial.deck ? "" : " data-empty"}>
-        <div class="handle"></div>
         <div class="meat screen flex-1 flex-col bg-surface overflow-hidden" data-region="content-body">
           ${renderDeckBody(initial.deck, initial.cards)}
         </div>
@@ -135,33 +154,40 @@ export default {
   bindEvents(rootEl, host) {
     const { ui, delegate, stageEl } = host;
     const meatEl = rootEl.querySelector('[data-region="content-body"]');
-    const handleEl = rootEl.querySelector(".handle");
+    const handleEl = stageEl.querySelector(".shell-swipe-handle");
     const reorderHandleEl = rootEl.querySelector("#reorder-handle");
 
     // ── Subscribers ─────────────────────────────────────────────────────────
 
     let lastDeckRendered = null;
     const unsubContent = ui.subscribe("content", (next, prev) => {
-      const listOrderChanged =
-        next.cards !== prev?.cards || next.editOrder !== prev?.editOrder;
-      if (next.deck !== prev?.deck || listOrderChanged) {
-        const listRegion = meatEl.querySelector('[data-region="card-list"]');
-        if (listRegion && next.deck === lastDeckRendered) {
-          // In edit mode the visible order is editOrder, not the underlying
-          // cards order — that snapshot only commits on confirm.
-          const visible =
-            next.editMode && next.editOrder
-              ? next.editOrder.map((id) => next.cards.find((c) => c.id === id)).filter(Boolean)
-              : next.cards;
-          setListHTMLSafe(listRegion, renderCardsHTML(next.deck, visible));
-        } else {
-          meatEl.innerHTML = renderDeckBody(next.deck, next.cards);
-          lastDeckRendered = next.deck;
+      if (next.browse !== prev?.browse) {
+        // Entering/exiting a browse view swaps the whole body; the deck
+        // diffing below is skipped for this event either way.
+        meatEl.innerHTML = next.browse ? renderBrowseBody(next.browse) : renderDeckBody(next.deck, next.cards);
+        lastDeckRendered = next.browse ? null : next.deck;
+      } else if (!next.browse) {
+        const listOrderChanged =
+          next.cards !== prev?.cards || next.editOrder !== prev?.editOrder;
+        if (next.deck !== prev?.deck || listOrderChanged) {
+          const listRegion = meatEl.querySelector('[data-region="card-list"]');
+          if (listRegion && next.deck === lastDeckRendered) {
+            // In edit mode the visible order is editOrder, not the underlying
+            // cards order — that snapshot only commits on confirm.
+            const visible =
+              next.editMode && next.editOrder
+                ? next.editOrder.map((id) => next.cards.find((c) => c.id === id)).filter(Boolean)
+                : next.cards;
+            setListHTMLSafe(listRegion, renderCardsHTML(next.deck, visible));
+          } else {
+            meatEl.innerHTML = renderDeckBody(next.deck, next.cards);
+            lastDeckRendered = next.deck;
+          }
         }
       }
       setAttrSafe(rootEl, "editMode", next.editMode ? "" : null);
       setAttrSafe(rootEl, "menuOpen", next.menuOpen ? "" : null);
-      setAttrSafe(rootEl, "empty", next.deck ? null : "");
+      setAttrSafe(rootEl, "empty", (next.browse || next.deck) ? null : "");
       if (next.menuOpen && !prev?.menuOpen) positionTitleMenu();
       if (next.deck?.mode) stageEl.dataset.deckMode = next.deck.mode;
     });
@@ -264,6 +290,20 @@ export default {
       ui.transition("content/select-deck", { id: realDeck.id });
     });
 
+    delegate.register("content/browse-back", () => ui.transition("content/browse-back"));
+
+    delegate.register("content/browse-select", (_e, el) => {
+      const id = el.dataset.deckId;
+      if (id) updateDeckAccessTime(id);
+      ui.transition("content/select-deck", { id });
+    });
+
+    delegate.register("content/browse-view-suggested", (_e, el) => {
+      const suggestion = SUGGESTED_PHRASEBOOKS.find((s) => s.id === el.dataset.suggestionId);
+      if (!suggestion) return;
+      ui.transition("action/open", { kind: "new-phrasebook", payload: { suggestion } });
+    });
+
     const unregisterCardActions = registerCardActions({ host, isEdit, resetReveal });
 
     return () => {
@@ -271,6 +311,9 @@ export default {
       unsubPersist();
       unsubLoad();
       unregisterCardActions();
+      delegate.unregister("content/browse-back");
+      delegate.unregister("content/browse-select");
+      delegate.unregister("content/browse-view-suggested");
     };
   },
 };

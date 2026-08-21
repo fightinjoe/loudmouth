@@ -293,6 +293,13 @@ ruby {
   padding: 1.25rem 0 0.5rem;
 }
 
+/* "View all" link — sits inside .section-label (uppercase, caption color);
+   override both since it's a normal-case accent-colored link. */
+.deck-picker-view-all {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .deck-picker-row {
   padding: 0.625rem 0;
   gap: 2px;
@@ -430,8 +437,9 @@ ruby {
    When there is no active phrasebook the content pane renders nothing on
    top of it and the nav pane fills the whole screen (docs/journeys.md
    Journey 1 step 1, the landing page). When a phrasebook is open, sliding
-   the content pane 280px aside reveals only a clipped 280px peek of it
-   (see #app-shell's overflow: hidden). */
+   the content pane its own full width aside reveals the nav pane full-bleed
+   — the content pane no longer peeks in from the edge (see #app-shell's
+   overflow: hidden, which clips it fully off-screen). */
 #nav-pane {
   position: absolute;
   inset: 0;
@@ -457,7 +465,7 @@ ruby {
 }
 
 #app[data-shell="background"] .content-pane {
-  transform: translateX(280px);
+  transform: translateX(100%);
 }
 
 /* Landing page: with no phrasebook selected the content pane renders nothing

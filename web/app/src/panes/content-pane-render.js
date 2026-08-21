@@ -110,3 +110,33 @@ export function renderDeckBody(deck, cards) {
          </div>`}
   `;
 }
+
+/**
+ * Browse-view header — a back button (returns to the current deck/empty
+ * state) and a centered title. Reached from the nav pane's "View all"
+ * links (Figma node 602:5562, "All phrasebooks").
+ */
+function renderBrowseHeader(title) {
+  return renderPaneHeader({
+    leading: headerIconButton("back", { action: "content/browse-back", label: "Back" }),
+    title: headerTitle(title),
+    trailing: headerSpacer(),
+  });
+}
+
+/**
+ * Browse-view body — the header plus caller-supplied, pre-rendered group
+ * HTML (grouped-by-language phrasebook rows, or a flat suggested-phrasebook
+ * list). The groups themselves are built by whichever pane requested the
+ * browse (currently the nav pane), since the row shape — deck chevron rows
+ * vs. suggestion pill rows — and their click actions differ by kind.
+ */
+export function renderBrowseBody(browse) {
+  if (!browse) return "";
+  return `
+    ${renderBrowseHeader(browse.title)}
+    <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto" data-region="browse-list">
+      ${browse.groupsHtml}
+    </div>
+  `;
+}

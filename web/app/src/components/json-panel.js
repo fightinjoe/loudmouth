@@ -4,6 +4,9 @@ function cardToExportable(card) {
   const c = { lang: card.lang, text: card.text, translation: card.translation }
   if (card.reading) c.reading = card.reading
   if (card.romanization) c.romanization = card.romanization
+  if (card.definition) c.definition = card.definition
+  if (card.formality) c.formality = card.formality
+  if (card.context) c.context = card.context
   if (card.notes) c.notes = card.notes
   if (card.example) c.example = card.example
   return c

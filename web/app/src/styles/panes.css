@@ -1,17 +1,36 @@
-#content-pane .handle {
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 28%;
+/* Shell swipe handle — a single static element (Rule 6) that owns the touch
+   gesture toggling the shell between foreground (content on screen) and
+   background (nav pane full-bleed, content pane fully off-screen — see
+   #app-shell "Nav shell" rules in components.css). It lives directly under
+   #app-shell as a sibling of nav-pane/content-pane, not nested inside
+   either, so its `position: absolute` sizing always resolves against the
+   real screen (#app-shell's box) instead of getting dragged off-screen
+   along with a translated pane.
+
+   - foreground: a left-edge strip opens the nav pane (swipe right).
+   - background: a right-edge strip returns to the content pane (swipe
+     left from the right edge) — the nav pane no longer peeks the content
+     pane in from that edge, so the handle must live at the true edge. */
+.shell-swipe-handle {
+  position: absolute;
   z-index: 9999;
 }
 
-[data-shell="foreground"] #content-pane .handle {
-  position: fixed;
+[data-shell="foreground"] .shell-swipe-handle {
   top: 70px;
   left: 0;
   bottom: 70px;
   width: 15%;
-  z-index: 9999;
+}
+
+[data-shell="background"] .shell-swipe-handle {
+  top: 0;
+  right: 0;
+  bottom: 96px; /* clears the nav pane's bottom-right FAB */
+  /* A true edge-swipe strip (fixed px, not a %) — the nav pane's own
+     tappable chrome (the "View all" links, right-aligned in the Recent /
+     Suggested headers) sits well inboard of the true right edge; a wide
+     percentage-based strip here would sit on top of it and swallow taps
+     (data-action clicks resolve to whichever element is topmost). */
+  width: 24px;
 }

@@ -52,6 +52,7 @@ export function initApp(params) {
     <div id="app-shell" class="fixed-inset overflow-hidden">
       ${navPane.render(navPane.initialState)}
       ${contentPane.render(contentPane.initialState)}
+      <div class="shell-swipe-handle"></div>
     </div>
     ${actionPane.render(actionPane.initialState)}
   `;

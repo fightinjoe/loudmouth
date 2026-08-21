@@ -59,43 +59,44 @@ function renderCtaBanner(hasDecks) {
   `;
 }
 
-function renderHeader(title) {
+function renderHeader(title, { viewAllAction } = {}) {
   return `
-    <div class="deck-picker-section-header section-label">
-      ${title}
+    <div class="deck-picker-section-header section-label flex items-center justify-between">
+      <span>${title}</span>
+      ${viewAllAction ? `<button class="deck-picker-view-all text-body1 fg-accent tappable" data-action="${viewAllAction}">View all</button>` : ""}
     </div>
   `;
 }
 
-function renderDeckRow(deck, count, subtitle) {
+function renderDeckRow(deck, count, subtitle, rowAction = "nav/open-deck") {
   return renderPhrasebookRow({
     title: deck.name,
     subtitle: subtitle ?? `${count} card${count !== 1 ? "s" : ""}`,
     chevron: true,
-    rowAction: "nav/open-deck",
+    rowAction,
     rowAttrs: `data-deck-id="${deck.id}"`,
   });
 }
 
-function renderSuggestedRow(suggestion) {
+function renderSuggestedRow(suggestion, action = "nav/view-suggested") {
   const count = suggestion.terms.length;
   const noun = suggestion.terms.every((t) => t.type === "word") ? "words" : "words & phrases";
   return renderPhrasebookRow({
     title: `${suggestion.emoji} ${suggestion.title}`,
     subtitle: `${count} ${noun}`,
-    pill: { label: "View", action: "nav/view-suggested", attrs: `data-suggestion-id="${suggestion.id}"` },
+    pill: { label: "View", action, attrs: `data-suggestion-id="${suggestion.id}"` },
   });
 }
 
 function renderItemsHTML(items) {
   return items.map((item) => {
-    if (item.kind === "header") return renderHeader(item.title);
+    if (item.kind === "header") return renderHeader(item.title, { viewAllAction: item.viewAllAction });
     if (item.kind === "deck") return renderDeckRow(item.deck, item.count, item.subtitle);
     if (item.kind === "suggested") {
       return `
-        ${renderHeader(item.title)}
+        ${renderHeader(item.title, { viewAllAction: "nav/view-all-suggested" })}
         <div class="deck-picker-lang-group">
-          ${item.suggestions.map(renderSuggestedRow).join("")}
+          ${item.suggestions.map((s) => renderSuggestedRow(s)).join("")}
         </div>
       `;
     }
@@ -134,7 +135,7 @@ async function loadNavItems() {
 
   const recent = await getRecentDecks(3);
   if (recent.length) {
-    items.push({ kind: "header", title: "Most recent" });
+    items.push({ kind: "header", title: "Recent", viewAllAction: "nav/view-all-recent" });
     for (const deck of recent) {
       const cards = await getCards(deck.id);
       const langName = LANG_NAMES[deck.lang] ?? deck.lang;
@@ -182,12 +183,61 @@ async function loadNavItems() {
 
     items.push({
       kind: "lang-group",
-      title: `<span>${flag} ${name}</span>`,
+      title: `${flag} ${name}`,
       rows,
     });
   }
 
   return items;
+}
+
+// ── Browse views ("View all") ─────────────────────────────────────────────
+// The content pane hosts a generic browse mode (content-pane-render.js
+// renderBrowseBody); this pane builds the group HTML since the row shape
+// (deck chevron rows vs. suggestion pill rows) and click actions differ.
+
+/**
+ * "View all" under Recent → every real phrasebook, grouped by language
+ * (Figma node 602:5562, "All phrasebooks"). Rows dispatch through the
+ * content delegate (`content/browse-select`), not the shell delegate.
+ */
+export async function loadAllPhrasebooksBrowse() {
+  const allDecks = await getDecks(null, { includeSystem: false });
+  const byLang = {};
+  for (const deck of allDecks) (byLang[deck.lang] ??= []).push(deck);
+  for (const lang of Object.keys(byLang)) {
+    byLang[lang].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const groups = [];
+  for (const [lang, decks] of Object.entries(byLang).sort(([a], [b]) => a.localeCompare(b))) {
+    const flag = LANG_FLAGS[lang] ?? "";
+    const name = LANG_NAMES[lang] ?? lang.toUpperCase();
+    const rowsHtml = [];
+    for (const deck of decks) {
+      const cards = await getCards(deck.id);
+      rowsHtml.push(renderDeckRow(deck, cards.length, `${cards.length} ${nounFor(cards)}`, "content/browse-select"));
+    }
+    groups.push(`
+      ${renderHeader(`${flag} ${name}`)}
+      <div class="deck-picker-lang-group">${rowsHtml.join("")}</div>
+    `);
+  }
+
+  return { title: "All phrasebooks", groupsHtml: groups.join("") };
+}
+
+/** "View all" under Suggested phrasebooks → every pending suggestion, flat. */
+export async function loadSuggestedBrowse() {
+  const seededDeckIds = await getSeededDeckIds();
+  const suggestions = pendingSuggestions(seededDeckIds);
+  const rowsHtml = suggestions
+    .map((s) => renderSuggestedRow(s, "content/browse-view-suggested"))
+    .join("");
+  return {
+    title: "Suggested phrasebooks",
+    groupsHtml: `<div class="deck-picker-lang-group">${rowsHtml}</div>`,
+  };
 }
 
 // ── Contract ─────────────────────────────────────────────────────────────────
@@ -261,12 +311,26 @@ export default {
       ui.transition("action/open", { kind: "new-phrasebook", payload: { suggestion } });
     });
 
+    delegate.register("nav/view-all-recent", async () => {
+      const browse = await loadAllPhrasebooksBrowse();
+      ui.transition("content/browse", browse);
+      ui.transition("shell/close");
+    });
+
+    delegate.register("nav/view-all-suggested", async () => {
+      const browse = await loadSuggestedBrowse();
+      ui.transition("content/browse", browse);
+      ui.transition("shell/close");
+    });
+
     return () => {
       unsubItems();
       unsubReload();
       delegate.unregister("nav/open-deck");
       delegate.unregister("nav/open-new-phrasebook");
       delegate.unregister("nav/view-suggested");
+      delegate.unregister("nav/view-all-recent");
+      delegate.unregister("nav/view-all-suggested");
     };
   },
 };
