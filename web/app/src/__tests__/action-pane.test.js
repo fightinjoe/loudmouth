@@ -20,6 +20,7 @@ function mountPane() {
   const ui = createUIState({ action: actionPane.initialState, content: { deck: null, cards: [] } });
   ui.registerTransitions(actionPane.transitions);
   ui.registerTransitions({
+    "shell/close": (s) => s,
     "nav/reload": (s) => s,
     "content/select-deck": (s) => s,
     "content/loaded": (s, payload) => ({ ...s, deck: payload.deck, cards: payload.cards }),

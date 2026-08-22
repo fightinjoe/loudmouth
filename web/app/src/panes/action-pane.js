@@ -102,6 +102,11 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
       hostEl,
       { createDeck },
       (deck) => {
+        // Only now does the content pane come forward — the deck exists
+        // and is about to be shown, so closing the shell here (not at
+        // action/open time) keeps content-pane movement tied to an actual
+        // content change instead of the new-phrasebook sheet appearing.
+        ui.transition("shell/close");
         ui.transition("nav/reload");
         ui.transition("content/select-deck", { id: deck.id });
         ui.transition("action/open", {
@@ -138,6 +143,7 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
               deckIds: [],
               ...term,
             }));
+            ui.transition("shell/close");
             ui.transition("content/loaded", { deck: previewDeck, cards: previewCards, isStarred: false });
             sheetHandle.close();
           }

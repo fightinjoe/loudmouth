@@ -300,14 +300,18 @@ export default {
     });
 
     delegate.register("nav/open-new-phrasebook", () => {
-      ui.transition("shell/close");
+      // Intentionally does NOT close the shell: the New Phrasebook activity
+      // pane is a modal layer independent of the content pane (Pane
+      // Protocol Rule — action layer sits above shell, not coupled to it).
+      // The content pane only comes forward once a deck is actually
+      // selected/created (see action-pane.js's new-phrasebook branch).
       ui.transition("action/open", { kind: "new-phrasebook", payload: {} });
     });
 
     delegate.register("nav/view-suggested", (_e, el) => {
       const suggestion = SUGGESTED_PHRASEBOOKS.find((s) => s.id === el.dataset.suggestionId);
       if (!suggestion) return;
-      ui.transition("shell/close");
+      // Same reasoning as nav/open-new-phrasebook above — no shell/close here.
       ui.transition("action/open", { kind: "new-phrasebook", payload: { suggestion } });
     });
 
