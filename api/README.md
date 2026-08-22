@@ -140,6 +140,10 @@ gcloud auth application-default login   # required for Vertex AI
 
 ```bash
 cd src
+
+# If you're getting a `GCP_PROJECT_ID enviornment variable is not set` error
+set -a && source ../.env && set +a
+
 npm run dev
 ```
 
