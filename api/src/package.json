@@ -5,7 +5,8 @@
     "start": "node index.js",
     "dev": "FUNCTION_TARGET=translate npx @google-cloud/functions-framework",
     "test": "node --test test/",
-    "eval:lookup": "node ../evals/lookup.eval.js"
+    "eval:lookup": "node ../evals/lookup.eval.js",
+    "eval:sample": "deno run --allow-net --allow-read --allow-write ../evals/lookup-sample.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
