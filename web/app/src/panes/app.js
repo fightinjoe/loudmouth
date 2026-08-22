@@ -33,6 +33,11 @@ const shellTransitions = {
     exposed: slice.exposed === "foreground" ? "background" : "foreground",
   }),
   "shell/close": () => ({ exposed: "foreground" }),
+  // Forces the nav pane into view (the inverse of shell/close). Used when a
+  // deck the content pane was showing no longer exists (e.g. an
+  // auto-deleted empty phrasebook) — unlike shell/toggle, this is not
+  // relative, so it's safe to call regardless of current exposure.
+  "shell/open": () => ({ exposed: "background" }),
 };
 
 export function initApp(params) {

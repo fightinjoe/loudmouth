@@ -18,6 +18,15 @@ const MAX_CARDS_PER_GROUP = 10;
 const LANG_NAMES = { zh: 'Mandarin Chinese', ja: 'Japanese', es: 'Spanish', cs: 'Czech' };
 const LANG_LEVELS = { zh: 'HSK 1–4', ja: 'JLPT N5–N3' };
 
+// Languages that mark grammatical gender on adjectives/nouns (docs/CARD_SCHEMA.md
+// has no gender field — the model must collapse to one surface form itself).
+const GENDERED_LANGS = new Set(['es', 'cs']);
+
+function genderInstruction(lang) {
+  if (!GENDERED_LANGS.has(lang)) return '';
+  return `\n- ${LANG_NAMES[lang]} marks grammatical gender on adjectives and some nouns. Default to the MASCULINE form (e.g. Spanish "cansado", not "cansada") unless the term or context names a specific person whose gender is known (e.g. "she is tired" → feminine). Never emit both forms together — no "cansado/cansada", no parenthetical alternates, no slash-joined pairs. Pick one surface form.`;
+}
+
 /**
  * Per-language ReadingToken instructions (docs/CARD_SCHEMA.md "Reading tokens").
  * zh/ja get explicit annotation rules; other scripts get a single unannotated
@@ -30,7 +39,7 @@ function readingInstructions(lang) {
   if (lang === 'ja') {
     return `an array of ReadingToken pairs. Each token is [base, annotation|null]. Kanji get a hiragana annotation; hiragana and katakana NEVER get an annotation (always null). Keep each contiguous kana/katakana run as one token; do not split it into individual characters. Examples: 注文 → [["注","ちゅう"],["文","もん"]]; サーフィンをする → [["サーフィンをする",null]]; おすすめ → [["おすすめ",null]]`;
   }
-  return `a single-element array containing the whole word or phrase as one unannotated token: [base, null]. Example for "café": [["café",null]]`;
+  return `a SINGLE-element array containing the ENTIRE word or phrase as one unannotated token, spaces and all — never split a multi-word phrase into one token per word: [base, null]. Example for "café": [["café",null]]. Example for a multi-word phrase "¿Cuánto cuesta?": [["¿Cuánto cuesta?",null]] — NOT [["¿Cuánto",null],["cuesta?",null]].`;
 }
 
 function cardReadingExample(lang) {
@@ -112,7 +121,7 @@ For each block, first identify the major situations and conversational goals nat
 - **Total groups across ALL blocks: hard cap ${MAX_GROUPS_TOTAL}** (blocks SHARE this budget — they do not each get ${MAX_GROUPS_TOTAL}). **Cards per group: hard cap ${MAX_CARDS_PER_GROUP}.** Aim for 4–6 distinct cards per group when the topic supports it.
 - A group is organized primarily by SITUATION or CONVERSATIONAL GOAL, not a grammatical category: it may freely mix words and phrases. NEVER split them apart merely because they are different grammatical forms.
 - Separate groups when the learner would use them in different situations, even if they share the same broad topic. Do not combine groups merely because their cards are related.
-- Ensure the full response includes both useful vocabulary and usable phrases when the topic supports both. Avoid near-duplicate cards across sibling groups.
+- The response is currently biased toward phrases — actively correct for that. When the seed implies a category of related THINGS (foods, objects, activities, people, places), dedicate at least one whole group to standalone vocabulary WORDS naming those things, not just phrases for talking about them. Example: "I am vegan" should yield not only phrases like "I don't eat meat" but a group of vegan-related food/ingredient WORDS (tofu, lentils, oat milk, mushrooms, chickpeas, ...) a vegan traveler would need to recognize on a menu. Ensure the full response includes both useful vocabulary and usable phrases whenever the topic supports both — never let phrases crowd out words.
 - Give each group a short, content-scannable, **ENGLISH** \`title\` (e.g. "Ordering at a restaurant") — always English regardless of ${langName}, since it's a UI heading, not translated content.
 - Keep every card distinct from the others in its group and across the whole look-up — no near-duplicates (e.g. do not emit "Check, please!", "check (the bill)", and "May I have the check?" as three cards; pick the single best phrasing).
 
@@ -120,12 +129,12 @@ For a broad seed such as "surf", one translation block may include groups such a
 
 ## Coverage check
 
-Before returning the JSON, check that broad seeds have 3–5 distinct groups, that the groups represent different situations or conversational goals rather than synonyms, and that cards are distributed across the groups instead of concentrated in one bucket. Do not invent a second translation block just to create variety.
+Before returning the JSON, check that broad seeds have 3–5 distinct groups, that the groups represent different situations or conversational goals rather than synonyms, that cards are distributed across the groups instead of concentrated in one bucket, and that if the topic implies a category of related things, at least one group is mostly standalone vocabulary words rather than full phrases. Do not invent a second translation block just to create variety.
 
 ## Content quality bar (non-negotiable)
 
 - Favor common, conversational language a person would actually SAY to someone they're trying to connect with, in the ${level} range unless the term demands otherwise.
-- Reject stiff, textbook, or exam-flavored content.
+- Reject stiff, textbook, or exam-flavored content.${genderInstruction(language)}
 
 ## Card schema (every block \`card\` AND every group card)
 

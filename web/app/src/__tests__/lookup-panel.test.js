@@ -227,17 +227,17 @@ describe("openLookupPanel — Group mode + re-seed", () => {
     expect(appEl.querySelector(".pane-header-title").textContent).toBe('"dinner"');
   });
 
-  it("🔍 on a group card re-seeds Input with text + group name in parentheses", async () => {
+  it("🔍 on a group card re-seeds Input with English term + group name in parentheses", async () => {
     await openWithResults();
     appEl.querySelector('[data-action="lookup/open-group"]').click();
     appEl.querySelector('[data-action="lookup/reseed"]').click();
-    expect(appEl.querySelector(".lookup-input-field").value).toBe("メニュー (Ordering at a restaurant)");
+    expect(appEl.querySelector(".lookup-input-field").value).toBe("menu (Ordering at a restaurant)");
   });
 
-  it("🔍 on a primary card with no group prefills with just the card's text", async () => {
+  it("🔍 on a primary card with no group prefills with just the card's English term", async () => {
     await openWithResults();
     appEl.querySelector('[data-action="lookup/reseed"]').click();
-    expect(appEl.querySelector(".lookup-input-field").value).toBe("晩ご飯");
+    expect(appEl.querySelector(".lookup-input-field").value).toBe("dinner");
   });
 
   it("re-seeding collapses VIBE (never treated as a first look-up)", async () => {

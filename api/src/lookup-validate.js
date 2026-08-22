@@ -28,7 +28,7 @@
  *   clamped { blocks[] }   +   warnings[] (for the handler to log)
  */
 
-const { validateCard, normalizeJapaneseReadingTokens } = require('./card-validate');
+const { validateCard, normalizeJapaneseReadingTokens, coalesceSpacedReadingTokens } = require('./card-validate');
 const { MAX_BLOCKS, MAX_GROUPS_TOTAL, MAX_CARDS_PER_GROUP } = require('./lookup-prompt');
 
 // Output-only formality values a /lookup card may carry (docs/API_DESIGN.md
@@ -43,17 +43,22 @@ function stripInvalidFormality(card, prefix, warnings) {
   }
 }
 
+function normalizeReadingTokens(lang, tokens) {
+  if (tokens === undefined) return tokens;
+  if (lang === 'ja') return normalizeJapaneseReadingTokens(tokens);
+  if (lang === 'zh') return tokens;
+  return coalesceSpacedReadingTokens(tokens);
+}
+
 function normalizeCard(card) {
   const normalized = { ...card };
-  if (normalized.lang === 'ja' && normalized.reading !== undefined) {
-    normalized.reading = normalizeJapaneseReadingTokens(normalized.reading);
+  if (normalized.reading !== undefined) {
+    normalized.reading = normalizeReadingTokens(normalized.lang, normalized.reading);
   }
   if (normalized.example?.reading !== undefined) {
     normalized.example = {
       ...normalized.example,
-      reading: normalized.lang === 'ja'
-        ? normalizeJapaneseReadingTokens(normalized.example.reading)
-        : normalized.example.reading,
+      reading: normalizeReadingTokens(normalized.lang, normalized.example.reading),
     };
   }
   return normalized;

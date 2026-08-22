@@ -81,19 +81,31 @@ export function openLookupPanel(appEl, deck, opts, onSaved, onDismiss, onDeckRen
     panel.querySelector(".lookup-input-field")?.focus();
   }
 
+  // The input is a wrapping <textarea> (fixed width, grows in height as
+  // text wraps to a new line) rather than a single-line <input> — see
+  // .lookup-input-field in components.css. Reset height first so shrinking
+  // (e.g. after Clear) recalculates from scratch instead of only ever
+  // growing.
+  function autoGrowInput(el) {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
+
   function top() {
     return state.stack[state.stack.length - 1];
   }
 
   /**
    * 🔍 re-seed (journeys.md 'Magnifying-glass action'): pop the whole stack
-   * back to Input and prefill it with the tapped card's text — plus its
-   * source group's title in parentheses, but ONLY when re-seeding from a
+   * back to Input and prefill it with the tapped card's English term — plus
+   * its source group's title in parentheses, but ONLY when re-seeding from a
    * group card. A primary/block card's `context` field carries the
    * *previous* query's parenthetical (service-assigned provenance, not "this
    * card's group") and must NOT be reused here — the caller passes
    * `groupTitle` explicitly based on which frame the tap came from, rather
-   * than reading it off `card.context`.
+   * than reading it off `card.context`. The input is always English (what
+   * the user types), so this prefills from `card.translation`, not the
+   * foreign-language `card.text`.
    */
   function reseed(text, groupTitle) {
     state.stack = [{ mode: "input" }];
@@ -186,6 +198,7 @@ export function openLookupPanel(appEl, deck, opts, onSaved, onDismiss, onDeckRen
     const inputEl = panel.querySelector(".lookup-input-field");
     if (inputEl) {
       inputEl.value = state.inputValue;
+      autoGrowInput(inputEl);
       // Update the value + the CSS-driven has-value flag on every keystroke,
       // but never rerender here — a full innerHTML replace would blur the
       // field and lose cursor position mid-type.
@@ -193,6 +206,7 @@ export function openLookupPanel(appEl, deck, opts, onSaved, onDismiss, onDeckRen
         state.inputValue = e.target.value;
         const wrap = panel.querySelector(".lookup-input-wrap");
         if (wrap) wrap.dataset.hasValue = state.inputValue.length > 0 ? "true" : "false";
+        autoGrowInput(inputEl);
       });
       inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
@@ -271,7 +285,7 @@ export function openLookupPanel(appEl, deck, opts, onSaved, onDismiss, onDeckRen
       el.addEventListener("click", () => {
         const card = resolveCard(frame, el);
         if (!card) return;
-        reseed(card.text, el.dataset.groupTitle || null);
+        reseed(card.translation, el.dataset.groupTitle || null);
       });
     });
   }
@@ -344,14 +358,14 @@ function renderInputFrame(state, deck, badge) {
         <div class="lookup-input-form flex-col">
           <div class="lookup-input-wrap" data-has-value="${hasValue}">
             <div class="lookup-input-field-row flex items-center">
-              <input
+              <textarea
                 class="lookup-input-field flex-1 text-entry"
-                type="text"
+                rows="1"
                 placeholder="Enter word or phrase"
                 autocomplete="off"
                 autocapitalize="off"
                 spellcheck="false"
-              />
+              ></textarea>
               <button class="lookup-input-clear icon-button" data-action="lookup/clear" aria-label="Clear">${icon("close", { size: "sm" })}</button>
             </div>
           </div>
@@ -442,8 +456,8 @@ function renderGroupFrame(state, frame, badge) {
 function renderSkeleton() {
   const one = `
     <div class="lookup-skeleton-card bg-surface flex-col">
-      <div class="review-skeleton-line" style="width: 40%"></div>
-      <div class="review-skeleton-line" style="width: 70%; height: 20px;"></div>
+      <div class="lookup-skeleton-line" style="width: 40%"></div>
+      <div class="lookup-skeleton-line" style="width: 70%; height: 20px;"></div>
     </div>
   `;
   return `<div class="lookup-skeleton-list flex-col">${one}${one}${one}</div>`;

@@ -33,6 +33,7 @@ import {
   updateDeckOrder,
   updateDeckReadingDisplay,
   deleteDeck,
+  getCards,
   updateCard,
   deleteCard,
 } from "../js/db.js";
@@ -72,7 +73,27 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
   }
 
   if (kind === "lookup") {
-    const { deck, hasTranslatedBefore } = payload;
+    const { deck, hasTranslatedBefore, deleteIfEmpty } = payload;
+
+    // If this lookup session opened straight out of "New phrasebook"
+    // creation (deleteIfEmpty), the deck exists solely as a home for
+    // whatever the user is about to save. Dismissing without saving
+    // anything should discard that placeholder deck rather than leave an
+    // empty phrasebook behind, and return the user to the nav pane instead
+    // of an empty content pane.
+    const handleDismiss = deleteIfEmpty
+      ? async () => {
+          const cards = await getCards(deck.id);
+          if (cards.length === 0) {
+            await deleteDeck(deck.id);
+            ui.transition("nav/reload");
+            ui.transition("content/select-deck", { id: null });
+            ui.transition("shell/open");
+          }
+          onDismiss();
+        }
+      : onDismiss;
+
     return openLookupPanel(
       hostEl,
       deck,
@@ -83,7 +104,7 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
           ui.transition("content/cards-changed", { cards: [...content.cards, savedCard] });
         }
       },
-      onDismiss,
+      handleDismiss,
       () => {
         // Deck was auto-named from its first saved term (see
         // lookup-panel.js maybeAutoNameDeck) — refresh nav + the content
@@ -111,7 +132,7 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
         ui.transition("content/select-deck", { id: deck.id });
         ui.transition("action/open", {
           kind: "lookup",
-          payload: { deck, hasTranslatedBefore: false },
+          payload: { deck, hasTranslatedBefore: false, deleteIfEmpty: true },
         });
       },
       onDismiss,

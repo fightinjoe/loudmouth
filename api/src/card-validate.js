@@ -57,6 +57,20 @@ function normalizeJapaneseReadingTokens(value) {
   return merged;
 }
 
+// "Other scripts" (CARD_SCHEMA "Reading tokens") must always be ONE
+// unannotated token holding the whole word or phrase — space-delimited
+// scripts (Spanish, Czech, ...) have no per-character ruby concept. Models
+// sometimes mirror the zh/ja per-unit tokenization habit and split a
+// multi-word phrase into one token per word instead; since rendering joins
+// tokens with no separator (correct for zh/ja, wrong for spaced scripts),
+// an unnoticed split silently drops the spaces between words. Coalesce back
+// into a single space-joined token at the service boundary, same as
+// normalizeJapaneseReadingTokens does for kana runs.
+function coalesceSpacedReadingTokens(value) {
+  if (value.length <= 1) return value;
+  return [[value.map(([base]) => base).join(' '), null]];
+}
+
 /**
  * Validates a single Card object against CARD_SCHEMA (docs/CARD_SCHEMA.md).
  *
@@ -116,4 +130,4 @@ function validateCard(card, prefix) {
   }
 }
 
-module.exports = { validateCard, validateReadingTokens, normalizeJapaneseReadingTokens };
+module.exports = { validateCard, validateReadingTokens, normalizeJapaneseReadingTokens, coalesceSpacedReadingTokens };
