@@ -83,7 +83,7 @@ Looks up a term and returns a direct translation plus AI-clustered related group
 ```
 
 See `docs/API_DESIGN.md` for the full contract, including disambiguation, group limits
-(≤4 blocks, ≤8 groups total, ≤10 cards/group), and worked examples.
+(≤4 blocks, ≤8 groups total, ≤15 cards/group), and worked examples.
 
 ## First-time setup
 

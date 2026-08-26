@@ -62,14 +62,14 @@ notes: ""
 # ============================================================
 {
   "input": {
-    "term": "\"I'm vegan\"",
+    "term": "I'm vegan",
     "language": "es",
     "ability": "beginner",
     "formality": "polite",
     "audience": "staff",
     "llm": "google"
   },
-  "generatedAt": "2026-08-22T18:45:18.591Z",
+  "generatedAt": "2026-08-22T19:13:18.816Z",
   "response": {
     "blocks": [
       {
@@ -83,88 +83,79 @@ notes: ""
               null
             ]
           ],
-          "definition": "I am vegan"
+          "notes": "Use 'vegano' if you are male, 'vegana' if you are female."
         },
         "groups": [
           {
-            "title": "Stating your dietary needs",
+            "title": "Dietary Needs",
             "cards": [
               {
                 "lang": "es",
-                "text": "Soy vegano",
-                "translation": "I'm vegan",
+                "text": "Soy vegano.",
+                "translation": "I am vegan.",
                 "reading": [
                   [
-                    "Soy vegano",
+                    "Soy vegano.",
                     null
                   ]
                 ],
-                "context": "Stating your dietary needs"
+                "notes": "Use 'vegano' if you are male, 'vegana' if you are female.",
+                "context": "Dietary Needs"
               },
               {
                 "lang": "es",
-                "text": "No como carne, pescado ni lácteos",
-                "translation": "I don't eat meat, fish, or dairy",
+                "text": "No como carne.",
+                "translation": "I don't eat meat.",
                 "reading": [
                   [
-                    "No como carne, pescado ni lácteos",
+                    "No como carne.",
                     null
                   ]
                 ],
-                "context": "Stating your dietary needs"
+                "context": "Dietary Needs"
               },
               {
                 "lang": "es",
-                "text": "Soy vegetariano",
-                "translation": "I'm vegetarian",
+                "text": "No como productos de origen animal.",
+                "translation": "I don't eat animal products.",
                 "reading": [
                   [
-                    "Soy vegetariano",
+                    "No como productos de origen animal.",
                     null
                   ]
                 ],
-                "context": "Stating your dietary needs"
+                "context": "Dietary Needs"
               },
               {
                 "lang": "es",
-                "text": "¿Puedo ver el menú, por favor?",
-                "translation": "Can I see the menu, please?",
+                "text": "¿Tiene opciones veganas?",
+                "translation": "Do you have vegan options?",
                 "reading": [
                   [
-                    "¿Puedo ver el menú, por favor?",
+                    "¿Tiene opciones veganas?",
                     null
                   ]
                 ],
-                "context": "Stating your dietary needs"
+                "formality": "polite",
+                "context": "Dietary Needs"
               },
               {
                 "lang": "es",
-                "text": "¿Qué platos son veganos?",
-                "translation": "Which dishes are vegan?",
+                "text": "Soy vegetariano/a.",
+                "translation": "I am vegetarian.",
                 "reading": [
                   [
-                    "¿Qué platos son veganos?",
+                    "Soy vegetariano/a.",
                     null
                   ]
                 ],
-                "context": "Stating your dietary needs"
-              },
-              {
-                "lang": "es",
-                "text": "No como nada de origen animal",
-                "translation": "I don't eat anything of animal origin",
-                "reading": [
-                  [
-                    "No como nada de origen animal",
-                    null
-                  ]
-                ],
-                "context": "Stating your dietary needs"
+                "notes": "Use 'vegetariano' if you are male, 'vegetariana' if you are female.",
+                "context": "Dietary Needs"
               }
             ]
           },
           {
-            "title": "Vegan food vocabulary",
+            "title": "Vegan Foods",
             "cards": [
               {
                 "lang": "es",
@@ -176,19 +167,7 @@ notes: ""
                     null
                   ]
                 ],
-                "context": "Vegan food vocabulary"
-              },
-              {
-                "lang": "es",
-                "text": "Tempeh",
-                "translation": "Tempeh",
-                "reading": [
-                  [
-                    "Tempeh",
-                    null
-                  ]
-                ],
-                "context": "Vegan food vocabulary"
+                "context": "Vegan Foods"
               },
               {
                 "lang": "es",
@@ -200,7 +179,7 @@ notes: ""
                     null
                   ]
                 ],
-                "context": "Vegan food vocabulary"
+                "context": "Vegan Foods"
               },
               {
                 "lang": "es",
@@ -212,55 +191,19 @@ notes: ""
                     null
                   ]
                 ],
-                "context": "Vegan food vocabulary"
+                "context": "Vegan Foods"
               },
               {
                 "lang": "es",
-                "text": "Leche de almendras",
-                "translation": "Almond milk",
+                "text": "Leche de avena",
+                "translation": "Oat milk",
                 "reading": [
                   [
-                    "Leche de almendras",
+                    "Leche de avena",
                     null
                   ]
                 ],
-                "context": "Vegan food vocabulary"
-              },
-              {
-                "lang": "es",
-                "text": "Leche de soja",
-                "translation": "Soy milk",
-                "reading": [
-                  [
-                    "Leche de soja",
-                    null
-                  ]
-                ],
-                "context": "Vegan food vocabulary"
-              },
-              {
-                "lang": "es",
-                "text": "Aceite de oliva",
-                "translation": "Olive oil",
-                "reading": [
-                  [
-                    "Aceite de oliva",
-                    null
-                  ]
-                ],
-                "context": "Vegan food vocabulary"
-              },
-              {
-                "lang": "es",
-                "text": "Aguacate",
-                "translation": "Avocado",
-                "reading": [
-                  [
-                    "Aguacate",
-                    null
-                  ]
-                ],
-                "context": "Vegan food vocabulary"
+                "context": "Vegan Foods"
               },
               {
                 "lang": "es",
@@ -272,7 +215,31 @@ notes: ""
                     null
                   ]
                 ],
-                "context": "Vegan food vocabulary"
+                "context": "Vegan Foods"
+              },
+              {
+                "lang": "es",
+                "text": "Aguacate",
+                "translation": "Avocado",
+                "reading": [
+                  [
+                    "Aguacate",
+                    null
+                  ]
+                ],
+                "context": "Vegan Foods"
+              },
+              {
+                "lang": "es",
+                "text": "Frutas",
+                "translation": "Fruits",
+                "reading": [
+                  [
+                    "Frutas",
+                    null
+                  ]
+                ],
+                "context": "Vegan Foods"
               },
               {
                 "lang": "es",
@@ -284,7 +251,7 @@ notes: ""
                     null
                   ]
                 ],
-                "context": "Vegan food vocabulary"
+                "context": "Vegan Foods"
               }
             ]
           }

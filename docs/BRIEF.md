@@ -46,6 +46,7 @@ A mobile-first app (PWA and native iOS) where the learner captures vocabulary tw
 - **AI-driven capture, learner-curated (Anki-like control):** Every term surfaces through an in-app AI look-up (`/lookup`, returning a direct translation plus AI-clustered "find-related" groups) or JSON import — nothing is added automatically. The learner taps 🔖 to save each term they want, **immediately** (no batch/staging/approval step). Per-phrasebook VIBE (formality + audience) and learner ability further bias what the AI returns.
 - **Frictionless review (Duolingo-like):** Minimum taps to start reviewing; optimized for 5-minute windows
 - **No gamification:** No streaks, points, or pressure — just terms
+- **Choose-your-own-adventure discovery:** find-related groups serve two purposes — completing what the learner already came to say, and surfacing directions they wouldn't have thought to search for themselves. The learner builds their own curriculum by branching through what interests them, not by following a syllabus (see Reference Apps: Duolingo).
 
 ## Reference Apps
 

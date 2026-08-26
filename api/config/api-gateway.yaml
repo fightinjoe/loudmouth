@@ -105,7 +105,7 @@ paths:
                             description: English heading, e.g. "Ordering at a restaurant"
                           cards:
                             type: array
-                            description: At most 10 cards per group
+                            description: At most 15 cards per group
                             items:
                               $ref: '#/definitions/Card'
         400:

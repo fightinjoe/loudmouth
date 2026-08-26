@@ -6,7 +6,7 @@
  * EVAL section). Calls the REAL LLM backends — unlike api/src/test/lookup.test.js,
  * which mocks the LLM — and checks:
  *
- *   - STRUCTURAL invariants: <=4 blocks, <=8 groups total, <=10 cards/group,
+ *   - STRUCTURAL invariants: <=4 blocks, <=8 groups total, <=15 cards/group,
  *     no near-duplicate cards, valid schema (the shared validators already
  *     enforce the caps; this independently re-checks the *actual* response,
  *     which also catches a validator regression, plus dedup, which the
@@ -56,7 +56,7 @@ const LLM_REGISTRY = { google: callGenAI, claude: callAnthropic, chatgpt: callOp
 
 const MAX_BLOCKS = 4;
 const MAX_GROUPS_TOTAL = 8;
-const MAX_CARDS_PER_GROUP = 10;
+const MAX_CARDS_PER_GROUP = 15;
 
 const ABILITIES = ['none', 'beginner', 'intermediate', 'advanced'];
 const FORMALITIES = ['casual', 'polite', 'formal'];

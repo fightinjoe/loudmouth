@@ -21,11 +21,11 @@ const { parseLookupRequest } = require('./lookup-parse');
 const { buildLookupPrompt } = require('./lookup-prompt');
 const { validateLookupResponse } = require('./lookup-validate');
 
-// Worst case ~84 cards (4 blocks + 8 groups x 10 cards) at ~150 tokens/card ==
-// ~12.6k tokens of content; 20000 gives headroom over that ceiling
+// Worst case ~124 cards (4 blocks + 8 groups x 15 cards) at ~150 tokens/card ==
+// ~18.6k tokens of content; 30000 gives headroom over that ceiling
 // (docs/API_DESIGN.md "Output token budget"). The wrapper default (1024)
 // truncates well before this → invalid JSON → 502.
-const LOOKUP_MAX_TOKENS = 20000;
+const LOOKUP_MAX_TOKENS = 30000;
 
 // Request timeout budget (docs/API_DESIGN.md "Latency budget": target p50 <4s,
 // timeout at 15s → 502, same path as a hard LLM error).

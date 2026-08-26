@@ -199,20 +199,20 @@ describe('validateLookupResponse', () => {
     assert.ok(warnings.some((w) => w.includes('group budget')));
   });
 
-  test('exactly 10 cards/group → no trim (boundary)', () => {
-    const cards = Array.from({ length: 10 }, (_, i) => makeCard({ text: `c${i}` }));
+  test('exactly 15 cards/group → no trim (boundary)', () => {
+    const cards = Array.from({ length: 15 }, (_, i) => makeCard({ text: `c${i}` }));
     const raw = JSON.stringify({ blocks: [{ card: makeCard(), groups: [{ title: 'g', cards }] }] });
     const { response, warnings } = validateLookupResponse(raw);
-    assert.equal(response.blocks[0].groups[0].cards.length, 10);
+    assert.equal(response.blocks[0].groups[0].cards.length, 15);
     assert.deepEqual(warnings, []);
   });
 
-  test('> 10 cards/group → trimmed to 10, keeps first 10 in order', () => {
-    const cards = Array.from({ length: 13 }, (_, i) => makeCard({ text: `c${i}` }));
+  test('> 15 cards/group → trimmed to 15, keeps first 15 in order', () => {
+    const cards = Array.from({ length: 18 }, (_, i) => makeCard({ text: `c${i}` }));
     const raw = JSON.stringify({ blocks: [{ card: makeCard(), groups: [{ title: 'g', cards }] }] });
     const { response, warnings } = validateLookupResponse(raw);
-    assert.equal(response.blocks[0].groups[0].cards.length, 10);
-    assert.deepEqual(response.blocks[0].groups[0].cards.map((c) => c.text), cards.slice(0, 10).map((c) => c.text));
+    assert.equal(response.blocks[0].groups[0].cards.length, 15);
+    assert.deepEqual(response.blocks[0].groups[0].cards.map((c) => c.text), cards.slice(0, 15).map((c) => c.text));
     assert.ok(warnings.some((w) => w.includes('clamped cards')));
   });
 

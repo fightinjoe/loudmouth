@@ -13,7 +13,7 @@
 // validator/finish layer — lookup-validate.js — agree).
 const MAX_BLOCKS = 4;
 const MAX_GROUPS_TOTAL = 8;
-const MAX_CARDS_PER_GROUP = 10;
+const MAX_CARDS_PER_GROUP = 15;
 
 const LANG_NAMES = { zh: 'Mandarin Chinese', ja: 'Japanese', es: 'Spanish', cs: 'Czech' };
 const LANG_LEVELS = { zh: 'HSK 1–4', ja: 'JLPT N5–N3' };
@@ -116,20 +116,20 @@ Each block's \`card\` is the phrase a person would actually use for that meaning
 
 ## Step 2 — build diverse related groups
 
-For each block, first identify the major situations and conversational goals naturally associated with the seed, then cluster related cards into themed groups.
+For each block, generate groups for two reasons: to help the learner complete what they already came to say, and to surface directions they wouldn't have thought to search for — situations, contrasts, and neighboring vocabulary alike. Then cluster related cards into themed groups.
 - **Broad topics:** generate 3–5 distinct groups per block when the topic naturally supports them. **Narrow everyday words:** generate 1–3 groups. Do not stop after two groups for a broad topic such as surf, dinner, travel, shopping, or transportation.
 - **Total groups across ALL blocks: hard cap ${MAX_GROUPS_TOTAL}** (blocks SHARE this budget — they do not each get ${MAX_GROUPS_TOTAL}). **Cards per group: hard cap ${MAX_CARDS_PER_GROUP}.** Aim for 4–6 distinct cards per group when the topic supports it.
 - A group is organized primarily by SITUATION or CONVERSATIONAL GOAL, not a grammatical category: it may freely mix words and phrases. NEVER split them apart merely because they are different grammatical forms.
 - Separate groups when the learner would use them in different situations, even if they share the same broad topic. Do not combine groups merely because their cards are related.
-- The response is currently biased toward phrases — actively correct for that. When the seed implies a category of related THINGS (foods, objects, activities, people, places), dedicate at least one whole group to standalone vocabulary WORDS naming those things, not just phrases for talking about them. Example: "I am vegan" should yield not only phrases like "I don't eat meat" but a group of vegan-related food/ingredient WORDS (tofu, lentils, oat milk, mushrooms, chickpeas, ...) a vegan traveler would need to recognize on a menu. Ensure the full response includes both useful vocabulary and usable phrases whenever the topic supports both — never let phrases crowd out words.
-- Give each group a short, content-scannable, **ENGLISH** \`title\` (e.g. "Ordering at a restaurant") — always English regardless of ${langName}, since it's a UI heading, not translated content.
+- The response is currently biased toward phrases — actively correct for that. When the seed implies a category of related THINGS (foods, objects, activities, people, places), dedicate at least one whole group to standalone vocabulary WORDS naming those things, not just phrases for talking about them — e.g. a dietary or hobby seed should surface category-specific vocabulary (ingredients, gear, terms) a traveler would need to recognize, not just sentences about it. Ensure the full response includes both useful vocabulary and usable phrases whenever the topic supports both — never let phrases crowd out words.
+- Give each group a short, content-scannable, noun-phrase **ENGLISH** \`title\` (2–3 words; skip lead-in verbs like "Stating your…" or "Talking about…" — e.g. "Dietary needs", not "Stating your dietary needs") — always English regardless of ${langName}, since it's a UI heading, not translated content.
 - Keep every card distinct from the others in its group and across the whole look-up — no near-duplicates (e.g. do not emit "Check, please!", "check (the bill)", and "May I have the check?" as three cards; pick the single best phrasing).
 
 For a broad seed such as "surf", one translation block may include groups such as "Surf basics", "Beach and wave conditions", "Equipment and rentals", "Beach safety", and "Small talk about surfing". These are groups, not separate translation blocks. Do not interpret them as separate meanings unless the seed has genuinely different translations, such as "surf" meaning ride waves versus browse the internet.
 
 ## Coverage check
 
-Before returning the JSON, check that broad seeds have 3–5 distinct groups, that the groups represent different situations or conversational goals rather than synonyms, that cards are distributed across the groups instead of concentrated in one bucket, and that if the topic implies a category of related things, at least one group is mostly standalone vocabulary words rather than full phrases. Do not invent a second translation block just to create variety.
+Before returning the JSON, check that broad seeds have 3–5 distinct groups, that the groups represent different situations or conversational goals rather than synonyms, that cards are distributed across the groups instead of concentrated in one bucket, that cards within each group run from simplest/most broadly useful to more nuanced, and that if the topic implies a category of related things, at least one group is mostly standalone vocabulary words rather than full phrases. Do not invent a second translation block just to create variety.
 
 ## Content quality bar (non-negotiable)
 

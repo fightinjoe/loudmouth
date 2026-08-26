@@ -112,7 +112,7 @@ behavior**).
 
 `title` is always **English**, regardless of `language` — it's a UI heading, not translated content.
 
-**limits:** at most **8 groups total** across all blocks (they share the budget); at most **10 cards per
+**limits:** at most **8 groups total** across all blocks (they share the budget); at most **15 cards per
 group**. There is no hard minimum — a narrow block may have 0 or more groups, and there is no floor on
 the number of cards in a group. For broad topics, the model should generally target 3–5 groups and 4–6
 cards per group when the topic supports it.
@@ -185,9 +185,9 @@ in the **Model behavior** section.
 a hard error — see **Test coverage**). Fan-out (below) is earned when measured p50 exceeds this budget
 under real load, not before.
 
-**Output token budget:** worst case is 4 blocks + 8 groups × 10 cards = 84 cards; at ~150 tokens/card
-(JSON structure + multi-byte text/reading tokens) that's ~12.6k tokens of card content plus block/group
-wrapper overhead. Set `maxOutputTokens` to 20000 for headroom — the three worked examples average far
+**Output token budget:** worst case is 4 blocks + 8 groups × 15 cards = 124 cards; at ~150 tokens/card
+(JSON structure + multi-byte text/reading tokens) that's ~18.6k tokens of card content plus block/group
+wrapper overhead. Set `maxOutputTokens` to 30000 for headroom — the three worked examples average far
 fewer cards, so this is a ceiling, not a typical size. Same truncation → `502` path as the T2 fix (see
 Test coverage).
 
@@ -199,7 +199,7 @@ Test coverage).
 Deterministic post-processing, no model:
 - **Validate** the response shape; a malformed or truncated response is a `502`.
 - **Normalize Japanese readings** — kana and katakana never receive ruby annotations, and adjacent unannotated Japanese reading tokens are merged so model tokenization cannot produce per-character kana ruby output.
-- **Check limits** — verify (and trip) ≤4 blocks, ≤8 groups total, ≤10 cards per group. These caps are
+- **Check limits** — verify (and trip) ≤4 blocks, ≤8 groups total, ≤15 cards per group. These caps are
   also stated directly in the prompt (see **Model behavior**), so trimming here is a backstop for
   non-compliant model output, not the primary limiting mechanism — trimming is exceptional, not expected
   in normal operation, and no `truncated` flag is exposed to callers. When it does trigger, trimming
@@ -234,7 +234,7 @@ its card; an unambiguous term yields one block with no `definition`.
 
 **Build diverse situation-based groups.** For each block, first identify the major situations and
 conversational goals naturally associated with the seed, then cluster related cards into themed groups
-(at most 8 total across all blocks; ≤10 cards each). Broad topics should generally produce 3–5 distinct
+(at most 8 total across all blocks; ≤15 cards each). Broad topics should generally produce 3–5 distinct
 groups per block; narrow everyday words should generally produce 1–3. A group is organized primarily
 by situation or conversational goal, not grammatical form, and **may mix words and phrases** — never
 split them apart merely because they are different grammatical forms. Separate groups when the learner
@@ -475,8 +475,8 @@ validate + finish
   · > 4 blocks          → trimmed to 4, keeps first 4          CRITICAL (shared budget, trim order)
   · = 8 groups total    → no trim (boundary)                  edge
   · > 8 groups total    → trimmed to 8, keeps first 8 in order CRITICAL (shared budget, trim order)
-  · = 10 cards/group    → no trim (boundary)                  edge
-  · > 10 cards/group    → trimmed to 10, keeps first 10        CRITICAL (trim order)
+  · = 15 cards/group    → no trim (boundary)                  edge
+  · > 15 cards/group    → trimmed to 15, keeps first 15        CRITICAL (trim order)
   · empty group         → dropped (no other minimum)
   · context service-set → card.context = group.title         CRITICAL (service adds, model doesn't)
   · bad formality value → rejected / stripped
@@ -486,7 +486,7 @@ route
   · unknown llm         → 400
 
 EVAL (real model — mechanical asserts + LLM-judge)
-  · structural: ≤4 blocks, ≤8 groups, ≤10 cards, no near-duplicate cards, valid schema
+  · structural: ≤4 blocks, ≤8 groups, ≤15 cards, no near-duplicate cards, valid schema
   · reading correctness: golden set of known words → tokens match known-correct readings
   · conversational bar: LLM-judge "would a person say this to someone they want to connect with?"
 ```
