@@ -1,9 +1,13 @@
 import { icon } from "./icon.js";
 
 /**
- * Renders a card as a list row with swipe-to-reveal star/edit buttons behind it.
- * Star and edit buttons are rendered absolutely behind the row; the row slides
- * left via CSS transform to expose them (see content-pane-gestures.js).
+ * Renders a card as a list row. The star is an inline toggle at the row's
+ * top-right (Figma "Term", node 754:7053: outline star when unstarred, filled
+ * accent star when starred) — tapping it fires `content/star-card`; tapping
+ * anywhere else on the row body speaks the card via `content/play-card` (the
+ * delegate resolves to the nearest [data-action], so the star wins over the
+ * row). Edit/delete remain behind a left swipe-to-reveal (see
+ * content-pane-gestures.js).
  *
  * @param {Object} card
  * @param {string} readingDisplay - 'reading' | 'romanization'
@@ -22,14 +26,6 @@ export function renderCardRow(card, readingDisplay = "reading") {
         >${icon("edit")}</button>
 
         <button
-          class="icon-button bg-yellow fg-white tappable"
-          data-action="content/star-card"
-          data-card-id="${card.id}"
-          aria-label="${isStarred ? "Unstar" : "Star"}"
-          data-selected="${isStarred}"
-        >${icon("star")}</button>
-
-        <button
           class="icon-button bg-danger fg-white tappable"
           data-action="content/delete-card"
           data-card-id="${card.id}"
@@ -37,8 +33,15 @@ export function renderCardRow(card, readingDisplay = "reading") {
         >${icon("delete")}</button>
       </div>
 
-      <div class="card-row flex-col" data-card-id="${card.id}">
+      <div class="card-row flex-row items-start justify-between tappable" data-action="content/play-card" data-card-id="${card.id}" data-starred="${isStarred}">
         ${renderCardContent(card, readingDisplay)}
+        <button
+          class="card-star tappable shrink-0"
+          data-action="content/star-card"
+          data-card-id="${card.id}"
+          aria-label="${isStarred ? "Unstar" : "Star"}"
+          data-selected="${isStarred}"
+        >${icon(isStarred ? "star-fill" : "star")}</button>
         <div class="card-row-reorder-handle shrink-0" aria-hidden="true">
           ${icon("reorder")}
         </div>
@@ -47,14 +50,13 @@ export function renderCardRow(card, readingDisplay = "reading") {
   `;
 }
 
-// Phrasebook term card — matches the Figma "Term" component (node 606:6505):
-// the English translation on top, a divider with an inline audio control, then
-// the target-language term (blue) with its reading below. The star prefix (★)
-// is prepended in JS because it is text content, not a display toggle.
+// Phrasebook term card — matches the Figma "Term" component (node 754:7053):
+// the target-language term (large, body color) with inline per-character ruby
+// readings on top, its English translation (smaller, muted) stacked beneath —
+// a left-aligned vertical stack, no divider, no visible play control (tapping
+// the row itself plays audio; see renderCardRow). Starred state is shown by
+// the inline star toggle in renderCardRow, not a text prefix.
 function renderCardContent(card, readingDisplay = "reading") {
-  const isStarred = !!card.state?.starredAt;
-  const starPrefix = isStarred ? "★ " : "";
-
   // Furigana ruby only when displaying 'reading' and structured tokens exist;
   // otherwise the reading renders as a plain line below the term.
   const hasRuby = readingDisplay === "reading" && Array.isArray(card.reading);
@@ -62,21 +64,10 @@ function renderCardContent(card, readingDisplay = "reading") {
   const reading = card[readingDisplay] || "";
 
   return `
-    <div class="card-term flex-col" ${hasRuby ? "data-has-ruby" : ""}>
-      <div class="card-term-english text-card-title fg-body">${card.translation || ""}</div>
-      <div class="card-term-divider flex items-center gap-sm">
-        <span class="card-term-rule flex-1"></span>
-        <button
-          class="card-row-play icon-button fg-tertiary shrink-0 tappable"
-          data-action="content/play-card"
-          data-card-id="${card.id}"
-          aria-label="Play"
-        >${icon("sound")}</button>
-      </div>
-      <div class="card-term-target flex-col">
-        <div class="card-term-cjk text-card-title fg-accent">${starPrefix}${cjk}</div>
-        <div class="card-term-reading text-body1">${reading}</div>
-      </div>
+    <div class="card-term flex-col flex-1 min-w-0" ${hasRuby ? "data-has-ruby" : ""}>
+      <div class="card-term-target fg-body">${cjk}</div>
+      ${hasRuby ? "" : `<div class="card-term-reading text-body2">${reading}</div>`}
+      <div class="card-term-english fg-secondary">${card.translation || ""}</div>
     </div>
   `;
 }

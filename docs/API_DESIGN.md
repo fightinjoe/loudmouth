@@ -370,6 +370,345 @@ Advanced — card: café — coffee
 
 ---
 
+# Catchphrase guided phrasebook generation (`/textbook`)
+
+> **⚠️ Branch exploration.** `/textbook` exists only on the `textbook-guided-creation` branch, as
+> an alternate phrasebook-creation path alongside `/lookup` (see `docs/journeys.md` Journey 5 and
+> `docs/BRIEF.md`'s Textbook bullet). It is a new, separate endpoint — not a mode of `/lookup` —
+> deployed in the same `api/` service and sharing its LLM backend plumbing.
+
+## Goal
+
+Where `/lookup` translates one term and returns AI-clustered *related* content around it,
+`/textbook` goes further: given a **topic or situation** (not necessarily a single word — "salsa
+dancing", "dinner with my girlfriend's parents") rather than a term to translate, it produces
+enough structure and content to **generate an entire phrasebook in one guided flow**, with the
+learner steering via a couple of quick choices rather than curating card-by-card.
+
+The endpoint is used in **two calls** against the same route, distinguished by whether the request
+carries a `context` field:
+
+1. **Without `context`** — given the topic (+ language + ability), the model proposes: a set of
+   **dynamic clarifying questions** (each with a label and a small set of options, one marked
+   default) that narrow the topic to the learner's actual situation, and a **checklist** of
+   candidate sub-goals/sections for the eventual phrasebook, some pre-checked. Nothing is
+   generated or saved yet.
+2. **With `context`** — given the topic (+ language + ability) **and** the learner's answers to
+   call 1's questions plus which checklist items they left checked, the model **bulk-generates**
+   the full phrasebook content: one themed group of cards per checked checklist item, ready to
+   commit as a brand-new phrasebook with no further curation.
+
+The two calls share one endpoint and one request/response envelope shape (see Inputs/Outputs)
+rather than being two separate routes, per an explicit design decision: the caller doesn't have to
+remember two URLs, and the presence of `context` alone is sufficient to disambiguate intent.
+
+---
+
+## Inputs
+
+| Param | Required | Values | Default | Effect |
+|---|---|---|---|---|
+| `topic` | yes | — | — | The topic, situation, or scenario to build a phrasebook around. Max 200 characters. Broader than `/lookup`'s `term` — a phrase, scenario, or activity, not necessarily a single translatable word. |
+| `language` | yes | `zh` \| `ja` \| `es` \| `cs` | — | Target language. Sets every generated card's `lang`, same as `/lookup`. |
+| `ability` | no | `none` \| `beginner` \| `intermediate` \| `advanced` | `beginner` | Same semantics as `/lookup`'s `ability` — caps difficulty, never changes intent. |
+| `context` | no | JSON object | — (absent) | **Presence, not shape, selects the call mode.** Absent → call 1 (return questions + checklist). Present → call 2 (bulk-generate). Treated as an opaque blob echoing whatever call 1 returned plus the learner's answers/selections — see Internal flow. |
+| `llm` | no | `google` \| `claude` \| `chatgpt` | `google` | Same as `/lookup` — which model backend generates the response. |
+
+Unlike `/lookup`, there is **no `formality`/`audience` (VIBE) input** — the Textbook flow does not
+surface VIBE at all (see `docs/journeys.md` Journey 5); tone is inferred by the model from `topic`
+and the context answers themselves (e.g. a "salsa scene" or "role" answer implicitly carries
+register information the way `/lookup`'s explicit `formality`/`audience` inputs do directly).
+
+### `context` shape (call 2 only)
+
+Not a fixed schema — call 1's `questions` response defines the *shape* of what call 2's `context`
+should echo back. Conceptually:
+
+```json
+{
+  "answers": { "<question label>": "<chosen option>", "...": "..." },
+  "checklist": ["<checked item label>", "..."]
+}
+```
+
+The service does not validate individual keys inside `context` beyond confirming it is a JSON
+object — it is passed to the model largely as-is, re-embedded into the generate prompt. This
+mirrors the client's own posture toward it: opaque state carried from call 1's response to call 2,
+discarded afterward (see `docs/journeys.md` Journey 5 "Save model").
+
+---
+
+## Outputs
+
+### Call 1 response — questions + checklist
+
+```json
+{
+  "questions": [
+    { "label": "string", "options": ["string", "..."], "default": "string" }
+  ],
+  "checklist": [
+    { "label": "string", "checked": true }
+  ]
+}
+```
+
+- `questions` — an array of **dynamically authored** clarifying questions, each a label (e.g.
+  "Salsa scene") plus a small set of plausible options (e.g. "Latin America (neutral)", "Cuban
+  style", …) and a `default` (must be one of `options`). The **count and content are entirely
+  topic-driven** — no fixed field list (contrast `/lookup`'s fixed `ability`/`formality`/
+  `audience` inputs). **Cap: at most 6 questions** (bounds the context-answer surface and output
+  size; a topic needing more than 6 distinguishing axes should be split into a narrower topic by
+  the learner).
+- `checklist` — an array of candidate phrasebook sections, each a short label (becomes a group
+  title on generation, same role as a `/lookup` group's `title`) and a `checked` default (the
+  model's guess at which sub-goals are most likely wanted). **Cap: at most 8 items** (mirrors
+  `/lookup`'s `MAX_GROUPS_TOTAL`, since each checked item becomes one generated group).
+
+### Call 2 response — generated phrasebook content
+
+```json
+{
+  "title": "string",          // concise, one-line phrasebook name (service-clamped ≤ 60 chars)
+  "groups": TextbookGroup[]
+}
+```
+
+Where each `TextbookGroup` is:
+
+```json
+{
+  "title": "string",       // from the checked checklist item's label
+  "cards": Card[]           // cards for this section
+}
+```
+
+- **top-level `title`** — a concise, one-line name for the whole phrasebook, biased toward 2–4
+  words in Title Case and capping the whole situation in a single glance (topic "talking to a
+  doctor about my annual physical" → "Annual Physical Visit"), used as the created phrasebook's
+  name. Model-produced (the "name the phrasebook" prompt step), **soft**: a missing or blank
+  title is not a `502` — the client falls back to the raw topic; an over-length title is clamped
+  to 60 characters, not rejected. Distinct from each group's own `title` (a section heading).
+
+No top-level "blocks"/disambiguation concept, unlike `/lookup` — the topic isn't being
+disambiguated into meanings, it's being expanded into sections. Every `Card` is shaped exactly per
+**`docs/CARD_SCHEMA.md`**, identical to `/lookup`'s card shape (reuses the same reading-token
+rules, `formality`/`definition`/`notes` semantics, gender-collapse rule for `es`/`cs`).
+
+**Limits:** one group per checked checklist item, so **at most 8 groups** (bounded by call 1's
+checklist cap); **at most 15 cards per group**, same ceiling as `/lookup`'s `MAX_CARDS_PER_GROUP`.
+No hard minimum, same posture as `/lookup` — a narrow checklist item may produce a small group.
+
+---
+
+## Internal flow
+
+Same **service → model → service** shape as `/lookup`, branching once on whether `context` is
+present:
+
+```
+topic + options (+ context?)
+     │
+     │  ┌─────────────────────────────────────────────┐
+     └─▶│ 1. PARSE (service)                          │
+        │    validate options, apply defaults         │
+        │    branch on presence of `context`           │
+        └───────────────────┬─────────────────────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+   context ABSENT                 context PRESENT
+   (call 1)                       (call 2)
+              │                           │
+        ┌─────▼─────────┐         ┌───────▼─────────┐
+        │ 2a. GENERATE   │         │ 2b. GENERATE     │
+        │ QUESTIONS       │         │ PHRASEBOOK        │
+        │ (model)         │         │ (model)           │
+        │ questions +     │         │ one group per     │
+        │ checklist       │         │ checked item       │
+        └─────┬─────────┘         └───────┬─────────┘
+              │                           │
+        ┌─────▼─────────┐         ┌───────▼─────────┐
+        │ 3a. FINISH     │         │ 3b. FINISH       │
+        │ validate shape,│         │ validate shape,   │
+        │ apply caps     │         │ apply caps,        │
+        │                │         │ set card.context   │
+        └─────┬─────────┘         └───────┬─────────┘
+              │                           │
+   { questions, checklist }      { groups: [...] }
+```
+
+### 1. Parse `[service]`
+
+Validate `topic` (required, ≤200 chars) and `language` (required, enum) exactly as `/lookup`
+validates `term`/`language`. Apply the `ability` default. Determine call mode from whether
+`context` is present and is a JSON object (not a string, not an array) — reject a malformed
+`context` with a `400` before any model call, same posture as `/lookup`'s early-reject rule.
+
+### 2a. Generate questions `[model]` — call 1, one call
+
+One prompt turns `{ topic, language, ability }` into the `{ questions, checklist }` JSON. Reuses
+`/lookup`'s content-quality-bar language (conversational, not textbook-stiff — the irony of the
+endpoint's own name is intentional; "Textbook" names the *feature* the learner sees, not the
+prompt's register) since both are explicitly meant to read the same way.
+
+**Latency/token budget:** smaller than call 2 — this call returns short label/option strings, not
+card content. Target the same p50 <4s / 15s timeout / 502-on-failure posture as `/lookup` for
+consistency; exact `maxOutputTokens` sized generously for ≤6 questions × ≤6 options + ≤8 checklist
+items (a few hundred tokens of headroom is ample, nowhere near `/lookup`'s card-heavy budget).
+
+### 2b. Generate phrasebook `[model]` — call 2, one call
+
+One prompt turns `{ topic, language, ability, context }` into `{ groups }` — conceptually "the
+groups you'd get from one broad `/lookup` call on the topic, but directed by which checklist items
+were checked and biased by the context answers," rather than disambiguation-driven blocks. Reuses
+`/lookup`'s reading-token instructions, gender-collapse rule, and card-schema JSON block verbatim
+(same `Card` shape, same rules — see `docs/CARD_SCHEMA.md`).
+
+**Token budget:** worst case 8 groups × 15 cards = 120 cards, comparable to `/lookup`'s own worst
+case (124 cards) — reuse the same `maxOutputTokens` ceiling (30000) and 15s timeout / 502 posture,
+since the shape of the problem (bulk JSON card generation, one call) is the same one `/lookup`
+already budgets for.
+
+### 3a/3b. Finish `[service]`
+
+Deterministic post-processing, no model, mirroring `/lookup`'s Finish step:
+- **Validate** the response shape for whichever call mode ran; malformed/truncated → `502`.
+- **Normalize Japanese readings** — identical rule to `/lookup` (reuse, don't reimplement).
+- **Check limits** — call 1: ≤6 questions, ≤8 checklist items; call 2: ≤8 groups, ≤15 cards/group.
+  Same trim-from-the-end-in-model-order posture as `/lookup` when the model over-produces.
+- **Set `context`** (call 2 only) — each card's `context` field is set to its group's `title`,
+  identical mechanism to `/lookup`'s group-card `context`-setting. This is what lets the finished
+  phrasebook reuse the existing section-header rendering with no client-side rendering changes
+  (see `docs/journeys.md` Journey 5, step 8).
+- **Bundle** into `{ questions, checklist }` or `{ groups: [...] }` depending on call mode.
+
+---
+
+## Model behavior
+
+Shared prompt-writing posture with `/lookup`: same three-backend (`google`/`claude`/`chatgpt`)
+requirement that the prompt not special-case any backend; same eval-harness-catches-drift stance
+rather than runtime enforcement of exact conversational quality.
+
+**Call 1 (questions + checklist).** Read the topic and infer the axes that would meaningfully
+change what phrasebook content gets generated — not generic demographic questions, but the ones
+this *specific* topic actually turns on (a dance topic turns on role/lead-follow and scene/style; a
+family-dinner topic would turn on relationship-to-host and dietary needs instead). Each question's
+`options` should be short, mutually exclusive, and genuinely different in downstream effect — not
+padding. The checklist should read as concrete, learner-recognizable goals ("Ask someone to dance
+& the etiquette"), not vague topic labels ("Dancing"), and should default-check the 1–2 items most
+learners would want first, leaving clearly-secondary items unchecked by default.
+
+**Call 2 (bulk generate).** Same **content quality bar** as `/lookup` — common, conversational
+language a person would actually say, never stiff/textbook/exam-flavored (again, the irony of the
+feature's own name is intentional and does not relax this bar). Same **words-vs-phrases balance**
+rule as `/lookup`'s Model behavior section — don't let phrases crowd out standalone vocabulary
+words when the topic implies a category of things (steps, gear, food items, etc.). One group per
+checked checklist item, using that item's label as the group `title` verbatim (or a lightly
+cleaned-up version of it) rather than inventing a new title — the learner already approved that
+label by leaving it checked.
+
+**Output.** Both calls return raw JSON, no code fences, no prose — identical output-format rule to
+`/lookup`.
+
+---
+
+## Examples
+
+### 1. Call 1 — "salsa dancing" → questions + checklist
+
+Input: `{ "topic": "salsa dancing", "language": "es", "ability": "beginner" }`
+
+```json
+{
+  "questions": [
+    { "label": "Salsa scene", "options": ["Latin America (neutral)", "Cuban style", "LA style", "New York style"], "default": "Latin America (neutral)" },
+    { "label": "Main setting", "options": ["Social dancing at a club / social", "A class / lesson", "A festival or congress"], "default": "Social dancing at a club / social" },
+    { "label": "Your role & gender", "options": ["Man, leading", "Woman, following", "Either role"], "default": "Man, leading" },
+    { "label": "Your Spanish level", "options": ["Near-zero / survival", "Basic phrases", "Conversational"], "default": "Near-zero / survival" }
+  ],
+  "checklist": [
+    { "label": "Ask someone to dance & the etiquette", "checked": true },
+    { "label": "Communicate on the floor (lead/follow, restart)", "checked": false },
+    { "label": "Compliments & thanks after a dance", "checked": false },
+    { "label": "Dance/step vocabulary", "checked": false }
+  ]
+}
+```
+
+### 2. Call 2 — generating from the checked items
+
+Input:
+```json
+{
+  "topic": "salsa dancing",
+  "language": "es",
+  "ability": "beginner",
+  "context": {
+    "answers": {
+      "Salsa scene": "Latin America (neutral)",
+      "Main setting": "Social dancing at a club / social",
+      "Your role & gender": "Man, leading",
+      "Your Spanish level": "Near-zero / survival"
+    },
+    "checklist": ["Ask someone to dance & the etiquette", "Dance/step vocabulary"]
+  }
+}
+```
+
+```
+title: "Salsa Social Dancing"
+
+Group "Ask someone to dance & the etiquette"
+  ¿Bailas? — Wanna dance?
+  ¿Quieres bailar? — Would you like to dance?
+  Con permiso — Excuse me / pardon (asking to cut in)
+  Gracias por el baile — Thanks for the dance
+
+Group "Dance/step vocabulary"
+  el paso — the step
+  girar — to turn/spin
+  el guía / la guía — the leader
+  seguir — to follow
+```
+
+Only the two checked checklist items produce groups — "Communicate on the floor" and "Compliments
+& thanks after a dance" were left unchecked and are not generated, per the checklist's role as the
+learner's control surface (see `docs/journeys.md` Journey 5, step 6).
+
+---
+
+## What this reuses from `/lookup`
+
+Per the project's own "don't rebuild what exists" posture (see `/lookup`'s own "What already
+exists" table):
+
+| Existing (from `/lookup`) | Reuse in `/textbook` |
+|---|---|
+| `api/src/index.js` router + CORS/method handling | add one `/textbook` route; same 204/405/404 behavior |
+| `api/src/llms/*.js` + `LLM_REGISTRY` | backend calls unchanged, same explicit `maxOutputTokens` requirement |
+| `api/src/card-validate.js` | reused as-is for every card in every `/textbook` group |
+| `lookup-prompt.js`'s `readingInstructions`/`cardReadingExample`/`genderInstruction` + card-schema JSON block | imported/shared, not duplicated, into `textbook-prompt.js` |
+
+## Deferred (build only when earned / needed)
+
+Same deferred list and same rationale as `/lookup`'s own Appendix — `/textbook` is not held to a
+stricter bar for a branch exploration:
+
+- **Auth / rate limiting** — unauthenticated and unlimited, same single-tenant prototype posture.
+- **Caching / determinism** — fresh-each-time, no cache.
+- **Client-facing streaming** — call 2's bulk generation is a plausible future streaming candidate
+  (stream groups as they complete) but not built now, same "revisit only if latency is bad" stance
+  as `/lookup`'s deferred streaming note.
+- **Fan-out (planner + parallel fillers)** — call 2 is architecturally similar to `/lookup`'s v0
+  mono-call; the same earned-not-default posture applies (`docs/FANOUT_DESIGN.md`'s design would
+  need extending to cover a checklist-driven group set, not built here).
+- **Regenerate / undo** — explicitly out of scope by product decision, not just deferred: once
+  generation completes, the context Q&A/checklist state is discarded, not just unbuilt-for-now.
+
+---
+
 # Appendix
 
 ## What this replaces

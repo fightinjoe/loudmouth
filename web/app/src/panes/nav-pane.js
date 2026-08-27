@@ -20,7 +20,6 @@
  */
 import {
   getCards,
-  getStarredCards,
   getDecks,
   getRecentDecks,
   getSeededDeckIds,
@@ -168,14 +167,6 @@ async function loadNavItems() {
     const name = LANG_NAMES[lang] ?? lang.toUpperCase();
     const rows = [];
 
-    const starred = await getStarredCards(lang);
-    if (starred.length) {
-      rows.push({
-        deck: { id: `starred:${lang}`, name: "★ Starred", lang },
-        count: starred.length,
-        subtitle: `${starred.length} ${nounFor(starred)}`,
-      });
-    }
     for (const deck of decks) {
       const cards = await getCards(deck.id);
       rows.push({ deck, count: cards.length, subtitle: `${cards.length} ${nounFor(cards)}` });
@@ -292,7 +283,7 @@ export default {
 
     delegate.register("nav/open-deck", (_e, el) => {
       const id = el.dataset.deckId;
-      if (id && !id.startsWith("lang:") && !id.startsWith("starred:")) {
+      if (id && !id.startsWith("lang:")) {
         updateDeckAccessTime(id);
       }
       ui.transition("content/select-deck", { id });

@@ -27,7 +27,8 @@ api/
 │       ├── openai.js           # GPT-4o via OpenAI SDK
 │       └── genai.js            # Gemini via Google GenAI SDK
 ├── evals/
-│   └── lookup.eval.js          # LLM-judge + golden-set eval harness
+│   ├── textbook-sample.js     # /textbook English-only YAML sample exporter (deno)
+│   └── samples/               # per-case <slug>.yaml (hand-editable `ideal` + raw `actual`)
 ├── deploy.sh                   # Idempotent GCP deploy script
 └── README.md
 ```
@@ -165,9 +166,25 @@ ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... npm run dev
 
 ```bash
 cd src
-npm test              # unit tests (node --test)
-npm run eval:lookup   # LLM-judge + golden-set eval harness (evals/lookup.eval.js)
+npm test                       # unit tests (node --test)
+
+# Subjective-review sample exporter for /textbook. Requires the dev server
+# running (npm run dev) and `deno` on PATH. Drives /textbook's two-call flow
+# (questions → generate) and writes an English-only, hand-editable YAML per
+# case to evals/samples/<slug>.yaml. Rerun to refresh the raw `actual`
+# section; your edits to the `ideal` section above the divider are preserved.
+npm run eval:textbook-sample -- \
+  --topic="salsa dancing" --language=es --ability=beginner --llm=google \
+  --checklist=default --url=http://localhost:8080
 ```
+
+`--checklist=default` generates only the checklist items the model marked
+checked (falling back to all if none are); `--checklist=all` generates every
+item. Pass `--force` to reseed the `ideal` section from a fresh response.
+
+> **Note:** the `/textbook` generate call requests `maxOutputTokens: 30000`,
+> which only the `google` (Gemini/Vertex) backend accepts — `claude` and
+> `chatgpt` reject it (SDK/model completion-token caps), so use `--llm=google`.
 
 ## Testing the deployed service
 

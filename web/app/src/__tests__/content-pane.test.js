@@ -15,8 +15,8 @@ const { deckStore, loadDeckData } = vi.hoisted(() => {
     d1: { id: "d1", name: "Spanish", lang: "es", mode: "study", order: "default", system: false },
   };
   const fn = vi.fn(async (deckId) => {
-    if (!deckId) return { deck: null, cards: [], isStarred: false };
-    return { deck: { ...store[deckId] }, cards: [], isStarred: false };
+    if (!deckId) return { deck: null, cards: [] };
+    return { deck: { ...store[deckId] }, cards: [] };
   });
   return { deckStore: store, loadDeckData: fn };
 });
@@ -162,6 +162,52 @@ describe("content pane — Add/Review entry points (PH-002/PH-007/PH-009)", () =
   });
 });
 
+describe("content pane — group collapse/expand (Figma node 754:6178)", () => {
+  it("content/toggle-group flips data-collapsed on the clicked group, no ui.transition/re-render", () => {
+    const { ui, rootEl } = mountPane();
+    const before = ui.get("content");
+
+    const group = document.createElement("div");
+    group.className = "card-group";
+    group.dataset.collapsed = "true";
+    const footer = document.createElement("button");
+    footer.dataset.action = "content/toggle-group";
+    group.appendChild(footer);
+    rootEl.appendChild(group);
+
+    footer.click();
+    expect(group.dataset.collapsed).toBe("false");
+
+    footer.click();
+    expect(group.dataset.collapsed).toBe("true");
+
+    // Purely a DOM toggle — the content slice itself is untouched.
+    expect(ui.get("content")).toBe(before);
+  });
+
+  it("toggling one group does not affect a sibling group", () => {
+    const { rootEl } = mountPane();
+
+    const groupA = document.createElement("div");
+    groupA.className = "card-group";
+    groupA.dataset.collapsed = "true";
+    const footerA = document.createElement("button");
+    footerA.dataset.action = "content/toggle-group";
+    groupA.appendChild(footerA);
+
+    const groupB = document.createElement("div");
+    groupB.className = "card-group";
+    groupB.dataset.collapsed = "true";
+
+    rootEl.appendChild(groupA);
+    rootEl.appendChild(groupB);
+
+    footerA.click();
+    expect(groupA.dataset.collapsed).toBe("false");
+    expect(groupB.dataset.collapsed).toBe("true");
+  });
+});
+
 describe("content pane — save-preview (PH-008)", () => {
   beforeEach(() => {
     createDeck.mockClear();
@@ -182,7 +228,7 @@ describe("content pane — save-preview (PH-008)", () => {
     const previewCards = [
       { id: "preview-0", createdAt: "1970-01-01T00:00:00.000Z", deckIds: [], lang: "ja", text: "こんにちは", translation: "hello" },
     ];
-    ui.transition("content/loaded", { deck: previewDeck, cards: previewCards, isStarred: false });
+    ui.transition("content/loaded", { deck: previewDeck, cards: previewCards });
 
     const btn = document.createElement("button");
     btn.dataset.action = "content/save-preview";

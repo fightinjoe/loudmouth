@@ -6,19 +6,24 @@ const LANGS = ["zh", "ja", "es", "cs"];
 const ABILITIES = ["none", "beginner", "intermediate", "advanced"];
 const ABILITY_LABELS = { none: "None", beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" };
 
-// Placeholder name for a freshly created phrasebook — the lookup panel
-// renames it to "{Term} phrasebook" on the first term ever saved into it
-// (docs/journeys.md Journey 1 step 10 shows the finished deck as "Dinner
-// phrasebook", named after the first look-up, not left as a generic
-// placeholder). See lookup-panel.js `maybeAutoNameDeck`.
+// Retained for lookup-panel.js's `maybeAutoNameDeck` (Journey 3's "Add" on
+// an existing phrasebook) — that guard is now dead in practice on this
+// branch since nothing creates a deck with this name anymore (Journey 1's
+// creation hand-off no longer runs), but lookup-panel.js is intentionally
+// left untouched per docs/journeys.md Journey 5's "Journey 1 stays intact"
+// decision, so the constant it imports must keep existing.
 export const PLACEHOLDER_DECK_NAME = "New phrasebook";
 
 /**
  * Opens New-phrasebook mode (docs/journeys.md Journey 1 steps 1-2 +
  * 'Ability field'): Language + Your ability selects, immutable once the
- * phrasebook is created. On create, opens directly into the Input mode of
- * the /lookup stack (see action-pane.js's 'new-phrasebook' -> 'lookup'
- * hand-off).
+ * phrasebook is created.
+ *
+ * ⚠️ Prototype-branch behavior (docs/journeys.md Journey 5): on create, this
+ * hands `{ lang, ability }` back to `onCreated` WITHOUT creating a deck —
+ * the caller (action-pane.js) opens the guided Textbook flow next, which
+ * creates the deck itself once generation succeeds. No placeholder deck is
+ * created here, unlike the shipped product's Journey 1 hand-off.
  *
  * Also serves Journey 2's Confirm mode (a suggested-phrasebook preview
  * gate) when `suggestion` is passed — "reuses the New-phrasebook
@@ -29,8 +34,9 @@ export const PLACEHOLDER_DECK_NAME = "New phrasebook";
  * (action-pane.js's 'new-phrasebook' -> content-pane preview hand-off).
  *
  * @param {HTMLElement} appEl
- * @param {{ createDeck: Function }} deps
- * @param {Function} onCreated - (create mode) called with the created deck
+ * @param {{ createDeck: Function }} deps - retained for signature parity
+ *   with the confirm-mode caller; unused in create mode on this branch.
+ * @param {Function} onCreated - (create mode) called with (lang, ability)
  * @param {Function} onDismiss
  * @param {{ id: string, emoji: string, title: string, lang: string }} [suggestion]
  * @param {Function} [onConfirmed] - (confirm mode) called with { lang, ability }
@@ -87,8 +93,7 @@ export function openNewPhrasebookPanel(appEl, { createDeck }, onCreated, onDismi
         onConfirmed({ lang: state.lang, ability: state.ability });
         return;
       }
-      const deck = await createDeck(PLACEHOLDER_DECK_NAME, state.lang, { ability: state.ability });
-      onCreated(deck);
+      onCreated(state.lang, state.ability);
     });
   }
 }

@@ -79,3 +79,49 @@ describe("renderCardsHTML — grouped sections (PH-006)", () => {
     expect(html).toContain("No cards in this deck");
   });
 });
+
+describe("renderCardsHTML — Group wrapper (collapsible sections, Figma node 754:6178)", () => {
+  it("wraps a group-sourced section in a card-group, collapsed by default", () => {
+    const cards = [
+      card({ id: "c1", text: "水", translation: "water", createdAt: "2026-01-01T00:00:00.000Z" }),
+      card({ id: "c2", text: "お会計", translation: "check please", createdAt: "2026-01-02T00:00:00.000Z", context: "Ordering at a restaurant" }),
+    ];
+    const html = renderCardsHTML(deck, cards);
+    expect(html).toContain('class="card-group"');
+    expect(html).toContain('data-collapsed="true"');
+  });
+
+  it("does NOT wrap the standalone 'Translations' section in a card-group", () => {
+    const cards = [
+      card({ id: "c1", text: "水", translation: "water", createdAt: "2026-01-01T00:00:00.000Z" }),
+      card({ id: "c2", text: "お会計", translation: "check please", createdAt: "2026-01-02T00:00:00.000Z", context: "Ordering at a restaurant" }),
+    ];
+    const html = renderCardsHTML(deck, cards);
+    const translationsIdx = html.indexOf(">Translations<");
+    const firstGroupIdx = html.indexOf('class="card-group"');
+    // The standalone section's rows render before any card-group markup appears.
+    expect(translationsIdx).toBeGreaterThanOrEqual(0);
+    expect(firstGroupIdx).toBeGreaterThan(translationsIdx);
+  });
+
+  it("footer shows a combined count label for untyped cards, and both View/Collapse labels (CSS picks the visible one)", () => {
+    const cards = [
+      card({ id: "c1", text: "お会計", translation: "check please", createdAt: "2026-01-01T00:00:00.000Z", context: "Ordering at a restaurant" }),
+      card({ id: "c2", text: "メニュー", translation: "menu", createdAt: "2026-01-02T00:00:00.000Z", context: "Ordering at a restaurant" }),
+    ];
+    const html = renderCardsHTML(deck, cards);
+    expect(html).toContain("2 words / phrases");
+    expect(html).toContain("card-group-footer-view");
+    expect(html).toContain("card-group-footer-collapse");
+    expect(html).toContain('data-action="content/toggle-group"');
+  });
+
+  it("uses a homogeneous 'words' label when every card in the group is type: word", () => {
+    const cards = [
+      { ...card({ id: "c1", text: "水", translation: "water", createdAt: "2026-01-01T00:00:00.000Z", context: "Drinks" }), type: "word" },
+      { ...card({ id: "c2", text: "茶", translation: "tea", createdAt: "2026-01-02T00:00:00.000Z", context: "Drinks" }), type: "word" },
+    ];
+    const html = renderCardsHTML(deck, cards);
+    expect(html).toContain("2 words");
+  });
+});

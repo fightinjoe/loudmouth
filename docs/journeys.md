@@ -102,6 +102,14 @@ Set in the action pane's New-phrasebook / Confirm mode (Journeys 1 & 2). Rules:
   - **Your ability** → None (dropdown; mock shows None — **shipped default is Beginner**, see Ability field below)
 - Primary button: **"Create your first phrasebook"** (full-width, blue). Copy is first-run specific ("your first").
 - *Implementation:* Two selects, both open a `Menu` overlay (see repeated `Menu`/`Menu option` instances in metadata). "Your ability" is a field now in DESIGN.md — learner proficiency, values **None / Beginner / Intermediate / Advanced**, **distinct from VIBE** (translation tone, set later in the Input pane). See [Ability field](#ability-field-phrasebook-level-cross-journey) for its full rules (immutable, biases generation, per-language default). **Language** is the phrasebook's fixed language, also immutable after creation. VIBE (formality/audience) is **not** set on this sheet — it defaults to **Polite / Staff** (mock shows Casual/Strangers; shipped default follows `docs/API_DESIGN.md`) and is first surfaced expanded on the first translation.
+- > **⚠️ Prototype-branch caveat (not a retroactive product decision).** On the `textbook-guided-creation`
+  > exploration branch, tapping "Create your first phrasebook" (or the returning-user "New phrasebook" CTA)
+  > hands off to the new **Journey 5 — Guided phrasebook creation ("Textbook")** action-pane content instead
+  > of Input mode (step 3 below). Step 3 onward — the manual Input→Translation→Group stack — is therefore
+  > **not reachable from phrasebook creation on this branch**; it remains fully documented here and fully
+  > implemented in code because [Journey 3](#journey-3--adding-terms-to-an-existing-phrasebook) ("Add" on
+  > an existing phrasebook) still uses it verbatim, unchanged. This is an explicit, branch-scoped UX
+  > exploration, not an edit to the shipped product's decided flow — see Journey 5 for the replacement.
 
 **3. Action pane · Input mode — empty** (`Action pane - translate (empty)`, 436:6726) — *stack level 1*
 - After creating, the app drops the user into the action pane in **Input mode** (level 1 of the content stack; bottom-anchored over scrim; content pane / landing dimmed behind).
@@ -311,3 +319,189 @@ Review is a **content mode of the action pane** (bottom-anchored surface over a 
 - Is there an **end-of-deck** state / session summary, or does it loop?
 - Does the direction toggle persist as a **per-phrasebook default** (like VIBE) or reset each session?
 - Which subset is reviewed — the whole phrasebook, a section, or a starred subset?
+
+---
+
+## Journey 5 — Guided phrasebook creation ("Textbook")
+
+> **⚠️ Prototype-branch exploration.** This journey exists only on the `textbook-guided-creation`
+> branch, as an alternate take on phrasebook creation. On this branch it **replaces** Journey 1's
+> manual look-up as the creation path — there is no branching UI, by explicit decision, for this
+> prototype. Journey 1's Input→Translation→Group stack remains fully implemented and documented
+> because [Journey 3](#journey-3--adding-terms-to-an-existing-phrasebook) still uses it verbatim
+> for adding terms to an *existing* phrasebook — only the *creation* hand-off changes here.
+
+**Figma:** section `Section 1` ([node 784-20897](https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/CatchPhrase?node-id=784-20897)) — 8 frames, read left→right (`769:16909` → `768:14167`).
+
+**One-line:** From New-phrasebook mode, instead of a manual look-up the user types one **topic**
+("salsa dancing"), answers a handful of AI-generated **context questions** and reviews an
+AI-suggested **checklist** of sub-goals, then taps submit once more to get a **fully-populated,
+multi-section phrasebook** in one shot — no per-card curation.
+
+**Panes traversed** (component → content mode): Navigation pane *(landing)* → **Action pane**
+*(new-phrasebook → textbook: topic entry → context+checklist → generating)* → Content pane
+*(finished, multi-section phrasebook view)*.
+
+### The `textbook` content mode (applies to this whole journey)
+
+A new content mode of the **action pane** component, a sibling of `lookup` / `new-phrasebook` /
+`review` (not a variant of the existing look-up stack). Internally linear, not a push/pop stack
+like Journey 1's: **topic entry → context questions + checklist → generating → done** (closing
+straight into the phrasebook — "done" has no visible 4th frame of its own). There is no back-and-
+forth branching once the topic is submitted; the whole flow is a straight line to a generated
+phrasebook.
+
+**Submit affordance is a forward chevron, not return-key.** The topic-entry screen shows a `>`
+button, distinct from Journey 1's Input mode, which fires only on the keyboard's return key with
+no on-screen button (see Journey 1's "Look-up submits on keyboard return" resolved decision). This
+new pane does **not** inherit that rule — it is a deliberate deviation, confirmed during design.
+
+### Save model (applies to this whole journey)
+
+**No staging, no per-card save, no preview/Save-pill gate.** Unlike Journey 1 (save per-term via
+🔖) and Journey 2 (preview-then-explicit-Save), the whole generated phrasebook — every section,
+every card — is **committed immediately** the moment generation succeeds. The user lands directly
+in the finished, populated phrasebook view. There is no undo and no regenerate: once generation
+completes, the context question answers and checklist selections are **discarded entirely** — not
+retained on the deck, not logged to history, not recoverable.
+
+### Step-by-step
+
+**1. Landing page — empty state** (`Navigation pane - empty state`, 769:16909)
+- Same landing page as Journey 1's step 1 — logo, tagline, "No phrasebooks / Create your first!"
+  CTA banner with "New phrasebook" pill, SUGGESTED PHRASEBOOKS section. Unchanged.
+
+**2. Action pane · New-phrasebook mode** (unchanged from Journey 1 step 2)
+- Same Language + Your ability selects, same "Create your first phrasebook" button. See Journey 1
+  step 2 for the full breakdown — nothing about this sheet changes. Only what happens **after**
+  tapping the create button differs (see caveat above and step 3 below).
+
+**3. Action pane · Textbook mode — topic entry, empty** (`Navigation pane - empty state`, 769:17068)
+- Header: back chevron (left) + **"🇯🇵 Japanese"** language label (display-only, same as Journey 1's
+  Input header) + an (initially hidden/opacity-0) trailing action slot.
+- Large placeholder input: **"Enter word, phrase, or topic"** — note the copy explicitly includes
+  "topic", broader than Journey 1's "Enter word or phrase".
+- **HISTORY** section below (recent topics), same visual treatment as Journey 1's Input-mode
+  history — reuses the same `History item` component.
+- No VIBE settings on this screen — VIBE (formality/audience) is not surfaced in the Textbook flow
+  at all; only `ability` (from New-phrasebook mode) and the topic feed the generation.
+- *Implementation:* This is stack-position 1 of the linear flow. Reuses the Input-mode field/
+  history visual pattern from `lookup-panel.js`, but the placeholder copy and submit affordance
+  differ (see below).
+
+**4. Action pane · Textbook mode — topic entry, filled** (`Navigation pane - empty state`, 769:17306)
+- User types **"salsa dancing"**. The header's trailing action slot becomes a visible **✕ clear**
+  button (same position/role as Journey 1's clear affordance).
+- A **forward chevron `>`** appears bottom-right of the input, replacing Journey 1's implicit
+  return-key-only submit. Tapping it (not pressing return) submits the topic.
+- *Implementation:* `/textbook`'s first call (no `context`) fires on chevron tap:
+  `{ topic, language, ability }`.
+
+**5. Action pane · Textbook mode — context questions + checklist** (`Navigation pane - empty state`, 769:17816)
+- Header unchanged (back chevron + language label + ✕ clear); topic text now shown read-only above
+  a divider (`salsa dancing`).
+- A stack of **dynamic `Select` rows**, each labeled and pre-filled with a default value — in the
+  mock: **"Salsa scene" → "Latin America (neutral)"**, **"Main setting" → "Social dancing at a
+  club / social"**, **"Your role & gender" → "Man, leading"**, **"Your Spanish level" →
+  "Near-zero / survival"**. These are **not a fixed field set** — the model authors however many
+  questions (and whatever labels/options) make sense for the given topic; four is just this
+  example's count.
+- A forward chevron `>` at the bottom submits.
+- *Implementation:* This whole screen's content — every question's label + options + default,
+  reused `Select/Default` markup already established in `new-phrasebook-panel.js`/
+  `lookup-panel.js`'s VIBE selects — comes from the **same `/textbook` response** as the checklist
+  in the next frame. They render together (this doc splits them into two Figma-frame steps only
+  because the mock's checklist frame, node `782:19808`, is a distinct screenshot — in the actual
+  response and likely the actual UI they are one payload, possibly one scrollable screen).
+
+**6. Action pane · Textbook mode — checklist** (`Navigation pane - empty state`, 782:19808)
+- Below the (now presumably collapsed or scrolled-past) context questions, a **Checklist**
+  component appears: label **"What do you most want to ask someone to do?"**, followed by a group
+  of checkable items, some pre-checked by default:
+  - ✅ "Ask someone to dance & the etiquette" (checked)
+  - "Communicate on the floor (lead/follow, restart)" (unchecked)
+  - "Compliments & thanks after a dance" (unchecked)
+  - "Dance/step vocabulary" (unchecked)
+- Forward chevron `>` submits.
+- *Implementation:* Checklist items are AI-suggested candidate **group/section titles** for the
+  generated phrasebook — checked items become the sections that actually get generated. No item
+  text entry, no regenerate action (confirmed: no undo/redo on this flow) — simple check/uncheck
+  only, reusing a plain checkbox-row list (no existing checklist component in the codebase; keep
+  it minimal). On final submit, `/textbook`'s second call fires with `context` populated —
+  `{ topic, language, ability, context: { answers: {...}, checklist: [...checked labels...] } }`
+  (exact shape is an implementation detail of the API contract, not fixed here).
+
+**7. Action pane · Textbook mode — generating**
+- Not present as a distinct mock frame — the transition from submitting the checklist to landing
+  in the finished phrasebook has no dedicated Figma screenshot. Implement a loading state here
+  (e.g. adapting Journey 1's `renderSkeleton` staggered-card treatment, reframed as "building your
+  phrasebook" rather than "looking up a term") rather than a blank pause, since generation over
+  multiple sections is likely to take longer than a single `/lookup` call.
+
+**8. Content pane · Phrasebook view — finished** (`Content pane - Dinner phrasebook`, 768:14167)
+- On generation success, the action pane closes straight into the **content pane**, landing on the
+  brand-new, fully-populated phrasebook — no intermediate preview, no Save pill (unlike Journey
+  2). Header: ☰ menu (left) + title **"Salsa Dancing 💃"** (center, topic-derived, emoji included)
+  + ⚙️ settings icon (right) — note this header has **both** the ☰ menu and a trailing action,
+  unlike Journey 1's finished-phrasebook header which shows only ☰ + title.
+- Terms are rendered as **multiple named, collapsed sections**, each behaving like an accordion
+  row rather than Journey 1's always-expanded flat/grouped list:
+  - **CORE WORDS** — preview rows (e.g. *de nada — you're welcome*, *con gusto — my pleasure*, …)
+    + a footer row **"10 words"** with a **View** expand toggle (chevron).
+  - **GREETINGS & ASKING TO DANCE** — preview rows (*¡Hola! ¿Cómo estás? — Hi! How are you?*,
+    *¿Bailas? — Wanna dance?*, …) + **"7 phrases" · View**.
+  - **COMPLIMENTS & THANKS AFTER A DANCE** — further section, visible at the bottom of the
+    screenshot, cut off (confirms more sections scroll below).
+- Bottom **action bar**: same **+ Add** / **⧉ Review** pair as Journey 1's finished phrasebook —
+  Add still opens the (unchanged) Journey 1 look-up stack for adding one more term the normal way,
+  Review still opens the Journey 4 flashcard mode. Neither action is Textbook-specific.
+- *Implementation:* Section = one checked checklist item's generated group, same underlying
+  mechanism as Journey 1's "grouping persists into the phrasebook" (point 4 in that journey's key
+  details) — each generated card's `context` field is set to its section's title before commit, so
+  the **existing** phrasebook-view section-header rendering picks it up with no changes needed.
+  The only new UI here is the **collapsed-by-default, expand-to-View** section treatment — Journey
+  1's sections render always-expanded; this multi-section, likely-large result instead defaults
+  every section to collapsed with a count + View toggle, given a Textbook phrasebook can plausibly
+  contain many more cards up front than a hand-curated one.
+
+### Key implementation details & decisions (Journey 5)
+
+1. **New `textbook` action-pane content mode**, sibling to `lookup`/`new-phrasebook`/`review` —
+   internally linear (topic → questions+checklist → generating → done), not a push/pop stack.
+2. **`/textbook` is a new, separate endpoint from `/lookup`** (not a mode flag on `/lookup`) — see
+   `docs/API_DESIGN.md`. One route, two calls distinguished by the presence/absence of a `context`
+   request field: absent → return context questions + checklist; present → bulk-generate the full
+   phrasebook.
+3. **Forward-chevron submit**, not return-key — a deliberate, scoped deviation from Journey 1's
+   resolved return-key-only rule; applies only within this new content mode.
+4. **Context questions are fully dynamic per topic** — arbitrary label/options/default per
+   question, AI-authored, no fixed schema in the client. The client renders whatever the API
+   returns using the existing `Select` markup pattern.
+5. **Checklist and context questions are generated together**, in `/textbook`'s first call — one
+   LLM response, not two separate calls for questions vs. checklist.
+6. **Checked checklist items become the generated phrasebook's section titles** — same `context`-
+   field mechanism Journey 1 already uses for group-sourced saves; no new data model needed.
+7. **Direct commit, no preview, no undo.** Generation success immediately creates the deck and
+   imports every card — reuses the existing `createDeck` + `importCards` helpers (`db.js`), not
+   the per-card `saveTermCard` path Journey 1 uses. The intermediate question/checklist state is
+   discarded once generation succeeds — nothing about it is persisted.
+8. **Collapsed-by-default sections** in the resulting phrasebook view — new UI, since a
+   Textbook-generated phrasebook is expected to hold substantially more cards up front than a
+   freshly hand-curated one.
+9. **Journey 1 stays intact for Journey 3.** The manual look-up stack, its component, and its data
+   flow are unchanged — Journey 5 only redirects the *creation* hand-off; adding a term to an
+   existing phrasebook still opens the unchanged Journey 1 stack.
+
+### Open questions (Journey 5)
+
+- Exact `/textbook` response field names for questions/checklist/generated groups are not fixed by
+  this doc — see `docs/API_DESIGN.md` for the authoritative contract once implemented.
+- Whether context questions and the checklist render as one continuous scrollable screen or two
+  separate sub-steps within the `textbook` mode is a UI-implementation choice; the Figma mock's two
+  separate frames (`769:17816`, `782:19808`) may just be two scroll positions of one screen rather
+  than two navigable steps — confirm during implementation.
+- No dedicated "generating" mock frame exists — the loading treatment during the (likely
+  multi-section, possibly slower) bulk-generate call is an implementation choice, not a traced
+  design.
+- Whether/how a failed generation (LLM error, timeout) is surfaced — no error-state mock exists for
+  this flow, unlike Journey 1's `renderTranslationFrame` error branch.

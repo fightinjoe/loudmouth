@@ -123,9 +123,6 @@
 #content-pane[data-edit-mode] .card-row-reorder-handle {
   display: flex;
 }
-#content-pane[data-edit-mode] .card-row-play {
-  display: none;
-}
 
 /* Dragged placeholder — shows target slot position, dimmed */
 .card-row-reorder-placeholder {
@@ -184,24 +181,27 @@ ruby {
   display: none;
 }
 
-/* ── Phrasebook term card (Figma "Term", node 606:6505) ──
-   Separate rounded cards with a vertical gap: English translation on top,
-   a divider with an inline audio control, then the target term (blue) with
-   its reading below. Swipe reveals edit/star/delete behind the card. */
+/* ── Phrasebook term card (Figma "Term", node 754:6178) ──
+   The target-language term (large, body color) with inline per-character ruby
+   readings on top, its English translation (smaller, muted) stacked beneath —
+   a left-aligned vertical stack, no divider, no visible play icon (tapping the
+   row itself speaks the card; see content-pane-actions.js). Rows sit
+   edge-to-edge inside a Group wrapper (below) rather than as individually
+   gapped cards; swipe still reveals edit/star/delete behind each row. A
+   standalone (ungrouped) row outside any Group keeps the old gapped-card
+   spacing so it doesn't look like a stray fragment of a group. */
 
 .card-row-wrapper {
   position: relative;
 }
-.card-row-wrapper + .card-row-wrapper {
+.deck-view-list > .card-row-wrapper + .card-row-wrapper {
   margin-top: 8px;
 }
 
 .card-row {
   position: relative;
   z-index: 1;
-  padding: 12px;
-  border-radius: 16px;
-  background: var(--bg-blue-tint);
+  padding: 20px;
   transition: transform 250ms ease;
 }
 
@@ -213,36 +213,97 @@ ruby {
   transform: translateX(calc(-1 * var(--swipe-reveal-width)));
 }
 
-.card-term,
-.card-term-english,
-.card-term-cjk {
-  width: 100%;
-  word-break: break-word;
+/* Reserve space for the absolutely-positioned reorder grip (below) so it
+   doesn't overlap the right-aligned target-language text in edit mode. */
+#content-pane[data-edit-mode] .card-row {
+  padding-right: 44px;
 }
 
-.card-term-divider {
-  padding: 6px 0;
+.deck-view-list > .card-row-wrapper .card-row {
+  border-radius: 16px;
+  background: var(--bg-blue-tint);
 }
 
-.card-term-rule {
-  height: 1px;
-  background: hsl(var(--gray-900) / 0.12);
+/* Starred term card (Figma "Term" selected variant, node 856:31525): a
+   light-blue fill. Overrides both the standalone blue-tint and the grouped
+   gray-50 row backgrounds. */
+.deck-view-list .card-row[data-starred="true"] {
+  background: var(--bg-starred);
+}
+
+.card-term {
+  gap: 6px;                /* Figma Term stack gap */
 }
 
 .card-term-target {
-  padding-top: 10px;
-  gap: 3px;
+  min-width: 0;
+  font-size: 1.375rem;     /* Figma 22px */
+  line-height: 1.625rem;   /* Figma 26px */
+  word-break: break-word;
+}
+
+.card-term-english {
+  min-width: 0;
+  font-size: 1.125rem;     /* Figma 18px */
+  line-height: 1.375rem;   /* Figma 22px */
+  word-break: break-word;
 }
 
 .card-term-reading {
-  color: var(--fg-reading);
+  color: var(--fg-caption);
 }
 
-.card-row-play {
+/* Inline star toggle (Figma "Term", node 754:7053): a 24px star pinned to the
+   row's top-right. Unstarred renders the outline glyph in gray-200; starred
+   renders the filled glyph in the accent blue. Tapping it fires
+   content/star-card; the surrounding row plays audio. */
+.card-star {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-left: 12px;
+  color: hsl(var(--gray-200));
+  align-self: flex-start;
+}
+.card-star .icon {
   width: 24px;
   height: 24px;
+  display: block;
+}
+.card-star[data-selected="true"] {
+  color: var(--accent);
+}
+/* Edit mode owns the row (drag-to-reorder) — the reorder grip takes the
+   right edge, so the inline star is suppressed to avoid overlap. */
+#content-pane[data-edit-mode] .card-star {
+  display: none;
+}
+
+/* Phrasebook tabs (Figma node 862:31590): two equal-width tabs under the
+   header — the active one in accent blue, the inactive in caption gray, with
+   a hairline divider beneath. */
+.deck-tabs {
+  border-bottom: 1px solid hsl(var(--gray-200));
+  padding: 20px 20px 10px;
+  flex-shrink: 0;
+}
+.deck-tab {
+  background: none;
+  border: 0;
   padding: 0;
-  color: var(--fg-tertiary);
+  font-family: var(--font-family-condensed);
+  font-weight: 500;
+  font-size: 0.875rem;      /* Figma 14px */
+  line-height: 1.125rem;    /* Figma 18px */
+  text-transform: uppercase;
+  color: var(--fg-caption);
+}
+.deck-tab[data-active="true"] {
+  color: var(--accent);
+}
+.deck-tab .icon {
+  width: 16px;
+  height: 16px;
 }
 
 .deck-view-empty {
@@ -1089,10 +1150,316 @@ ruby {
   text-align: center;
 }
 
+/* ── Textbook Panel (docs/journeys.md Journey 5 — prototype-branch guided
+   phrasebook creation). Linear flow (topic → context+checklist →
+   generating), reusing the Lookup Panel's surfaces/tokens above rather than
+   inventing new ones. ── */
+
+.bottom-sheet.textbook-panel {
+  z-index: 151;
+  border-radius: 40px 40px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 24px);
+}
+
+.textbook-panel-inner {
+  min-height: 0;
+}
+
+.textbook-panel .sheet-handle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  margin: 0;
+}
+
+/* White, top-rounded content card (Figma "Look-up" surface) on the gray-100
+   pane. Hugs its content (no flex-grow) so the pane shows below it; shrinks
+   and scrolls its body only when content would overflow the sheet. */
+.textbook-surface {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border-radius: 40px;
+}
+
+/* Persistent topic term line (Figma "Term"): the entered topic pinned under
+   the header on every post-topic step, above a hairline divider. */
+.textbook-term {
+  flex-shrink: 0;
+  padding: 4px 20px 10px;
+  border-bottom: 1px solid hsl(var(--gray-300));
+}
+
+.textbook-term-text {
+  font-size: 1.625rem;   /* Figma 26px */
+  line-height: 1.875rem; /* Figma 30px */
+  font-weight: 300;
+  color: var(--fg-body);
+  word-break: break-word;
+}
+
+/* Scrollable body shared by the questions (page 1) and checklist (page 2)
+   steps; the header, term, and footer around it stay fixed. */
+.textbook-step-body {
+  min-height: 0;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.textbook-input-form {
+  gap: 20px;
+  padding-bottom: 20px;
+}
+
+.textbook-input-wrap {
+  padding: 0 20px;
+}
+
+.textbook-input-field-row {
+  min-height: 82px;
+  border-bottom: 1px solid hsl(var(--gray-300));
+  padding-bottom: 10px;
+}
+
+.textbook-input-field {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--fg-body);
+  font-weight: 300;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.textbook-input-field::placeholder {
+  color: hsl(220 20 80); /* Figma placeholder #cbd2e1 */
+  opacity: 1;
+}
+
+/* Forward-chevron submit — deliberate deviation from lookup's return-key-
+   only submit (docs/journeys.md Journey 5 "Submit affordance"). */
+.textbook-submit {
+  align-self: flex-end;
+  margin-right: 20px;
+  width: 32px;
+  height: 32px;
+  color: var(--accent);
+}
+
+.textbook-submit:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* Question label above its select pill (Figma caption, inset to align with
+   the pill's inner text). */
+.textbook-select-label {
+  padding: 0 20px;
+  color: var(--fg-caption);
+  font-size: 1rem;        /* Figma 16px */
+  line-height: 1.125rem;  /* Figma 18px */
+}
+
+.textbook-questions {
+  gap: 16px;
+}
+
+.textbook-select-row {
+  gap: 8px;
+}
+
+.textbook-select-wrap {
+  gap: 2px;
+  align-items: center;
+  padding: 12px 20px;              /* Figma Select/Default */
+  border-radius: 20px;             /* Figma 20px pill */
+  background: hsl(var(--gray-50)); /* Figma gray-50 #f9fafb */
+}
+
+.textbook-select {
+  flex: 1;
+  appearance: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fg-body);
+  font-family: var(--font-family-manrope);
+  font-size: 1.125rem;
+  line-height: 1.375rem;
+}
+
+.textbook-select-chevron {
+  color: var(--accent);
+  pointer-events: none;
+}
+
+.textbook-checklist {
+  gap: 12px;
+}
+
+.textbook-checklist-items {
+  border-radius: var(--radius);
+  background: hsl(var(--gray-100));
+  overflow: hidden;
+}
+
+.textbook-checklist-item {
+  width: 100%;
+  gap: 12px;
+  padding: 16px;
+  text-align: left;
+  background: transparent;
+  border-bottom: 1px solid hsl(var(--gray-900) / 0.06);
+}
+
+.textbook-checklist-item:last-child {
+  border-bottom: none;
+}
+
+.textbook-checklist-check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.textbook-context-footer {
+  flex-shrink: 0;
+  padding: 12px 20px;
+}
+
+.textbook-generating {
+  gap: 20px;
+  padding: 20px;
+}
+
+.textbook-skeleton-list {
+  width: 100%;
+  gap: 12px;
+}
+
+.textbook-skeleton-card {
+  height: 206px;
+  border-radius: var(--radius);
+  padding: 20px;
+  gap: 12px;
+}
+
+.textbook-skeleton-line {
+  height: 16px;
+  border-radius: 4px;
+  background: hsl(var(--gray-200-tint) / 0.6);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.textbook-error {
+  padding: 20px;
+  gap: 12px;
+}
+
+.textbook-retry {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--bg-surface);
+  font-weight: 600;
+}
+
 /* ── Phrasebook view: grouped sections (PH-006) ── */
 
 .deck-view-section-header {
   padding: 1rem 1.25rem 0.375rem;
+}
+
+/* ── Group wrapper (Figma "Group", node 754:6178) ──
+   A bordered, rounded-16px container around one section's rows plus an
+   integrated footer row toggling collapsed/expanded. Collapsed state clips
+   the rows region to a fixed height (matching the Figma 256px collapsed
+   wrapper) with a bottom fade signaling more content below — reuses the
+   .lookup-group-fade gradient technique. Toggled by content/toggle-group
+   (content-pane.js) flipping [data-collapsed] directly, no re-render. */
+
+.card-group {
+  position: relative;
+  /* Direct child of the flex-column, scrolling card list — must keep its
+     natural height (rows + footer) instead of flex-shrinking to fit the
+     viewport, else the rows overflow the border box and the footer renders
+     below it, invisible. The standalone .card-row-wrapper uses .shrink-0 for
+     the same reason. */
+  flex-shrink: 0;
+  border: 1px solid hsl(var(--gray-200-tint) / 0.2);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.card-group-rows {
+  position: relative;
+}
+
+.card-group .card-row-wrapper + .card-row-wrapper {
+  border-top: 2px solid var(--bg-surface);
+}
+.card-group .card-row {
+  padding: 20px 20px 10px;
+  background: hsl(var(--gray-50));
+}
+
+/* Collapsed: clip the rows region to ~2.5 rows and fade the cut edge. */
+.card-group[data-collapsed="true"] .card-group-rows {
+  max-height: 256px;
+  overflow: hidden;
+}
+.card-group[data-collapsed="true"] .card-group-rows::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 58px;
+  background: linear-gradient(to bottom, hsl(var(--gray-50) / 0), hsl(var(--gray-50)));
+  pointer-events: none;
+  z-index: 2; /* above .card-row's z-index: 1 stacking context */
+}
+
+.card-group-footer {
+  width: 100%;
+  height: 52px;
+  padding: 16px 8px 16px 20px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-default);
+  text-align: left;
+}
+
+.card-group-footer-count {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-group-footer-label {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.card-group-footer-chevron {
+  color: var(--accent);
+  flex-shrink: 0;
+  transition: transform 150ms ease;
+}
+
+/* Collapsed shows "View" + chevron pointing down; expanded shows "Collapse"
+   + chevron flipped to point up (same unfold-more glyph, rotated). */
+.card-group-footer-view { display: none; }
+.card-group-footer-collapse { display: none; }
+.card-group[data-collapsed="true"] .card-group-footer-view { display: inline; }
+.card-group:not([data-collapsed="true"]) .card-group-footer-collapse { display: inline; }
+.card-group:not([data-collapsed="true"]) .card-group-footer-chevron {
+  transform: rotate(180deg);
 }
 
 /* ── Suggested phrasebooks + unsaved preview (PH-008) ── */

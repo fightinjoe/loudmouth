@@ -70,6 +70,7 @@ A mobile-first app (PWA and native iOS) where the learner captures vocabulary tw
 - The Library Schema can be extended later to support spaced repetition without a breaking change
 - Phrase books are homogeneous by language — a phrase book contains only one of `zh` \| `ja` \| `es` \| `cs`; mixed-language phrase books are not supported
 - VIBE (formality/audience) and ability defaults are **Polite/Staff** and **Beginner** per `docs/API_DESIGN.md`'s `/lookup` contract — supersede the Casual/Strangers/None values shown in the Figma mocks (`docs/journeys.md` reconciles this explicitly)
+- On the `textbook-guided-creation` exploration branch, Journey 1's manual look-up flow is intentionally **unreachable from phrasebook creation** — this is an explicit, branch-scoped UX exploration decision, not a change to the shipped product's creation flow. Journey 1's stack, component, and data flow remain fully implemented, since Journey 3 (adding terms to an existing phrasebook) still uses them verbatim. See `docs/journeys.md` Journey 5.
 
 ## Open Questions
 
@@ -92,6 +93,7 @@ A mobile-first app (PWA and native iOS) where the learner captures vocabulary tw
 ### Phase 1: Core — AI look-up, capture, review, browse
 - **Phrasebook management** - Navigation pane groups phrasebooks by language into Recent + Suggested sections; a phrasebook is created via New-phrasebook mode (language + ability, both immutable after creation) or implicitly on first save during a look-up — deferred creation, no draft exists until a term is saved
 - **AI look-up & find-related** - In-app `/lookup` call: enter a word/phrase (Input mode), get a direct translation plus AI-clustered related word/phrase groups (Translation/Group modes); drill into a group, or re-seed a narrower look-up from any card (🔍)
+- **Guided phrasebook creation ("Textbook") — `textbook-guided-creation` branch exploration only** - An alternate creation path: the learner describes a *topic/situation* instead of a single term, answers a handful of AI-generated context questions and reviews an AI-suggested checklist of sub-goals, then gets a fully-populated, multi-section phrasebook committed in one shot via a new `/textbook` endpoint — no per-card curation. On this exploration branch it **replaces** the manual look-up as the phrasebook-creation entry point (New-phrasebook mode hands off to Textbook, not Input mode); the manual look-up flow itself is unchanged and still used for adding terms to an existing phrasebook. See `docs/journeys.md` Journey 5.
 - **Live save** - Tap 🔖 to commit a term to the open phrasebook immediately, no staging/approval; a header badge counts terms saved this session and is a one-tap return to the phrasebook
 - **VIBE & ability** - Per-phrasebook tone (formality + audience, default Polite/Staff) and learner ability (None/Beginner/Intermediate/Advanced, default Beginner, immutable after creation) bias `/lookup` output
 - **Suggested phrasebooks** - Curated, static seed phrasebooks (placeholder pending generation seed content) — preview then Save to add to the library
@@ -113,6 +115,7 @@ A mobile-first app (PWA and native iOS) where the learner captures vocabulary tw
 - **Audio:** Web Speech API with `lang="zh-CN"` / `lang="ja-JP"` (etc. per supported language). Do not attempt to support macOS Safari or Chrome Desktop for audio.
 - **Storage:** Client-side only for the term library; IndexedDB likely (localStorage insufficient for library scale)
 - **Backend:** A Cloud Run API (`api/`) serves the `/lookup` endpoint — one call that disambiguates, translates intent, and clusters related groups via a pluggable LLM backend (`google` \| `claude` \| `chatgpt`, see `docs/API_DESIGN.md`); unauthenticated and unlimited for the single-tenant prototype. Client-side storage otherwise stays backend-free — no accounts, no sync, no server-held library.
+- **Backend (branch exploration):** the `textbook-guided-creation` branch adds a second endpoint, `/textbook`, alongside `/lookup` in the same `api/` service — sharing its `LLM_REGISTRY`/backend plumbing, CORS, and error-handling conventions. One route, two calls distinguished by presence/absence of a `context` request field: absent generates dynamic context questions + a suggestion checklist for a topic; present bulk-generates the full multi-section phrasebook. See `docs/API_DESIGN.md`.
 - **Library Schema** will need a `reviewHistory` or equivalent field for future SR support — worth designing the extension point now even if unused
 - **Session log** is a separate data structure from the term Library
 

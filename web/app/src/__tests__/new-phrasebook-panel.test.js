@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { openNewPhrasebookPanel, PLACEHOLDER_DECK_NAME } from "../components/new-phrasebook-panel.js";
+import { openNewPhrasebookPanel } from "../components/new-phrasebook-panel.js";
 import { setLastAbility } from "../js/preferences.js";
 
 let appEl;
@@ -36,9 +36,10 @@ describe("openNewPhrasebookPanel", () => {
     expect(appEl.querySelector('[data-action="new-phrasebook/ability"]').value).toBe("advanced");
   });
 
-  it("creates the phrasebook with the placeholder name and chosen language/ability", async () => {
-    let created = null;
-    openNewPhrasebookPanel(appEl, { createDeck }, (deck) => { created = deck; }, () => {});
+  it("hands (lang, ability) to onCreated WITHOUT creating a deck — docs/journeys.md Journey 5: the guided Textbook flow creates the deck itself once generation succeeds", async () => {
+    let createdLang = null;
+    let createdAbility = null;
+    openNewPhrasebookPanel(appEl, { createDeck }, (lang, ability) => { createdLang = lang; createdAbility = ability; }, () => {});
     const langSelect = appEl.querySelector('[data-action="new-phrasebook/lang"]');
     langSelect.value = "es";
     langSelect.dispatchEvent(new Event("change"));
@@ -47,10 +48,10 @@ describe("openNewPhrasebookPanel", () => {
     abilitySelect.dispatchEvent(new Event("change"));
 
     appEl.querySelector('[data-action="new-phrasebook/create"]').click();
-    await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1));
-    expect(createDeck).toHaveBeenCalledWith(PLACEHOLDER_DECK_NAME, "es", { ability: "advanced" });
-    await vi.waitFor(() => expect(created).toBeTruthy());
-    expect(created.lang).toBe("es");
+    await vi.waitFor(() => expect(createdLang).toBeTruthy());
+    expect(createDeck).not.toHaveBeenCalled();
+    expect(createdLang).toBe("es");
+    expect(createdAbility).toBe("advanced");
   });
 });
 

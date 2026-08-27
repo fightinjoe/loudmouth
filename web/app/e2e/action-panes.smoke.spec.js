@@ -23,6 +23,7 @@ const KINDS = [
   { kind: 'card-edit', needsCard: true, label: 'card-edit' },
   { kind: 'review', needsDeck: true, needsCards: true, label: 'review' },
   { kind: 'lookup', needsDeck: true, label: 'lookup (input mode)' },
+  { kind: 'textbook', payload: { lang: 'ja', ability: 'beginner' }, label: 'textbook (topic entry)' },
   { kind: 'new-phrasebook', payload: {}, label: 'new-phrasebook' },
   {
     kind: 'new-phrasebook',

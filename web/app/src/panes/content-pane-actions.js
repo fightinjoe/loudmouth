@@ -22,21 +22,18 @@ export function registerCardActions({ host, isEdit, resetReveal }) {
       if (isEdit()) return;
       resetReveal();
       const cardId = el.dataset.cardId;
-      const { cards, isStarred } = ui.get("content");
+      const { cards } = ui.get("content");
       const idx = cards.findIndex((c) => String(c.id) === cardId);
       if (idx < 0) return;
       const nowStarred = await toggleCardStar(cardId);
-      const updated = {
+      // Update the card in place; the Starred tab's render filter drops it
+      // from view when unstarred (see renderCardsHTML), so no removal here.
+      const next = cards.slice();
+      next[idx] = {
         ...cards[idx],
         state: { ...(cards[idx].state || {}), starredAt: nowStarred ? new Date().toISOString() : null },
       };
-      if (isStarred && !nowStarred) {
-        ui.transition("content/cards-changed", { cards: cards.filter((c) => String(c.id) !== cardId) });
-      } else {
-        const next = cards.slice();
-        next[idx] = updated;
-        ui.transition("content/cards-changed", { cards: next });
-      }
+      ui.transition("content/cards-changed", { cards: next });
     }],
 
     ["content/edit-card", (_e, el) => {
@@ -57,9 +54,20 @@ export function registerCardActions({ host, isEdit, resetReveal }) {
       });
     }],
 
-    ["content/play-card", (e, el) => {
+    // Tapping the row body itself (card.js's .card-row) speaks the card —
+    // no dedicated play button in the new Figma row (docs/journeys.md-style
+    // decision, see components.css). If the row is currently swiped open
+    // (revealing star/edit/delete), the tap dismisses that reveal instead of
+    // also speaking — matches the other row actions' resetReveal() posture,
+    // but here it's an either/or since a tap while revealed reads as "close
+    // this," not "close this AND play."
+    ["content/play-card", (_e, el) => {
       if (isEdit()) return;
-      e.stopPropagation();
+      const wrapper = el.closest(".card-row-wrapper");
+      if (wrapper?.classList.contains("card-row-wrapper--swiped")) {
+        resetReveal();
+        return;
+      }
       const { cards } = ui.get("content");
       const card = cards.find((c) => String(c.id) === el.dataset.cardId);
       if (card) speak(ttsText(card), card.lang);

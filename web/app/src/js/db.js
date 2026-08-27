@@ -304,16 +304,6 @@ export async function getCardsByLang(lang, store = db) {
 }
 
 /**
- * Returns all starred cards for a language, sorted by starredAt descending (most recently starred first).
- */
-export async function getStarredCards(lang, store = db) {
-  const cards = await store.cards.where("lang").equals(lang).toArray();
-  return cards
-    .filter((c) => c.state?.starredAt)
-    .sort((a, b) => (b.state.starredAt > a.state.starredAt ? 1 : -1));
-}
-
-/**
  * Toggles the starred state of a card.
  * Sets state.starredAt to the current ISO time if not starred, null if already starred.
  * Returns true if the card is now starred, false if now unstarred.

@@ -174,4 +174,11 @@ module.exports = {
   MAX_BLOCKS,
   MAX_GROUPS_TOTAL,
   MAX_CARDS_PER_GROUP,
+  // Shared with textbook-prompt.js (docs/API_DESIGN.md /textbook "What this
+  // reuses from /lookup") — same reading-token rules, gender-collapse rule,
+  // and ability description apply to both endpoints' card generation.
+  genderInstruction,
+  readingInstructions,
+  cardReadingExample,
+  describeAbility,
 };

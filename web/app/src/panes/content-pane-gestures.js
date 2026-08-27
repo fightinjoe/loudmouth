@@ -26,7 +26,7 @@
  */
 
 const OPEN_THRESHOLD = 100;
-const REVEAL_WIDTH = 160;
+const REVEAL_WIDTH = 104;
 const REVEAL_THRESHOLD = 80;
 const CARD_WRAPPER_SEL = ".card-row-wrapper";
 const ROW_SEL = ".card-row";

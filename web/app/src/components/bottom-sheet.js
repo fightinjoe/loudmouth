@@ -24,12 +24,14 @@ const KIND_TO_PANEL_CLASS = {
   review: "review-panel",
   lookup: "lookup-panel",
   "new-phrasebook": "new-phrasebook-panel",
+  textbook: "textbook-panel",
 };
 const KIND_TO_SCRIM_CLASS = {
   settings: "deck-settings-scrim",
   review: "review-scrim",
   lookup: "lookup-scrim",
   "new-phrasebook": "new-phrasebook-scrim",
+  textbook: "textbook-scrim",
 };
 
 export function openBottomSheet(appEl, { kind, bodyHTML, onClose, onMount, size = "hug" }) {

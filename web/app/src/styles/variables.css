@@ -6,14 +6,17 @@
   --white: 0 0 100;
 
   --gray-300: 0 0 88;
+  --gray-200: 219 32 91; /* Figma gray-200 #e2e7f0 — tab divider, unstarred star */
   --gray-400: 0 0 75;
   --gray-500: 220 16 47;
+  --gray-50: 210 20 98;  /* Figma gray-50 #f9fafb — card-group row background */
   --gray-100: 218 29 96; /* Figma gray-100 #f1f4f9 — action-pane body */
   --gray-900: 220 47 11;
 
   --blue-500: 207 100 56;
   --blue-300: 207 100 76;  /* Figma text/emphasis-secondary #85c8ff — term reading */
   --blue-100: 207 100 96;  /* Figma blue-50 #ebf6ff — term card tint */
+  --blue-200: 207 100 93;  /* Figma blue-100 #dbefff — starred/selected term card */
 
   --red-500: 13 100 56;
 
@@ -43,6 +46,7 @@
 
   --bg-blue: hsl(var(--blue-500));
   --bg-blue-tint: hsl(var(--blue-100));
+  --bg-starred: hsl(var(--blue-200));
   --fg-reading: hsl(var(--blue-300));
   --bg-red: hsl(var(--red-500));
   --bg-yellow: hsl(var(--yellow-500));
@@ -64,7 +68,7 @@
 
   --shadow-float: 0 8px 24px hsl(var(--gray-900) / 0.14);
 
-  --swipe-reveal-width: 160px;
+  --swipe-reveal-width: 104px;
 
   --text-size-h1: 2.5rem;       /* Figma 40px */
   --text-size-entry: 2rem;      /* Figma 32px */

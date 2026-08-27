@@ -2,12 +2,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { dbState } = vi.hoisted(() => ({
-  dbState: { seededIds: new Set(), recentDecks: [], allDecks: [], starredByLang: {} },
+  dbState: { seededIds: new Set(), recentDecks: [], allDecks: [] },
 }));
 
 vi.mock("../js/db.js", () => ({
   getCards: vi.fn(async () => []),
-  getStarredCards: vi.fn(async (lang) => dbState.starredByLang[lang] || []),
   getDecks: vi.fn(async () => dbState.allDecks),
   getRecentDecks: vi.fn(async () => dbState.recentDecks),
   getSeededDeckIds: vi.fn(async () => dbState.seededIds),
@@ -44,7 +43,6 @@ beforeEach(() => {
   dbState.seededIds = new Set();
   dbState.recentDecks = [];
   dbState.allDecks = [];
-  dbState.starredByLang = {};
 });
 
 describe("nav pane — Suggested phrasebooks (PH-008)", () => {

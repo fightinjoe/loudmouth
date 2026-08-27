@@ -5,7 +5,7 @@
  * scrim. Used for transient tasks: deck settings, card edit, JSON export.
  *
  * Slice shape:
- *   { kind: 'settings' | 'card-edit' | 'json' | 'review' | 'lookup' | 'new-phrasebook', payload: object }
+ *   { kind: 'settings' | 'card-edit' | 'json' | 'review' | 'lookup' | 'new-phrasebook' | 'textbook', payload: object }
  *
  * Transitions:
  *   action/open  ({ kind, payload })  — open a kind; if one is already
@@ -25,6 +25,7 @@ import { openCardEditPanel } from "../components/card-edit-panel.js";
 import { openReviewPanel } from "../components/review-panel.js";
 import { openLookupPanel } from "../components/lookup-panel.js";
 import { openNewPhrasebookPanel } from "../components/new-phrasebook-panel.js";
+import { openTextbookPanel } from "../components/textbook-panel.js";
 import { DEFAULT_MODE } from "../js/modes.js";
 import {
   createDeck,
@@ -116,23 +117,39 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
     );
   }
 
+  if (kind === "textbook") {
+    const { lang, ability } = payload;
+    return openTextbookPanel(
+      hostEl,
+      { lang, ability },
+      (deck) => {
+        // Deck + cards were just committed in one shot (textbook-panel.js) —
+        // no placeholder deck existed before this, unlike the `lookup` kind's
+        // create-then-fill flow, so there is nothing to clean up if the user
+        // dismissed before this point.
+        ui.transition("shell/close");
+        ui.transition("nav/reload");
+        ui.transition("content/select-deck", { id: deck.id });
+      },
+      onDismiss,
+    );
+  }
+
   if (kind === "new-phrasebook") {
     const { suggestion } = payload;
     let sheetHandle;
     sheetHandle = openNewPhrasebookPanel(
       hostEl,
       { createDeck },
-      (deck) => {
-        // Only now does the content pane come forward — the deck exists
-        // and is about to be shown, so closing the shell here (not at
-        // action/open time) keeps content-pane movement tied to an actual
-        // content change instead of the new-phrasebook sheet appearing.
-        ui.transition("shell/close");
-        ui.transition("nav/reload");
-        ui.transition("content/select-deck", { id: deck.id });
+      (lang, ability) => {
+        // docs/journeys.md Journey 5 (prototype branch): creation now hands
+        // off to the guided Textbook flow instead of Journey 1's Input mode
+        // — no deck is created here at all (unlike the old `lookup`-kind
+        // hand-off), since Textbook creates the deck itself once generation
+        // succeeds. See textbook-panel.js.
         ui.transition("action/open", {
-          kind: "lookup",
-          payload: { deck, hasTranslatedBefore: false, deleteIfEmpty: true },
+          kind: "textbook",
+          payload: { lang, ability },
         });
       },
       onDismiss,
@@ -165,7 +182,7 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
               ...term,
             }));
             ui.transition("shell/close");
-            ui.transition("content/loaded", { deck: previewDeck, cards: previewCards, isStarred: false });
+            ui.transition("content/loaded", { deck: previewDeck, cards: previewCards });
             sheetHandle.close();
           }
         : undefined,
