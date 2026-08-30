@@ -446,4 +446,18 @@ describe('handleTextbook', () => {
     assert.equal(res.statusCode, 200);
     assert.ok(typeof calledWith === 'string' && calledWith.length > 0);
   });
+
+  test('passes a provider-specific output-token cap to Claude generation', async () => {
+    const res = makeRes();
+    let options;
+    const claude = async (prompt, opts) => {
+      options = opts;
+      return happyGenerateRaw();
+    };
+    claude.maxOutputTokens = 8192;
+    await handleTextbook({ body: { ...VALID_GENERATE_BODY, llm: 'claude' } }, res, { claude });
+    assert.equal(res.statusCode, 200);
+    assert.equal(options.maxOutputTokens, 8192);
+  });
+
 });

@@ -1,7 +1,8 @@
 # Catchphrase Lookup API
 
 A Node.js Cloud Run function that serves `/lookup` — translation + AI-clustered related terms —
-via multiple LLM backends, with an API Gateway handling rate limiting.
+and `/textbook` — a guided, two-call phrasebook generator — via multiple LLM backends, with an
+API Gateway handling rate limiting.
 
 See `docs/API_DESIGN.md` for the endpoint contract (inputs, outputs, internal flow, model
 behavior) and `docs/CARD_SCHEMA.md` for the `Card` shape.
@@ -13,22 +14,27 @@ api/
 ├── config/
 │   └── api-gateway.yaml      # OpenAPI 2.0 spec + rate limiting (60 req/min)
 ├── src/
-│   ├── index.js               # Cloud Run entry point, path routing
+│   ├── index.js                # Cloud Run entry point, path routing (/lookup, /textbook)
 │   ├── lookup.js               # /lookup route handler (parse → generate → finish)
-│   ├── lookup-parse.js         # Request validation + defaults
-│   ├── lookup-prompt.js        # Prompt builder for the single model call
-│   ├── lookup-validate.js      # Response validator, limits, context assignment
+│   ├── lookup-parse.js         # /lookup request validation + defaults
+│   ├── lookup-prompt.js        # /lookup prompt builder for the single model call
+│   ├── lookup-validate.js      # /lookup response validator, limits, context assignment
+│   ├── textbook.js             # /textbook route handler (two-call: questions → generate)
+│   ├── textbook-parse.js       # /textbook request validation + defaults (both call modes)
+│   ├── textbook-prompt.js      # /textbook prompt builders + limit constants
+│   ├── textbook-validate.js    # /textbook response validators (questions + generate)
 │   ├── card-validate.js        # Shared Card-shape validators (docs/CARD_SCHEMA.md)
 │   ├── test/
-│   │   └── lookup.test.js      # Unit tests (node --test)
+│   │   ├── lookup.test.js      # /lookup unit tests (node --test)
+│   │   └── textbook.test.js    # /textbook unit tests (node --test)
 │   ├── package.json
 │   └── llms/
 │       ├── anthropic.js        # Claude via Anthropic SDK
-│       ├── openai.js           # GPT-4o via OpenAI SDK
+│       ├── openai.js           # GPT-5.6 Luna via OpenAI SDK
 │       └── genai.js            # Gemini via Google GenAI SDK
 ├── evals/
-│   ├── textbook-sample.js     # /textbook English-only YAML sample exporter (deno)
-│   └── samples/               # per-case <slug>.yaml (hand-editable `ideal` + raw `actual`)
+│   ├── eval-textbook.js       # /textbook English-only YAML sample exporter (deno)
+│   └── samples/               # per-case <language>-<topic>.yaml (hand-editable `ideal` + raw `actual`)
 ├── deploy.sh                   # Idempotent GCP deploy script
 └── README.md
 ```
@@ -171,8 +177,10 @@ npm test                       # unit tests (node --test)
 # Subjective-review sample exporter for /textbook. Requires the dev server
 # running (npm run dev) and `deno` on PATH. Drives /textbook's two-call flow
 # (questions → generate) and writes an English-only, hand-editable YAML per
-# case to evals/samples/<slug>.yaml. Rerun to refresh the raw `actual`
-# section; your edits to the `ideal` section above the divider are preserved.
+# case to evals/samples/<language>-<topic>.yaml. The raw `actual` block below
+# the divider captures the call-1 questions and the auto-selected answers
+# alongside both raw responses. Rerun to refresh `actual`; your edits to the
+# `ideal` section above the divider are preserved.
 npm run eval:textbook-sample -- \
   --topic="salsa dancing" --language=es --ability=beginner --llm=google \
   --checklist=default --url=http://localhost:8080
@@ -182,9 +190,10 @@ npm run eval:textbook-sample -- \
 checked (falling back to all if none are); `--checklist=all` generates every
 item. Pass `--force` to reseed the `ideal` section from a fresh response.
 
-> **Note:** the `/textbook` generate call requests `maxOutputTokens: 30000`,
-> which only the `google` (Gemini/Vertex) backend accepts — `claude` and
-> `chatgpt` reject it (SDK/model completion-token caps), so use `--llm=google`.
+Provider token ceilings are applied automatically: Claude Haiku receives at most
+8,192 output tokens, GPT-5.6 Luna at most 16,384, and Google retains the
+30,000-token ceiling. This keeps `/textbook` and `/lookup` compatible with each
+provider's completion-token limit.
 
 ## Testing the deployed service
 

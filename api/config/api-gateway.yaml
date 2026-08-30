@@ -112,6 +112,116 @@ paths:
           description: Bad request (missing/invalid field, unknown llm)
         502:
           description: LLM request failed or returned an invalid response
+  /textbook:
+    options:
+      summary: CORS preflight
+      operationId: textbookOptions
+      parameters: []
+      responses:
+        204:
+          description: CORS preflight response
+    post:
+      summary: >
+        Generate a guided phrasebook. One route, two call modes selected by the
+        presence of `context`: absent -> questions + checklist; present ->
+        bulk-generate groups of cards.
+      operationId: textbook
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - topic
+              - language
+            properties:
+              topic:
+                type: string
+                description: The situation/topic to build a phrasebook for. Max 200 characters.
+              language:
+                type: string
+                description: Target language
+                enum:
+                  - zh
+                  - ja
+                  - es
+                  - cs
+              ability:
+                type: string
+                description: Learner ability, limits output difficulty (default "beginner")
+                enum:
+                  - none
+                  - beginner
+                  - intermediate
+                  - advanced
+              llm:
+                type: string
+                description: Which model backend generates the response (default "google")
+                enum:
+                  - google
+                  - claude
+                  - chatgpt
+              context:
+                type: object
+                description: >
+                  Answers to the questions from the first call. Presence switches
+                  this request to bulk-generate mode; absence returns questions.
+      responses:
+        200:
+          description: >
+            Questions mode returns { questions, checklist }; generate mode
+            returns { title?, groups }.
+          schema:
+            type: object
+            properties:
+              questions:
+                type: array
+                description: Questions mode only
+                items:
+                  type: object
+                  properties:
+                    label:
+                      type: string
+                    options:
+                      type: array
+                      items:
+                        type: string
+                    default:
+                      type: string
+              checklist:
+                type: array
+                description: Questions mode only
+                items:
+                  type: object
+                  properties:
+                    label:
+                      type: string
+                    checked:
+                      type: boolean
+              title:
+                type: string
+                description: Generate mode only — optional phrasebook title
+              groups:
+                type: array
+                description: Generate mode only
+                items:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    cards:
+                      type: array
+                      items:
+                        $ref: '#/definitions/Card'
+        400:
+          description: Bad request (missing/invalid field, unknown llm)
+        502:
+          description: LLM request failed or returned an invalid response
 
 definitions:
   Card:

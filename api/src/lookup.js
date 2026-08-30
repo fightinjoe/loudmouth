@@ -8,7 +8,7 @@
  *        │     term on first "(" → { term, context }             → 400
  *        ▼
  *   buildLookupPrompt({ term, context, language, ability, formality, audience })
- *        │  2. GENERATE — ONE LLM call, maxOutputTokens: 20000, 15s timeout
+ *        │  2. GENERATE — ONE LLM call, provider-specific maxOutputTokens, 15s timeout
  *        │     LLM-throws and LLM-times-out are distinct code paths, both → 502
  *        ▼
  *   validateLookupResponse(raw, { context })   3. FINISH: parse + validate +
@@ -67,12 +67,14 @@ async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEO
     err.supported = Object.keys(registry);
     throw err;
   }
+  const effectiveTimeoutMs = handler.timeoutMs || timeoutMs;
 
   const prompt = buildLookupPrompt({ term, context, language, ability, formality, audience });
+  const maxOutputTokens = handler.maxOutputTokens || LOOKUP_MAX_TOKENS;
 
   let raw;
   try {
-    raw = await callWithTimeout(handler, prompt, { maxOutputTokens: LOOKUP_MAX_TOKENS }, timeoutMs);
+    raw = await callWithTimeout(handler, prompt, { maxOutputTokens }, effectiveTimeoutMs);
   } catch (err) {
     if (err instanceof LookupTimeoutError) {
       console.error({ event: 'llm_timeout', route: 'lookup', llm, error: err.message });

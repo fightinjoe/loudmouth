@@ -181,15 +181,17 @@ One prompt turns the term + all params into the blocks-and-groups structure with
 Full spec (output shape, how params tailor the result, disambiguation, quality bar) is
 in the **Model behavior** section.
 
-**Latency budget:** target p50 < 4s, request timeout at 15s → `502` (same "LLM request failed" path as
-a hard error — see **Test coverage**). Fan-out (below) is earned when measured p50 exceeds this budget
-under real load, not before.
+**Latency budget:** Google and Claude target p50 <4s with a 15s request timeout.
+GPT-5.6 Luna receives a 60s timeout because large JSON generation can exceed
+the shared budget; failures still return `502`.
 
-**Output token budget:** worst case is 4 blocks + 8 groups × 15 cards = 124 cards; at ~150 tokens/card
-(JSON structure + multi-byte text/reading tokens) that's ~18.6k tokens of card content plus block/group
-wrapper overhead. Set `maxOutputTokens` to 30000 for headroom — the three worked examples average far
-fewer cards, so this is a ceiling, not a typical size. Same truncation → `502` path as the T2 fix (see
-Test coverage).
+### Output token budget
+
+The shared ceiling is 30000 for Google. Provider adapters may lower it when
+their model rejects larger completion limits: Claude Haiku uses 8192 and GPT-5.6
+Luna uses 16384. The service passes the selected backend's effective ceiling to
+its SDK; a response truncated by that ceiling follows the same invalid JSON →
+502 path.
 
 > v0 does this in a single call. A deferred optimization splits it into a planner + parallel fillers
 > (appendix / `docs/FANOUT_DESIGN.md`); the service steps are unchanged by that.
@@ -566,9 +568,9 @@ were checked and biased by the context answers," rather than disambiguation-driv
 (same `Card` shape, same rules — see `docs/CARD_SCHEMA.md`).
 
 **Token budget:** worst case 8 groups × 15 cards = 120 cards, comparable to `/lookup`'s own worst
-case (124 cards) — reuse the same `maxOutputTokens` ceiling (30000) and 15s timeout / 502 posture,
-since the shape of the problem (bulk JSON card generation, one call) is the same one `/lookup`
-already budgets for.
+case (124 cards). Use the shared 30000 ceiling for Google, with the provider-specific ceilings
+described above (8192 for Claude Haiku, 16384 for GPT-5.6 Luna), plus the same 15s timeout / 502
+posture.
 
 ### 3a/3b. Finish `[service]`
 

@@ -1,5 +1,7 @@
 const OpenAI = require('openai');
 
+const OPENAI_MODEL = 'gpt-5.6-luna';
+
 let client = null;
 
 function getClient() {
@@ -17,9 +19,8 @@ async function callOpenAI(prompt, { maxOutputTokens = 1024 } = {}) {
   const openai = getClient();
 
   const completion = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    temperature: 0.2,
-    max_tokens: maxOutputTokens,
+    model: OPENAI_MODEL,
+    max_completion_tokens: maxOutputTokens,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -32,4 +33,9 @@ async function callOpenAI(prompt, { maxOutputTokens = 1024 } = {}) {
   return text;
 }
 
-module.exports = { callOpenAI };
+// GPT-5.6 Luna can exceed the shared 15-second service budget while producing
+// large JSON responses, especially for the /textbook generation call.
+callOpenAI.timeoutMs = 60000;
+callOpenAI.maxOutputTokens = 16384;
+
+module.exports = { callOpenAI, OPENAI_MODEL };

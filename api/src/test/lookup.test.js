@@ -7,7 +7,8 @@ const { parseTerm, parseLookupRequest } = require('../lookup-parse');
 const { validateLookupResponse } = require('../lookup-validate');
 const { buildLookupPrompt } = require('../lookup-prompt');
 const { handleLookup } = require('../lookup');
-
+const { callAnthropic } = require('../llms/anthropic');
+const { OPENAI_MODEL } = require('../llms/openai');
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -379,4 +380,31 @@ describe('handleLookup', () => {
     assert.equal(res.statusCode, 200);
     assert.ok(typeof calledWith === 'string' && calledWith.length > 0);
   });
+
+  test('passes a provider-specific output-token cap to Claude', async () => {
+    const res = makeRes();
+    let options;
+    const claude = async (prompt, opts) => {
+      options = opts;
+      return happyRaw();
+    };
+    claude.maxOutputTokens = 8192;
+    await handleLookup({ body: { ...VALID_BODY, llm: 'claude' } }, res, { claude });
+    assert.equal(res.statusCode, 200);
+    assert.equal(options.maxOutputTokens, 8192);
+  });
+
+  test('Anthropic adapter advertises its supported output-token cap', () => {
+    assert.equal(callAnthropic.maxOutputTokens, 8192);
+  });
+
+  test('OpenAI adapter targets the Luna model', () => {
+    assert.equal(OPENAI_MODEL, 'gpt-5.6-luna');
+  });
+
+  test('OpenAI adapter advertises its extended timeout', () => {
+    const { callOpenAI } = require('../llms/openai');
+    assert.equal(callOpenAI.timeoutMs, 60000);
+  });
+
 });

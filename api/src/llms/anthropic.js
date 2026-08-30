@@ -31,5 +31,9 @@ async function callAnthropic(prompt, { maxOutputTokens = 1024 } = {}) {
 
   return text;
 }
+// Claude Haiku 4.5 accepts at most 8,192 output tokens. The route handlers
+// read this capability to avoid sending the shared 30,000-token ceiling,
+// which Anthropic rejects before generation.
+callAnthropic.maxOutputTokens = 8192;
 
 module.exports = { callAnthropic };

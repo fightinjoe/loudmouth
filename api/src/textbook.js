@@ -81,6 +81,7 @@ async function callLlm(handler, llmName, route, prompt, maxOutputTokens, timeout
  */
 async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_TIMEOUT_MS } = {}) {
   const { topic, language, ability, llm, mode, context } = parsedRequest;
+  const effectiveTimeoutMs = registry[llm]?.timeoutMs || timeoutMs;
 
   const handler = registry[llm];
   if (!handler) {
@@ -92,7 +93,7 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
 
   if (mode === 'questions') {
     const prompt = buildTextbookQuestionsPrompt({ topic, language, ability });
-    const raw = await callLlm(handler, llm, 'textbook:questions', prompt, TEXTBOOK_QUESTIONS_MAX_TOKENS, timeoutMs);
+    const raw = await callLlm(handler, llm, 'textbook:questions', prompt, TEXTBOOK_QUESTIONS_MAX_TOKENS, effectiveTimeoutMs);
 
     let result;
     try {
@@ -116,7 +117,8 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
 
   // mode === 'generate'
   const prompt = buildTextbookGeneratePrompt({ topic, language, ability, context });
-  const raw = await callLlm(handler, llm, 'textbook:generate', prompt, TEXTBOOK_GENERATE_MAX_TOKENS, timeoutMs);
+  const maxOutputTokens = handler.maxOutputTokens || TEXTBOOK_GENERATE_MAX_TOKENS;
+  const raw = await callLlm(handler, llm, 'textbook:generate', prompt, maxOutputTokens, effectiveTimeoutMs);
 
   let result;
   try {
