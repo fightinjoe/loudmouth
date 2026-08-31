@@ -59,7 +59,7 @@ For each question, produce a short label and a small set of mutually exclusive, 
 
 ## Step 2 — suggested checklist
 
-Propose a checklist of concrete, learner-recognizable phrasebook sections/goals for this topic — e.g. "Ask someone to dance & the etiquette", not a vague label like "Dancing". Each item becomes one section of the eventual phrasebook if the learner leaves it checked. Default-check the 1–2 items most learners would want first; leave clearly-secondary items unchecked. **Hard cap: ${MAX_CHECKLIST_ITEMS} items.**
+Propose a checklist of concrete, learner-recognizable goals that map to the ARC of this situation — approaching/opening, the core interaction, wrapping up, and recovering when something goes wrong — e.g. "Ask someone to dance & the etiquette", not a vague or dictionary-style label like "Dancing" or "Dance vocabulary". Each item is a communicative goal the learner would recognize, not a category of words to memorize. Each checked item guides one section of the eventual phrasebook. Default-check the items that carry the interaction itself — the opening/approach and the core exchange most learners need first — and leave clearly-secondary items unchecked. **Hard cap: ${MAX_CHECKLIST_ITEMS} items.**
 
 ## Content quality bar (non-negotiable)
 
@@ -104,7 +104,7 @@ function buildTextbookGeneratePrompt({ topic, language, ability, context }) {
     ? checklist.map((label) => `- ${label}`).join('\n')
     : '(no checklist items given — infer 2-3 sensible sections from the topic alone)';
 
-  return `You are generating a bespoke, situation-specific phrasebook for a language learner — a custom textbook chapter for tonight, tailored to their exact situation, not a generic curriculum. Generate the FULL phrasebook now: one themed group of cards per checklist item below.
+  return `You are generating a bespoke, situation-specific phrasebook for a language learner — a custom textbook chapter for tonight, tailored to their exact situation, not a generic curriculum. You are a TEACHER, not a dictionary: every card must be language the learner can PUT TO WORK in this situation — a line they would actually say, or a word they would genuinely say or hear in the moment — never encyclopedic vocabulary ABOUT the topic. Generate the FULL phrasebook now, organized around the real arc of the encounter.
 
 Topic/situation: ${topic}
 Target language: ${langName}
@@ -114,32 +114,41 @@ ${describeAbility(ability)} \`ability\` affects word/phrase choice and sentence 
 
 ${answersBlock}
 
-## Sections to generate (one group per item, in this order)
+## Sections the learner wants covered (cover their intent; you may reshape)
 
 ${checklistBlock}
 
-## Step 1 — generate one group per checklist item, plus core vocabulary
+## Step 1 — build the groups around the encounter, covering what the learner asked for
 
-For each checklist item, produce exactly one group whose \`title\` is that item's label (verbatim, or lightly cleaned up if needed) and whose \`cards\` are the words/phrases that section needs. Bias every card's wording by the context answers above — e.g. a "leading" role or a specific regional scene should shape which phrases and vocabulary are chosen. **Total groups across the whole response: hard cap ${MAX_GROUPS_TOTAL}.** **Cards per group: hard cap ${MAX_CARDS_PER_GROUP}.** Aim for 6–10 distinct cards per group — err toward richer, denser coverage rather than a thin list; a vocabulary-heavy section may run all the way to the cap.
+Treat the checklist above as the learner's intended COVERAGE, not a rigid outline. Organize the phrasebook around the natural arc of the situation — opening/approach, the core interaction, wrapping up, and recovering when something goes wrong — and produce one themed group per stage or goal. You MAY rename, merge, split, reorder, and ADD connective groups the checklist left out (e.g. an opening/small-talk group, a "when you get lost" group) as long as every checked item's intent is covered somewhere. Bias every card by the context answers above — role, scene, or region should shape which phrases and words are chosen.
 
-- This should read like a real textbook chapter for the situation: a solid base of standalone vocabulary WORDS the learner must recognize, plus the phrases that put those words to work — not a thin list of phrases only.
-- **Actively correct the phrase-heavy bias.** When a section implies a category of related THINGS (steps, gear, food items, people, places, body parts, etc.), dedicate that group mostly to standalone vocabulary WORDS naming those things (10+ when the category supports it), not full sentences about them.
-- **Add core vocabulary even if no checklist item asked for it.** In addition to the checklist-driven groups, you MAY add up to 2 high-value vocabulary groups (e.g. a "Core survival words" group of greetings/yes-no/please-thanks and a topic-specific word bank) when the checklist alone would leave out the essential standalone vocabulary for this situation — still within the ${MAX_GROUPS_TOTAL}-group hard cap. Put checklist-driven groups first, then any added vocabulary groups.
+- **Every card must be put to work.** Favor whole phrases and power-move lines the learner can say to connect with someone, plus the high-frequency standalone words they will actually say or hear (greetings, yes/no, please/thanks, the few key nouns and verbs that come up in the moment). Do NOT pad a group with dictionary-style vocabulary the learner would never utter in the situation (e.g. body parts, or theory terms like "musicality" or "connection") — teacher, not glossary.
 - A group may freely mix words and phrases — organize by situation/goal, not grammatical form.
 - Order cards within each group from simplest/most broadly useful to more nuanced.
 - Keep every card distinct — no near-duplicates within or across the whole phrasebook.
-- Give each checklist-driven group's \`title\` as-is from the checklist item — do not invent a new title; name any added vocabulary group with a short English noun-phrase title (e.g. "Core survival words").
+- Name each group with a short, scannable English noun-phrase title describing its moment in the encounter (e.g. "Asking someone to dance", "When you get lost"); reuse a checklist label as the title when it already fits.
+- **Group budget.** Hard cap ${MAX_GROUPS_TOTAL} groups TOTAL, and this MUST include the example-conversation group from Step 2 — so keep the themed groups to at most ${MAX_GROUPS_TOTAL - 1}. Cards per group: hard cap ${MAX_CARDS_PER_GROUP}; aim for 6–10 distinct cards in a themed group.
 
 ## Coverage check
 
-Before returning the JSON, verify: every checklist item produced exactly one group; the phrasebook as a whole contains BOTH a substantial body of standalone vocabulary words AND usable phrases (phrases have not crowded out words); any category of related things has a word-rich group; cards are distributed across groups rather than concentrated in one; and each group runs simplest → most nuanced. Do not pad with near-duplicates to hit a count.
+Before continuing, verify: every checked checklist item's intent is covered by some group; the phrasebook follows the encounter's arc rather than a pile of categories; every card is something the learner would actually say, hear, or use in the moment (no glossary padding); cards are distributed across groups rather than concentrated in one; and each group runs simplest → most nuanced. Do not pad with near-duplicates to hit a count.
 
-## Step 2 — name the phrasebook
+## Step 2 — add one example-conversation group (prototype)
+
+Add exactly ONE final group, titled "Example conversation", that strings the phrasebook's key lines into a short, realistic exchange for this situation (aim for 6–12 turns). This is the single most valuable output for the learner: it shows the phrases working together in sequence.
+
+- Use ONLY language already introduced in the earlier groups (lightly inflected as the dialogue requires) — the conversation reinforces the chapter, it does not add new material.
+- Each turn is one card: \`text\` = the spoken line, \`translation\` = its English gloss, \`reading\` per the usual rules below.
+- Identify the speaker of each turn with a compact JSON blob in that card's \`notes\`, e.g. \`{"speaker":"you"}\` or \`{"speaker":"partner"}\`. (Experimental staging field — turn structure lives in \`notes\` until it earns a place in the schema.)
+- Keep turns in conversation order; this group counts against the ${MAX_GROUPS_TOTAL}-group cap.
+
+## Step 3 — name the phrasebook
 
 Produce a single top-level \`title\` for the whole phrasebook: a concise, **one-line** name (aim for 2–4 words, at most ${MAX_TITLE_LENGTH} characters) that captures the whole situation at a glance — a shelf label the learner will scan in a list, in Title Case, in English. Encapsulate the situation as a whole; do NOT merely restate the raw topic verbatim, and do NOT reuse a single section/checklist label. E.g. topic "talking to a doctor about my annual physical" → "Annual Physical Visit"; "salsa dancing" (Latin America, social club, leading) → "Salsa Social Dancing".
 
 ## Content quality bar (non-negotiable)
 
+- **Teacher, not dictionary.** Every card earns its place by being usable in the moment — a line to say or a word to say/hear. Cut anything that only describes or catalogs the topic.
 - Favor common, conversational language a person would actually SAY to someone they're trying to connect with, in the ${level} range unless the situation demands otherwise.
 - Reject stiff, textbook, or exam-flavored content — the irony of this endpoint's own name is intentional; it does not relax this bar.${genderInstruction(language)}
 

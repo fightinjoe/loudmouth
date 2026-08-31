@@ -75,12 +75,34 @@ discretion under `casual` formality (see `formality` above), independent of diff
 
 ## Outputs
 
-The response is an object with one key (an object, not a bare array, to leave room for future
-telemetry):
+The response is an object with one content key (an object, not a bare array, to leave room for
+telemetry) plus a `usage` block:
 
 ```
-{ "blocks": TranslationBlock[] }
+{ "blocks": TranslationBlock[], "usage": Usage }
 ```
+
+### Usage
+
+Every 200 response carries a `usage` block reporting the LLM token consumption for the call
+and an estimated cost:
+
+```
+{
+  "model": "string",          // the exact provider model string that served the call
+  "inputTokens": number,      // prompt tokens reported by the provider
+  "outputTokens": number,     // completion tokens reported by the provider
+  "totalTokens": number,      // inputTokens + outputTokens
+  "costUsd": number | null    // estimated USD cost, or null when no rate is configured
+}
+```
+
+Token counts come straight from each provider's usage metadata (`api/src/llms/*.js`). `costUsd`
+is computed by `api/src/pricing.js` from a per-model rate table (USD per 1M input/output tokens);
+it is `null` for any model whose rate is unset — the table ships as a placeholder, so cost is
+`null` until real rates are filled in. The same figures are also emitted as a structured
+`{ event: 'usage', route, llm, ... }` log line (visible on the terminal under `npm run dev`).
+`/textbook` carries the identical `usage` block on both its call-1 and call-2 responses.
 
 ### Translation block
 
@@ -209,7 +231,8 @@ Deterministic post-processing, no model:
   group 9+ dropped; within a group, card 11+ dropped) — consistent with disambiguation already ordering
   blocks by relevance.
 - **Set `context`** — the input parenthetical on each block card; the group `title` on each group card.
-- **Bundle** into `{ blocks: [...] }`.
+- **Attach usage** — build the `usage` block (token counts from the provider + estimated `costUsd`).
+- **Bundle** into `{ blocks: [...], usage }`.
 
 ---
 
@@ -397,12 +420,21 @@ carries a `context` field:
    generated or saved yet.
 2. **With `context`** — given the topic (+ language + ability) **and** the learner's answers to
    call 1's questions plus which checklist items they left checked, the model **bulk-generates**
-   the full phrasebook content: one themed group of cards per checked checklist item, ready to
-   commit as a brand-new phrasebook with no further curation.
+   the full phrasebook content: themed groups of cards covering the checked checklist items and
+   organized around the arc of the situation, plus a short example conversation, ready to commit
+   as a brand-new phrasebook with no further curation.
 
 The two calls share one endpoint and one request/response envelope shape (see Inputs/Outputs)
 rather than being two separate routes, per an explicit design decision: the caller doesn't have to
 remember two URLs, and the presence of `context` alone is sufficient to disambiguate intent.
+
+## Design principles
+
+Three principles govern `/textbook` generation and rank above any individual formatting rule:
+
+- **(0) Meaningful, put-to-work language — teacher, not dictionary.** Every card must be language the learner can deploy in the actual situation: a line they would say, or a word they would genuinely say or hear in the moment. The endpoint teaches an encounter; it does not catalog vocabulary *about* the topic. Encyclopedic nouns and theory terms (body parts, "musicality", "connection") are cut unless the learner would actually utter them.
+- **(1) Fast and consistent.** One model call per stage, the same p50 <4s / 15s-timeout / 502-on-failure posture as `/lookup`, and a prompt shared verbatim across backends. Latency and determinism outrank breadth.
+- **(2) The thinnest possible output schema.** New richness is proven before it is promoted: experiment with it as a JSON blob inside a card's `notes` field first, and promote it to a first-class schema field only once it has earned its place. The example-conversation group (below) is a live instance — per-turn speaker rides in `notes` as `{"speaker":"…"}`, not as a new schema shape.
 
 ---
 
@@ -451,7 +483,8 @@ discarded afterward (see `docs/journeys.md` Journey 5 "Save model").
   ],
   "checklist": [
     { "label": "string", "checked": true }
-  ]
+  ],
+  "usage": { "model": "string", "inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "costUsd": null }
 }
 ```
 
@@ -462,17 +495,19 @@ discarded afterward (see `docs/journeys.md` Journey 5 "Save model").
   `audience` inputs). **Cap: at most 6 questions** (bounds the context-answer surface and output
   size; a topic needing more than 6 distinguishing axes should be split into a narrower topic by
   the learner).
-- `checklist` — an array of candidate phrasebook sections, each a short label (becomes a group
-  title on generation, same role as a `/lookup` group's `title`) and a `checked` default (the
-  model's guess at which sub-goals are most likely wanted). **Cap: at most 8 items** (mirrors
-  `/lookup`'s `MAX_GROUPS_TOTAL`, since each checked item becomes one generated group).
+- `checklist` — an array of candidate phrasebook sections, each a short label naming a
+  communicative goal in the situation's arc, plus a `checked` default (the model's guess at which
+  goals are most likely wanted). A checked item is an intent to COVER, not a literal group title —
+  generation may rename, merge, split, or resequence to follow the encounter's arc. **Cap: at most
+  8 items** (mirrors `/lookup`'s `MAX_GROUPS_TOTAL`).
 
 ### Call 2 response — generated phrasebook content
 
 ```json
 {
   "title": "string",          // concise, one-line phrasebook name (service-clamped ≤ 60 chars)
-  "groups": TextbookGroup[]
+  "groups": TextbookGroup[],
+  "usage": { "model": "string", "inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "costUsd": null }
 }
 ```
 
@@ -480,7 +515,7 @@ Where each `TextbookGroup` is:
 
 ```json
 {
-  "title": "string",       // from the checked checklist item's label
+  "title": "string",       // English section heading naming its moment in the encounter
   "cards": Card[]           // cards for this section
 }
 ```
@@ -491,15 +526,22 @@ Where each `TextbookGroup` is:
   name. Model-produced (the "name the phrasebook" prompt step), **soft**: a missing or blank
   title is not a `502` — the client falls back to the raw topic; an over-length title is clamped
   to 60 characters, not rejected. Distinct from each group's own `title` (a section heading).
+- **example-conversation group** — the final group, titled "Example conversation", is a prototype
+  addition: its cards are the turns of a short realistic exchange (in order), built only from
+  language already present in the other groups. Each turn card carries its speaker as a JSON blob
+  in `notes` (`{"speaker":"you"}` / `{"speaker":"partner"}`) — an experiment staged in `notes` per
+  Design principle 2, not a promoted schema field. It counts against the group cap.
 
 No top-level "blocks"/disambiguation concept, unlike `/lookup` — the topic isn't being
 disambiguated into meanings, it's being expanded into sections. Every `Card` is shaped exactly per
 **`docs/CARD_SCHEMA.md`**, identical to `/lookup`'s card shape (reuses the same reading-token
 rules, `formality`/`definition`/`notes` semantics, gender-collapse rule for `es`/`cs`).
 
-**Limits:** one group per checked checklist item, so **at most 8 groups** (bounded by call 1's
-checklist cap); **at most 15 cards per group**, same ceiling as `/lookup`'s `MAX_CARDS_PER_GROUP`.
-No hard minimum, same posture as `/lookup` — a narrow checklist item may produce a small group.
+**Limits:** **at most 8 groups total** (mirrors `/lookup`'s `MAX_GROUPS_TOTAL`) — the themed groups
+plus the single example-conversation group share this budget, so themed groups run to at most 7.
+**At most 15 cards per group**, same ceiling as `/lookup`'s `MAX_CARDS_PER_GROUP`. No hard minimum.
+Groups are **not** one-per-checklist-item: generation organizes around the encounter's arc and may
+reshape the checked items into fewer, merged, or differently-named groups (see Model behavior).
 
 ---
 
@@ -583,7 +625,8 @@ Deterministic post-processing, no model, mirroring `/lookup`'s Finish step:
   identical mechanism to `/lookup`'s group-card `context`-setting. This is what lets the finished
   phrasebook reuse the existing section-header rendering with no client-side rendering changes
   (see `docs/journeys.md` Journey 5, step 8).
-- **Bundle** into `{ questions, checklist }` or `{ groups: [...] }` depending on call mode.
+- **Attach usage** — same `usage` block as `/lookup` (provider token counts + estimated `costUsd`).
+- **Bundle** into `{ questions, checklist, usage }` or `{ groups: [...], usage }` depending on call mode.
 
 ---
 
@@ -598,18 +641,23 @@ change what phrasebook content gets generated — not generic demographic questi
 this *specific* topic actually turns on (a dance topic turns on role/lead-follow and scene/style; a
 family-dinner topic would turn on relationship-to-host and dietary needs instead). Each question's
 `options` should be short, mutually exclusive, and genuinely different in downstream effect — not
-padding. The checklist should read as concrete, learner-recognizable goals ("Ask someone to dance
-& the etiquette"), not vague topic labels ("Dancing"), and should default-check the 1–2 items most
-learners would want first, leaving clearly-secondary items unchecked by default.
+padding. The checklist should read as concrete, learner-recognizable communicative goals mapped to
+the situation's arc ("Ask someone to dance & the etiquette"), not vague or dictionary-style labels
+("Dancing", "Dance vocabulary"), and should default-check the items that carry the interaction
+itself — the opening/approach and core exchange — leaving clearly-secondary items unchecked.
 
-**Call 2 (bulk generate).** Same **content quality bar** as `/lookup` — common, conversational
-language a person would actually say, never stiff/textbook/exam-flavored (again, the irony of the
-feature's own name is intentional and does not relax this bar). Same **words-vs-phrases balance**
-rule as `/lookup`'s Model behavior section — don't let phrases crowd out standalone vocabulary
-words when the topic implies a category of things (steps, gear, food items, etc.). One group per
-checked checklist item, using that item's label as the group `title` verbatim (or a lightly
-cleaned-up version of it) rather than inventing a new title — the learner already approved that
-label by leaving it checked.
+**Call 2 (bulk generate).** Governed by the **Design principles** above — principle (0)
+(teacher-not-dictionary / put-to-work) is the operative bar. Keep `/lookup`'s conversational quality
+bar (never stiff/textbook/exam-flavored — the irony of the feature's own name is intentional and
+does not relax it), but every card must be language the learner would actually say, hear, or use in
+the moment; cut glossary-style vocabulary (body parts, theory terms) that only describes the topic.
+Organize groups around the **arc of the encounter** (opening/approach → core interaction → wrap-up →
+recovery) rather than emitting one verbatim-titled group per checklist item: the checked items
+define the intent to cover, and generation may rename, merge, split, reorder, and add connective
+groups (opening small-talk, "when you get lost") the checklist omitted. Finish with one
+**example-conversation group** (see Outputs) that replays the chapter's key lines as a short dialogue
+built only from language already introduced — the highest-value artifact for the learner and, per
+Design principle (2), a prototype staged via the card `notes` field.
 
 **Output.** Both calls return raw JSON, no code fences, no prose — identical output-format rule to
 `/lookup`.
@@ -675,9 +723,11 @@ Group "Dance/step vocabulary"
   seguir — to follow
 ```
 
-Only the two checked checklist items produce groups — "Communicate on the floor" and "Compliments
-& thanks after a dance" were left unchecked and are not generated, per the checklist's role as the
-learner's control surface (see `docs/journeys.md` Journey 5, step 6).
+The checked items ("Ask someone to dance & the etiquette", "Dance/step vocabulary") set the intent
+to cover; generation organizes around the encounter's arc rather than emitting one verbatim-titled
+group per item, and appends an "Example conversation" group (omitted here for brevity) that replays
+these lines as a short dialogue. The checklist remains the learner's control surface for *what gets
+covered* (see `docs/journeys.md` Journey 5, step 6), not a rigid group outline.
 
 ---
 

@@ -85,8 +85,29 @@ Looks up a term and returns a direct translation plus AI-clustered related group
         }
       ]
     }
-  ]
+  ],
+  "usage": {
+    "model": "gemini-3.5-flash-lite",
+    "inputTokens": 812,
+    "outputTokens": 4193,
+    "totalTokens": 5005,
+    "costUsd": 0.0021
+  }
 }
+```
+
+Both `/lookup` and `/textbook` 200 responses carry a `usage` block reporting the LLM
+token counts for that call and an estimated `costUsd`. `costUsd` is `null` until per-model
+rates are filled into `src/pricing.js` (the placeholder table ships with rates unset);
+token counts are always reported. The same usage figures are also emitted as a structured
+`{ event: 'usage', ... }` log line, which prints to the terminal under `npm run dev`.
+
+To enable cost estimates, add USD-per-1,000,000-token rates to `src/pricing.js`, keyed by
+the exact model string each provider reports (e.g. `gemini-3.5-flash-lite`, `gpt-5.6-luna`,
+`claude-haiku-4-5-20251001`):
+
+```js
+'gemini-3.5-flash-lite': { inputPer1M: 0.10, outputPer1M: 0.40 },
 ```
 
 See `docs/API_DESIGN.md` for the full contract, including disambiguation, group limits
@@ -142,6 +163,12 @@ The script is idempotent — safe to re-run after config changes. It will:
 cd src && npm install
 gcloud auth application-default login   # required for Vertex AI
 ```
+
+The Google backend uses **`gemini-3.5-flash-lite`** on Vertex AI, which is served only from the
+`global`, `us`, or `eu` endpoints — **not** regional ones like `us-central1`. The Vertex location is
+set by `GCP_VERTEX_LOCATION` (default `global`), kept separate from `GCP_LOCATION` (the gateway /
+Cloud Run region). `.env` sets `GCP_VERTEX_LOCATION=global`; leave it unless your project requires a
+specific data-residency multi-region (`us`/`eu`).
 
 ### Run locally
 

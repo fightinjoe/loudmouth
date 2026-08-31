@@ -6,6 +6,9 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 PROJECT_ID="${GCP_PROJECT_ID:?GCP_PROJECT_ID must be set}"
 REGION="${GCP_LOCATION:-us-central1}"
+# Vertex AI serves Gemini 3.x from `global`/`us`/`eu`, NOT regional endpoints
+# like us-central1 — kept separate from REGION, which the gateway/Cloud Run use.
+VERTEX_LOCATION="${GCP_VERTEX_LOCATION:-global}"
 SERVICE_NAME="translation-api"
 SA_NAME="translation-api-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -15,6 +18,7 @@ CONFIG_ID="translation-api-config-$(date +%Y%m%d-%H%M%S)"
 
 echo "==> Project:  ${PROJECT_ID}"
 echo "==> Region:   ${REGION}"
+echo "==> Vertex:   ${VERTEX_LOCATION}"
 
 # ---------------------------------------------------------------------------
 # 1. Enable required APIs
@@ -101,7 +105,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --region="${REGION}" \
   --no-allow-unauthenticated \
   --service-account="${SA_EMAIL}" \
-  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=${REGION}" \
+  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=${REGION},GCP_VERTEX_LOCATION=${VERTEX_LOCATION}" \
   --set-secrets="ANTHROPIC_API_KEY=anthropic-api-key:latest,OPENAI_API_KEY=openai-api-key:latest" \
   --project="${PROJECT_ID}"
 

@@ -30,7 +30,15 @@ async function callOpenAI(prompt, { maxOutputTokens = 1024 } = {}) {
     throw new Error('OpenAI returned a response with no text content');
   }
 
-  return text;
+  const usage = completion?.usage || {};
+  return {
+    text,
+    model: OPENAI_MODEL,
+    usage: {
+      inputTokens: usage.prompt_tokens ?? 0,
+      outputTokens: usage.completion_tokens ?? 0,
+    },
+  };
 }
 
 // GPT-5.6 Luna can exceed the shared 15-second service budget while producing

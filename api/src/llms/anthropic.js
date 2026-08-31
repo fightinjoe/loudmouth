@@ -1,5 +1,7 @@
 const Anthropic = require('@anthropic-ai/sdk');
 
+const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+
 let client = null;
 
 function getClient() {
@@ -17,7 +19,7 @@ async function callAnthropic(prompt, { maxOutputTokens = 1024 } = {}) {
   const anthropic = getClient();
 
   const message = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: ANTHROPIC_MODEL,
     temperature: 0.2,
     max_tokens: maxOutputTokens,
     messages: [{ role: 'user', content: prompt }],
@@ -29,11 +31,19 @@ async function callAnthropic(prompt, { maxOutputTokens = 1024 } = {}) {
     throw new Error('Anthropic returned a response with no text content');
   }
 
-  return text;
+  const usage = message?.usage || {};
+  return {
+    text,
+    model: ANTHROPIC_MODEL,
+    usage: {
+      inputTokens: usage.input_tokens ?? 0,
+      outputTokens: usage.output_tokens ?? 0,
+    },
+  };
 }
 // Claude Haiku 4.5 accepts at most 8,192 output tokens. The route handlers
 // read this capability to avoid sending the shared 30,000-token ceiling,
 // which Anthropic rejects before generation.
 callAnthropic.maxOutputTokens = 8192;
 
-module.exports = { callAnthropic };
+module.exports = { callAnthropic, ANTHROPIC_MODEL };

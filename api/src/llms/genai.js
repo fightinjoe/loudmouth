@@ -1,11 +1,13 @@
 const { GoogleGenAI } = require('@google/genai');
 
+const GENAI_MODEL = 'gemini-3.5-flash-lite';
+
 let client = null;
 
 function getClient() {
   if (!client) {
     const project = process.env.GCP_PROJECT_ID;
-    const location = process.env.GCP_LOCATION || 'us-central1';
+    const location = process.env.GCP_VERTEX_LOCATION || 'global';
     if (!project) {
       throw new Error('GCP_PROJECT_ID environment variable is not set');
     }
@@ -21,10 +23,12 @@ function getClient() {
 async function callGenAI(prompt, { maxOutputTokens = 1024 } = {}) {
   const ai = getClient();
   const result = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-lite',
+    model: GENAI_MODEL,
     contents: prompt,
     config: {
-      temperature: 0.2,
+      // gemini-3.5-flash-lite ignores custom temperature/top-K/top-P (defaults
+      // temperature 1.0) and defaults to MINIMAL thinking — fine for the
+      // low-latency JSON generation here. See the Vertex model card.
       maxOutputTokens,
     },
   });
@@ -34,7 +38,15 @@ async function callGenAI(prompt, { maxOutputTokens = 1024 } = {}) {
     throw new Error('Google Gen AI returned a response with no text content');
   }
 
-  return text;
+  const meta = result.usageMetadata || {};
+  return {
+    text,
+    model: GENAI_MODEL,
+    usage: {
+      inputTokens: meta.promptTokenCount ?? 0,
+      outputTokens: meta.candidatesTokenCount ?? 0,
+    },
+  };
 }
 
-module.exports = { callGenAI };
+module.exports = { callGenAI, GENAI_MODEL };

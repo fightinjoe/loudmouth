@@ -20,6 +20,7 @@
 const { parseLookupRequest } = require('./lookup-parse');
 const { buildLookupPrompt } = require('./lookup-prompt');
 const { validateLookupResponse } = require('./lookup-validate');
+const { buildUsageReport } = require('./pricing');
 
 // Worst case ~124 cards (4 blocks + 8 groups x 15 cards) at ~150 tokens/card ==
 // ~18.6k tokens of content; 30000 gives headroom over that ceiling
@@ -72,9 +73,9 @@ async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEO
   const prompt = buildLookupPrompt({ term, context, language, ability, formality, audience });
   const maxOutputTokens = handler.maxOutputTokens || LOOKUP_MAX_TOKENS;
 
-  let raw;
+  let reply;
   try {
-    raw = await callWithTimeout(handler, prompt, { maxOutputTokens }, effectiveTimeoutMs);
+    reply = await callWithTimeout(handler, prompt, { maxOutputTokens }, effectiveTimeoutMs);
   } catch (err) {
     if (err instanceof LookupTimeoutError) {
       console.error({ event: 'llm_timeout', route: 'lookup', llm, error: err.message });
@@ -85,6 +86,8 @@ async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEO
     wrapped.status = 502;
     throw wrapped;
   }
+
+  const { text: raw, model, usage } = reply;
 
   let result;
   try {
@@ -100,11 +103,13 @@ async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEO
     console.warn({ event: 'lookup_clamped', llm, term, warnings: result.warnings });
   }
 
+  const usageReport = buildUsageReport(model, usage);
   const { blocks } = result.response;
   const groupCount = blocks.reduce((n, b) => n + b.groups.length, 0);
   console.log({ event: 'lookup_ok', llm, language, blocks: blocks.length, groups: groupCount, term });
+  console.log({ event: 'usage', route: 'lookup', llm, ...usageReport });
 
-  return result.response;
+  return { ...result.response, usage: usageReport };
 }
 
 /**

@@ -48,6 +48,12 @@ function happyRaw() {
   });
 }
 
+// Wraps raw model text in the wrapper contract shape ({ text, model, usage })
+// that src/llms/*.js now return and the handlers consume.
+function reply(text, usage = { inputTokens: 12, outputTokens: 34 }) {
+  return { text, model: 'test-model', usage };
+}
+
 // ---------------------------------------------------------------------------
 // parseTerm — docs/API_DESIGN.md "term and context"
 // ---------------------------------------------------------------------------
@@ -353,20 +359,27 @@ describe('handleLookup', () => {
 
   test('truncated JSON → 502 "Invalid response from LLM"', async () => {
     const res = makeRes();
-    const registry = { google: async () => happyRaw().slice(0, -5) };
+    const registry = { google: async () => reply(happyRaw().slice(0, -5)) };
     await handleLookup({ body: VALID_BODY }, res, registry);
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'Invalid response from LLM');
   });
 
-  test('happy path → 200 with a valid { blocks } response', async () => {
+  test('happy path → 200 with a valid { blocks } response and a usage block', async () => {
     const res = makeRes();
-    const registry = { google: async () => happyRaw() };
+    const registry = { google: async () => reply(happyRaw()) };
     await handleLookup({ body: VALID_BODY }, res, registry);
     assert.equal(res.statusCode, 200);
     assert.ok(Array.isArray(res.body.blocks));
     assert.equal(res.body.blocks.length, 1);
     assert.equal(res.body.blocks[0].card.text, 'トイレ');
+    assert.deepEqual(res.body.usage, {
+      model: 'test-model',
+      inputTokens: 12,
+      outputTokens: 34,
+      totalTokens: 46,
+      costUsd: null,
+    });
   });
 
   test('picks the requested llm out of the registry', async () => {
@@ -374,7 +387,7 @@ describe('handleLookup', () => {
     let calledWith = null;
     const registry = {
       google: async () => { throw new Error('should not be called'); },
-      claude: async (prompt) => { calledWith = prompt; return happyRaw(); },
+      claude: async (prompt) => { calledWith = prompt; return reply(happyRaw()); },
     };
     await handleLookup({ body: { ...VALID_BODY, llm: 'claude' } }, res, registry);
     assert.equal(res.statusCode, 200);
@@ -386,7 +399,7 @@ describe('handleLookup', () => {
     let options;
     const claude = async (prompt, opts) => {
       options = opts;
-      return happyRaw();
+      return reply(happyRaw());
     };
     claude.maxOutputTokens = 8192;
     await handleLookup({ body: { ...VALID_BODY, llm: 'claude' } }, res, { claude });

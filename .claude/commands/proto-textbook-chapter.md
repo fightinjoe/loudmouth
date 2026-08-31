@@ -93,13 +93,10 @@ Format: **<romanization> — <native script if used> — English**. Learn the �
 ## 8. Example dinner/scenario conversation
 <a short worked dialogue that strings the ★ phrases together, with English glosses>
 
-## 9. Pocket cheat-sheet (memorize these 8)
-<the 8 highest-value lines, numbered>
-
 > **If you remember nothing else:** <2–3 warmth-first fallbacks>
 ```
 
-Adjust section count/titles to the scenario; sections 1, 2, 6, 8, and 9 are the non-negotiable
+Adjust section count/titles to the scenario; sections 1, 2, 6, and 8 are the non-negotiable
 core. Drop or merge others when the situation doesn't need them.
 
 ## Quality bar before declaring done
@@ -108,9 +105,8 @@ core. Drop or merge others when the situation doesn't need them.
 - Native script (if requested) and romanization both present and consistent.
 - Gendered forms are correct for the learner, or clearly marked as alternates.
 - The example dialogue only uses vocabulary/grammar introduced in the chapter.
-- The cheat-sheet is genuinely the 8 most useful lines, not the first 8.
 - Placeholders (nationality, names) are either filled from the interview or flagged for the user.
 - The file is saved at `tmp/chapters/<language>-<title>.md` and nowhere else.
 
 After saving, tell the user the path and offer to fill any remaining placeholders or produce a
-one-page print version (cheat-sheet + dialogue only).
+one-page print version (dialogue only).

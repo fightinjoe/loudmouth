@@ -64,6 +64,12 @@ function happyGenerateRaw() {
   });
 }
 
+// Wraps raw model text in the wrapper contract shape ({ text, model, usage })
+// that src/llms/*.js now return and the handlers consume.
+function reply(text, usage = { inputTokens: 12, outputTokens: 34 }) {
+  return { text, model: 'test-model', usage };
+}
+
 // ---------------------------------------------------------------------------
 // parseTextbookRequest — validation + defaults + call-mode branching
 // ---------------------------------------------------------------------------
@@ -338,7 +344,7 @@ describe('prompt builders', () => {
     assert.match(prompt, /Learner ability: beginner/);
   });
 
-  test('buildTextbookGeneratePrompt embeds context answers and checklist, one group per item', () => {
+  test('buildTextbookGeneratePrompt embeds context, allows reshape, and adds an example-conversation group', () => {
     const prompt = buildTextbookGeneratePrompt({
       topic: 'salsa dancing',
       language: 'es',
@@ -348,7 +354,10 @@ describe('prompt builders', () => {
     assert.match(prompt, /Salsa scene: Cuban style/);
     assert.match(prompt, /- Ask someone to dance/);
     assert.match(prompt, /- Dance\/step vocabulary/);
-    assert.match(prompt, /one group per checklist item/);
+    assert.match(prompt, /you may reshape/);
+    assert.match(prompt, /Every card must be put to work/);
+    assert.match(prompt, /Example conversation/);
+    assert.match(prompt, /"speaker":"you"/);
   });
 
   test('buildTextbookGeneratePrompt reuses /lookup gender-collapse rule for gendered languages', () => {
@@ -400,25 +409,32 @@ describe('handleTextbook', () => {
 
   test('truncated JSON → 502 "Invalid response from LLM"', async () => {
     const res = makeRes();
-    const registry = { google: async () => happyQuestionsRaw().slice(0, -5) };
+    const registry = { google: async () => reply(happyQuestionsRaw().slice(0, -5)) };
     await handleTextbook({ body: VALID_QUESTIONS_BODY }, res, registry);
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'Invalid response from LLM');
   });
 
-  test('call 1 (no context) happy path → 200 with { questions, checklist }', async () => {
+  test('call 1 (no context) happy path → 200 with { questions, checklist } and usage', async () => {
     const res = makeRes();
-    const registry = { google: async () => happyQuestionsRaw() };
+    const registry = { google: async () => reply(happyQuestionsRaw()) };
     await handleTextbook({ body: VALID_QUESTIONS_BODY }, res, registry);
     assert.equal(res.statusCode, 200);
     assert.ok(Array.isArray(res.body.questions));
     assert.ok(Array.isArray(res.body.checklist));
     assert.equal(res.body.questions[0].label, 'Salsa scene');
+    assert.deepEqual(res.body.usage, {
+      model: 'test-model',
+      inputTokens: 12,
+      outputTokens: 34,
+      totalTokens: 46,
+      costUsd: null,
+    });
   });
 
   test('call 2 (context present) happy path → 200 with { groups }', async () => {
     const res = makeRes();
-    const registry = { google: async () => happyGenerateRaw() };
+    const registry = { google: async () => reply(happyGenerateRaw()) };
     await handleTextbook({ body: VALID_GENERATE_BODY }, res, registry);
     assert.equal(res.statusCode, 200);
     assert.ok(Array.isArray(res.body.groups));
@@ -429,7 +445,7 @@ describe('handleTextbook', () => {
   test('call 2 surfaces the model title through to the 200 body', async () => {
     const res = makeRes();
     const raw = JSON.stringify({ title: 'Salsa Social Dancing', groups: [{ title: 'Ask someone to dance', cards: [makeCard()] }] });
-    const registry = { google: async () => raw };
+    const registry = { google: async () => reply(raw) };
     await handleTextbook({ body: VALID_GENERATE_BODY }, res, registry);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.title, 'Salsa Social Dancing');
@@ -440,7 +456,7 @@ describe('handleTextbook', () => {
     let calledWith = null;
     const registry = {
       google: async () => { throw new Error('should not be called'); },
-      claude: async (prompt) => { calledWith = prompt; return happyQuestionsRaw(); },
+      claude: async (prompt) => { calledWith = prompt; return reply(happyQuestionsRaw()); },
     };
     await handleTextbook({ body: { ...VALID_QUESTIONS_BODY, llm: 'claude' } }, res, registry);
     assert.equal(res.statusCode, 200);
@@ -452,7 +468,7 @@ describe('handleTextbook', () => {
     let options;
     const claude = async (prompt, opts) => {
       options = opts;
-      return happyGenerateRaw();
+      return reply(happyGenerateRaw());
     };
     claude.maxOutputTokens = 8192;
     await handleTextbook({ body: { ...VALID_GENERATE_BODY, llm: 'claude' } }, res, { claude });
