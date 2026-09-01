@@ -82,6 +82,40 @@ A mobile-first app (PWA and native iOS) where the learner captures vocabulary tw
 - [ ] 🟡 **Is JSON/URI import still maintained alongside `/lookup`, or being deprecated?** `docs/API_DESIGN.md` retires the old `/translate`/`/generate-cards` endpoints and their prototype clients but says nothing about the JSON/URI import path itself; `docs/journeys.md`/`DESIGN.md` don't mention an import entry point anywhere in the new pane flows.
 - [ ] 🟡 **Multi-phrasebook membership** — the Library Schema's `deckIds[]` implies a term can belong to more than one phrasebook, but no journey exercises adding an existing term to a second phrasebook; is this still supported under the new live-commit save model, or has save become single-phrasebook-scoped?
 
+## Learnings & direction (office-hours, 2026-08-31)
+
+Captured after the `/textbook` (guided-creation) prototype and the reworked UI (Figma
+784-20897). Full record: `docs/designs/prep-pivot-and-phrasebook-expansion.md`.
+
+- **Prep is the primary job now (re-weighting, not contradiction).** The unique use case is
+  *preparing* language for a known upcoming situation ("dinner with my girlfriend's parents"),
+  built from a short guided conversation — not capturing language in the moment. The old
+  "primary capture path" ranked look-up vs. import, not prep vs. moment; the branching look-up
+  was always a prep/discovery mechanic. **In-the-moment capture is demoted to a possible future
+  *separate mode*, not core UX.** The `/lookup` find-related "directed graph" felt
+  unsatisfactory: too many up-front configs, branches not interesting for conversation, and a
+  dictionary feel far from the goal of *communicating*.
+- **Curation inverted: generate-everything + star, no opt-in save.** A `/textbook` phrasebook
+  is committed whole. **Star is a bounded binary priority** (foreground keepers without
+  reordering/regrouping), *not* a save step. The per-card 🔖 opt-in save is retired as the
+  primary mechanic.
+- **Growing a phrasebook = one expansion primitive, three anchors, auto-filed.** "Give me more,
+  here": a **group** yields more cards (lateral); the **phrasebook** yields a new section
+  (lateral); a **card** yields *decomposition* — break the phrase into component words + grammar
+  (not new phrases), with some component words promotable to their own vocab cards. Auto-filing
+  via each card's `context` means the user never files, reorders, or regroups. Expansion is
+  **menu-first with a typing fallback**, opinionated and bounded — no "slot machine" reroll; a
+  weak result just goes un-starred.
+- **Drop `ability` from initial generation.** Highest-value content is level-invariant (key
+  phrases, the conversation example, context-specific vocabulary). Assume basics
+  (yes/no/hello/thank-you) are owned unless explicitly requested. **Depth and difficulty become
+  on-demand, per-card expansions** (define words / explain grammar; easier / more-advanced
+  variants), not up-front settings — this resolves the "no scoring / support all levels" tension
+  without a level knob.
+- **Grammar nuance rides in `notes` first** (existing API principle 2 — prove richness before
+  promoting to schema). Promote a component word to a card rather than bloating `notes` when the
+  word is worth studying on its own.
+
 ## Prototype Map
 
 - [x] 🟢 **Is Web Speech API adequate on mobile?** → ✅ Answered — iOS Safari quality is good. macOS Safari: silent. Chrome Desktop: poor. Audio is viable as a mobile-first feature. See `prototypes/1-web-speech/`.

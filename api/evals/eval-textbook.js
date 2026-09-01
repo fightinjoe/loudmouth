@@ -44,7 +44,7 @@
 
 const ENUMS = {
   language: ['zh', 'ja', 'es', 'cs'],
-  ability: ['none', 'beginner', 'intermediate', 'advanced'],
+  ability: ['none', 'beginner', 'intermediate', 'advanced', 'neutral'],
   llm: ['google', 'claude', 'chatgpt'],
   checklist: ['default', 'all'],
 };
@@ -126,8 +126,17 @@ function collectInput(flags) {
   };
 }
 
-function slugify({ topic, language }) {
-  const raw = `${language}-${topic}`;
+// Sample filenames encode the served model by nickname, matching the existing
+// hand-named samples (gpt-5.6-luna → "luna"). Falls back to the raw served
+// model string, then the llm enum, when a nickname isn't mapped.
+const MODEL_NICKNAMES = {
+  'gemini-3.5-flash-lite': 'gemini',
+  'gpt-5.6-luna': 'luna',
+  'claude-haiku-4-5-20251001': 'haiku',
+};
+
+function slugify({ topic, language, ability }, model) {
+  const raw = `${language}-${topic}-${ability}-${model}`;
   return raw
     .toLowerCase()
     .trim()
@@ -258,7 +267,9 @@ async function main() {
   console.log(`  ${generateResponse.groups.length} groups, ${cardCount} cards`);
 
   await Deno.mkdir(SAMPLES_DIR, { recursive: true });
-  const fileUrl = new URL(`./${slugify(input)}.yaml`, SAMPLES_DIR);
+  const servedModel = generateResponse && generateResponse.usage && generateResponse.usage.model;
+  const model = MODEL_NICKNAMES[servedModel] || servedModel || input.llm;
+  const fileUrl = new URL(`./${slugify(input, model)}.yaml`, SAMPLES_DIR);
 
   const questionsAndAnswers = (questionsResponse.questions || []).map((q) => ({
     question: q.label,

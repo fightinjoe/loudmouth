@@ -355,7 +355,10 @@ describe('prompt builders', () => {
     assert.match(prompt, /- Ask someone to dance/);
     assert.match(prompt, /- Dance\/step vocabulary/);
     assert.match(prompt, /you may reshape/);
-    assert.match(prompt, /Every card must be put to work/);
+    assert.match(prompt, /Teach both voices/);
+    assert.match(prompt, /Teach the situation's real vocabulary as WORDS/);
+    assert.match(prompt, /FLOOR as well as a ceiling/);
+    assert.match(prompt, /genuine two-sided exchange/);
     assert.match(prompt, /Example conversation/);
     assert.match(prompt, /"speaker":"you"/);
   });

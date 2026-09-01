@@ -34,7 +34,7 @@ api/
 │       └── genai.js            # Gemini via Google GenAI SDK
 ├── evals/
 │   ├── eval-textbook.js       # /textbook English-only YAML sample exporter (deno)
-│   └── samples/               # per-case <language>-<topic>.yaml (hand-editable `ideal` + raw `actual`)
+│   └── samples/               # per-case <language>-<topic>-<ability>-<model>.yaml (hand-editable `ideal` + raw `actual`)
 ├── deploy.sh                   # Idempotent GCP deploy script
 └── README.md
 ```

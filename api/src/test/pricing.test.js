@@ -31,9 +31,15 @@ describe('computeCostUsd', () => {
     assert.equal(computeCostUsd('no-such-model', { inputTokens: 100, outputTokens: 100 }), null);
   });
 
-  test('returns null while placeholder rates are unset', () => {
+  test('computes cost from configured per-model rates', () => {
+    // gpt-5.6-luna: 1M in @ $0.2/1M + 1M out @ $1.2/1M = 0.2 + 1.2 = 1.4
+    assert.equal(
+      computeCostUsd('gpt-5.6-luna', { inputTokens: 1_000_000, outputTokens: 1_000_000 }),
+      1.4,
+    );
+    // every configured model now has real rates → a non-null cost
     for (const model of Object.keys(PRICING)) {
-      assert.equal(computeCostUsd(model, { inputTokens: 100, outputTokens: 100 }), null);
+      assert.notEqual(computeCostUsd(model, { inputTokens: 100, outputTokens: 100 }), null);
     }
   });
 });

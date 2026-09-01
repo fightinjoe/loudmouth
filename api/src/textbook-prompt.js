@@ -35,6 +35,22 @@ const MAX_TITLE_LENGTH = 60;
 const LANG_NAMES = { zh: 'Mandarin Chinese', ja: 'Japanese', es: 'Spanish', cs: 'Czech' };
 const LANG_LEVELS = { zh: 'HSK 1–4', ja: 'JLPT N5–N3' };
 
+// P3 experiment (office-hours 2026-08-31; see
+// docs/designs/prep-pivot-and-phrasebook-expansion.md and the /textbook
+// "Learnings & proposed direction" note in docs/API_DESIGN.md). The `neutral`
+// sentinel generates the level-invariant, highest-value core instead of
+// biasing to a declared proficiency. Any real ability falls through to the
+// shared /lookup describeAbility() verbatim, so existing beginner/
+// intermediate/advanced/none behavior is unchanged.
+const NEUTRAL_ABILITY = 'neutral';
+
+function describeTextbookLevel(ability) {
+  if (ability === NEUTRAL_ABILITY) {
+    return 'Learner ability: unspecified — do NOT bias toward any declared proficiency level. Assume common courtesy and survival basics (yes/no, hello, thank you, please, excuse me) are ALREADY OWNED; do not teach them unless this specific situation genuinely turns on them. Spend the whole budget on the highest-value, level-invariant core: the key phrases this situation needs, its real context-specific vocabulary, and the two-sided example conversation. Choose broadly-useful register and sentence complexity — neither dumbed-down nor needlessly complex.';
+  }
+  return describeAbility(ability);
+}
+
 /**
  * Call 1 — dynamic context questions + a suggested checklist, both
  * topic-driven, no fixed field list (docs/API_DESIGN.md "Model behavior").
@@ -49,7 +65,7 @@ function buildTextbookQuestionsPrompt({ topic, language, ability }) {
 
 Topic/situation: ${topic}
 Target language: ${langName}
-${describeAbility(ability)}
+${describeTextbookLevel(ability)}
 
 ## Step 1 — dynamic context questions
 
@@ -104,11 +120,18 @@ function buildTextbookGeneratePrompt({ topic, language, ability, context }) {
     ? checklist.map((label) => `- ${label}`).join('\n')
     : '(no checklist items given — infer 2-3 sensible sections from the topic alone)';
 
-  return `You are generating a bespoke, situation-specific phrasebook for a language learner — a custom textbook chapter for tonight, tailored to their exact situation, not a generic curriculum. You are a TEACHER, not a dictionary: every card must be language the learner can PUT TO WORK in this situation — a line they would actually say, or a word they would genuinely say or hear in the moment — never encyclopedic vocabulary ABOUT the topic. Generate the FULL phrasebook now, organized around the real arc of the encounter.
+  // Level instruction: the `neutral` sentinel drops the declared-level FLOOR
+  // paragraph entirely; a real ability keeps that text verbatim (unchanged
+  // behavior for beginner/intermediate/advanced/none).
+  const levelBlock = ability === NEUTRAL_ABILITY
+    ? `${describeTextbookLevel(ability)} This governs word/phrase choice and sentence complexity on every card, never the translated intent. Opening a bespoke chapter to language the learner already knows is a failure.`
+    : `${describeAbility(ability)} \`ability\` affects word/phrase choice and sentence complexity on every card, never the translated intent. It is a FLOOR as well as a ceiling: assume the learner already commands everything clearly below this level and do NOT spend cards re-teaching it. \`beginner\` still teaches greetings and basic courtesy; at \`intermediate\` and \`advanced\` the learner already owns greetings, thanks, yes/no, and simple courtesy — compress those to at most a single line, or drop them, and spend the freed space on the situation's real vocabulary, less-common phrasing, and nuance. Opening a bespoke chapter to language the learner already knows is a failure.`;
+
+  return `You are generating a bespoke, situation-specific phrasebook for a language learner — a custom textbook chapter for tonight, tailored to their exact situation, not a generic curriculum. You are a TEACHER: teach enough that the learner can both PRODUCE their side of this encounter and UNDERSTAND what the other person says back. Every card must be language the learner can PUT TO WORK — a line they would say, a line they would hear and must follow, or a word they would point at, choose between, name, or hear in the moment. Generate the FULL phrasebook now, organized around the real arc of the encounter.
 
 Topic/situation: ${topic}
 Target language: ${langName}
-${describeAbility(ability)} \`ability\` affects word/phrase choice and sentence complexity on every card, never the translated intent.
+${levelBlock}
 
 ## Context the learner gave
 
@@ -122,22 +145,26 @@ ${checklistBlock}
 
 Treat the checklist above as the learner's intended COVERAGE, not a rigid outline. Organize the phrasebook around the natural arc of the situation — opening/approach, the core interaction, wrapping up, and recovering when something goes wrong — and produce one themed group per stage or goal. You MAY rename, merge, split, reorder, and ADD connective groups the checklist left out (e.g. an opening/small-talk group, a "when you get lost" group) as long as every checked item's intent is covered somewhere. Bias every card by the context answers above — role, scene, or region should shape which phrases and words are chosen.
 
-- **Every card must be put to work.** Favor whole phrases and power-move lines the learner can say to connect with someone, plus the high-frequency standalone words they will actually say or hear (greetings, yes/no, please/thanks, the few key nouns and verbs that come up in the moment). Do NOT pad a group with dictionary-style vocabulary the learner would never utter in the situation (e.g. body parts, or theory terms like "musicality" or "connection") — teacher, not glossary.
+- **Teach both voices.** A real encounter is two-sided. Alongside the lines the learner will SAY, teach the key lines they will HEAR from the other person (staff, host, partner) and must understand to keep going — the questions they'll be asked and, crucially, the ANSWERS to their own questions (a price, a quantity, "it's 100% wool", "it's out of stock"). A phrasebook that teaches only the learner's half leaves them able to speak but unable to follow the reply. A heard line is still an ORDINARY card: put ONLY the spoken target-language line in \`text\` (never a speaker label like "店員:" or "スタッフ —", and never English), and its English in \`translation\`; if useful, note who says it in \`notes\`. Speaker labels belong ONLY in the Example-conversation group's \`notes\`, never in \`text\`.
+- **Teach the situation's real vocabulary as WORDS, not disguised sentences.** The transactional nouns and adjectives specific to THIS situation — the things the learner will point at, name, choose between, or hear (a yarn shop: fiber types, yarn weights, needle and tool names, colors, textures; a clinic: symptoms, body areas) — ARE the lesson, not padding. Teach them as a compact vocabulary group of short \`type:"word"\` cards, PLUS one or two reusable frames the learner drops them into (e.g. "これは〜ですか" / "〜はありますか"). Do NOT expand a frame into one near-duplicate sentence per word ("Is it wool?", "Is it cotton?", "Is it soft?") — teach the words once and the frame once.
+- **Still no glossary padding.** Cut encyclopedic or theory vocabulary the learner would never actually say or hear in this moment (obscure anatomy, jargon like "musicality"). The test is "would the learner say or hear this word in the room?", not "is it about the topic?".
+- **Optional patterns group.** Where the phrases in this chapter lean on a small generative system (e.g. Japanese counters, a key particle or verb pattern), you MAY add ONE compact "Key patterns" group that teaches those as cards — the pattern in \`text\`, its use in \`translation\`, a short usage tip in \`notes\` — so the learner can bend the phrases rather than only parrot them.
 - A group may freely mix words and phrases — organize by situation/goal, not grammatical form.
 - Order cards within each group from simplest/most broadly useful to more nuanced.
 - Keep every card distinct — no near-duplicates within or across the whole phrasebook.
-- Name each group with a short, scannable English noun-phrase title describing its moment in the encounter (e.g. "Asking someone to dance", "When you get lost"); reuse a checklist label as the title when it already fits.
-- **Group budget.** Hard cap ${MAX_GROUPS_TOTAL} groups TOTAL, and this MUST include the example-conversation group from Step 2 — so keep the themed groups to at most ${MAX_GROUPS_TOTAL - 1}. Cards per group: hard cap ${MAX_CARDS_PER_GROUP}; aim for 6–10 distinct cards in a themed group.
+- Name each group with a short, scannable English noun-phrase title describing its moment in the encounter or the kind of vocabulary it holds (e.g. "Fibers & materials", "Asking for a recommendation", "When you get lost"); reuse a checklist label as the title when it already fits.
+- **Group budget.** Hard cap ${MAX_GROUPS_TOTAL} groups TOTAL, and this MUST include the example-conversation group from Step 2 — so keep every other group to at most ${MAX_GROUPS_TOTAL - 1} combined. Cards per group: hard cap ${MAX_CARDS_PER_GROUP}; aim for 6–10 distinct cards in a themed group. The example-conversation group is REQUIRED and comes LAST; do not let other groups crowd it out of the budget.
 
 ## Coverage check
 
-Before continuing, verify: every checked checklist item's intent is covered by some group; the phrasebook follows the encounter's arc rather than a pile of categories; every card is something the learner would actually say, hear, or use in the moment (no glossary padding); cards are distributed across groups rather than concentrated in one; and each group runs simplest → most nuanced. Do not pad with near-duplicates to hit a count.
+Before continuing, verify: every checked checklist item's intent is covered by some group; the phrasebook follows the encounter's arc rather than a pile of categories; every card is something the learner would actually say, hear, or use in the moment (no glossary padding); the situation's real vocabulary is taught as \`word\` cards plus reusable frames, not as repeated near-duplicate sentences; the key lines the learner will HEAR (not only say) are taught, including answers to their own questions; nothing re-teaches language clearly below the learner's \`ability\`; cards are distributed across groups rather than concentrated in one; and each group runs simplest → most nuanced. Do not pad with near-duplicates to hit a count.
 
 ## Step 2 — add one example-conversation group (prototype)
 
 Add exactly ONE final group, titled "Example conversation", that strings the phrasebook's key lines into a short, realistic exchange for this situation (aim for 6–12 turns). This is the single most valuable output for the learner: it shows the phrases working together in sequence.
 
-- Use ONLY language already introduced in the earlier groups (lightly inflected as the dialogue requires) — the conversation reinforces the chapter, it does not add new material.
+- It MUST be a genuine two-sided exchange in which information flows BOTH ways: the learner asks and the other person ANSWERS with real content (a price, a quantity, a recommendation), and vice versa. Never stack several turns from the same speaker that merely restate the same point — each turn advances the exchange, and speakers generally alternate.
+- Use ONLY language already introduced in the earlier groups (lightly inflected as the dialogue requires), including the HEARD lines you taught for the other speaker — the conversation reinforces the chapter, it does not add new material.
 - Each turn is one card: \`text\` = the spoken line, \`translation\` = its English gloss, \`reading\` per the usual rules below.
 - Identify the speaker of each turn with a compact JSON blob in that card's \`notes\`, e.g. \`{"speaker":"you"}\` or \`{"speaker":"partner"}\`. (Experimental staging field — turn structure lives in \`notes\` until it earns a place in the schema.)
 - Keep turns in conversation order; this group counts against the ${MAX_GROUPS_TOTAL}-group cap.
@@ -148,7 +175,7 @@ Produce a single top-level \`title\` for the whole phrasebook: a concise, **one-
 
 ## Content quality bar (non-negotiable)
 
-- **Teacher, not dictionary.** Every card earns its place by being usable in the moment — a line to say or a word to say/hear. Cut anything that only describes or catalogs the topic.
+- **Teacher, not dictionary — but the situation's transactional vocabulary IS the lesson.** Cut vocabulary that only catalogs the topic; KEEP and teach as \`word\` cards the nouns and adjectives the learner will point at, choose between, say, or hear in the moment.
 - Favor common, conversational language a person would actually SAY to someone they're trying to connect with, in the ${level} range unless the situation demands otherwise.
 - Reject stiff, textbook, or exam-flavored content — the irony of this endpoint's own name is intentional; it does not relax this bar.${genderInstruction(language)}
 
@@ -158,14 +185,18 @@ Produce a single top-level \`title\` for the whole phrasebook: a concise, **one-
   "lang": "${language}",
   "text": "the word or phrase in ${langName}",
   "translation": "clear, natural English (1–2 most common senses only)",
+  "type": "set on every card: \\"word\\" for a standalone vocabulary item, \\"phrase\\" for a set expression or full spoken line",
   "reading": ${readingExample},
-  "formality": "optional — this card's own register (\\"casual\\" | \\"polite\\" | \\"formal\\" | \\"slang\\"), only when the word has a register worth marking; omit for words with no register variant",
+  "formality": "optional — this card's own register (\\"casual\\" | \\"polite\\" | \\"formal\\" | \\"slang\\"), ONLY when this word has a register-varying alternative worth contrasting; omit otherwise",
   "notes": "optional — grammar, collocations, or usage tips; never register (that's \`formality\`)"
 }
 
+- \`text\` — ONLY the exact word or line as spoken in ${langName}: never an English gloss, never a speaker label or prefix ("Staff:", "店員:", "スタッフ —"), never surrounding quotation dressing. English belongs in \`translation\`.
 - \`reading\` — ALWAYS include. Must be a ReadingToken array: ${readingInstructions(language)}
+- \`type\` — set on EVERY card: \`"word"\` for a standalone vocabulary item (a fiber, a tool, a color, an adjective), \`"phrase"\` for a set expression or a full spoken line. This is how the client tells a vocabulary group from a phrase group, so never omit it.
+- \`formality\` — set ONLY when this word has a register-varying alternative worth contrasting (e.g. トイレ casual vs お手洗い polite). Do NOT tag a card \`polite\` just because its sentence uses ます-form — a whole chapter of identically "polite"-tagged cards is noise; omit it for any word with no register variant.
 - Omit every optional field entirely when not applicable — never emit empty strings, empty arrays, or null.
-- Do NOT include \`context\`, \`id\`, \`importedAt\`, \`definition\`, or a card \`type\` — the service fills \`context\` in afterward from the group title; the rest are assigned at import time or are not applicable to this endpoint.
+- Do NOT include \`context\`, \`id\`, \`importedAt\`, or \`definition\` — the service fills \`context\` in afterward from the group title; the rest are assigned at import time or are not applicable to this endpoint.
 
 ## Output format
 

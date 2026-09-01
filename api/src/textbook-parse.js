@@ -11,7 +11,10 @@
  */
 
 const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
-const ABILITIES = ['none', 'beginner', 'intermediate', 'advanced'];
+// 'neutral' is the P3-experiment sentinel (office-hours 2026-08-31): generate
+// the level-invariant core, no declared-proficiency bias. See textbook-prompt.js
+// and docs/API_DESIGN.md's /textbook "Learnings & proposed direction" note.
+const ABILITIES = ['none', 'beginner', 'intermediate', 'advanced', 'neutral'];
 const LLMS = ['google', 'claude', 'chatgpt'];
 
 const DEFAULTS = {

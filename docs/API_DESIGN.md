@@ -432,7 +432,7 @@ remember two URLs, and the presence of `context` alone is sufficient to disambig
 
 Three principles govern `/textbook` generation and rank above any individual formatting rule:
 
-- **(0) Meaningful, put-to-work language — teacher, not dictionary.** Every card must be language the learner can deploy in the actual situation: a line they would say, or a word they would genuinely say or hear in the moment. The endpoint teaches an encounter; it does not catalog vocabulary *about* the topic. Encyclopedic nouns and theory terms (body parts, "musicality", "connection") are cut unless the learner would actually utter them.
+- **(0) Meaningful, put-to-work language — teacher, not dictionary, but the situation's own vocabulary IS the lesson.** Every card must be language the learner can deploy in the actual situation: a line they would say, a line they would HEAR and must understand (a real encounter is two-sided — teach the other person's questions and the answers to the learner's own questions, not only the learner's half), or a word they would genuinely say, hear, point at, or choose between in the moment. The transactional nouns and adjectives specific to the situation (fiber types and yarn weights in a yarn shop; symptoms in a clinic) are core content — taught as compact `type:"word"` vocabulary cards plus a reusable frame, never expanded into one near-duplicate sentence per word. What gets cut is only encyclopedic or theory vocabulary the learner would never actually say or hear (obscure anatomy, "musicality", "connection"); the test is "would the learner say or hear this in the room?", not "is it about the topic?".
 - **(1) Fast and consistent.** One model call per stage, the same p50 <4s / 15s-timeout / 502-on-failure posture as `/lookup`, and a prompt shared verbatim across backends. Latency and determinism outrank breadth.
 - **(2) The thinnest possible output schema.** New richness is proven before it is promoted: experiment with it as a JSON blob inside a card's `notes` field first, and promote it to a first-class schema field only once it has earned its place. The example-conversation group (below) is a live instance — per-turn speaker rides in `notes` as `{"speaker":"…"}`, not as a new schema shape.
 
@@ -528,14 +528,20 @@ Where each `TextbookGroup` is:
   to 60 characters, not rejected. Distinct from each group's own `title` (a section heading).
 - **example-conversation group** — the final group, titled "Example conversation", is a prototype
   addition: its cards are the turns of a short realistic exchange (in order), built only from
-  language already present in the other groups. Each turn card carries its speaker as a JSON blob
-  in `notes` (`{"speaker":"you"}` / `{"speaker":"partner"}`) — an experiment staged in `notes` per
-  Design principle 2, not a promoted schema field. It counts against the group cap.
+  language already present in the other groups. It must be a genuine **two-sided** exchange —
+  information flows both ways, each turn advances the conversation, and speakers alternate rather
+  than one side restating the same point across several turns. Each turn card carries its speaker
+  as a JSON blob in `notes` (`{"speaker":"you"}` / `{"speaker":"partner"}`) — an experiment staged
+  in `notes` per Design principle 2, not a promoted schema field. It counts against the group cap
+  and comes last.
 
 No top-level "blocks"/disambiguation concept, unlike `/lookup` — the topic isn't being
 disambiguated into meanings, it's being expanded into sections. Every `Card` is shaped exactly per
 **`docs/CARD_SCHEMA.md`**, identical to `/lookup`'s card shape (reuses the same reading-token
-rules, `formality`/`definition`/`notes` semantics, gender-collapse rule for `es`/`cs`).
+rules, `formality`/`definition`/`notes` semantics, gender-collapse rule for `es`/`cs`). Unlike
+`/lookup`, `/textbook` **does emit `type`** (`"word"` | `"phrase"`) on every card so the client can
+render a vocabulary group distinctly from a phrase group; `formality` is tagged only when the word
+has a register-varying alternative worth contrasting, never merely because a sentence is polite.
 
 **Limits:** **at most 8 groups total** (mirrors `/lookup`'s `MAX_GROUPS_TOTAL`) — the themed groups
 plus the single example-conversation group share this budget, so themed groups run to at most 7.
@@ -647,17 +653,23 @@ the situation's arc ("Ask someone to dance & the etiquette"), not vague or dicti
 itself — the opening/approach and core exchange — leaving clearly-secondary items unchecked.
 
 **Call 2 (bulk generate).** Governed by the **Design principles** above — principle (0)
-(teacher-not-dictionary / put-to-work) is the operative bar. Keep `/lookup`'s conversational quality
-bar (never stiff/textbook/exam-flavored — the irony of the feature's own name is intentional and
-does not relax it), but every card must be language the learner would actually say, hear, or use in
-the moment; cut glossary-style vocabulary (body parts, theory terms) that only describes the topic.
+(teacher-not-dictionary, but the situation's transactional vocabulary is the lesson) is the
+operative bar. Keep `/lookup`'s conversational quality bar (never stiff/textbook/exam-flavored — the
+irony of the feature's own name is intentional and does not relax it). Every card must be language
+the learner would actually say, hear, or use in the moment: teach **both voices** (the lines the
+learner hears and must follow, including answers to their own questions — not only their half), teach
+the situation's real vocabulary as compact `type:"word"` cards plus reusable frames (not one
+near-duplicate sentence per word), and cut only glossary-style vocabulary that merely describes the
+topic. `ability` is a **floor as well as a ceiling** — do not re-teach greetings/courtesy the learner
+at that level already owns; spend the freed budget on the situation's real vocabulary and nuance.
 Organize groups around the **arc of the encounter** (opening/approach → core interaction → wrap-up →
 recovery) rather than emitting one verbatim-titled group per checklist item: the checked items
 define the intent to cover, and generation may rename, merge, split, reorder, and add connective
 groups (opening small-talk, "when you get lost") the checklist omitted. Finish with one
-**example-conversation group** (see Outputs) that replays the chapter's key lines as a short dialogue
-built only from language already introduced — the highest-value artifact for the learner and, per
-Design principle (2), a prototype staged via the card `notes` field.
+**example-conversation group** (see Outputs) that replays the chapter's key lines as a genuine
+two-sided dialogue — information flowing both ways, speakers alternating — built only from language
+already introduced (including the heard lines taught for the other speaker); it is the highest-value
+artifact for the learner and, per Design principle (2), a prototype staged via the card `notes` field.
 
 **Output.** Both calls return raw JSON, no code fences, no prose — identical output-format rule to
 `/lookup`.
@@ -730,6 +742,49 @@ these lines as a short dialogue. The checklist remains the learner's control sur
 covered* (see `docs/journeys.md` Journey 5, step 6), not a rigid group outline.
 
 ---
+## Learnings & proposed direction (office-hours, 2026-08-31)
+
+> **Status: direction to explore, not a settled contract.** Captured after prototype testing
+> showed `/textbook` "works pretty well." These amend the `/textbook` design above; sketch and
+> validate on real output before promoting into the Inputs/Outputs contract. Full record:
+> `docs/designs/prep-pivot-and-phrasebook-expansion.md`.
+
+**1. Drop `ability` from initial generation (call 2).** Testing showed the highest-value output
+is level-invariant — key phrases, the example conversation, and context-specific vocabulary. In
+practice `beginner` over-produces already-known basics (はい/いいえ, "hello", "thank you") and
+`intermediate` over-complexifies into less broadly-useful sentences. The floor-as-ceiling rule
+(Design principle 0, Model behavior) is not enough on its own. Proposed: initial generation
+takes **no `ability`**, assumes courtesy/basics are owned unless the topic explicitly needs
+them, and spends the whole budget on the situation's real vocabulary + the two-sided
+conversation. `ability`/difficulty moves to the expansion call below.
+
+**2. New call mode — scoped expansion.** Growing a phrasebook is one primitive, "give me more,
+here," with the anchor selecting scope and where results land (reusing the `context`
+auto-filing that already backs generation):
+
+- **group anchor** — generate one bounded batch of additional cards for an existing group,
+  deduped against the phrasebook's current cards; results carry that group's `title` as `context`.
+- **phrasebook anchor** — generate a new section (new `context`); the client offers a
+  freshly-anticipated menu of candidate sections (derived from current content) plus a typing
+  fallback for a specific ask.
+- **card anchor (decompose)** — break one phrase card into its component words + grammar;
+  output lands in the source card's `notes`, and component words worth studying are emitted as
+  new `type:"word"` cards (auto-filed). This is *decomposition*, not lateral new language.
+
+Request shape (sketch): `{ topic, language, anchor, existingContent, suppress?, difficulty? }`
+where `existingContent` drives dedup and `difficulty` is an optional per-expansion nudge
+(easier / more advanced) — the on-demand replacement for the removed up-front `ability`.
+
+**3. Retain the unchecked checklist as a *suppression set*, not a menu.** Amends the "discard
+all creation state" decision (Outputs / `docs/journeys.md` J5 Save model): call-1 checklist
+items the user left **unchecked are a negative signal** (declined interest). Retain their labels
+on the phrasebook and pass them as `suppress` so expansion never re-offers what was rejected.
+Do **not** offer unchecked items back as an expansion menu.
+
+**4. No whole-chapter regenerate / full editability.** Expansion is bounded and opinionated;
+there is no reroll (a weak result is simply left un-starred). This keeps the "Regenerate / undo"
+item in **Deferred** as-is — out of scope by product decision, not merely unbuilt.
+
 
 ## What this reuses from `/lookup`
 
