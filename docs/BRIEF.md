@@ -1,212 +1,128 @@
 ---
 name: brief
 description: >
-  Product brief and technical overview for the Catchphrase monorepo — a mobile-first language
-  flashcard app for travelers. Load this doc for product context, feature scope, architecture
-  decisions, or to understand the monorepo structure (web PWA, iOS app, Cloud Run API).
+  Current product brief and technical overview for Catchphrase — a mobile-first language-preparation
+  app for travelers. Load for product goals, scope, platform constraints, or monorepo context.
 ---
 
 # Catchphrase — Product Brief
 
-> Personalized language, learning and discovery.
+> Prepare language for real conversations.
 
-> A mobile-first travel companion for capturing useful language in context and reviewing it in short bursts throughout the day.
+Catchphrase creates bespoke, situation-specific phrasebooks through a short guided conversation. A
+learner describes an upcoming situation, answers a few context questions, chooses communicative
+goals, and receives a complete phrasebook with useful vocabulary, phrases, and a two-sided example
+dialogue. The learner reviews it in short sessions and expands it without filing or reorganizing
+content.
 
-## Problem
+## User and problem
 
-When traveling, you encounter useful words and phrases constantly — at restaurants, shops, transit. Existing tools are built for long-term study, not rapid capture and same-day recall. Anki is too heavy; Duolingo has a fixed curriculum. There's no lightweight tool optimized for the traveler's rhythm: pick up new language in the moment, review it in 5-minute windows between activities, repeat throughout the day.
+The primary user is a traveler preparing for a specific upcoming interaction, such as dinner with a
+partner's parents, a clinic visit, or a dance class. Generic courses and dictionaries provide either
+too much curriculum or too little situational help. The product's job is to help the learner say and
+understand what matters in that room.
 
-A mobile-first app (PWA and native iOS) where the learner captures vocabulary two ways: **primarily** by looking up a word or phrase in-app (an AI-backed `/lookup` call returns a direct translation plus AI-clustered related words and phrases — "find-related" — that the learner can branch into and save; no separate "generate" step, no curriculum), and **secondarily** by importing an externally-generated JSON batch (e.g. a base64 URI link). Saving is immediate and per-term, not a staged batch approval. The learner then reviews captured terms in short, frictionless flashcard sessions — optimized for multiple 5-minute check-ins, not hour-long study — or browses them as a list. No scoring, no curriculum — just the language you're actually encountering.
+Initial product languages are Chinese and Japanese. The API also supports Spanish and Czech.
 
-## Users
+## Product principles
 
-**Primary:** The developer/author — a traveler studying a new language (initially Chinese and Japanese; the `/lookup` API also supports Spanish and Czech) who wants to capture and quickly recall useful language during trips. Success is practical: remembering words and phrases when you need them in context.
+- **Situation first:** teach language the learner will say, hear, point at, or choose between.
+- **Teacher, not dictionary:** include the situation's real vocabulary, but omit encyclopedic topic
+  knowledge.
+- **Both sides of the conversation:** teach what the learner says and what other people may say back.
+- **Opinionated and bounded:** generate a useful chapter, then stop; no reroll or fully editable canvas.
+- **No bookkeeping:** the app files, groups, and orders content; the learner never has to curate a
+  library.
+- **Thin schema:** prove new structured content in `notes` before promoting it to a card field.
+- **No pressure:** no scores, streaks, pass/fail states, or fixed curriculum.
+
+## Current experience
+
+1. **Create:** enter a topic or situation.
+2. **Clarify:** answer dynamic, topic-specific questions and review a checklist of communicative goals.
+3. **Generate:** commit a complete, multi-section phrasebook in one step.
+4. **Prioritize:** star cards as bounded binary emphasis; generation is not a per-card save flow.
+5. **Review:** reveal cards manually, switch direction, play pronunciation, and swipe through a
+   phrasebook without scoring.
+6. **Expand:** choose a bounded "give me more, here" action:
+   - group → more cards in that group's context;
+   - phrasebook → a new section, with a typing fallback for a specific request;
+   - card → decomposition into component words and grammar, with worthwhile words promoted to cards.
+
+Expansion is menu-first, deduplicated against existing content, auto-filed through `context`, and
+never a reroll. Difficulty and explanation depth are requested per card, not selected as initial
+phrasebook settings.
 
 ## Goals
 
-- **Capture via AI look-up** - Primary capture path: search a word/phrase in-app and get an immediate translation plus AI-clustered related words and phrases ("find-related"); save any of them into the open phrasebook with one tap, no approval step
-- **Import** - Secondary capture path: import AI-generated term batches quickly and without friction on mobile; supported path is a single-tap URI link (base64-encoded JSON in the URL hash) generated by an external tool
-- **Review** - Review terms in short, frequent sessions (optimized for 5-minute check-ins)
-- **Browse** - Browse the term library as a list, not only by flipping through review mode
-- **Low friction** - Minimum taps to start a review; as smooth as possible
-- **Audio** - Play audio pronunciation for terms (mobile browsers)
-- **Tune output** - Per-phrasebook tone (VIBE: formality + audience) and learner ability bias `/lookup` output register and difficulty
+- Make preparation for a known situation fast and useful.
+- Generate immediately deployable, conversational language at any learner level.
+- Teach both anticipated speech and likely replies.
+- Make short, frequent review frictionless.
+- Let phrasebooks grow without turning the learner into a librarian.
+- Support mobile pronunciation, especially iOS Safari.
 
-## Non-Goals
+## Non-goals and deferred work
 
-- **Scoring** - No external measurement of progress (tests, scores, pass/fail)
-- **Curriculum/opinionated generation** - The app never decides what a learner should study (no fixed lesson plan); AI generation exists in-app only as unopinionated, user-curated candidate suggestions (see Key Differentiators)
-- **Accounts/sync** - No user accounts or cloud sync
-- **Spaced repetition** - Deferred — lower priority, see Open Questions
-- **Manual term authoring** - The learner never hand-types a translation or definition from a blank form; every term is sourced through AI look-up (`/lookup`) or JSON import
+- In-the-moment capture as a separate mode; it is not part of the prep-first core experience.
+- Fixed lessons, long-term cross-topic study, scoring, streaks, or gamification.
+- User accounts, cloud sync, OCR/camera input, URL import, and manual blank-form authoring.
+- Whole-phrasebook regeneration, undo, or unrestricted editing.
+- Spaced repetition until a useful signal exists without introducing scoring.
+- Furigana ruby rendering until the mobile behavior is validated.
 
-## Key Differentiators
+## Phases
 
-- **Travel-first:** Designed for the rhythm of a trip — capture language in the moment, review between activities
-- **AI-driven capture, learner-curated (Anki-like control):** Every term surfaces through an in-app AI look-up (`/lookup`, returning a direct translation plus AI-clustered "find-related" groups) or JSON import — nothing is added automatically. The learner taps 🔖 to save each term they want, **immediately** (no batch/staging/approval step). Per-phrasebook VIBE (formality + audience) and learner ability further bias what the AI returns.
-- **Frictionless review (Duolingo-like):** Minimum taps to start reviewing; optimized for 5-minute windows
-- **No gamification:** No streaks, points, or pressure — just terms
-- **Choose-your-own-adventure discovery:** find-related groups serve two purposes — completing what the learner already came to say, and surfacing directions they wouldn't have thought to search for themselves. The learner builds their own curriculum by branching through what interests them, not by following a syllabus (see Reference Apps: Duolingo).
+### Phase 1 — Prep and review
 
-## Reference Apps
+- Guided phrasebook creation through `/textbook`.
+- Dynamic context questions and communicative-goal checklist.
+- Complete phrasebook generation with sections, vocabulary, phrases, and example conversation.
+- Starred-card priority view, flip review, direction toggle, swipe navigation, audio, and browse/search.
+- Bounded expansion for groups, phrasebooks, and card decomposition.
 
-**Anki**
+### Phase 2 — Library durability
 
-- Keep: Full control over term content; import-based workflow; phrase book organization
-- Reject: Complex setup; desktop-first UX; steep learning curve
-- Expected patterns: Phrase book selection before review; term flip on tap
+- Furigana/ruby rendering after mobile prototype validation.
+- JSON export as protection against client-side storage eviction.
 
-**Duolingo / Babbel**
+### Phase 3 — Retention
 
-- Keep: Session feels light and bounded; easy to start a review; mobile-first interactions
-- Reject: Fixed curriculum; gamification; no content ownership; no import
+- Spaced repetition after the no-scoring/self-rating decision is resolved.
 
-## Assumptions
+## Platform and architecture
 
-- Pasting a JSON blob on mobile is acceptable UX for import, but URI import (clicking a link with base64-encoded terms in the hash) is the preferred **secondary** capture path — lower friction than paste and avoids clipboard handling. AI look-up (`/lookup`) is now the **primary** capture path (see Solution, Key Differentiators).
-- URI import uses the same term batch JSON schema; encoding is base64url in the `#deck?cards=` hash parameter
-- Review card order (random vs. sequential/by-save-order/by-section) is unresolved — `journeys.md`/`DESIGN.md` specify swipe left/right to advance through the deck, no loop, no end-of-deck summary, but don't state the initial ordering; tracked in Open Questions.
-- The travel use case is the primary frame — long-term cross-topic study is explicitly not the goal
-- The Library Schema can be extended later to support spaced repetition without a breaking change
-- Phrase books are homogeneous by language — a phrase book contains only one of `zh` \| `ja` \| `es` \| `cs`; mixed-language phrase books are not supported
-- VIBE (formality/audience) and ability defaults are **Polite/Staff** and **Beginner** per `docs/API_DESIGN.md`'s `/lookup` contract — supersede the Casual/Strangers/None values shown in the Figma mocks (`docs/journeys.md` reconciles this explicitly)
-- On the `textbook-guided-creation` exploration branch, Journey 1's manual look-up flow is intentionally **unreachable from phrasebook creation** — this is an explicit, branch-scoped UX exploration decision, not a change to the shipped product's creation flow. Journey 1's stack, component, and data flow remain fully implemented, since Journey 3 (adding terms to an existing phrasebook) still uses them verbatim. See `docs/journeys.md` Journey 5.
+- **Clients:** mobile-first PWA and native iOS app in one monorepo.
+- **Storage:** client-side IndexedDB for the library; no accounts, sync, or server-held library.
+- **API:** Cloud Run service in `api/`. `/textbook` handles guided creation in two calls; `/lookup`
+  remains the stateless translation primitive for supporting lookup/expansion flows. Both reuse the
+  same LLM registry, card validation, reading normalization, CORS, and error conventions.
+- **LLMs:** `google`, `claude`, or `chatgpt`, selected by the caller in the prototype.
+- **Audio:** Web Speech API on mobile browsers. iOS Safari is the primary target; desktop audio is
+  unsupported.
 
-## Open Questions
+## Storage vocabulary and schema
 
-- [x] 🟢 **Is Web Speech API adequate for audio on iOS Safari and Android Chrome?** — ✅ Resolved: viable on iOS Safari (quality exceeded expectations). Silent on macOS Safari, poor on Chrome Desktop. Build audio as a mobile-first feature; don't rely on desktop browsers.
-- [x] 🟢 **Is paste-based JSON import actually usable on mobile?** — ✅ Schema and tooling validated. Mobile paste UX untested but unblocked; proceeding with paste as import mechanism. See `prototypes/2-json-import/`.
-- [x] 🟢 **Should the app support deriving new terms from existing ones?** — ✅ Resolved: this is now the find-related mechanic — `/lookup` returns AI-clustered related groups per look-up, and tapping 🔍 on any card re-seeds a narrower look-up from it, in-app. See `docs/journeys.md` Journey 1, `docs/API_DESIGN.md`.
-- [ ] 🟡 **Furigana as ruby text** — does `reading` render as plain text below the term, or as ruby annotation above kanji? Ruby rendering is a meaningful UI challenge on mobile, especially cross-browser.
-- [ ] 🟡 **How does spaced repetition get added without a self-rating signal?** Lower priority — not needed for travel use case. The tension between "no scoring" and "SR as a future goal" must be resolved before SR can be designed. Deferred until core is built.
-- [ ] 🟡 **Is JSON/URI import still maintained alongside `/lookup`, or being deprecated?** `docs/API_DESIGN.md` retires the old `/translate`/`/generate-cards` endpoints and their prototype clients but says nothing about the JSON/URI import path itself; `docs/journeys.md`/`DESIGN.md` don't mention an import entry point anywhere in the new pane flows.
-- [ ] 🟡 **Multi-phrasebook membership** — the Library Schema's `deckIds[]` implies a term can belong to more than one phrasebook, but no journey exercises adding an existing term to a second phrasebook; is this still supported under the new live-commit save model, or has save become single-phrasebook-scoped?
+**Phrasebook** is the user-facing term. The existing internal IndexedDB names `decks` and `deckIds[]`
+are retained as implementation names; they must not appear in UI copy. All cards in a phrasebook share
+one language. A card may belong to multiple phrasebooks.
 
-## Learnings & direction (office-hours, 2026-08-31)
+See [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md) for the authoritative card and reading-token schema.
+Internal card metadata is `id`, `createdAt`, and `deckIds[]`; phrasebook metadata includes `id`,
+`name`, `lang`, `createdAt`, `formality`, `audience`, and `readingDisplay` where applicable.
 
-Captured after the `/textbook` (guided-creation) prototype and the reworked UI (Figma
-784-20897). Full record: `docs/designs/prep-pivot-and-phrasebook-expansion.md`.
+## Open decisions
 
-- **Prep is the primary job now (re-weighting, not contradiction).** The unique use case is
-  *preparing* language for a known upcoming situation ("dinner with my girlfriend's parents"),
-  built from a short guided conversation — not capturing language in the moment. The old
-  "primary capture path" ranked look-up vs. import, not prep vs. moment; the branching look-up
-  was always a prep/discovery mechanic. **In-the-moment capture is demoted to a possible future
-  *separate mode*, not core UX.** The `/lookup` find-related "directed graph" felt
-  unsatisfactory: too many up-front configs, branches not interesting for conversation, and a
-  dictionary feel far from the goal of *communicating*.
-- **Curation inverted: generate-everything + star, no opt-in save.** A `/textbook` phrasebook
-  is committed whole. **Star is a bounded binary priority** (foreground keepers without
-  reordering/regrouping), *not* a save step. The per-card 🔖 opt-in save is retired as the
-  primary mechanic.
-- **Growing a phrasebook = one expansion primitive, three anchors, auto-filed.** "Give me more,
-  here": a **group** yields more cards (lateral); the **phrasebook** yields a new section
-  (lateral); a **card** yields *decomposition* — break the phrase into component words + grammar
-  (not new phrases), with some component words promotable to their own vocab cards. Auto-filing
-  via each card's `context` means the user never files, reorders, or regroups. Expansion is
-  **menu-first with a typing fallback**, opinionated and bounded — no "slot machine" reroll; a
-  weak result just goes un-starred.
-- **Drop `ability` from initial generation.** Highest-value content is level-invariant (key
-  phrases, the conversation example, context-specific vocabulary). Assume basics
-  (yes/no/hello/thank-you) are owned unless explicitly requested. **Depth and difficulty become
-  on-demand, per-card expansions** (define words / explain grammar; easier / more-advanced
-  variants), not up-front settings — this resolves the "no scoring / support all levels" tension
-  without a level knob.
-- **Grammar nuance rides in `notes` first** (existing API principle 2 — prove richness before
-  promoting to schema). Promote a component word to a card rather than bloating `notes` when the
-  word is worth studying on its own.
+- How much content auto-commit plus repeated expansion should add before the phrasebook feels crowded.
+- Where promoted decomposition words should appear.
+- The structured shape of decomposition data stored in `notes`.
+- The bounded UI for per-card easier/more-advanced requests.
+- Whether and how declined creation goals persist as an expansion suppression set.
+- How a future in-the-moment mode relates to prep phrasebooks.
 
-## Prototype Map
+## References
 
-- [x] 🟢 **Is Web Speech API adequate on mobile?** → ✅ Answered — iOS Safari quality is good. macOS Safari: silent. Chrome Desktop: poor. Audio is viable as a mobile-first feature. See `prototypes/1-web-speech/`.
-- [x] 🟢 **Is paste-based JSON import usable on mobile?** → ✅ Complete — term schema and `/generate-cards` tooling validated. Mobile paste gesture not tested; proceeding with paste. See `prototypes/2-json-import/`.
-- [ ] 🟡 **Furigana ruby text rendering** → Build a minimal HTML page rendering Japanese terms with ruby annotations. Test on iOS Safari and Android Chrome. Learn: whether native ruby rendering is sufficient or a custom component is needed.
-
-## Features & Phases
-
-### Phase 1: Core — AI look-up, capture, review, browse
-- **Phrasebook management** - Navigation pane groups phrasebooks by language into Recent + Suggested sections; a phrasebook is created via New-phrasebook mode (language + ability, both immutable after creation) or implicitly on first save during a look-up — deferred creation, no draft exists until a term is saved
-- **AI look-up & find-related** - In-app `/lookup` call: enter a word/phrase (Input mode), get a direct translation plus AI-clustered related word/phrase groups (Translation/Group modes); drill into a group, or re-seed a narrower look-up from any card (🔍)
-- **Guided phrasebook creation ("Textbook") — `textbook-guided-creation` branch exploration only** - An alternate creation path: the learner describes a *topic/situation* instead of a single term, answers a handful of AI-generated context questions and reviews an AI-suggested checklist of sub-goals, then gets a fully-populated, multi-section phrasebook committed in one shot via a new `/textbook` endpoint — no per-card curation. On this exploration branch it **replaces** the manual look-up as the phrasebook-creation entry point (New-phrasebook mode hands off to Textbook, not Input mode); the manual look-up flow itself is unchanged and still used for adding terms to an existing phrasebook. See `docs/journeys.md` Journey 5.
-- **Live save** - Tap 🔖 to commit a term to the open phrasebook immediately, no staging/approval; a header badge counts terms saved this session and is a one-tap return to the phrasebook
-- **VIBE & ability** - Per-phrasebook tone (formality + audience, default Polite/Staff) and learner ability (None/Beginner/Intermediate/Advanced, default Beginner, immutable after creation) bias `/lookup` output
-- **Suggested phrasebooks** - Curated, static seed phrasebooks (placeholder pending generation seed content) — preview then Save to add to the library
-- **JSON import** - Paste a term batch JSON blob or open a base64 URI link; assign to a phrasebook; app assigns IDs and timestamps on import
-- **Flip review** - Flashcard review (per phrasebook) with manual reveal, a direction toggle (target ↔ English), and swipe left/right to advance; no loop, no scoring
-- **Audio playback** - Web Speech API TTS on mobile (iOS Safari primary target)
-- **Browse/search all terms** - Browse the full term library across all phrasebooks; searchable list view
-
-### Phase 2: Library — Polish and durability
-- **Furigana ruby text** - Render Japanese readings as ruby annotations above kanji (pending prototype)
-- **Export library** - Export full term library as JSON; insurance against iOS Safari IndexedDB eviction
-
-### Phase 3: Retention — Smarter review
-- **Spaced repetition** - Deferred; requires resolving the no-self-rating tension before design can begin
-
-## Technical Notes
-
-- **Platform:** Mobile-first PWA (web) and native iOS app — maintained in parallel in a monorepo. Audio on web is iOS Safari only; desktop audio support is out of scope.
-- **Audio:** Web Speech API with `lang="zh-CN"` / `lang="ja-JP"` (etc. per supported language). Do not attempt to support macOS Safari or Chrome Desktop for audio.
-- **Storage:** Client-side only for the term library; IndexedDB likely (localStorage insufficient for library scale)
-- **Backend:** A Cloud Run API (`api/`) serves the `/lookup` endpoint — one call that disambiguates, translates intent, and clusters related groups via a pluggable LLM backend (`google` \| `claude` \| `chatgpt`, see `docs/API_DESIGN.md`); unauthenticated and unlimited for the single-tenant prototype. Client-side storage otherwise stays backend-free — no accounts, no sync, no server-held library.
-- **Backend (branch exploration):** the `textbook-guided-creation` branch adds a second endpoint, `/textbook`, alongside `/lookup` in the same `api/` service — sharing its `LLM_REGISTRY`/backend plumbing, CORS, and error-handling conventions. One route, two calls distinguished by presence/absence of a `context` request field: absent generates dynamic context questions + a suggestion checklist for a topic; present bulk-generates the full multi-section phrasebook. See `docs/API_DESIGN.md`.
-- **Library Schema** will need a `reviewHistory` or equivalent field for future SR support — worth designing the extension point now even if unused
-- **Session log** is a separate data structure from the term Library
-
-### Term Batch Schema (import format)
-
-See [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md) for the full schema reference, field definitions, and examples. (Filename retained for now.)
-
-`id` and `importedAt` are never present in the batch — assigned by the app at import time. Required per term: `lang`, `text`, `translation`.
-
-### Library Schema (internal storage)
-
-Two IndexedDB tables: `cards` and `decks` (names retained for now). Term–phrase book membership is stored as `deckIds[]` on each term (IndexedDB has no foreign keys; denormalized array is the standard pattern).
-
-**cards** (terms) — matches `docs/CARD_SCHEMA.md`'s Term object plus three internal-only fields (`id`, `createdAt`, `deckIds`); see that doc for authoritative field definitions:
-```json
-{
-  "id": "uuid-v4",
-  "createdAt": "ISO 8601 timestamp",
-  "lang": "zh | ja | es | cs",
-  "type": "word | phrase | sentence",
-  "deckIds": ["NNN-slug"],
-  "text": "string",
-  "reading": "ReadingToken[] (optional)",
-  "romanization": "string (optional — romaji or other Latin-alphabet transcription)",
-  "translation": "string",
-  "definition": "string (optional — present only when disambiguation is needed)",
-  "formality": "casual | polite | formal | slang | vulgar (optional)",
-  "context": "string (optional — the group/situation a term was discovered under)",
-  "notes": "string (optional)",
-  "example": { "text": "string", "reading": "string (optional)", "translation": "string (optional)" }
-}
-```
-
-**decks** (phrase books)
-```json
-{
-  "id": "NNN-slug",
-  "name": "string",
-  "lang": "zh | ja | es | cs",
-  "createdAt": "ISO 8601 timestamp",
-  "ability": "none | beginner | intermediate | advanced (immutable after creation)",
-  "formality": "casual | polite | formal (VIBE, default polite, editable)",
-  "audience": "stranger | staff | acquaintance | family (VIBE, default staff, editable)",
-  "readingDisplay": "reading | romanization (default: reading)"
-}
-```
-
-`id` is a human-readable string composed of a zero-padded auto-incrementing counter and a slug derived from `name` (e.g. `001-restaurant-words`). The counter is global across all phrase books and assigned at import time. Slug generation: lowercase, spaces → hyphens, non-alphanumeric stripped.
-
-`createdAt` remains as audit metadata. Phrase books are the primary organizational unit. All terms in a phrase book share the same `lang`. A phrase book is created either at import time (assigned to each imported term via `deckIds`) or, under the AI look-up path, implicitly on the first term saved during a look-up (deferred creation — see Assumptions/Features & Phases).
-
-## Out of Scope (for now)
-
-- Spaced repetition (deferred — lower priority, not needed for travel use case)
-- Long-term cross-topic language study (not the goal)
-- OCR / camera input
-- URL import
-- User accounts, cloud sync
-- Manual/freeform term authoring (hand-typing a translation outside AI look-up or import)
-- Furigana ruby text rendering (prototype candidate, not blocking PRD)
+- [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md) — card and reading-token contract.
+- [`docs/API_DESIGN.md`](./API_DESIGN.md) — API request, response, and model-behavior contracts.
+- [`docs/DESIGN.md`](./DESIGN.md) and [`docs/journeys.md`](./journeys.md) — interaction design.
+- [`docs/designs/prep-pivot-and-phrasebook-expansion.md`](./designs/prep-pivot-and-phrasebook-expansion.md) — design rationale and unresolved expansion questions.
