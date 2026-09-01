@@ -34,7 +34,7 @@ api/
 │       └── genai.js            # Gemini via Google GenAI SDK
 ├── evals/
 │   ├── eval-textbook.js       # /textbook English-only YAML sample exporter (deno)
-│   └── samples/               # per-case <language>-<topic>-<ability>-<model>.yaml (hand-editable `ideal` + raw `actual`)
+│   └── samples/               # per-case <language>-<topic>-<model>.yaml (hand-editable `ideal` + raw `actual`)
 ├── deploy.sh                   # Idempotent GCP deploy script
 └── README.md
 ```
@@ -204,12 +204,12 @@ npm test                       # unit tests (node --test)
 # Subjective-review sample exporter for /textbook. Requires the dev server
 # running (npm run dev) and `deno` on PATH. Drives /textbook's two-call flow
 # (questions → generate) and writes an English-only, hand-editable YAML per
-# case to evals/samples/<language>-<topic>.yaml. The raw `actual` block below
+# case to evals/samples/<language>-<topic>-<model>.yaml. The raw `actual` block below
 # the divider captures the call-1 questions and the auto-selected answers
 # alongside both raw responses. Rerun to refresh `actual`; your edits to the
 # `ideal` section above the divider are preserved.
 npm run eval:textbook-sample -- \
-  --topic="salsa dancing" --language=es --ability=beginner --llm=google \
+  --topic="salsa dancing" --language=es --llm=google \
   --checklist=default --url=http://localhost:8080
 ```
 

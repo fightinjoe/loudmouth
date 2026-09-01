@@ -3,24 +3,26 @@
  * phrasebook generation (/textbook)", "2a./2b. Generate [model]" +
  * "Model behavior").
  *
- * Call 1 (buildTextbookQuestionsPrompt) turns { topic, language, ability }
- * into { questions, checklist } JSON — dynamic clarifying questions plus a
+ * Call 1 (buildTextbookQuestionsPrompt) turns { topic, language } into
+ * { questions, checklist } JSON — dynamic clarifying questions plus a
  * checklist of candidate phrasebook sections, both topic-driven.
  *
- * Call 2 (buildTextbookGeneratePrompt) turns { topic, language, ability,
- * context } into { groups } JSON — one themed group of cards per checked
- * checklist item, biased by the learner's context answers.
+ * Call 2 (buildTextbookGeneratePrompt) turns { topic, language, context }
+ * into { groups } JSON — one themed group of cards per checked checklist
+ * item, biased by the learner's context answers.
  *
- * Reuses lookup-prompt.js's reading-token instructions, gender-collapse
- * rule, and ability description verbatim (not duplicated) — the Card shape
- * and quality bar are identical to /lookup's.
+ * Reuses lookup-prompt.js's reading-token instructions and gender-collapse
+ * rule (not duplicated) — the Card shape and quality bar are identical to
+ * /lookup's. Unlike /lookup, /textbook is level-independent: it takes no
+ * `ability`; generation targets the situation's high-value core, and
+ * difficulty/depth are later scoped client actions (docs/API_DESIGN.md
+ * "/textbook").
  */
 
 const {
   genderInstruction,
   readingInstructions,
   cardReadingExample,
-  describeAbility,
 } = require('./lookup-prompt');
 
 // Caps from docs/API_DESIGN.md's /textbook Outputs section.
@@ -35,37 +37,20 @@ const MAX_TITLE_LENGTH = 60;
 const LANG_NAMES = { zh: 'Mandarin Chinese', ja: 'Japanese', es: 'Spanish', cs: 'Czech' };
 const LANG_LEVELS = { zh: 'HSK 1–4', ja: 'JLPT N5–N3' };
 
-// P3 experiment (office-hours 2026-08-31; see
-// docs/designs/prep-pivot-and-phrasebook-expansion.md and the /textbook
-// "Learnings & proposed direction" note in docs/API_DESIGN.md). The `neutral`
-// sentinel generates the level-invariant, highest-value core instead of
-// biasing to a declared proficiency. Any real ability falls through to the
-// shared /lookup describeAbility() verbatim, so existing beginner/
-// intermediate/advanced/none behavior is unchanged.
-const NEUTRAL_ABILITY = 'neutral';
-
-function describeTextbookLevel(ability) {
-  if (ability === NEUTRAL_ABILITY) {
-    return 'Learner ability: unspecified — do NOT bias toward any declared proficiency level. Assume common courtesy and survival basics (yes/no, hello, thank you, please, excuse me) are ALREADY OWNED; do not teach them unless this specific situation genuinely turns on them. Spend the whole budget on the highest-value, level-invariant core: the key phrases this situation needs, its real context-specific vocabulary, and the two-sided example conversation. Choose broadly-useful register and sentence complexity — neither dumbed-down nor needlessly complex.';
-  }
-  return describeAbility(ability);
-}
-
 /**
  * Call 1 — dynamic context questions + a suggested checklist, both
  * topic-driven, no fixed field list (docs/API_DESIGN.md "Model behavior").
  *
- * @param {{ topic: string, language: string, ability: string }} args
+ * @param {{ topic: string, language: string }} args
  * @returns {string}
  */
-function buildTextbookQuestionsPrompt({ topic, language, ability }) {
+function buildTextbookQuestionsPrompt({ topic, language }) {
   const langName = LANG_NAMES[language] || language;
 
   return `You are planning a bespoke, situation-specific phrasebook for a language learner — think "a custom textbook chapter for tonight," not a generic curriculum. The learner has given you a topic or situation; your job here is NOT to generate the phrasebook yet, only to figure out what to ask them so the eventual phrasebook is genuinely tailored to their actual situation.
 
 Topic/situation: ${topic}
 Target language: ${langName}
-${describeTextbookLevel(ability)}
 
 ## Step 1 — dynamic context questions
 
@@ -101,10 +86,10 @@ Respond with ONLY raw JSON — no markdown code fences, no prose, no leading or 
  * checklist item, biased by the learner's context answers. Reuses the same
  * Card schema, reading-token rules, and gender-collapse rule as /lookup.
  *
- * @param {{ topic: string, language: string, ability: string, context: { answers?: object, checklist?: string[] } }} args
+ * @param {{ topic: string, language: string, context: { answers?: object, checklist?: string[] } }} args
  * @returns {string}
  */
-function buildTextbookGeneratePrompt({ topic, language, ability, context }) {
+function buildTextbookGeneratePrompt({ topic, language, context }) {
   const langName = LANG_NAMES[language] || language;
   const level = LANG_LEVELS[language] || 'common, high-frequency';
   const readingExample = cardReadingExample(language);
@@ -120,18 +105,11 @@ function buildTextbookGeneratePrompt({ topic, language, ability, context }) {
     ? checklist.map((label) => `- ${label}`).join('\n')
     : '(no checklist items given — infer 2-3 sensible sections from the topic alone)';
 
-  // Level instruction: the `neutral` sentinel drops the declared-level FLOOR
-  // paragraph entirely; a real ability keeps that text verbatim (unchanged
-  // behavior for beginner/intermediate/advanced/none).
-  const levelBlock = ability === NEUTRAL_ABILITY
-    ? `${describeTextbookLevel(ability)} This governs word/phrase choice and sentence complexity on every card, never the translated intent. Opening a bespoke chapter to language the learner already knows is a failure.`
-    : `${describeAbility(ability)} \`ability\` affects word/phrase choice and sentence complexity on every card, never the translated intent. It is a FLOOR as well as a ceiling: assume the learner already commands everything clearly below this level and do NOT spend cards re-teaching it. \`beginner\` still teaches greetings and basic courtesy; at \`intermediate\` and \`advanced\` the learner already owns greetings, thanks, yes/no, and simple courtesy — compress those to at most a single line, or drop them, and spend the freed space on the situation's real vocabulary, less-common phrasing, and nuance. Opening a bespoke chapter to language the learner already knows is a failure.`;
-
   return `You are generating a bespoke, situation-specific phrasebook for a language learner — a custom textbook chapter for tonight, tailored to their exact situation, not a generic curriculum. You are a TEACHER: teach enough that the learner can both PRODUCE their side of this encounter and UNDERSTAND what the other person says back. Every card must be language the learner can PUT TO WORK — a line they would say, a line they would hear and must follow, or a word they would point at, choose between, name, or hear in the moment. Generate the FULL phrasebook now, organized around the real arc of the encounter.
 
 Topic/situation: ${topic}
 Target language: ${langName}
-${levelBlock}
+Level: do NOT assume or bias toward any learner proficiency level. Assume common courtesy and survival basics (yes/no, hello, thank you, please, excuse me) are ALREADY OWNED; do not teach them unless this specific situation genuinely turns on them. Spend the whole budget on the highest-value, level-invariant core: the key phrases this situation needs, its real context-specific vocabulary, and the two-sided example conversation. Choose broadly-useful register and sentence complexity — neither dumbed-down nor needlessly complex. This governs word/phrase choice and sentence complexity on every card, never the translated intent. Opening a bespoke chapter to language the learner already knows is a failure.
 
 ## Context the learner gave
 
@@ -157,7 +135,7 @@ Treat the checklist above as the learner's intended COVERAGE, not a rigid outlin
 
 ## Coverage check
 
-Before continuing, verify: every checked checklist item's intent is covered by some group; the phrasebook follows the encounter's arc rather than a pile of categories; every card is something the learner would actually say, hear, or use in the moment (no glossary padding); the situation's real vocabulary is taught as \`word\` cards plus reusable frames, not as repeated near-duplicate sentences; the key lines the learner will HEAR (not only say) are taught, including answers to their own questions; nothing re-teaches language clearly below the learner's \`ability\`; cards are distributed across groups rather than concentrated in one; and each group runs simplest → most nuanced. Do not pad with near-duplicates to hit a count.
+Before continuing, verify: every checked checklist item's intent is covered by some group; the phrasebook follows the encounter's arc rather than a pile of categories; every card is something the learner would actually say, hear, or use in the moment (no glossary padding); the situation's real vocabulary is taught as \`word\` cards plus reusable frames, not as repeated near-duplicate sentences; the key lines the learner will HEAR (not only say) are taught, including answers to their own questions; nothing re-teaches basic courtesy or survival language the learner already owns; cards are distributed across groups rather than concentrated in one; and each group runs simplest → most nuanced. Do not pad with near-duplicates to hit a count.
 
 ## Step 2 — add one example-conversation group (prototype)
 

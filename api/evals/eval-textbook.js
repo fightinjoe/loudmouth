@@ -10,7 +10,7 @@
  * LLM) through /textbook's full TWO-CALL flow and writes one file per case to
  * api/evals/samples/<slug>.yaml:
  *
- *   1. POST /textbook { topic, language, ability, llm }        → { questions, checklist }
+ *   1. POST /textbook { topic, language, llm }               → { questions, checklist }
  *   2. Auto-answer: each question → its own `default`; checklist → the checked
  *      items (or ALL items with --checklist=all, or all items when nothing is
  *      checked). This makes the sample reproducible without a TTY, while still
@@ -32,10 +32,11 @@
  *
  * USAGE
  *   deno run --allow-net --allow-read --allow-write evals/eval-textbook.js \
- *     [--topic="salsa dancing"] [--language=es] [--ability=beginner] \
+ *     [--topic="salsa dancing"] [--language=es] \
  *     [--llm=google] [--checklist=default|all] [--url=http://localhost:8080] [--force]
+ *     [--context-file=path]   # pin call 1: write it if absent, reuse it if present
  *
- * Any of topic/language/ability/llm omitted as a flag is prompted for
+ * Any of topic/language/llm omitted as a flag is prompted for
  * interactively (requires a real TTY on stdin — pass every flag for
  * non-interactive/scripted use).
  *
@@ -44,11 +45,10 @@
 
 const ENUMS = {
   language: ['zh', 'ja', 'es', 'cs'],
-  ability: ['none', 'beginner', 'intermediate', 'advanced', 'neutral'],
   llm: ['google', 'claude', 'chatgpt'],
   checklist: ['default', 'all'],
 };
-const DEFAULTS = { ability: 'beginner', llm: 'google', checklist: 'default' };
+const DEFAULTS = { llm: 'google', checklist: 'default' };
 
 const SAMPLES_DIR = new URL('./samples/', import.meta.url);
 const DIVIDER = [
@@ -120,7 +120,6 @@ function collectInput(flags) {
   return {
     topic: promptTopic(flags),
     language: promptEnum(flags, 'language', { required: true }),
-    ability: promptEnum(flags, 'ability', { required: false }),
     llm: promptEnum(flags, 'llm', { required: false }),
     checklist: promptEnum(flags, 'checklist', { required: false }),
   };
@@ -135,8 +134,8 @@ const MODEL_NICKNAMES = {
   'claude-haiku-4-5-20251001': 'haiku',
 };
 
-function slugify({ topic, language, ability }, model) {
-  const raw = `${language}-${topic}-${ability}-${model}`;
+function slugify({ topic, language }, model) {
+  const raw = `${language}-${topic}-${model}`;
   return raw
     .toLowerCase()
     .trim()
@@ -254,13 +253,44 @@ async function postTextbook(url, body) {
 async function main() {
   const flags = parseFlags(Deno.args);
   const input = collectInput(flags);
-  const base = { topic: input.topic, language: input.language, ability: input.ability, llm: input.llm };
+  const base = { topic: input.topic, language: input.language, llm: input.llm };
 
-  console.log(`Call 1 — ${flags.url}/textbook (questions) for "${input.topic}" (${input.language}, ${input.ability}, ${input.llm})...`);
-  const questionsResponse = await postTextbook(flags.url, base);
-  console.log(`  ${questionsResponse.questions.length} questions, ${questionsResponse.checklist.length} checklist items`);
+  // --context-file pins call 1's output so repeated call-2 runs reuse the SAME
+  // { answers, checklist } instead of regenerating a fresh context each time.
+  // Missing file → run call 1 and WRITE it; existing file → SKIP call 1 and
+  // REUSE it (warns on topic/language mismatch).
+  const ctxFile = flags['context-file'];
+  const ctxUrl = ctxFile ? new URL(ctxFile, `file://${Deno.cwd()}/`) : null;
+  let questionsResponse;
+  let context;
+  let ctxReused = false;
 
-  const context = buildContext(questionsResponse, input.checklist);
+  if (ctxUrl) {
+    try {
+      const saved = JSON.parse(await Deno.readTextFile(ctxUrl));
+      if (saved.topic !== input.topic || saved.language !== input.language) {
+        console.warn(`  ⚠ context-file is for "${saved.topic}" (${saved.language}); this run is "${input.topic}" (${input.language}) — reusing it anyway`);
+      }
+      questionsResponse = saved.questionsResponse;
+      context = saved.context;
+      ctxReused = true;
+      console.log(`Reusing pinned context from ${ctxFile} (${context.checklist.length} section(s)) — skipping call 1`);
+    } catch (err) {
+      if (!(err instanceof Deno.errors.NotFound)) throw err;
+    }
+  }
+
+  if (!ctxReused) {
+    console.log(`Call 1 — ${flags.url}/textbook (questions) for "${input.topic}" (${input.language}, ${input.llm})...`);
+    questionsResponse = await postTextbook(flags.url, base);
+    console.log(`  ${questionsResponse.questions.length} questions, ${questionsResponse.checklist.length} checklist items`);
+    context = buildContext(questionsResponse, input.checklist);
+    if (ctxUrl) {
+      await Deno.writeTextFile(ctxUrl, `${JSON.stringify({ topic: input.topic, language: input.language, questionsResponse, context }, null, 2)}\n`);
+      console.log(`Wrote pinned context to ${ctxFile} — reuse with --context-file=${ctxFile} to hold call 1 fixed`);
+    }
+  }
+
   console.log(`Call 2 — generate for ${context.checklist.length} section(s): ${context.checklist.join(', ')}`);
   const generateResponse = await postTextbook(flags.url, { ...base, context });
   const cardCount = (generateResponse.groups || []).reduce((n, g) => n + g.cards.length, 0);

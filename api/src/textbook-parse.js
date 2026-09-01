@@ -11,14 +11,9 @@
  */
 
 const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
-// 'neutral' is the P3-experiment sentinel (office-hours 2026-08-31): generate
-// the level-invariant core, no declared-proficiency bias. See textbook-prompt.js
-// and docs/API_DESIGN.md's /textbook "Learnings & proposed direction" note.
-const ABILITIES = ['none', 'beginner', 'intermediate', 'advanced', 'neutral'];
 const LLMS = ['google', 'claude', 'chatgpt'];
 
 const DEFAULTS = {
-  ability: 'beginner',
   llm: 'google',
 };
 
@@ -33,7 +28,7 @@ function parseTextbookRequest(body) {
     return { error: 'Request body must be a JSON object' };
   }
 
-  const { topic, language, ability, llm, context } = body;
+  const { topic, language, llm, context } = body;
 
   if (typeof topic !== 'string' || !topic.trim()) {
     return { error: 'Missing or empty field: topic' };
@@ -43,11 +38,6 @@ function parseTextbookRequest(body) {
   }
   if (typeof language !== 'string' || !LANGUAGES.includes(language)) {
     return { error: `Field "language" must be one of ${LANGUAGES.join(', ')}` };
-  }
-
-  const resolvedAbility = ability === undefined ? DEFAULTS.ability : ability;
-  if (!ABILITIES.includes(resolvedAbility)) {
-    return { error: `Field "ability" must be one of ${ABILITIES.join(', ')}` };
   }
 
   const resolvedLlm = llm === undefined ? DEFAULTS.llm : llm;
@@ -71,7 +61,6 @@ function parseTextbookRequest(body) {
     value: {
       topic: topic.trim(),
       language,
-      ability: resolvedAbility,
       llm: resolvedLlm,
       mode,
       ...(mode === 'generate' ? { context: resolvedContext } : {}),
@@ -82,7 +71,6 @@ function parseTextbookRequest(body) {
 module.exports = {
   parseTextbookRequest,
   LANGUAGES,
-  ABILITIES,
   LLMS,
   DEFAULTS,
   MAX_TOPIC_LENGTH,

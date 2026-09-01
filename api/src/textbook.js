@@ -3,7 +3,7 @@
  * generation (/textbook)" "Internal flow".
  *
  * REQUEST FLOW
- *   POST /textbook { topic, language, ability?, llm?, context? }
+ *   POST /textbook { topic, language, llm?, context? }
  *        │
  *        │  1. PARSE (textbook-parse.js): validate + apply defaults, branch
  *        │     call mode on presence of `context`                  → 400
@@ -81,7 +81,7 @@ async function callLlm(handler, llmName, route, prompt, maxOutputTokens, timeout
  * @returns {Promise<object>} { questions, checklist } or { groups }
  */
 async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_TIMEOUT_MS } = {}) {
-  const { topic, language, ability, llm, mode, context } = parsedRequest;
+  const { topic, language, llm, mode, context } = parsedRequest;
   const effectiveTimeoutMs = registry[llm]?.timeoutMs || timeoutMs;
 
   const handler = registry[llm];
@@ -93,7 +93,7 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
   }
 
   if (mode === 'questions') {
-    const prompt = buildTextbookQuestionsPrompt({ topic, language, ability });
+    const prompt = buildTextbookQuestionsPrompt({ topic, language });
     const { text: raw, model, usage } = await callLlm(handler, llm, 'textbook:questions', prompt, TEXTBOOK_QUESTIONS_MAX_TOKENS, effectiveTimeoutMs);
 
     let result;
@@ -119,7 +119,7 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
   }
 
   // mode === 'generate'
-  const prompt = buildTextbookGeneratePrompt({ topic, language, ability, context });
+  const prompt = buildTextbookGeneratePrompt({ topic, language, context });
   const maxOutputTokens = handler.maxOutputTokens || TEXTBOOK_GENERATE_MAX_TOKENS;
   const { text: raw, model, usage } = await callLlm(handler, llm, 'textbook:generate', prompt, maxOutputTokens, effectiveTimeoutMs);
 

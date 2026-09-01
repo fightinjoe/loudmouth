@@ -92,7 +92,6 @@ describe('parseTextbookRequest', () => {
 
   test('invalid enum values → error', () => {
     assert.match(parseTextbookRequest({ topic: 'a', language: 'fr' }).error, /language/);
-    assert.match(parseTextbookRequest({ topic: 'a', language: 'es', ability: 'expert' }).error, /ability/);
     assert.match(parseTextbookRequest({ topic: 'a', language: 'es', llm: 'gpt5' }).error, /Unknown LLM/);
   });
 
@@ -101,7 +100,6 @@ describe('parseTextbookRequest', () => {
     assert.deepEqual(result.value, {
       topic: 'salsa dancing',
       language: 'es',
-      ability: 'beginner',
       llm: 'google',
       mode: 'questions',
     });
@@ -121,8 +119,7 @@ describe('parseTextbookRequest', () => {
   });
 
   test('explicit values override defaults', () => {
-    const result = parseTextbookRequest({ topic: 'a', language: 'zh', ability: 'advanced', llm: 'claude' });
-    assert.equal(result.value.ability, 'advanced');
+    const result = parseTextbookRequest({ topic: 'a', language: 'zh', llm: 'claude' });
     assert.equal(result.value.llm, 'claude');
   });
 });
@@ -336,19 +333,17 @@ describe('validateTextbookGenerateResponse', () => {
 // ---------------------------------------------------------------------------
 
 describe('prompt builders', () => {
-  test('buildTextbookQuestionsPrompt includes the topic, caps, and reuses ability description', () => {
-    const prompt = buildTextbookQuestionsPrompt({ topic: 'salsa dancing', language: 'es', ability: 'beginner' });
+  test('buildTextbookQuestionsPrompt includes the topic and caps', () => {
+    const prompt = buildTextbookQuestionsPrompt({ topic: 'salsa dancing', language: 'es' });
     assert.match(prompt, /salsa dancing/);
     assert.match(prompt, /Hard cap: 6 questions/);
     assert.match(prompt, /Hard cap: 8 items/);
-    assert.match(prompt, /Learner ability: beginner/);
   });
 
   test('buildTextbookGeneratePrompt embeds context, allows reshape, and adds an example-conversation group', () => {
     const prompt = buildTextbookGeneratePrompt({
       topic: 'salsa dancing',
       language: 'es',
-      ability: 'beginner',
       context: { answers: { 'Salsa scene': 'Cuban style' }, checklist: ['Ask someone to dance', 'Dance/step vocabulary'] },
     });
     assert.match(prompt, /Salsa scene: Cuban style/);
@@ -357,7 +352,7 @@ describe('prompt builders', () => {
     assert.match(prompt, /you may reshape/);
     assert.match(prompt, /Teach both voices/);
     assert.match(prompt, /Teach the situation's real vocabulary as WORDS/);
-    assert.match(prompt, /FLOOR as well as a ceiling/);
+    assert.match(prompt, /do NOT assume or bias toward any learner proficiency level/);
     assert.match(prompt, /genuine two-sided exchange/);
     assert.match(prompt, /Example conversation/);
     assert.match(prompt, /"speaker":"you"/);
@@ -365,7 +360,7 @@ describe('prompt builders', () => {
 
   test('buildTextbookGeneratePrompt reuses /lookup gender-collapse rule for gendered languages', () => {
     const prompt = buildTextbookGeneratePrompt({
-      topic: 'dinner with parents', language: 'es', ability: 'beginner', context: { answers: {}, checklist: ['Small talk'] },
+      topic: 'dinner with parents', language: 'es', context: { answers: {}, checklist: ['Small talk'] },
     });
     assert.match(prompt, /Default to the MASCULINE form/);
   });

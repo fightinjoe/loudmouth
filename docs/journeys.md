@@ -384,7 +384,8 @@ retained on the deck, not logged to history, not recoverable.
 - **HISTORY** section below (recent topics), same visual treatment as Journey 1's Input-mode
   history — reuses the same `History item` component.
 - No VIBE settings on this screen — VIBE (formality/audience) is not surfaced in the Textbook flow
-  at all; only `ability` (from New-phrasebook mode) and the topic feed the generation.
+  at all; only the topic and language feed generation. `/textbook` is level-independent and takes no
+  `ability` (removed 2026-09-01) — the New-phrasebook ability selector is not passed to this flow.
 - *Implementation:* This is stack-position 1 of the linear flow. Reuses the Input-mode field/
   history visual pattern from `lookup-panel.js`, but the placeholder copy and submit affordance
   differ (see below).
@@ -395,7 +396,7 @@ retained on the deck, not logged to history, not recoverable.
 - A **forward chevron `>`** appears bottom-right of the input, replacing Journey 1's implicit
   return-key-only submit. Tapping it (not pressing return) submits the topic.
 - *Implementation:* `/textbook`'s first call (no `context`) fires on chevron tap:
-  `{ topic, language, ability }`.
+  `{ topic, language }`.
 
 **5. Action pane · Textbook mode — context questions + checklist** (`Navigation pane - empty state`, 769:17816)
 - Header unchanged (back chevron + language label + ✕ clear); topic text now shown read-only above
@@ -428,7 +429,7 @@ retained on the deck, not logged to history, not recoverable.
   text entry, no regenerate action (confirmed: no undo/redo on this flow) — simple check/uncheck
   only, reusing a plain checkbox-row list (no existing checklist component in the codebase; keep
   it minimal). On final submit, `/textbook`'s second call fires with `context` populated —
-  `{ topic, language, ability, context: { answers: {...}, checklist: [...checked labels...] } }`
+  `{ topic, language, context: { answers: {...}, checklist: [...checked labels...] } }`
   (exact shape is an implementation detail of the API contract, not fixed here).
 
 **7. Action pane · Textbook mode — generating**
