@@ -45,7 +45,7 @@
 
 const ENUMS = {
   language: ['zh', 'ja', 'es', 'cs'],
-  llm: ['google', 'claude', 'chatgpt'],
+  llm: ['google', 'g-flash', 'claude', 'chatgpt'],
   checklist: ['default', 'all'],
 };
 const DEFAULTS = { llm: 'google', checklist: 'default' };
@@ -130,12 +130,13 @@ function collectInput(flags) {
 // model string, then the llm enum, when a nickname isn't mapped.
 const MODEL_NICKNAMES = {
   'gemini-3.5-flash-lite': 'gemini',
+  'gemini-3.8-flash': 'g-flash',
   'gpt-5.6-luna': 'luna',
   'claude-haiku-4-5-20251001': 'haiku',
 };
 
 function slugify({ topic, language }, model) {
-  const raw = `${language}-${topic}-${model}`;
+  const raw = `${language}-${model}-${topic}`;
   return raw
     .toLowerCase()
     .trim()

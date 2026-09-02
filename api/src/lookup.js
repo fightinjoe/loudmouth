@@ -73,6 +73,7 @@ async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEO
   const prompt = buildLookupPrompt({ term, context, language, ability, formality, audience });
   const maxOutputTokens = handler.maxOutputTokens || LOOKUP_MAX_TOKENS;
 
+  const startedAt = performance.now();
   let reply;
   try {
     reply = await callWithTimeout(handler, prompt, { maxOutputTokens }, effectiveTimeoutMs);
@@ -88,6 +89,7 @@ async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEO
   }
 
   const { text: raw, model, usage } = reply;
+  const durationMs = performance.now() - startedAt;
 
   let result;
   try {
@@ -103,7 +105,7 @@ async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEO
     console.warn({ event: 'lookup_clamped', llm, term, warnings: result.warnings });
   }
 
-  const usageReport = buildUsageReport(model, usage);
+  const usageReport = buildUsageReport(model, usage, durationMs);
   const { blocks } = result.response;
   const groupCount = blocks.reduce((n, b) => n + b.groups.length, 0);
   console.log({ event: 'lookup_ok', llm, language, blocks: blocks.length, groups: groupCount, term });

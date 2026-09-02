@@ -78,6 +78,7 @@ paths:
                 description: Which model backend generates the response (default "google")
                 enum:
                   - google
+                  - g-flash
                   - claude
                   - chatgpt
       responses:
@@ -164,6 +165,7 @@ paths:
                 description: Which model backend generates the response (default "google")
                 enum:
                   - google
+                  - g-flash
                   - claude
                   - chatgpt
               context:

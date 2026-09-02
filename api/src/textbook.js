@@ -56,8 +56,10 @@ function callWithTimeout(handler, prompt, opts, timeoutMs) {
 }
 
 async function callLlm(handler, llmName, route, prompt, maxOutputTokens, timeoutMs) {
+  const startedAt = performance.now();
   try {
-    return await callWithTimeout(handler, prompt, { maxOutputTokens }, timeoutMs);
+    const reply = await callWithTimeout(handler, prompt, { maxOutputTokens }, timeoutMs);
+    return { ...reply, durationMs: performance.now() - startedAt };
   } catch (err) {
     if (err instanceof TextbookTimeoutError) {
       console.error({ event: 'llm_timeout', route, llm: llmName, error: err.message });
@@ -94,7 +96,7 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
 
   if (mode === 'questions') {
     const prompt = buildTextbookQuestionsPrompt({ topic, language });
-    const { text: raw, model, usage } = await callLlm(handler, llm, 'textbook:questions', prompt, TEXTBOOK_QUESTIONS_MAX_TOKENS, effectiveTimeoutMs);
+    const { text: raw, model, usage, durationMs } = await callLlm(handler, llm, 'textbook:questions', prompt, TEXTBOOK_QUESTIONS_MAX_TOKENS, effectiveTimeoutMs);
 
     let result;
     try {
@@ -110,7 +112,7 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
       console.warn({ event: 'textbook_questions_clamped', llm, topic, warnings: result.warnings });
     }
 
-    const usageReport = buildUsageReport(model, usage);
+    const usageReport = buildUsageReport(model, usage, durationMs);
     const { questions, checklist } = result.response;
     console.log({ event: 'textbook_questions_ok', llm, language, questions: questions.length, checklist: checklist.length, topic });
     console.log({ event: 'usage', route: 'textbook:questions', llm, ...usageReport });
@@ -121,7 +123,7 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
   // mode === 'generate'
   const prompt = buildTextbookGeneratePrompt({ topic, language, context });
   const maxOutputTokens = handler.maxOutputTokens || TEXTBOOK_GENERATE_MAX_TOKENS;
-  const { text: raw, model, usage } = await callLlm(handler, llm, 'textbook:generate', prompt, maxOutputTokens, effectiveTimeoutMs);
+  const { text: raw, model, usage, durationMs } = await callLlm(handler, llm, 'textbook:generate', prompt, maxOutputTokens, effectiveTimeoutMs);
 
   let result;
   try {
@@ -137,7 +139,7 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
     console.warn({ event: 'textbook_generate_clamped', llm, topic, warnings: result.warnings });
   }
 
-  const usageReport = buildUsageReport(model, usage);
+  const usageReport = buildUsageReport(model, usage, durationMs);
   const { groups } = result.response;
   const cardCount = groups.reduce((n, g) => n + g.cards.length, 0);
   console.log({ event: 'textbook_generate_ok', llm, language, groups: groups.length, cards: cardCount, topic });

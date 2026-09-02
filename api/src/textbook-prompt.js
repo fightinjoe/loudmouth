@@ -119,35 +119,53 @@ ${answersBlock}
 
 ${checklistBlock}
 
-## Step 1 — build the groups around the encounter, covering what the learner asked for
+## Step 1 — Design the example conversation FIRST
 
-Treat the checklist above as the learner's intended COVERAGE, not a rigid outline. Organize the phrasebook around the natural arc of the situation — opening/approach, the core interaction, wrapping up, and recovering when something goes wrong — and produce one themed group per stage or goal. You MAY rename, merge, split, reorder, and ADD connective groups the checklist left out (e.g. an opening/small-talk group, a "when you get lost" group) as long as every checked item's intent is covered somewhere. Bias every card by the context answers above — role, scene, or region should shape which phrases and words are chosen.
+Before choosing groups or cards, design one short, realistic, two-sided exchange for this exact situation (aim for 6–12 turns). This conversation is the backbone of the phrasebook: derive the teaching material from that conversation, rather than generating topic categories and trying to assemble a dialogue afterward. Do not output the conversation yet.
 
-- **Teach both voices.** A real encounter is two-sided. Alongside the lines the learner will SAY, teach the key lines they will HEAR from the other person (staff, host, partner) and must understand to keep going — the questions they'll be asked and, crucially, the ANSWERS to their own questions (a price, a quantity, "it's 100% wool", "it's out of stock"). A phrasebook that teaches only the learner's half leaves them able to speak but unable to follow the reply. A heard line is still an ORDINARY card: put ONLY the spoken target-language line in \`text\` (never a speaker label like "店員:" or "スタッフ —", and never English), and its English in \`translation\`; if useful, note who says it in \`notes\`. Speaker labels belong ONLY in the Example-conversation group's \`notes\`, never in \`text\`.
-- **Teach the situation's real vocabulary as WORDS, not disguised sentences.** The transactional nouns and adjectives specific to THIS situation — the things the learner will point at, name, choose between, or hear (a yarn shop: fiber types, yarn weights, needle and tool names, colors, textures; a clinic: symptoms, body areas) — ARE the lesson, not padding. Teach them as a compact vocabulary group of short \`type:"word"\` cards, PLUS one or two reusable frames the learner drops them into (e.g. "これは〜ですか" / "〜はありますか"). Do NOT expand a frame into one near-duplicate sentence per word ("Is it wool?", "Is it cotton?", "Is it soft?") — teach the words once and the frame once.
-- **Still no glossary padding.** Cut encyclopedic or theory vocabulary the learner would never actually say or hear in this moment (obscure anatomy, jargon like "musicality"). The test is "would the learner say or hear this word in the room?", not "is it about the topic?".
-- **Optional patterns group.** Where the phrases in this chapter lean on a small generative system (e.g. Japanese counters, a key particle or verb pattern), you MAY add ONE compact "Key patterns" group that teaches those as cards — the pattern in \`text\`, its use in \`translation\`, a short usage tip in \`notes\` — so the learner can bend the phrases rather than only parrot them.
-- A group may freely mix words and phrases — organize by situation/goal, not grammatical form.
-- Order cards within each group from simplest/most broadly useful to more nuanced.
-- Keep every card distinct — no near-duplicates within or across the whole phrasebook.
-- Name each group with a short, scannable English noun-phrase title describing its moment in the encounter or the kind of vocabulary it holds (e.g. "Fibers & materials", "Asking for a recommendation", "When you get lost"); reuse a checklist label as the title when it already fits.
-- **Group budget.** Hard cap ${MAX_GROUPS_TOTAL} groups TOTAL, and this MUST include the example-conversation group from Step 2 — so keep every other group to at most ${MAX_GROUPS_TOTAL - 1} combined. Cards per group: hard cap ${MAX_CARDS_PER_GROUP}; aim for 6–10 distinct cards in a themed group. The example-conversation group is REQUIRED and comes LAST; do not let other groups crowd it out of the budget.
+- Follow the natural arc of the encounter: opening, core interaction, likely complication or recovery, and a graceful close.
+- Bias every turn by the learner's context — role, scene, relationship, and region should materially affect what happens and what each person says.
+- If a context answer assigns the learner a role, every \`speaker:"you"\` action and line must be valid for that role. Never silently make the learner perform the partner's role.
+- Treat the checklist as intended COVERAGE, not a rigid outline. The exchange must cover every checked goal, but you MAY reshape, combine, or reorder those goals to make the interaction natural.
+- Map every checked goal to at least one concrete conversation turn before continuing. Support cards alone do not satisfy a checked goal.
+- Make it a genuine exchange in which information flows BOTH ways. The learner says something useful, the other person gives a realistic answer or asks a likely question, and each turn changes what can happen next.
+- Alternate speakers strictly. One speaker must never answer or reassure their own previous turn.
+- Preserve cause and effect. A mishap or complication must be caused or described, then receive a natural response in the next turn; never jump from an unrelated observation to an apology or recovery line.
+- Keep it canonical and bounded, not branching. Choose the single most useful exemplar for rehearsing this encounter.
+
+## Step 2 — derive the teaching groups from the conversation
+
+Now work backward from the exchange. Extract the lines the learner needs to SAY, the lines they need to HEAR and understand, and the situation-specific words that make those lines reusable. Add only the closest high-value alternatives needed when the real conversation deviates from the exemplar — for example accepting versus declining, clarification, correction, recovery, or a graceful exit.
+- **Extract before expanding.** For every planned turn, add each substantive spoken clause as an ordinary phrase card in an earlier group before adding alternatives. A dialogue turn may later combine two or more of those cards, but it must not introduce a new reply, question, connector, or content phrase.
+
+- **Teach both voices.** A phrasebook that teaches only the learner's half leaves them able to speak but unable to navigate the reply. A heard line is an ORDINARY card: put ONLY the spoken target-language line in \`text\` (never a speaker label like "店員:" or "スタッフ —", and never English), and its English in \`translation\`; if useful, note who says it in \`notes\`. Speaker labels belong ONLY in the Example-conversation group's \`notes\`, never in \`text\`.
+- **Output one compact "Words for this exchange" group.** Include 6–10 \`type:"word"\` cards: the highest-value situation-specific nouns, verbs, and modifiers from the planned conversation and its closest deviations. These words must help the learner understand a reply, substitute into a phrase, or reuse language elsewhere in the encounter.
+- Write nouns in their useful citation form (including an article where the language needs it), verbs in the infinitive or dictionary form, and modifiers in the form the learner can reuse.
+- Do not count target-language words unchanged in English (such as "salsa" or "hotel"), generic courtesy basics, or obvious loanwords as useful vocabulary. Exclude encyclopedic topic words and jargon the learner would not use in the room.
+- For every vocabulary card, the English \`translation\` must differ materially from the target-language \`text\`. Replace any card whose translation is effectively identical.
+- Pair the vocabulary with one or two reusable phrase frames in the relevant encounter groups. Do not expand one frame into near-duplicate sentences for every word ("Is it wool?", "Is it cotton?", "Is it soft?").
+- **Optional patterns group.** Where several lines rely on one small generative system (e.g. Japanese counters, a key particle, or a verb pattern), you MAY add ONE compact "Key patterns" group so the learner can adapt the rehearsed phrases.
+- Organize groups around moments or communicative goals in the encounter, not grammatical categories. You MAY rename, merge, split, reorder, and add connective groups the checklist omitted.
+- Order cards within each group from simplest or most broadly useful to more nuanced.
+- Keep every card distinct outside the intentionally repeated Example conversation.
+- Name each group with a short, scannable English noun-phrase title describing its moment or vocabulary (e.g. "Fibers & materials", "Asking for a recommendation", "When you get lost").
+- **Group budget.** Hard cap ${MAX_GROUPS_TOTAL} groups TOTAL, including the Example conversation group from Step 3; keep all earlier groups to at most ${MAX_GROUPS_TOTAL - 1} combined. Cards per group: hard cap ${MAX_CARDS_PER_GROUP}; aim for 6–10 distinct cards where the material supports it. Do not pad to hit a count.
 
 ## Coverage check
 
-Before continuing, verify: every checked checklist item's intent is covered by some group; the phrasebook follows the encounter's arc rather than a pile of categories; every card is something the learner would actually say, hear, or use in the moment (no glossary padding); the situation's real vocabulary is taught as \`word\` cards plus reusable frames, not as repeated near-duplicate sentences; the key lines the learner will HEAR (not only say) are taught, including answers to their own questions; nothing re-teaches basic courtesy or survival language the learner already owns; cards are distributed across groups rather than concentrated in one; and each group runs simplest → most nuanced. Do not pad with near-duplicates to hit a count.
+Before continuing, verify: every checked goal appears in the encounter and teaching groups; the learner can produce their side and recognize the likely replies; the learner's assigned role is respected; the "Words for this exchange" group contains 6–10 useful words whose translations differ materially from their target text; no generic survival padding, glossary padding, or near-duplicates remain; and the learner's context materially shaped the result. Finally, split every planned dialogue turn into substantive clauses and compare them with the earlier phrase cards: each clause must match an earlier card's wording exactly except for punctuation and capitalization.
 
-## Step 2 — add one example-conversation group (prototype)
+## Step 3 — emit the example conversation LAST
 
-Add exactly ONE final group, titled "Example conversation", that strings the phrasebook's key lines into a short, realistic exchange for this situation (aim for 6–12 turns). This is the single most valuable output for the learner: it shows the phrases working together in sequence.
+Add exactly ONE final group titled "Example conversation" with that EXACT capitalization. Emit the conversation designed in Step 1, preserving its realistic turn order. This remains the single most valuable output: a fixed run-through of the encounter using the cards the learner just reviewed.
 
-- It MUST be a genuine two-sided exchange in which information flows BOTH ways: the learner asks and the other person ANSWERS with real content (a price, a quantity, a recommendation), and vice versa. Never stack several turns from the same speaker that merely restate the same point — each turn advances the exchange, and speakers generally alternate.
-- Use ONLY language already introduced in the earlier groups (lightly inflected as the dialogue requires), including the HEARD lines you taught for the other speaker — the conversation reinforces the chapter, it does not add new material.
-- Each turn is one card: \`text\` = the spoken line, \`translation\` = its English gloss, \`reading\` per the usual rules below.
-- Identify the speaker of each turn with a compact JSON blob in that card's \`notes\`, e.g. \`{"speaker":"you"}\` or \`{"speaker":"partner"}\`. (Experimental staging field — turn structure lives in \`notes\` until it earns a place in the schema.)
+- Use ONLY complete phrase cards introduced in the earlier groups. A turn may join multiple earlier cards, but must not change their words or add a new reply, question, connector, or content phrase.
+- Each turn is one card: \`text\` = the spoken line, \`translation\` = its English gloss, and \`reading\` follows the usual rules below.
+- Identify each speaker with a compact JSON blob in that card's \`notes\`, e.g. \`{"speaker":"you"}\` or \`{"speaker":"partner"}\`.
+- Speakers alternate strictly; every turn must advance or resolve the exchange, and no speaker responds to their own prior line.
 - Keep turns in conversation order; this group counts against the ${MAX_GROUPS_TOTAL}-group cap.
 
-## Step 3 — name the phrasebook
+## Step 4 — name the phrasebook
 
 Produce a single top-level \`title\` for the whole phrasebook: a concise, **one-line** name (aim for 2–4 words, at most ${MAX_TITLE_LENGTH} characters) that captures the whole situation at a glance — a shelf label the learner will scan in a list, in Title Case, in English. Encapsulate the situation as a whole; do NOT merely restate the raw topic verbatim, and do NOT reuse a single section/checklist label. E.g. topic "talking to a doctor about my annual physical" → "Annual Physical Visit"; "salsa dancing" (Latin America, social club, leading) → "Salsa Social Dancing".
 

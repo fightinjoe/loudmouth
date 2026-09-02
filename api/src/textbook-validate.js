@@ -222,6 +222,15 @@ function validateAndCleanGroup(group, prefix, warnings) {
     return null;
   }
 
+  cards = cards.map((card, ci) => {
+    const notes = card?.notes;
+    if (notes && typeof notes === 'object' && !Array.isArray(notes) && Object.keys(notes).length > 0) {
+      warnings.push(`${prefix}.cards[${ci}].notes serialized from object`);
+      return { ...card, notes: JSON.stringify(notes) };
+    }
+    return card;
+  });
+
   cards.forEach((card, ci) => validateCard(card, `${prefix}.cards[${ci}]`));
 
   cards = cards.map((c) => {

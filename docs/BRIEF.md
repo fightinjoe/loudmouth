@@ -97,7 +97,7 @@ phrasebook settings.
 - **API:** Cloud Run service in `api/`. `/textbook` handles guided creation in two calls; `/lookup`
   remains the stateless translation primitive for supporting lookup/expansion flows. Both reuse the
   same LLM registry, card validation, reading normalization, CORS, and error conventions.
-- **LLMs:** `google`, `claude`, or `chatgpt`, selected by the caller in the prototype.
+- **LLMs:** `google`, `g-flash`, `claude`, or `chatgpt`, selected by the caller in the prototype.
 - **Audio:** Web Speech API on mobile browsers. iOS Safari is the primary target; desktop audio is
   unsupported.
 

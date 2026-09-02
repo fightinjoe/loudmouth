@@ -14,7 +14,7 @@ the result, and returns a self-contained response. The client owns phrasebook st
 ## Shared conventions
 
 - Supported languages: `zh`, `ja`, `es`, `cs`.
-- Supported LLM backends: `google`, `claude`, `chatgpt`; default `google`.
+- Supported LLM backends: `google`, `g-flash`, `claude`, `chatgpt`; default `google`.
 - Invalid input returns `400` before a model call.
 - Model failure, timeout, malformed JSON, or invalid output returns `502`.
 - The service validates and limits model output; callers receive no partial model response.
@@ -44,7 +44,7 @@ continuity comes from the client passing a returned card's `definition` or `cont
   "ability": "none | beginner | intermediate | advanced",
   "formality": "casual | polite | formal",
   "audience": "stranger | staff | acquaintance | family",
-  "llm": "google | claude | chatgpt"
+  "llm": "google | g-flash | claude | chatgpt"
 }
 ```
 
@@ -87,7 +87,8 @@ Ability does not gate slang or vulgarity.
     "inputTokens": 0,
     "outputTokens": 0,
     "totalTokens": 0,
-    "costUsd": null
+    "costUsd": null,
+    "durationMs": 0
   }
 }
 ```
@@ -103,8 +104,8 @@ are removed. There is no minimum group or card count.
 The service sets `context` on the block card from the input parenthetical and on group cards from the
 group title. The model does not emit `context`, `id`, or `importedAt`.
 
-`usage` reports provider token metadata and estimated USD cost. `costUsd` is `null` when no rate is
-configured.
+`usage` reports provider token metadata, estimated USD cost, and elapsed LLM execution time rounded to
+milliseconds. `costUsd` is `null` when no rate is configured.
 
 ### Model requirements
 
@@ -140,7 +141,7 @@ Call 1 omits `context`:
 {
   "topic": "dinner with my partner's parents",
   "language": "zh | ja | es | cs",
-  "llm": "google | claude | chatgpt"
+  "llm": "google | g-flash | claude | chatgpt"
 }
 ```
 
@@ -154,7 +155,7 @@ Call 2 includes the opaque state returned by call 1 plus the learner's selection
     "answers": { "Relationship": "Partner's parents" },
     "checklist": ["Introduce myself", "Discuss food"]
   },
-  "llm": "google | claude | chatgpt"
+  "llm": "google | g-flash | claude | chatgpt"
 }
 ```
 
@@ -179,7 +180,7 @@ Malformed context returns `400`.
   "checklist": [
     { "label": "string", "checked": true }
   ],
-  "usage": { "model": "string", "inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "costUsd": null }
+  "usage": { "model": "string", "inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "costUsd": null, "durationMs": 0 }
 }
 ```
 
@@ -202,18 +203,20 @@ title. Maximum eight items.
       "cards": ["Card"]
     }
   ],
-  "usage": { "model": "string", "inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "costUsd": null }
+  "usage": { "model": "string", "inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "costUsd": null, "durationMs": 0 }
 }
 ```
 
 `title` is a concise phrasebook name, preferably 2–4 Title Case words, clamped to 60 characters.
 A missing or blank title is not an error; the client falls back to the raw topic.
 
-Groups follow the encounter's arc rather than mirroring checklist labels. Generation may merge, split,
-rename, reorder, or add connective groups. The final group is `Example conversation`, containing a short,
-two-sided exchange built only from language introduced in earlier groups. Turns alternate, advance the
-conversation, and carry speaker metadata in `notes` as `{"speaker":"you"}` or
-`{"speaker":"partner"}`. This is intentionally staged in `notes`, not a new schema field.
+Generation designs one canonical, two-sided example conversation first, then derives the teaching
+groups from that exchange and its closest useful deviations. Groups follow the encounter's arc rather
+than mirroring checklist labels; generation may merge, split, rename, reorder, or add connective
+groups. The final `Example conversation` group emits the planned exchange using only language
+introduced in earlier groups. Turns alternate, advance the conversation, and carry speaker metadata
+in `notes` as `{"speaker":"you"}` or `{"speaker":"partner"}`. This is intentionally staged in `notes`,
+not a new schema field.
 
 There are at most eight groups total, including the example conversation, and at most 15 cards per
 group. The model does not emit `context`, `id`, or `importedAt`; the service sets each card's `context`
@@ -227,12 +230,20 @@ padding questions and default-check the goals that carry the core interaction.
 
 Call 2 must:
 
-- teach language the learner will say, hear, point at, or choose between in the situation;
+- design a canonical example conversation first, then derive the teaching groups from it;
+- map every selected communicative goal to a concrete conversation turn;
+- keep complications causal: introduce the event, then give it a natural response;
+- respect any learner role in the context when assigning dialogue actions and speakers;
+- teach language the learner will say, hear, point at, choose, or substitute in the situation;
 - include both sides of the exchange, including likely replies;
-- include situation-specific vocabulary as compact word cards plus reusable frames;
-- omit only encyclopedic or glossary-only material;
+- extract every substantive dialogue clause into an earlier phrase card before adding nearby alternatives;
+- include a `Words for this exchange` group with 6–10 useful situation-specific word cards, excluding
+  generic survival words, obvious loanwords, and unchanged English cognates;
+- ensure each dialogue clause matches an earlier phrase card except for punctuation and capitalization;
+- omit generic survival padding and encyclopedic or glossary-only material;
 - organize content around the encounter's arc;
-- end with the two-sided example conversation;
+- end by emitting the planned two-sided example conversation;
+- alternate dialogue speakers strictly so no speaker responds to their own prior turn;
 - return raw JSON with no prose or code fences.
 
 The quality bar is conversational and practical, not textbook-stiff. The shared prompt and card-reading

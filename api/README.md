@@ -63,7 +63,7 @@ Looks up a term and returns a direct translation plus AI-clustered related group
 - `ability` — optional, `"none"` \| `"beginner"` \| `"intermediate"` \| `"advanced"` (default `"beginner"`).
 - `formality` — optional, `"casual"` \| `"polite"` \| `"formal"` (default `"polite"`).
 - `audience` — optional, `"stranger"` \| `"staff"` \| `"acquaintance"` \| `"family"` (default `"staff"`).
-- `llm` — optional, `"google"` \| `"claude"` \| `"chatgpt"` (default `"google"`).
+- `llm` — optional, `"google"` \| `"g-flash"` \| `"claude"` \| `"chatgpt"` (default `"google"`).
 
 **Response:**
 ```json
@@ -91,24 +91,21 @@ Looks up a term and returns a direct translation plus AI-clustered related group
     "inputTokens": 812,
     "outputTokens": 4193,
     "totalTokens": 5005,
-    "costUsd": 0.0021
+    "costUsd": 0.0021,
+    "durationMs": 1842
   }
 }
 ```
 
 Both `/lookup` and `/textbook` 200 responses carry a `usage` block reporting the LLM
-token counts for that call and an estimated `costUsd`. `costUsd` is `null` until per-model
-rates are filled into `src/pricing.js` (the placeholder table ships with rates unset);
-token counts are always reported. The same usage figures are also emitted as a structured
-`{ event: 'usage', ... }` log line, which prints to the terminal under `npm run dev`.
+token counts, estimated `costUsd`, and elapsed LLM `durationMs` for that call. `costUsd`
+is `null` when the served model has no configured rates; token counts and duration are
+always reported. The same usage figures are emitted as a structured
+`{ event: 'usage', ... }` log line to STDOUT under `npm run dev`.
 
-To enable cost estimates, add USD-per-1,000,000-token rates to `src/pricing.js`, keyed by
-the exact model string each provider reports (e.g. `gemini-3.5-flash-lite`, `gpt-5.6-luna`,
-`claude-haiku-4-5-20251001`):
-
-```js
-'gemini-3.5-flash-lite': { inputPer1M: 0.10, outputPer1M: 0.40 },
-```
+Cost estimates use the USD-per-1,000,000-token rates in `src/pricing.js`, keyed by the exact model
+string each provider reports. Gemini 3.8 Flash uses its promotional standard rates through
+December 31, 2026; update that entry when Google's 2027 rates take effect.
 
 See `docs/API_DESIGN.md` for the full contract, including disambiguation, group limits
 (≤4 blocks, ≤8 groups total, ≤15 cards/group), and worked examples.
@@ -164,11 +161,11 @@ cd src && npm install
 gcloud auth application-default login   # required for Vertex AI
 ```
 
-The Google backend uses **`gemini-3.5-flash-lite`** on Vertex AI, which is served only from the
-`global`, `us`, or `eu` endpoints — **not** regional ones like `us-central1`. The Vertex location is
-set by `GCP_VERTEX_LOCATION` (default `global`), kept separate from `GCP_LOCATION` (the gateway /
-Cloud Run region). `.env` sets `GCP_VERTEX_LOCATION=global`; leave it unless your project requires a
-specific data-residency multi-region (`us`/`eu`).
+The Google backends use Vertex AI: `google` selects **`gemini-3.5-flash-lite`** and `g-flash`
+selects **`gemini-3.8-flash`**. Both are served from the `global`, `us`, or `eu` endpoints—not
+regional endpoints such as `us-central1`. `GCP_VERTEX_LOCATION` defaults to `global` and remains
+separate from `GCP_LOCATION`, the gateway and Cloud Run region. Leave `.env` at `global` unless the
+project requires the `us` or `eu` data-residency endpoint.
 
 ### Run locally
 

@@ -13,6 +13,8 @@
 const PRICING = {
   // model string (from src/llms/*.js) : { inputPer1M, outputPer1M } in USD / 1M tokens
   'gemini-3.5-flash-lite':      { inputPer1M: 0.3, outputPer1M: 2.5 },
+  // Promotional standard rates through 2026-12-31; update for 2027 pricing.
+  'gemini-3.8-flash':           { inputPer1M: 0.75, outputPer1M: 3.75 },
   'gpt-5.6-luna':               { inputPer1M: 0.2, outputPer1M: 1.2 },
   'claude-haiku-4-5-20251001':  { inputPer1M: 1, outputPer1M: 5 },
 };
@@ -45,9 +47,10 @@ function computeCostUsd(model, usage) {
  *
  * @param {string} model
  * @param {{ inputTokens?: number, outputTokens?: number }} usage
- * @returns {{ model: string, inputTokens: number, outputTokens: number, totalTokens: number, costUsd: number|null }}
+ * @param {number} durationMs elapsed LLM execution time in milliseconds
+ * @returns {{ model: string, inputTokens: number, outputTokens: number, totalTokens: number, costUsd: number|null, durationMs: number }}
  */
-function buildUsageReport(model, usage = {}) {
+function buildUsageReport(model, usage = {}, durationMs = 0) {
   const inputTokens = usage.inputTokens ?? 0;
   const outputTokens = usage.outputTokens ?? 0;
   return {
@@ -56,6 +59,7 @@ function buildUsageReport(model, usage = {}) {
     outputTokens,
     totalTokens: inputTokens + outputTokens,
     costUsd: computeCostUsd(model, { inputTokens, outputTokens }),
+    durationMs: Number.isFinite(durationMs) && durationMs > 0 ? Math.round(durationMs) : 0,
   };
 }
 

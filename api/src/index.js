@@ -2,10 +2,11 @@ const { handleLookup } = require('./lookup');
 const { handleTextbook } = require('./textbook');
 const { callAnthropic } = require('./llms/anthropic');
 const { callOpenAI } = require('./llms/openai');
-const { callGenAI } = require('./llms/genai');
+const { callGenAI, callGenAIFlash } = require('./llms/genai');
 
 const LLM_REGISTRY = {
   'google': callGenAI,
+  'g-flash': callGenAIFlash,
   'claude': callAnthropic,
   'chatgpt': callOpenAI,
 };

@@ -122,6 +122,11 @@ describe('parseTextbookRequest', () => {
     const result = parseTextbookRequest({ topic: 'a', language: 'zh', llm: 'claude' });
     assert.equal(result.value.llm, 'claude');
   });
+
+  test('accepts g-flash as an explicit backend', () => {
+    const result = parseTextbookRequest({ topic: 'salsa dancing', language: 'es', llm: 'g-flash' });
+    assert.equal(result.value.llm, 'g-flash');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -272,6 +277,15 @@ describe('validateTextbookGenerateResponse', () => {
     assert.equal(response.groups[0].cards[0].context, 'Ask someone to dance');
   });
 
+  test('object-valued notes from the model are serialized before Card validation', () => {
+    const raw = JSON.stringify({
+      groups: [{ title: 'Example conversation', cards: [makeCard({ notes: { speaker: 'you' } })] }],
+    });
+    const { response, warnings } = validateTextbookGenerateResponse(raw);
+    assert.equal(response.groups[0].cards[0].notes, '{"speaker":"you"}');
+    assert.ok(warnings.some((w) => w.includes('notes serialized')));
+  });
+
   test('garbage formality value (not in CARD_SCHEMA) → throws', () => {
     const raw = JSON.stringify({ groups: [{ title: 'g', cards: [makeCard({ formality: 'nonsense' })] }] });
     assert.throws(() => validateTextbookGenerateResponse(raw));
@@ -340,7 +354,7 @@ describe('prompt builders', () => {
     assert.match(prompt, /Hard cap: 8 items/);
   });
 
-  test('buildTextbookGeneratePrompt embeds context, allows reshape, and adds an example-conversation group', () => {
+  test('buildTextbookGeneratePrompt embeds context and derives teaching groups from a conversation-first plan', () => {
     const prompt = buildTextbookGeneratePrompt({
       topic: 'salsa dancing',
       language: 'es',
@@ -351,9 +365,19 @@ describe('prompt builders', () => {
     assert.match(prompt, /- Dance\/step vocabulary/);
     assert.match(prompt, /you may reshape/);
     assert.match(prompt, /Teach both voices/);
-    assert.match(prompt, /Teach the situation's real vocabulary as WORDS/);
+    assert.match(prompt, /Words for this exchange/);
+    assert.match(prompt, /Extract before expanding/);
+    assert.match(prompt, /Include 6–10 `type:"word"` cards/);
+    assert.match(prompt, /Design the example conversation FIRST/);
+    assert.match(prompt, /derive the teaching material from that conversation/);
+    assert.match(prompt, /Alternate speakers strictly/);
+    assert.match(prompt, /Map every checked goal to at least one concrete conversation turn/);
+    assert.match(prompt, /Preserve cause and effect/);
+    assert.match(prompt, /Never silently make the learner perform the partner's role/);
+    assert.match(prompt, /translation.*must differ materially/);
+    assert.match(prompt, /each clause must match an earlier card's wording exactly/);
     assert.match(prompt, /do NOT assume or bias toward any learner proficiency level/);
-    assert.match(prompt, /genuine two-sided exchange/);
+    assert.match(prompt, /genuine exchange/);
     assert.match(prompt, /Example conversation/);
     assert.match(prompt, /"speaker":"you"/);
   });
@@ -421,7 +445,9 @@ describe('handleTextbook', () => {
     assert.ok(Array.isArray(res.body.questions));
     assert.ok(Array.isArray(res.body.checklist));
     assert.equal(res.body.questions[0].label, 'Salsa scene');
-    assert.deepEqual(res.body.usage, {
+    const { durationMs, ...usage } = res.body.usage;
+    assert.ok(Number.isInteger(durationMs) && durationMs >= 0);
+    assert.deepEqual(usage, {
       model: 'test-model',
       inputTokens: 12,
       outputTokens: 34,
@@ -438,6 +464,7 @@ describe('handleTextbook', () => {
     assert.ok(Array.isArray(res.body.groups));
     assert.equal(res.body.groups.length, 1);
     assert.equal(res.body.groups[0].cards[0].context, 'Ask someone to dance');
+    assert.ok(Number.isInteger(res.body.usage.durationMs) && res.body.usage.durationMs >= 0);
   });
 
   test('call 2 surfaces the model title through to the 200 body', async () => {

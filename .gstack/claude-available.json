@@ -1,6 +1,6 @@
 {
   "available": true,
-  "path": "/opt/homebrew/bin/claude",
+  "path": "/Users/awheeler/.local/bin/claude",
   "install_url": "https://docs.anthropic.com/en/docs/claude-code",
-  "checked_at": "2026-08-27T17:33:32.066Z"
+  "checked_at": "2026-09-02T20:13:44.396Z"
 }

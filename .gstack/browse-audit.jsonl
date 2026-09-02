@@ -203,3 +203,8 @@
 {"ts":"2026-08-27T17:41:30.807Z","cmd":"js","args":"(async () => {\n  const { db, ui } = window.__loudmouth;\n  const deck = await db.createDeck('dancing at the salsa club in austin, tx', 'es', { ability: 'beginner' });\n  await db.importCards([\n    { lan…","origin":"http://localhost:8000/","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
 {"ts":"2026-08-27T17:41:35.898Z","cmd":"screenshot","args":"/tmp/repro-check.png","origin":"http://localhost:8000/","durationMs":72,"status":"ok","hasCookies":false,"mode":"launched"}
 {"ts":"2026-08-27T17:41:52.862Z","cmd":"stop","args":"","origin":"http://localhost:8000/","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-02T20:12:45.059Z","cmd":"goto","args":"https://ai.google.dev/gemini-api/docs/models","origin":"https://ai.google.dev/gemini-api/docs/models","durationMs":616,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-02T20:12:51.714Z","cmd":"text","args":"","origin":"https://ai.google.dev/gemini-api/docs/models","durationMs":5,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-02T20:13:34.409Z","cmd":"goto","args":"https://ai.google.dev/gemini-api/docs/pricing","origin":"https://ai.google.dev/gemini-api/docs/pricing","durationMs":412,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-02T20:13:39.323Z","cmd":"text","args":"","origin":"https://ai.google.dev/gemini-api/docs/pricing","durationMs":7,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-02T20:20:59.620Z","cmd":"stop","args":"","origin":"https://ai.google.dev/gemini-api/docs/pricing","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}

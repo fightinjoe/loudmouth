@@ -11,7 +11,7 @@ const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
 const ABILITIES = ['none', 'beginner', 'intermediate', 'advanced'];
 const FORMALITIES = ['casual', 'polite', 'formal'];
 const AUDIENCES = ['stranger', 'staff', 'acquaintance', 'family'];
-const LLMS = ['google', 'claude', 'chatgpt'];
+const LLMS = ['google', 'g-flash', 'claude', 'chatgpt'];
 
 const DEFAULTS = {
   ability: 'beginner',

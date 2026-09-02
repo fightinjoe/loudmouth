@@ -1,6 +1,7 @@
 const { GoogleGenAI } = require('@google/genai');
 
 const GENAI_MODEL = 'gemini-3.5-flash-lite';
+const GENAI_FLASH_MODEL = 'gemini-3.8-flash';
 
 let client = null;
 
@@ -20,17 +21,19 @@ function getClient() {
   return client;
 }
 
-async function callGenAI(prompt, { maxOutputTokens = 1024 } = {}) {
+function usageFromMetadata(meta = {}) {
+  return {
+    inputTokens: meta.promptTokenCount ?? 0,
+    outputTokens: (meta.candidatesTokenCount ?? 0) + (meta.thoughtsTokenCount ?? 0),
+  };
+}
+
+async function callGenAIModel(model, prompt, { maxOutputTokens = 1024 } = {}) {
   const ai = getClient();
   const result = await ai.models.generateContent({
-    model: GENAI_MODEL,
+    model,
     contents: prompt,
-    config: {
-      // gemini-3.5-flash-lite ignores custom temperature/top-K/top-P (defaults
-      // temperature 1.0) and defaults to MINIMAL thinking — fine for the
-      // low-latency JSON generation here. See the Vertex model card.
-      maxOutputTokens,
-    },
+    config: { maxOutputTokens },
   });
 
   const text = result.text;
@@ -41,12 +44,21 @@ async function callGenAI(prompt, { maxOutputTokens = 1024 } = {}) {
   const meta = result.usageMetadata || {};
   return {
     text,
-    model: GENAI_MODEL,
-    usage: {
-      inputTokens: meta.promptTokenCount ?? 0,
-      outputTokens: meta.candidatesTokenCount ?? 0,
-    },
+    model,
+    usage: usageFromMetadata(meta),
   };
 }
 
-module.exports = { callGenAI, GENAI_MODEL };
+function callGenAI(prompt, options) {
+  return callGenAIModel(GENAI_MODEL, prompt, options);
+}
+
+function callGenAIFlash(prompt, options) {
+  return callGenAIModel(GENAI_FLASH_MODEL, prompt, options);
+}
+
+// Gemini 3.8 Flash may spend longer reasoning before returning structured JSON.
+callGenAIFlash.timeoutMs = 60000;
+
+module.exports = { callGenAI, callGenAIFlash, GENAI_MODEL, GENAI_FLASH_MODEL, usageFromMetadata };
+

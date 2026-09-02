@@ -9,6 +9,7 @@ const { buildLookupPrompt } = require('../lookup-prompt');
 const { handleLookup } = require('../lookup');
 const { callAnthropic } = require('../llms/anthropic');
 const { OPENAI_MODEL } = require('../llms/openai');
+const { callGenAIFlash, GENAI_FLASH_MODEL, usageFromMetadata } = require('../llms/genai');
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -144,6 +145,11 @@ describe('parseLookupRequest', () => {
     assert.equal(result.value.formality, 'casual');
     assert.equal(result.value.audience, 'family');
     assert.equal(result.value.llm, 'claude');
+  });
+
+  test('accepts g-flash as an explicit backend', () => {
+    const result = parseLookupRequest({ term: 'dinner', language: 'es', llm: 'g-flash' });
+    assert.equal(result.value.llm, 'g-flash');
   });
 });
 
@@ -373,7 +379,9 @@ describe('handleLookup', () => {
     assert.ok(Array.isArray(res.body.blocks));
     assert.equal(res.body.blocks.length, 1);
     assert.equal(res.body.blocks[0].card.text, 'トイレ');
-    assert.deepEqual(res.body.usage, {
+    const { durationMs, ...usage } = res.body.usage;
+    assert.ok(Number.isInteger(durationMs) && durationMs >= 0);
+    assert.deepEqual(usage, {
       model: 'test-model',
       inputTokens: 12,
       outputTokens: 34,
@@ -413,6 +421,21 @@ describe('handleLookup', () => {
 
   test('OpenAI adapter targets the Luna model', () => {
     assert.equal(OPENAI_MODEL, 'gpt-5.6-luna');
+  });
+
+  test('g-flash adapter targets Gemini 3.8 Flash', () => {
+    assert.equal(GENAI_FLASH_MODEL, 'gemini-3.8-flash');
+  });
+
+  test('g-flash adapter advertises an extended timeout', () => {
+    assert.equal(callGenAIFlash.timeoutMs, 60000);
+  });
+
+  test('Gemini usage includes billed thinking tokens in output', () => {
+    assert.deepEqual(
+      usageFromMetadata({ promptTokenCount: 100, candidatesTokenCount: 200, thoughtsTokenCount: 300 }),
+      { inputTokens: 100, outputTokens: 500 },
+    );
   });
 
   test('OpenAI adapter advertises its extended timeout', () => {

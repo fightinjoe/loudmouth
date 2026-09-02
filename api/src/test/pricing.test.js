@@ -37,6 +37,11 @@ describe('computeCostUsd', () => {
       computeCostUsd('gpt-5.6-luna', { inputTokens: 1_000_000, outputTokens: 1_000_000 }),
       1.4,
     );
+    // Gemini 3.8 Flash promotional 2026 rates: $0.75/1M input + $3.75/1M output.
+    assert.equal(
+      computeCostUsd('gemini-3.8-flash', { inputTokens: 1_000_000, outputTokens: 1_000_000 }),
+      4.5,
+    );
     // every configured model now has real rates → a non-null cost
     for (const model of Object.keys(PRICING)) {
       assert.notEqual(computeCostUsd(model, { inputTokens: 100, outputTokens: 100 }), null);
@@ -45,17 +50,17 @@ describe('computeCostUsd', () => {
 });
 
 describe('buildUsageReport', () => {
-  test('reports tokens, total, and cost together', () => {
+  test('reports tokens, total, cost, and execution duration together', () => {
     assert.deepEqual(
-      buildUsageReport('no-such-model', { inputTokens: 12, outputTokens: 34 }),
-      { model: 'no-such-model', inputTokens: 12, outputTokens: 34, totalTokens: 46, costUsd: null },
+      buildUsageReport('no-such-model', { inputTokens: 12, outputTokens: 34 }, 124.6),
+      { model: 'no-such-model', inputTokens: 12, outputTokens: 34, totalTokens: 46, costUsd: null, durationMs: 125 },
     );
   });
 
   test('defaults absent usage fields to zero', () => {
     assert.deepEqual(
       buildUsageReport('no-such-model'),
-      { model: 'no-such-model', inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: null },
+      { model: 'no-such-model', inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: null, durationMs: 0 },
     );
   });
 });

@@ -11,7 +11,7 @@
  */
 
 const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
-const LLMS = ['google', 'claude', 'chatgpt'];
+const LLMS = ['google', 'g-flash', 'claude', 'chatgpt'];
 
 const DEFAULTS = {
   llm: 'google',
