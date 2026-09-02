@@ -33,8 +33,8 @@ api/
 │       ├── openai.js           # GPT-5.6 Luna via OpenAI SDK
 │       └── genai.js            # Gemini via Google GenAI SDK
 ├── evals/
-│   ├── eval-textbook.js       # /textbook English-only YAML sample exporter (deno)
-│   └── samples/               # per-case <language>-<topic>-<model>.yaml (hand-editable `ideal` + raw `actual`)
+│   ├── eval-textbook.js       # /textbook multi-model YAML sample exporter (deno)
+│   └── <prompt-slug>/         # per-prompt dir: context.json + <language>-<model>.yaml
 ├── deploy.sh                   # Idempotent GCP deploy script
 └── README.md
 ```
@@ -200,19 +200,32 @@ npm test                       # unit tests (node --test)
 
 # Subjective-review sample exporter for /textbook. Requires the dev server
 # running (npm run dev) and `deno` on PATH. Drives /textbook's two-call flow
-# (questions → generate) and writes an English-only, hand-editable YAML per
-# case to evals/samples/<language>-<topic>-<model>.yaml. The raw `actual` block below
-# the divider captures the call-1 questions and the auto-selected answers
-# alongside both raw responses. Rerun to refresh `actual`; your edits to the
-# `ideal` section above the divider are preserved.
-npm run eval:textbook-sample -- \
-  --topic="salsa dancing" --language=es --llm=google \
+# (questions → generate) across every model and writes one hand-editable YAML
+# per model to evals/<prompt-slug>/<language>-<model>.yaml. The first model
+# runs call 1 once and pins its output to evals/<prompt-slug>/context.json;
+# every model then generates call 2 from that SAME context, so the samples are
+# directly comparable. The raw `actual` block below the divider captures the
+# pinned questions/answers plus both raw responses; the `ideal` section above
+# the divider is seeded once and preserved across reruns.
+npm run eval:textbook -- \
+  --topic="salsa dancing in austin, tx" --language=es --llm=all \
   --checklist=default --url=http://localhost:8080
 ```
 
-`--checklist=default` generates only the checklist items the model marked
-checked (falling back to all if none are); `--checklist=all` generates every
-item. Pass `--force` to reseed the `ideal` section from a fresh response.
+`--llm` accepts `all` (default — every model), a single model
+(`google|g-flash|claude|chatgpt`), or a comma-separated subset. `--checklist=default`
+generates only the checklist items the first model marked checked (falling back
+to all if none are); `--checklist=all` generates every item. Pass `--force` to
+reseed each model's `ideal` section from its fresh response.
+
+To rerun an existing prompt — reusing its pinned `context.json` and overwriting
+the model files — run from inside its directory (or point `--dir` at it):
+
+```bash
+cd evals/salsa-dancing-in-austin-tx && deno run ../eval-textbook.js
+# or, from src/:
+npm run eval:textbook -- --dir=../evals/salsa-dancing-in-austin-tx
+```
 
 Provider token ceilings are applied automatically: Claude Haiku receives at most
 8,192 output tokens, GPT-5.6 Luna at most 16,384, and Google retains the

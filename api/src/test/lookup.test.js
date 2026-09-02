@@ -9,7 +9,7 @@ const { buildLookupPrompt } = require('../lookup-prompt');
 const { handleLookup } = require('../lookup');
 const { callAnthropic } = require('../llms/anthropic');
 const { OPENAI_MODEL } = require('../llms/openai');
-const { callGenAIFlash, GENAI_FLASH_MODEL, usageFromMetadata } = require('../llms/genai');
+const { callGenAIFlash, GENAI_FLASH_MODEL, usageFromMetadata, buildGenerationConfig } = require('../llms/genai');
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -429,6 +429,13 @@ describe('handleLookup', () => {
 
   test('g-flash adapter advertises an extended timeout', () => {
     assert.equal(callGenAIFlash.timeoutMs, 60000);
+  });
+
+  test('Gemini requests constrained JSON output', () => {
+    assert.deepEqual(
+      buildGenerationConfig(30000),
+      { maxOutputTokens: 30000, responseMimeType: 'application/json' },
+    );
   });
 
   test('Gemini usage includes billed thinking tokens in output', () => {

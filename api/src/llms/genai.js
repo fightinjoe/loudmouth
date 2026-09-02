@@ -27,13 +27,20 @@ function usageFromMetadata(meta = {}) {
     outputTokens: (meta.candidatesTokenCount ?? 0) + (meta.thoughtsTokenCount ?? 0),
   };
 }
+function buildGenerationConfig(maxOutputTokens) {
+  return {
+    maxOutputTokens,
+    responseMimeType: 'application/json',
+  };
+}
+
 
 async function callGenAIModel(model, prompt, { maxOutputTokens = 1024 } = {}) {
   const ai = getClient();
   const result = await ai.models.generateContent({
     model,
     contents: prompt,
-    config: { maxOutputTokens },
+    config: buildGenerationConfig(maxOutputTokens),
   });
 
   const text = result.text;
@@ -60,5 +67,12 @@ function callGenAIFlash(prompt, options) {
 // Gemini 3.8 Flash may spend longer reasoning before returning structured JSON.
 callGenAIFlash.timeoutMs = 60000;
 
-module.exports = { callGenAI, callGenAIFlash, GENAI_MODEL, GENAI_FLASH_MODEL, usageFromMetadata };
+module.exports = {
+  callGenAI,
+  callGenAIFlash,
+  GENAI_MODEL,
+  GENAI_FLASH_MODEL,
+  usageFromMetadata,
+  buildGenerationConfig,
+};
 
