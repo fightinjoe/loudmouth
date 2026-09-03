@@ -1,0 +1,82 @@
+{
+  "topic": "talking to a doctor about a headcold",
+  "language": "es",
+  "questionsResponse": {
+    "questions": [
+      {
+        "label": "Setting of care",
+        "options": [
+          "Public clinic / Urgent care (Seguro/Centro de Salud)",
+          "Private consultation",
+          "Farmacia consultation (consultorio adjunto)"
+        ],
+        "default": "Public clinic / Urgent care (Seguro/Centro de Salud)"
+      },
+      {
+        "label": "Severity and duration",
+        "options": [
+          "Just starting out (1-2 days, mild)",
+          "Full-blown (body aches, congestion, fatigue)",
+          "Lingering / getting worse (possible secondary infection)"
+        ],
+        "default": "Full-blown (body aches, congestion, fatigue)"
+      },
+      {
+        "label": "Administrative formality",
+        "options": [
+          "Formal medical intake (bureaucratic, ID/insurance focus)",
+          "Direct & casual (talking straight to the doctor/pharmacist)"
+        ],
+        "default": "Direct & casual (talking straight to the doctor/pharmacist)"
+      }
+    ],
+    "checklist": [
+      {
+        "label": "Describe symptoms clearly (congestion, throat, fever)",
+        "checked": true
+      },
+      {
+        "label": "Explain how long you've been sick",
+        "checked": true
+      },
+      {
+        "label": "Understand the doctor's diagnosis or questions",
+        "checked": true
+      },
+      {
+        "label": "Ask about medication and dosage instructions",
+        "checked": true
+      },
+      {
+        "label": "Ask if you need a work sick note (justificante médico)",
+        "checked": false
+      },
+      {
+        "label": "Handle confusion when you don't catch what they said",
+        "checked": true
+      }
+    ],
+    "usage": {
+      "model": "gemini-3.5-flash-lite",
+      "inputTokens": 537,
+      "outputTokens": 365,
+      "totalTokens": 902,
+      "costUsd": 0.0010735999999999999,
+      "durationMs": 1956
+    }
+  },
+  "context": {
+    "answers": {
+      "Setting of care": "Public clinic / Urgent care (Seguro/Centro de Salud)",
+      "Severity and duration": "Full-blown (body aches, congestion, fatigue)",
+      "Administrative formality": "Direct & casual (talking straight to the doctor/pharmacist)"
+    },
+    "checklist": [
+      "Describe symptoms clearly (congestion, throat, fever)",
+      "Explain how long you've been sick",
+      "Understand the doctor's diagnosis or questions",
+      "Ask about medication and dosage instructions",
+      "Handle confusion when you don't catch what they said"
+    ]
+  }
+}
