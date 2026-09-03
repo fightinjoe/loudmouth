@@ -5,7 +5,8 @@
     "start": "node index.js",
     "dev": "set -a && source ../.env && set +a && FUNCTION_TARGET=translate npx @google-cloud/functions-framework",
     "test": "node --test test/",
-    "eval:textbook": "deno run --allow-net --allow-read --allow-write --allow-env ../evals/eval-textbook.js"
+    "eval:textbook": "deno run --allow-net --allow-read --allow-write --allow-env ../evals/eval-textbook.js",
+    "eval:budget": "set -a && source ../.env && set +a && node ../evals/eval-budget.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
