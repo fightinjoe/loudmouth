@@ -12,7 +12,7 @@
  *     cards:     Card[],
  *     editMode:  boolean,             // edit-cards mode toggle
  *     menuOpen:  boolean,             // deck-title menu toggle
- *     tab:       'phrasebook' | 'starred', // phrasebook-view filter tab
+ *     tab:       'conversations' | 'vocab' | 'starred', // phrasebook-view filter tab
  *     reload:    number,              // bump to force a re-fetch of the current deck
  *     browse:    { title, groupsHtml } | null, // browse-view content, replaces the deck body while set
  *   }
@@ -66,7 +66,7 @@ export default {
     editMode: false,
     editOrder: null,
     menuOpen: false,
-    tab: "phrasebook",
+    tab: "conversations",
     reload: 0,
     browse: null,
   },
@@ -81,8 +81,8 @@ export default {
       // is a state transition, not a gesture — but showing the *previous*
       // deck's content while the new one loads would be actively wrong).
       // Re-selecting the deck already loaded needn't blank anything.
-      // Switching decks resets the filter tab back to the full phrasebook.
-      ...(id !== slice.deckId ? { deck: null, cards: [], tab: "phrasebook" } : {}),
+      // Switching decks resets the filter tab back to Conversations.
+      ...(id !== slice.deckId ? { deck: null, cards: [], tab: "conversations" } : {}),
     }),
     // Force a reload of the currently-selected deck even when deckId is
     // unchanged — used after an in-place mutation of deck fields (e.g. mode)
@@ -97,7 +97,7 @@ export default {
       editOrder: null,
       menuOpen: false,
       browse: null,
-      tab: "phrasebook",
+      tab: "conversations",
     }),
     "content/cards-changed": (slice, { cards }) => ({ ...slice, cards }),
     "content/set-tab": (slice, { tab }) =>
@@ -290,17 +290,12 @@ export default {
     delegate.register("content/done", () => ui.transition("content/confirm-edit"));
 
     delegate.register("content/review", () => {
-      const { deck, cards, tab } = ui.get("content");
-      // Review the terms currently in view: the Starred tab reviews only
-      // starred cards, the Phrasebook tab the whole deck. Skip opening an
-      // empty starred review (nothing to flip through).
-      if (tab === "starred") {
-        const starred = cards.filter((c) => c.state?.starredAt);
-        if (!starred.length) return;
-        ui.transition("action/open", { kind: "review", payload: { deck, cards: starred } });
-        return;
-      }
-      ui.transition("action/open", { kind: "review", payload: { deck, cards } });
+      const { deck, cards } = ui.get("content");
+      // Review runs only on starred cards (the Starred tab is the study set),
+      // regardless of which tab is in view. Nothing starred → no-op.
+      const starred = cards.filter((c) => c.state?.starredAt);
+      if (!starred.length) return;
+      ui.transition("action/open", { kind: "review", payload: { deck, cards: starred } });
     });
 
     delegate.register("content/add", () => {

@@ -188,9 +188,10 @@ Questions are dynamically authored for the topic, not a fixed demographic form. 
 mutually exclusive, and meaningful to generation. `default` must be one of `options`. Maximum six
 questions.
 
-Checklist items are concrete communicative goals in the situation's arc. `checked` is the model's
-suggested default. A checked item means the learner wants the goal covered; it is not a required group
-title. Maximum eight items.
+Checklist items are the **conversations to prepare** for the situation — short, learner-recognizable
+titles ordered along the encounter's arc (before → during → after). `checked` is the model's suggested
+default. Each checked item becomes exactly one conversation group in call 2. Maximum seven items (one
+of the eight groups is reserved for `vocab`).
 
 ### Call 2 response
 
@@ -210,18 +211,19 @@ title. Maximum eight items.
 `title` is a concise phrasebook name, preferably 2–4 Title Case words, clamped to 60 characters.
 A missing or blank title is not an error; the client falls back to the raw topic.
 
-Generation designs one canonical, two-sided example conversation first, then derives the teaching
-groups from that exchange and its closest useful deviations. Groups follow the encounter's arc rather
-than mirroring checklist labels; generation may merge, split, rename, reorder, or add connective
-groups. The final `Example conversation` group emits the planned exchange using only language
-introduced in earlier groups. Turns alternate, advance the conversation, and carry speaker metadata
-in `notes` as `{"speaker":"you"}` or `{"speaker":"partner"}`. This is intentionally staged in `notes`,
-not a new schema field.
+Generation treats each selected checklist item as a short, two-sided conversation. Conversation groups
+stay in the selected encounter order; their turns alternate speakers, advance causally, and carry
+speaker metadata in `notes` as `{"speaker":"you"}` or `{"speaker":"partner"}`. The learner's supplied
+role and context constrain their lines.
 
-There are at most eight groups total, including the example conversation, and at most 15 cards per
-group. The model does not emit `context`, `id`, or `importedAt`; the service sets each card's `context`
-to its group's title. Every card follows `CARD_SCHEMA.md`; `/textbook` includes `type` (`word` or
-`phrase`) so the client can distinguish vocabulary from phrase content.
+The final group is titled `vocab`. It contains 10–15 useful situation-specific word cards extracted
+from the generated conversations, including reusable citation forms for conjugated verbs. Each vocab
+card identifies an exact source conversation line in `notes` as `{"source":"…"}`.
+
+There are at most eight groups total, including `vocab`, and at most 15 cards per group. The model does
+not emit `context`, `id`, or `importedAt`; the service sets each card's `context` to its group's title.
+Every card follows `CARD_SCHEMA.md`; `/textbook` includes `type` (`word` or `phrase`) so the client can
+distinguish vocabulary from conversation content.
 
 ### Model requirements
 
@@ -230,24 +232,39 @@ padding questions and default-check the goals that carry the core interaction.
 
 Call 2 must:
 
-- design a canonical example conversation first, then derive the teaching groups from it;
-- map every selected communicative goal to a concrete conversation turn;
-- keep complications causal: introduce the event, then give it a natural response;
+- emit one short, realistic conversation for every selected checklist item, preserving encounter order;
+- ground at least two turns per conversation in supplied context such as role, scene, relationship,
+  skill level, constraint, object, or action;
+- give each conversation a causal progression: initiation or situation, meaningful reply, and response
+  or resolution;
+- include at least one partner reply that supplies information, asks a question, makes a decision, or
+  changes what happens next;
 - respect any learner role in the context when assigning dialogue actions and speakers;
 - teach language the learner will say, hear, point at, choose, or substitute in the situation;
-- include both sides of the exchange, including likely replies;
-- extract every substantive dialogue clause into an earlier phrase card before adding nearby alternatives;
-- include a `Words for this exchange` group with 6–10 useful situation-specific word cards, excluding
-  generic survival words, obvious loanwords, and unchanged English cognates;
-- ensure each dialogue clause matches an earlier phrase card except for punctuation and capitalization;
+- include both sides of each exchange, including likely replies;
+- include a final `vocab` group with 10–15 useful situation-specific word cards drawn from the
+  conversations;
+- place the topic's central action or state first in `vocab`, in reusable citation form, when it occurs
+  in a conversation;
 - omit generic survival padding and encyclopedic or glossary-only material;
-- organize content around the encounter's arc;
-- end by emitting the planned two-sided example conversation;
 - alternate dialogue speakers strictly so no speaker responds to their own prior turn;
 - return raw JSON with no prose or code fences.
 
 The quality bar is conversational and practical, not textbook-stiff. The shared prompt and card-reading
 rules are backend-independent.
+
+### Generation robustness
+
+Model-emitted JSON is occasionally malformed, most often in Japanese `reading` token arrays. Call 2
+hardens generation before falling back to `502`:
+
+- a missing comma between adjacent array or object elements is repaired;
+- a structurally malformed `reading` token is dropped, keeping the card without furigana (reading is
+  an optional display aid, not core content);
+- the generation is retried once on any remaining validation failure.
+
+These recover the response in place where possible; only a still-invalid result after the retry
+returns `502`.
 
 ## Service flow
 

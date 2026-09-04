@@ -116,12 +116,16 @@ describe("renderCardsHTML — Group wrapper (collapsible sections, Figma node 75
     expect(html).toContain('data-action="content/toggle-group"');
   });
 
-  it("uses a homogeneous 'words' label when every card in the group is type: word", () => {
+  it("renders type: word cards as a flat vocab list on the vocab tab, excluded from conversations", () => {
     const cards = [
-      { ...card({ id: "c1", text: "水", translation: "water", createdAt: "2026-01-01T00:00:00.000Z", context: "Drinks" }), type: "word" },
-      { ...card({ id: "c2", text: "茶", translation: "tea", createdAt: "2026-01-02T00:00:00.000Z", context: "Drinks" }), type: "word" },
+      { ...card({ id: "c1", text: "水", translation: "water", createdAt: "2026-01-01T00:00:00.000Z", context: "vocab" }), type: "word" },
+      { ...card({ id: "c2", text: "茶", translation: "tea", createdAt: "2026-01-02T00:00:00.000Z", context: "vocab" }), type: "word" },
     ];
-    const html = renderCardsHTML(deck, cards);
-    expect(html).toContain("2 words");
+    const vocabHtml = renderCardsHTML(deck, cards, "vocab");
+    expect(vocabHtml).toContain('data-card-id="c1"');
+    expect(vocabHtml).toContain('data-card-id="c2"');
+    expect(vocabHtml).not.toContain("card-group");
+    const convHtml = renderCardsHTML(deck, cards, "conversations");
+    expect(convHtml).toContain("No cards in this deck");
   });
 });

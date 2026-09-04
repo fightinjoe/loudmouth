@@ -39,6 +39,13 @@ const TEXTBOOK_GENERATE_MAX_TOKENS = 30000;
 // budget"): target p50 <4s, timeout at 15s → 502, same path as a hard error.
 const TEXTBOOK_TIMEOUT_MS = 15000;
 
+// The reading-token JSON the model hand-writes is occasionally malformed —
+// mostly for Japanese (a dropped comma, an empty reading base) — which the
+// strict validator rejects. The validator repairs the common comma case in
+// place; for the rest, retry the generate call this many times on a validation
+// failure before returning 502. Retry is validation-only (never a timeout).
+const TEXTBOOK_GENERATE_RETRIES = 1;
+
 /** Distinguishes a timeout from any other LLM failure, same pattern as
  * lookup.js's LookupTimeoutError. */
 class TextbookTimeoutError extends Error {}
@@ -123,16 +130,26 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
   // mode === 'generate'
   const prompt = buildTextbookGeneratePrompt({ topic, language, context });
   const maxOutputTokens = handler.maxOutputTokens || TEXTBOOK_GENERATE_MAX_TOKENS;
-  const { text: raw, model, usage, durationMs } = await callLlm(handler, llm, 'textbook:generate', prompt, maxOutputTokens, effectiveTimeoutMs);
 
-  let result;
-  try {
-    result = validateTextbookGenerateResponse(raw);
-  } catch (err) {
-    console.error({ event: 'validation_error', route: 'textbook:generate', llm, raw, error: err.message });
-    const wrapped = new Error('Invalid response from LLM');
-    wrapped.status = 502;
-    throw wrapped;
+  // Retry ONLY on a validation failure (malformed/invalid model JSON). A
+  // timeout or LLM error throws straight out of callLlm — retrying a slow call
+  // would only make it slower.
+  let result, model, usage, durationMs;
+  for (let attempt = 1; ; attempt++) {
+    const call = await callLlm(handler, llm, 'textbook:generate', prompt, maxOutputTokens, effectiveTimeoutMs);
+    try {
+      result = validateTextbookGenerateResponse(call.text);
+      ({ model, usage, durationMs } = call);
+      break;
+    } catch (err) {
+      console.error({ event: 'validation_error', route: 'textbook:generate', llm, attempt, raw: call.text, error: err.message });
+      if (attempt > TEXTBOOK_GENERATE_RETRIES) {
+        const wrapped = new Error('Invalid response from LLM');
+        wrapped.status = 502;
+        throw wrapped;
+      }
+      console.warn({ event: 'textbook_generate_retry', llm, attempt, error: err.message });
+    }
   }
 
   if (result.warnings.length > 0) {

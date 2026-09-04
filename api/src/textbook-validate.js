@@ -18,7 +18,7 @@
  *     mechanism to /lookup's group-card context-setting.
  */
 
-const { validateCard, normalizeJapaneseReadingTokens, coalesceSpacedReadingTokens } = require('./card-validate');
+const { validateCard, validateReadingTokens, normalizeJapaneseReadingTokens, coalesceSpacedReadingTokens } = require('./card-validate');
 const {
   MAX_QUESTIONS,
   MAX_CHECKLIST_ITEMS,
@@ -66,8 +66,18 @@ function parseJsonResponse(raw) {
   try {
     parsed = JSON.parse(cleaned);
   } catch (err) {
-    // Truncation (max_tokens) lands here — invalid/incomplete JSON.
-    throw new Error(`JSON parse failed: ${err.message}. Raw (first 500 chars): ${cleaned.slice(0, 500)}`);
+    // LLMs occasionally drop a comma between adjacent array/object elements in
+    // long nested arrays — most often Japanese `reading` token arrays, e.g.
+    // `["上","あ"] ["がって",null]` instead of `["上","あ"],["がって",null]`. A
+    // closer immediately followed by an opener is never valid JSON, so inserting
+    // the missing comma is a safe, targeted repair. Attempted ONLY after the
+    // strict parse fails, so a valid response is never mutated. (Truncation at
+    // max_tokens also lands here; the repair won't fix it, so it stays a 502.)
+    try {
+      parsed = JSON.parse(cleaned.replace(/([}\]])(\s*)([[{])/g, '$1,$2$3'));
+    } catch {
+      throw new Error(`JSON parse failed: ${err.message}. Raw (first 500 chars): ${cleaned.slice(0, 500)}`);
+    }
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     throw new Error('Response is not a JSON object');
@@ -223,12 +233,30 @@ function validateAndCleanGroup(group, prefix, warnings) {
   }
 
   cards = cards.map((card, ci) => {
+    let next = card;
+    // Model-emitted object notes → JSON string (the client reads notes as a
+    // JSON blob, e.g. {"speaker":"you"} / {"source":"…"}).
     const notes = card?.notes;
     if (notes && typeof notes === 'object' && !Array.isArray(notes) && Object.keys(notes).length > 0) {
       warnings.push(`${prefix}.cards[${ci}].notes serialized from object`);
-      return { ...card, notes: JSON.stringify(notes) };
+      next = { ...next, notes: JSON.stringify(notes) };
     }
-    return card;
+    // A `reading` is optional furigana (a display aid), not core content, so a
+    // malformed one must NOT fail the whole phrasebook. Models slip on long
+    // Japanese reading arrays (bad pairs, an empty base, over-merged tokens);
+    // drop just the reading and keep the card's text/translation — it renders
+    // without ruby. (JSON-syntax breakage is caught earlier at parse time and
+    // handled by the comma-repair + the generate retry.)
+    if (next.reading !== undefined) {
+      try {
+        validateReadingTokens(next.reading, `${prefix}.cards[${ci}].reading`);
+      } catch (err) {
+        warnings.push(`${prefix}.cards[${ci}] dropped malformed reading (${err.message})`);
+        const { reading, ...rest } = next;
+        next = rest;
+      }
+    }
+    return next;
   });
 
   cards.forEach((card, ci) => validateCard(card, `${prefix}.cards[${ci}]`));

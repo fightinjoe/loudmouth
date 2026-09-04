@@ -10,10 +10,10 @@ description: >
 > Prepare language for real conversations.
 
 Catchphrase creates bespoke, situation-specific phrasebooks through a short guided conversation. A
-learner describes an upcoming situation, answers a few context questions, chooses communicative
-goals, and receives a complete phrasebook with useful vocabulary, phrases, and a two-sided example
-dialogue. The learner reviews it in short sessions and expands it without filing or reorganizing
-content.
+learner describes an upcoming situation, answers a few context questions, chooses which conversations
+to prepare, and receives a phrasebook of several short two-sided conversations plus the key vocabulary
+drawn from them. The learner reviews it in short sessions across conversation, vocabulary, and starred
+tabs.
 
 ## User and problem
 
@@ -39,19 +39,15 @@ Initial product languages are Chinese and Japanese. The API also supports Spanis
 ## Current experience
 
 1. **Create:** enter a topic or situation.
-2. **Clarify:** answer dynamic, topic-specific questions and review a checklist of communicative goals.
-3. **Generate:** commit a complete, multi-section phrasebook in one step.
+2. **Clarify:** answer dynamic, topic-specific questions and check which conversations to prepare.
+3. **Generate:** commit a complete phrasebook in one step — several short two-sided conversations plus
+   a `vocab` group of the words drawn from them.
 4. **Prioritize:** star cards as bounded binary emphasis; generation is not a per-card save flow.
-5. **Review:** reveal cards manually, switch direction, play pronunciation, and swipe through a
-   phrasebook without scoring.
-6. **Expand:** choose a bounded "give me more, here" action:
-   - group → more cards in that group's context;
-   - phrasebook → a new section, with a typing fallback for a specific request;
-   - card → decomposition into component words and grammar, with worthwhile words promoted to cards.
+5. **Review:** three tabs — **Conversations**, **Vocab**, and **Starred**. Reveal cards, switch
+   direction, play pronunciation, and swipe, without scoring. Review runs on the starred cards.
 
-Expansion is menu-first, deduplicated against existing content, auto-filed through `context`, and
-never a reroll. Difficulty and explanation depth are requested per card, not selected as initial
-phrasebook settings.
+Difficulty, explanation depth, and expansion (more cards, decomposition) are deferred to a later
+phase, not part of initial generation.
 
 ## Goals
 
@@ -70,16 +66,18 @@ phrasebook settings.
 - Whole-phrasebook regeneration, undo, or unrestricted editing.
 - Spaced repetition until a useful signal exists without introducing scoring.
 - Furigana ruby rendering until the mobile behavior is validated.
+- Per-card and per-group expansion (more cards, decomposition, grammar and similar-phrase depth) —
+  deferred to a later phase.
 
 ## Phases
 
 ### Phase 1 — Prep and review
 
 - Guided phrasebook creation through `/textbook`.
-- Dynamic context questions and communicative-goal checklist.
-- Complete phrasebook generation with sections, vocabulary, phrases, and example conversation.
-- Starred-card priority view, flip review, direction toggle, swipe navigation, audio, and browse/search.
-- Bounded expansion for groups, phrasebooks, and card decomposition.
+- Dynamic context questions and a checklist of the conversations to prepare.
+- Complete phrasebook generation: several short two-sided conversations plus a vocabulary group.
+- Three-tab review (Conversations / Vocab / Starred): flip review, direction toggle, swipe
+  navigation, audio, and browse/search; review runs on starred cards.
 
 ### Phase 2 — Library durability
 

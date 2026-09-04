@@ -173,20 +173,20 @@ describe('validateTextbookQuestionsResponse', () => {
     assert.ok(warnings.some((w) => w.includes('questions')));
   });
 
-  test('exactly 8 checklist items → no trim (boundary)', () => {
-    const checklist = Array.from({ length: 8 }, (_, i) => ({ label: `c${i}`, checked: false }));
+  test('exactly 7 checklist items → no trim (boundary)', () => {
+    const checklist = Array.from({ length: 7 }, (_, i) => ({ label: `c${i}`, checked: false }));
     const raw = JSON.stringify({ questions: [{ label: 'q', options: ['a'], default: 'a' }], checklist });
     const { response, warnings } = validateTextbookQuestionsResponse(raw);
-    assert.equal(response.checklist.length, 8);
+    assert.equal(response.checklist.length, 7);
     assert.deepEqual(warnings, []);
   });
 
-  test('> 8 checklist items → trimmed to 8, keeps first 8 in order', () => {
+  test('> 7 checklist items → trimmed to 7, keeps first 7 in order', () => {
     const checklist = Array.from({ length: 11 }, (_, i) => ({ label: `c${i}`, checked: false }));
     const raw = JSON.stringify({ questions: [{ label: 'q', options: ['a'], default: 'a' }], checklist });
     const { response, warnings } = validateTextbookQuestionsResponse(raw);
-    assert.equal(response.checklist.length, 8);
-    assert.deepEqual(response.checklist.map((c) => c.label), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7']);
+    assert.equal(response.checklist.length, 7);
+    assert.deepEqual(response.checklist.map((c) => c.label), ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6']);
     assert.ok(warnings.some((w) => w.includes('checklist')));
   });
 
@@ -208,6 +208,28 @@ describe('validateTextbookQuestionsResponse', () => {
 describe('validateTextbookGenerateResponse', () => {
   test('malformed JSON → throws', () => {
     assert.throws(() => validateTextbookGenerateResponse('not json'));
+  });
+
+  test('missing comma between reading tokens is repaired, not rejected', () => {
+    const card = makeCard({ lang: 'ja', text: '上がって', translation: 'come on up', reading: [['上', 'あ'], ['がって', null]] });
+    const valid = JSON.stringify({ groups: [{ title: 'g', cards: [card] }] });
+    // Drop the comma between the two reading tokens (`],[` → `] [`); it is the
+    // only such adjacency in this single-card payload.
+    const broken = valid.replace('],[', '] [');
+    assert.notEqual(broken, valid);
+    const { response } = validateTextbookGenerateResponse(broken);
+    assert.equal(response.groups.length, 1);
+    assert.equal(response.groups[0].cards.length, 1);
+  });
+
+  test('malformed reading token → reading dropped, card kept (furigana is optional)', () => {
+    const bad = makeCard({ lang: 'ja', text: '上がって', translation: 'come on up', reading: [['上', 'あ'], 'し', [null, null]] });
+    const raw = JSON.stringify({ groups: [{ title: 'g', cards: [bad] }] });
+    const { response, warnings } = validateTextbookGenerateResponse(raw);
+    assert.equal(response.groups.length, 1);
+    assert.equal(response.groups[0].cards.length, 1);
+    assert.equal(response.groups[0].cards[0].reading, undefined);
+    assert.ok(warnings.some((w) => /dropped malformed reading/.test(w)));
   });
 
   test('truncated JSON → throws (max_tokens trap)', () => {
@@ -351,35 +373,35 @@ describe('prompt builders', () => {
     const prompt = buildTextbookQuestionsPrompt({ topic: 'salsa dancing', language: 'es' });
     assert.match(prompt, /salsa dancing/);
     assert.match(prompt, /Hard cap: 6 questions/);
-    assert.match(prompt, /Hard cap: 8 items/);
+    assert.match(prompt, /Hard cap: 7 conversations/);
   });
 
-  test('buildTextbookGeneratePrompt embeds context and derives teaching groups from a conversation-first plan', () => {
+  test('buildTextbookGeneratePrompt lists the conversations and requires a vocab group', () => {
     const prompt = buildTextbookGeneratePrompt({
       topic: 'salsa dancing',
       language: 'es',
-      context: { answers: { 'Salsa scene': 'Cuban style' }, checklist: ['Ask someone to dance', 'Dance/step vocabulary'] },
+      context: { answers: { 'Salsa scene': 'Cuban style' }, checklist: ['Ask someone to dance', 'Compliments on the floor'] },
     });
     assert.match(prompt, /Salsa scene: Cuban style/);
     assert.match(prompt, /- Ask someone to dance/);
-    assert.match(prompt, /- Dance\/step vocabulary/);
-    assert.match(prompt, /you may reshape/);
-    assert.match(prompt, /Teach both voices/);
-    assert.match(prompt, /Words for this exchange/);
-    assert.match(prompt, /Extract before expanding/);
-    assert.match(prompt, /Include 6–10 `type:"word"` cards/);
-    assert.match(prompt, /Design the example conversation FIRST/);
-    assert.match(prompt, /derive the teaching material from that conversation/);
+    assert.match(prompt, /- Compliments on the floor/);
+    assert.match(prompt, /one group per conversation/);
+    assert.match(prompt, /aim for 6/);
+    assert.match(prompt, /At least two turns must depend on/);
+    assert.match(prompt, /concrete progression/);
+    assert.match(prompt, /partner reply must give the learner new information/);
     assert.match(prompt, /Alternate speakers strictly/);
-    assert.match(prompt, /Map every checked goal to at least one concrete conversation turn/);
-    assert.match(prompt, /Preserve cause and effect/);
-    assert.match(prompt, /Never silently make the learner perform the partner's role/);
-    assert.match(prompt, /translation.*must differ materially/);
-    assert.match(prompt, /each clause must match an earlier card's wording exactly/);
-    assert.match(prompt, /do NOT assume or bias toward any learner proficiency level/);
-    assert.match(prompt, /genuine exchange/);
-    assert.match(prompt, /Example conversation/);
+    assert.match(prompt, /Keep each conversation DISTINCT/);
+    assert.match(prompt, /title exactly "vocab"/);
+    assert.match(prompt, /10–15 word cards/);
+    assert.match(prompt, /central action or state named by the topic/);
+    assert.match(prompt, /first vocab card MUST be its reusable citation form/);
     assert.match(prompt, /"speaker":"you"/);
+    assert.match(prompt, /"source"/);
+    assert.match(prompt, /translation must differ materially/);
+    assert.doesNotMatch(prompt, /Example conversation/);
+    assert.match(prompt, /do NOT assume or bias toward any learner proficiency level/);
+    assert.match(prompt, /"phrase" for a conversation turn/);
   });
 
   test('buildTextbookGeneratePrompt reuses /lookup gender-collapse rule for gendered languages', () => {
@@ -465,6 +487,26 @@ describe('handleTextbook', () => {
     assert.equal(res.body.groups.length, 1);
     assert.equal(res.body.groups[0].cards[0].context, 'Ask someone to dance');
     assert.ok(Number.isInteger(res.body.usage.durationMs) && res.body.usage.durationMs >= 0);
+  });
+
+  test('call 2 retries on a transient validation failure, then succeeds → 200', async () => {
+    const res = makeRes();
+    let calls = 0;
+    const registry = { google: async () => { calls += 1; return reply(calls === 1 ? 'not json' : happyGenerateRaw()); } };
+    await handleTextbook({ body: VALID_GENERATE_BODY }, res, registry);
+    assert.equal(calls, 2);
+    assert.equal(res.statusCode, 200);
+    assert.ok(Array.isArray(res.body.groups));
+  });
+
+  test('call 2 that stays invalid → 502 after the bounded retries (called more than once)', async () => {
+    const res = makeRes();
+    let calls = 0;
+    const registry = { google: async () => { calls += 1; return reply('not json'); } };
+    await handleTextbook({ body: VALID_GENERATE_BODY }, res, registry);
+    assert.equal(res.statusCode, 502);
+    assert.equal(res.body.error, 'Invalid response from LLM');
+    assert.ok(calls >= 2);
   });
 
   test('call 2 surfaces the model title through to the 200 body', async () => {

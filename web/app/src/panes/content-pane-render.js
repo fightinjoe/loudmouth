@@ -36,13 +36,25 @@ export function renderHeader(deck) {
  *     save order. Sections are ordered by each section's earliest card
  *     (oldest-first), with "Translations" always first when present.
  */
-export function renderCardsHTML(deck, cards, tab = "phrasebook") {
+export function renderCardsHTML(deck, cards, tab = "conversations") {
   if (!deck) return "";
   if (tab === "starred") {
     cards = cards.filter((c) => c.state?.starredAt);
     if (cards.length === 0) {
       return `<div class="deck-view-empty text-center fg-secondary"><p>No starred terms yet. Tap the star on a card to save it here.</p></div>`;
     }
+  } else if (tab === "vocab") {
+    // Vocab tab: the `word` cards as a flat list (they share the one "vocab"
+    // group, so no collapsible group wrapper is needed).
+    const words = cards.filter((c) => c.type === "word");
+    if (words.length === 0) {
+      return `<div class="deck-view-empty text-center fg-secondary"><p>No vocabulary yet.</p></div>`;
+    }
+    return words.map((c) => renderCardRow(c, deck.readingDisplay)).join("");
+  } else {
+    // Conversations tab: everything that isn't a standalone vocabulary word —
+    // the conversation groups (phrase cards) plus any ungrouped look-up terms.
+    cards = cards.filter((c) => c.type !== "word");
   }
   if (cards.length === 0) {
     return `<div class="deck-view-empty text-center fg-secondary"><p>No cards in this deck.</p></div>`;
@@ -147,22 +159,24 @@ function escSection(str) {
     .replace(/>/g, "&gt;");
 }
 
-// Phrasebook tabs (Figma node 862:31590): "PHRASEBOOK" shows every term;
-// "STARRED (N)" filters the list to starred terms only. Only real
-// phrasebooks get tabs — the lang: browse virtual deck and suggested-
-// phrasebook previews render their list without them.
-export function renderTabsBar(deck, cards, tab = "phrasebook") {
+// Phrasebook tabs: "Conversations" shows the conversation groups (phrase
+// cards), "Vocab (N)" the vocabulary words, "Starred (N)" the starred terms.
+// Only real phrasebooks get tabs — the lang: browse virtual deck and
+// suggested-phrasebook previews render their list without them.
+export function renderTabsBar(deck, cards, tab = "conversations") {
   if (!deck || deck.system || deck.preview) return "";
+  const vocabCount = cards.filter((c) => c.type === "word").length;
   const starredCount = cards.filter((c) => c.state?.starredAt).length;
   return `
     <div class="deck-tabs flex items-center" data-region="deck-tabs">
-      <button class="deck-tab tappable flex-1 text-center" data-action="content/set-tab" data-tab="phrasebook" data-active="${tab === "phrasebook"}">Phrasebook</button>
+      <button class="deck-tab tappable flex-1 text-center" data-action="content/set-tab" data-tab="conversations" data-active="${tab === "conversations"}">Conversations</button>
+      <button class="deck-tab tappable flex-1 text-center" data-action="content/set-tab" data-tab="vocab" data-active="${tab === "vocab"}">Vocab (${vocabCount})</button>
       <button class="deck-tab tappable flex-1 flex items-center justify-center gap-sm" data-action="content/set-tab" data-tab="starred" data-active="${tab === "starred"}">${icon("star-fill", { size: "sm" })}<span>Starred (${starredCount})</span></button>
     </div>
   `;
 }
 
-export function renderDeckBody(deck, cards, tab = "phrasebook") {
+export function renderDeckBody(deck, cards, tab = "conversations") {
   if (!deck) return "";
   return `
     ${renderHeader(deck)}

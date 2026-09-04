@@ -139,10 +139,13 @@ describe("content pane — Add/Review entry points (PH-002/PH-007/PH-009)", () =
     });
   });
 
-  it("content/review opens the review action pane for the selected deck", async () => {
+  it("content/review opens the review action pane with the deck's starred cards", async () => {
     const { ui, rootEl } = mountPane();
     ui.transition("content/select-deck", { id: "d1" });
     await flush();
+    ui.transition("content/cards-changed", {
+      cards: [{ id: "x1", state: { starredAt: "2026-01-01T00:00:00.000Z" } }],
+    });
 
     const opens = [];
     const realTransition = ui.transition;
@@ -159,6 +162,27 @@ describe("content pane — Add/Review entry points (PH-002/PH-007/PH-009)", () =
     expect(opens).toHaveLength(1);
     expect(opens[0].kind).toBe("review");
     expect(opens[0].payload.deck).toEqual(expect.objectContaining({ id: "d1" }));
+    expect(opens[0].payload.cards).toEqual([expect.objectContaining({ id: "x1" })]);
+  });
+
+  it("content/review is a no-op when no cards are starred", async () => {
+    const { ui, rootEl } = mountPane();
+    ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+
+    const opens = [];
+    const realTransition = ui.transition;
+    ui.transition = (verb, payload) => {
+      if (verb === "action/open") opens.push(payload);
+      return realTransition(verb, payload);
+    };
+
+    const btn = document.createElement("button");
+    btn.dataset.action = "content/review";
+    rootEl.appendChild(btn);
+    btn.click();
+
+    expect(opens).toHaveLength(0);
   });
 });
 
