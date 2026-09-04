@@ -236,7 +236,10 @@ async function measureCell({ llm, prompt, dryRun }) {
     const res = await handler(prompt, { maxOutputTokens: ceiling });
     const durationMs = Date.now() - t0;
     let jsonValid = false;
-    try { JSON.parse(res.text); jsonValid = true; } catch { /* truncated / malformed */ }
+    // Match production leniency (textbook-validate.js): strip ```json fences
+    // before parsing, so a fenced-but-valid response is not a false negative.
+    const cleaned = res.text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    try { JSON.parse(cleaned); jsonValid = true; } catch { /* truncated / malformed */ }
     const outputTokens = res.usage.outputTokens ?? 0;
     const inputTokens = res.usage.inputTokens ?? 0;
     const fitTokens = jsonValid && outputTokens < ceiling * 0.98;
