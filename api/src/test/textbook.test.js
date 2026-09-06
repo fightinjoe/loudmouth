@@ -64,6 +64,7 @@ function happyGenerateRaw() {
   });
 }
 
+
 // Wraps raw model text in the wrapper contract shape ({ text, model, usage })
 // that src/llms/*.js now return and the handlers consume.
 function reply(text, usage = { inputTokens: 12, outputTokens: 34 }) {
@@ -362,13 +363,14 @@ describe('validateTextbookGenerateResponse', () => {
     assert.equal('title' in response, false);
     assert.ok(warnings.some((w) => w.includes('title')));
   });
+
 });
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 
 describe('prompt builders', () => {
-  test('buildTextbookQuestionsPrompt includes the topic and caps', () => {
+  test('buildTextbookQuestionsPrompt includes the topic, fact boundary, and caps', () => {
     const prompt = buildTextbookQuestionsPrompt({ topic: 'salsa dancing', language: 'es' });
     assert.match(prompt, /salsa dancing/);
     assert.match(prompt, /Hard cap: 6 questions/);
@@ -377,9 +379,14 @@ describe('prompt builders', () => {
     assert.match(prompt, /Avoid "and", slashes, parentheticals/);
     assert.match(prompt, /Proficiency or language confidence is not a required axis/);
     assert.match(prompt, /defining identity or hard constraint/);
+    assert.match(prompt, /never assume one significant fact from another/);
+    assert.match(prompt, /neutral "Not specified" option/);
+    assert.match(prompt, /never combine a medical condition with an ethical constraint/);
+    assert.match(prompt, /performs the topic's primary action/);
+    assert.match(prompt, /do not split acceptance\/refusal/);
   });
 
-  test('buildTextbookGeneratePrompt lists the conversations and requires a vocab group', () => {
+  test('buildTextbookGeneratePrompt plans a phrase bank before assembling selected groups', () => {
     const prompt = buildTextbookGeneratePrompt({
       topic: 'salsa dancing',
       language: 'es',
@@ -392,23 +399,39 @@ describe('prompt builders', () => {
     assert.match(prompt, /Language Confidence: Beginner/);
     assert.match(prompt, /- Ask someone to dance/);
     assert.match(prompt, /- Compliments on the floor/);
-    assert.match(prompt, /one group per conversation/);
-    assert.match(prompt, /aim for 4/);
-    assert.match(prompt, /Use context to select the relevant phrase frames/);
-    assert.match(prompt, /learner-originating line/);
-    assert.match(prompt, /changing one word or short phrase/);
-    assert.match(prompt, /no more than one or two concrete situation-specific nouns/);
-    assert.match(prompt, /confirmation, reassurance, acknowledgment/);
-    assert.match(prompt, /positive\/negative and alternative outcomes/);
-    assert.match(prompt, /ALWAYS include the conventional target-language term/);
-    assert.match(prompt, /ordinary learner-facing meaning/);
-    assert.match(prompt, /natural speech act for the setting/);
-    assert.match(prompt, /never translate an awkward English sentence literally/);
+    assert.match(prompt, /STATED FACTS/);
+    assert.match(prompt, /UNSTATED FACTS/);
+    assert.match(prompt, /ESSENTIAL CONCEPTS/);
+    assert.match(prompt, /COMMUNICATIVE FUNCTIONS/);
+    assert.match(prompt, /silently plan the phrase bank/);
+    assert.match(prompt, /communicative intent/);
+    assert.match(prompt, /essential concepts covered/);
+    assert.match(prompt, /reusable substitution/);
+    assert.match(prompt, /exactly one destination conversation title/);
+    assert.match(prompt, /using ONLY its approved bank items/);
+    assert.match(prompt, /Do not emit the bank as a separate object/);
+    assert.match(prompt, /Do not rediscover vocab from the topic after assembly/);
+    assert.match(prompt, /every conversation card came from the planned bank/);
+    assert.match(prompt, /conventional essential loanword/);
+    assert.match(prompt, /source phrase for EVERY essential concept/);
+    assert.match(prompt, /lemma for EVERY essential concept/);
+    assert.match(prompt, /primary action.*direct learner phrase/s);
     assert.match(prompt, /default to level-neutral/);
     assert.match(prompt, /HONOR it/);
-    assert.match(prompt, /ESSENTIAL CONCEPTS/);
-    assert.match(prompt, /never infer that a named item or action is compatible/);
+    assert.match(prompt, /never infer that a named item or\s+action is compatible/);
     assert.match(prompt, /"phrase" for a conversation turn/);
+  });
+
+  test('buildTextbookGeneratePrompt keeps alternatives in one group with one speaker', () => {
+    const prompt = buildTextbookGeneratePrompt({
+      topic: 'salsa dancing',
+      language: 'es',
+      context: { answers: {}, checklist: ['Ask someone to dance'] },
+    });
+    assert.match(prompt, /Alternatives belong in the SAME group/);
+    assert.match(prompt, /assign every alternative the same speaker/);
+    assert.match(prompt, /Never repeat an invitation/);
+    assert.match(prompt, /Phrase quality, coverage, and factual\s+safety take precedence/);
   });
 
   test('buildTextbookGeneratePrompt reuses /lookup gender-collapse rule for gendered languages', () => {

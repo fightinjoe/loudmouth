@@ -146,7 +146,8 @@ The primary output of `/textbook` is a set of meaningful, reusable words and phr
 learner converse in the target language. Realistic conversations are the generation mechanism for
 discovering and validating that language, not an excuse to optimize for story realism.
 
-Generation priorities, in order:
+Required semantic coverage, factual fidelity, role fidelity, and safety are non-negotiable gates.
+Among outputs satisfying those invariants, generation priorities are:
 
 1. Reusable, memorizable words and phrases.
 2. The learner's ability to express their needs, preferences, constraints, intentions, and identity.
@@ -243,10 +244,12 @@ modification, or transaction conversations. Maximum seven items; one group is re
 `title` is a concise phrasebook name, preferably 2–4 Title Case words, clamped to 60 characters.
 A missing or blank title is not an error; the client falls back to the raw topic.
 
-Generation treats each selected checklist item as a short, two-sided conversation. Conversation groups
-stay in the selected encounter order; their turns alternate speakers and carry speaker metadata in
-`notes` as `{"speaker":"you"}` or `{"speaker":"partner"}`. The learner's supplied role and context
-constrain their lines.
+Generation treats each selected checklist item as a short, two-sided conversation assembled from a
+planned phrase bank. Conversation groups stay in the selected encounter order. Each card carries
+speaker metadata in `notes` as `{"speaker":"you"}` or `{"speaker":"partner"}`. The learner's supplied
+role and context constrain their lines. Positive/negative alternatives remain in the same group and may
+appear consecutively with the same speaker; phrase quality and coverage take precedence over a strictly
+linear exchange.
 
 The final group is titled `vocab`. It contains 10–15 useful situation-specific word cards extracted
 from the generated conversations, including reusable citation forms for conjugated verbs. Each vocab
@@ -257,20 +260,37 @@ not emit `context`, `id`, or `importedAt`; the service sets each card's `context
 Every card follows `CARD_SCHEMA.md`; `/textbook` includes `type` (`word` or `phrase`) so the client can
 distinguish vocabulary from conversation content.
 
+Before emitting conversations, call 2 internally separates stated facts, significant unstated facts,
+essential concepts, and applicable communicative functions. It then plans a compact phrase bank.
+Each planned item records its intent, target-language phrase and ordinary English gloss, speaker,
+essential-concept coverage, polarity/alternative role, reusable substitution, and destination group.
+The intermediate inventories and phrase bank are not returned to the caller.
+
+Conversation cards are copied from approved phrase-bank items; assembly does not invent connector lines.
+Required vocab lemmas come from the same essential-concept inventory, and supporting vocab must occur in
+an emitted bank phrase. This planning remains inside the existing single generation call, preserving
+the endpoint response and provider-independent execution path.
+
 ### Model requirements
 
-Call 1 must infer only the context axes that materially change the generated chapter. It must avoid
-padding questions and default-check the goals that carry the core interaction. A defining identity or
-hard constraint requires a checked conversation for stating the learner's need directly.
+Call 1 must infer only the context axes that materially change the generated chapter. An unstated
+medical, cultural, religious, or personal fact requires a neutral `Not specified` option as the
+default, and distinct kinds of claims must not be combined into one option. Call 1 must avoid padding
+questions and default-check a conversation where the learner performs the topic's primary action. A
+defining identity or hard constraint also requires a checked conversation for stating the learner's
+need directly.
 
 Call 2 must:
 
-- optimize first for reusable, memorizable words and phrases; conversations are a means to select and
-  validate language, not the primary quality target;
-- identify the topic's primary action plus every explicit learner identity, need, and hard constraint
-  as essential concepts;
-- teach each essential identity, need, and hard constraint in a direct learner-originating phrase, a
-  general request, question, or response when useful, and a `vocab` card;
+- identify the topic's primary action plus every explicit learner identity, need, and hard constraint,
+  including the conventional category term needed to explain an identity or constraint without merely
+  listing examples, as essential concepts with conventional target-language lemmas;
+- separate stated facts from significant unstated medical, cultural, religious, and personal claims;
+- plan every conversation card in a phrase bank before assembly, including intent, gloss, speaker,
+  concept coverage, polarity/alternative role, reusable substitution, and destination group;
+- teach the primary action and each essential identity, need, and hard constraint in a direct
+  learner-originating phrase, and ensure every essential concept occurs in an emitted phrase and a
+  `vocab` card;
 - include reusable learner self-expression of needs, preferences, constraints, intentions, and identity;
 - default to level-neutral language, but honor an explicit proficiency or language-confidence context
   answer when choosing vocabulary and sentence complexity;
@@ -279,7 +299,8 @@ Call 2 must:
 - keep each conversation short and coherent, but permit a confirmation, reassurance, or acknowledgment
   when that is the natural reply; do not invent facts solely to create progression;
 - include both sides of the exchange, including likely replies;
-- include positive and negative or alternative outcomes when the situation naturally involves a choice;
+- include positive and negative or alternative outcomes in the same conversation group when the
+  situation naturally involves a choice; alternatives may be consecutive same-speaker cards;
 - prefer phrases that can be adapted by changing one word or short phrase;
 - include a final `vocab` group with 10–15 useful situation-specific word cards drawn from the
   conversations, led by the essential concepts;
@@ -291,7 +312,7 @@ Call 2 must:
 - respect any learner role in the context when assigning dialogue actions and speakers;
 - omit generic survival padding, invented personal backstory, technical commentary, and encyclopedic
   or glossary-only material;
-- alternate dialogue speakers strictly so no speaker responds to their own prior turn;
+- assemble conversation groups only from planned phrase-bank items; do not invent connector lines;
 - return raw JSON with no prose or code fences.
 
 The quality bar is conversational and practical, but reuse and memorization take precedence over story

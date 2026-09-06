@@ -194,6 +194,7 @@ function validateTextbookGenerateResponse(raw) {
     if (kept) validatedGroups.push(kept);
   }
 
+
   return {
     response: { ...(title ? { title } : {}), groups: validatedGroups },
     warnings,

@@ -8,15 +8,14 @@
  * checklist of candidate phrasebook sections, both topic-driven.
  *
  * Call 2 (buildTextbookGeneratePrompt) turns { topic, language, context }
- * into { groups } JSON — one themed group of cards per checked checklist
- * item, biased by the learner's context answers.
+ * into { title, groups } JSON. It plans facts, essential concepts, functions,
+ * and a phrase bank internally before assembling one group per selected
+ * checklist item plus vocab.
  *
  * Reuses lookup-prompt.js's reading-token instructions and gender-collapse
  * rule (not duplicated) — the Card shape and quality bar are identical to
- * /lookup's. Unlike /lookup, /textbook is level-independent: it takes no
- * `ability`; generation targets the situation's high-value core, and
- * difficulty/depth are later scoped client actions (docs/API_DESIGN.md
- * "/textbook").
+ * /lookup's. /textbook takes no fixed `ability`; it stays level-neutral unless
+ * a dynamically selected context answer explicitly supplies proficiency.
  */
 
 const {
@@ -58,12 +57,12 @@ Target language: ${langName}
 
 Read the topic and infer the axes that would MEANINGFULLY CHANGE what phrasebook content should be generated — not generic demographic filler, but the questions this SPECIFIC topic actually turns on. Example: a dance topic turns on role (leading/following) and scene/style; a family-dinner topic would instead turn on relationship-to-host and dietary needs. Do not ask the same fixed question set for every topic — derive it from this topic.
 
+Treat the learner's topic as stated fact. Ask about a medically, culturally, religiously, or personally significant fact only when its answer would materially change generation; never assume one significant fact from another. When the topic does not supply the answer, include a neutral "Not specified" option and make it the default so tailoring never invents a fact. Keep distinct claims in distinct options: never combine a medical condition with an ethical constraint, or dietary identity with cross-contamination tolerance.
 For each question, produce a short label and a small set of mutually exclusive, genuinely-different-in-effect options, plus a sensible default (must be one of the options). **Hard cap: ${MAX_QUESTIONS} questions.** Most topics need far fewer — only ask what actually changes the output. Proficiency or language confidence is not a required axis, but MAY be asked when it would materially change the phrases; when asked, the selected answer will be honored during generation.
 
 ## Step 2 — the conversations to prep
 
-Propose the short CONVERSATIONS this situation breaks into — the scenes the learner would actually go through, in the order they happen (before → during → after). Each checklist item is ONE conversation, named by a short, scan-friendly TITLE that describes one communicative goal. Use 2–5 words, preferably a simple verb phrase. Avoid "and", slashes, parentheticals, etiquette explanations, and other implementation detail. For example, prefer "Ask Someone To Dance" to "Ask Someone To Dance & Read The Room's Etiquette". Do not use a vague label like "Dinner" or a word-category label like "Food Vocabulary". If the topic or context contains a defining identity or hard constraint, include and default-check a conversation for stating that need directly before conversations about verification, modification, or the transaction. Order titles along the situation's arc. Default-check the conversations that carry the core of the encounter and leave clearly-secondary ones unchecked. **Hard cap: ${MAX_CHECKLIST_ITEMS} conversations.**
-
+Propose the short CONVERSATIONS this situation breaks into — the scenes the learner would actually go through, in the order they happen (before → during → after). Each checklist item is ONE conversation, named by a short, scan-friendly TITLE that describes one communicative goal. Use 2–5 words, preferably a simple verb phrase. Avoid "and", slashes, parentheticals, etiquette explanations, and other implementation detail. For example, prefer "Ask Someone To Dance" to "Ask Someone To Dance & Read The Room's Etiquette". Do not use a vague label like "Dinner" or a word-category label like "Food Vocabulary". Always include and default-check a conversation in which the learner performs the topic's primary action; preparation, verification, payment, or closure does not replace the action itself. If the topic or context contains a defining identity or hard constraint, also include and default-check a conversation for stating that need directly before verification, modification, or transaction conversations. A conversation may later contain multiple same-speaker alternatives, so do not split acceptance/refusal or available/unavailable variants into duplicate checklist items. **Hard cap: ${MAX_CHECKLIST_ITEMS} conversations.** Do not add a vocab item; vocabulary is generated separately.
 ## Content quality bar (non-negotiable)
 
 Read like a thoughtful assistant who understands the situation, not a form generator. Favor concise, specific options and checklist titles over generic ones. Reject stiff or textbook-flavored phrasing in the labels themselves.
@@ -84,13 +83,12 @@ Respond with ONLY raw JSON — no markdown code fences, no prose, no leading or 
 }
 
 /**
- * Call 2 — generate the phrasebook as a set of short conversations plus one
- * pooled vocab group. One group per checked conversation title (its turns as
- * `phrase` cards, the speaker in `notes`), then a final "vocab" group of
- * `word` cards (the source phrase in `notes`). The response stays
- * `{ title, groups }`; reuses the same Card schema, reading-token rules, and
- * gender-collapse rule as /lookup. Unlike /lookup, /textbook is
- * level-independent: it takes no `ability`.
+ * Call 2 — plan a phrase bank, then assemble it as short conversation groups
+ * plus one pooled vocab group. One group per checked conversation title
+ * (`phrase` cards with speaker notes), then a final "vocab" group (`word`
+ * cards with source-phrase notes). The internal plan is discarded; the
+ * response remains `{ title, groups }` and reuses /lookup's Card, reading, and
+ * gender-collapse rules.
  *
  * @param {{ topic: string, language: string, context: { answers?: object, checklist?: string[] } }} args
  * @returns {string}
@@ -112,13 +110,14 @@ function buildTextbookGeneratePrompt({ topic, language, context }) {
     : "(no conversations chosen — infer 3-4 sensible scenes across the situation's arc)";
 
   return `You are generating a bespoke, situation-specific phrasebook for a language learner. The primary
-product is a set of meaningful, reusable words and phrases that the learner can memorize and use
-to converse. Realistic conversations are the method for selecting and testing that language; do not
-optimize for story realism at the expense of reuse.
+product is a bank of meaningful, reusable words and phrases that the learner can memorize and use
+to converse. Conversations organize and rehearse that bank; phrase quality and semantic coverage
+matter more than a perfectly linear story.
 
-Priorities, in order:
+Required coverage, factual fidelity, role fidelity, and safety are gates: never trade them away for
+style or flow. Among outputs that satisfy those invariants, priorities are:
 1. Reusable, memorizable words and phrases.
-2. The learner's ability to express their needs, preferences, constraints, intentions, and identity.
+2. The learner's ability to express needs, preferences, constraints, intentions, and identity.
 3. The learner's ability to understand likely partner language.
 4. Useful positive/negative and alternative outcomes.
 5. Natural conversational sequencing.
@@ -126,9 +125,6 @@ Priorities, in order:
 
 You are a TEACHER: teach enough that the learner can PRODUCE their side of this situation and
 UNDERSTAND what the other person says back.
-
-The phrasebook is a set of short CONVERSATIONS the learner can rehearse, plus the key WORDS drawn
-from them. Generate it as groups: one group per conversation, then one final "vocab" group.
 
 Topic/situation: ${topic}
 Target language: ${langName}
@@ -142,39 +138,113 @@ ${answersBlock}
 
 ${conversationsBlock}
 
-Each line above is one conversation to write, already ordered as the encounter unfolds (before → during → after). Keep that order.
-Before writing, identify the topic's ESSENTIAL CONCEPTS: its primary action; every explicit learner identity; every explicit need or hard constraint; and any indispensable object, destination, or relationship. Each essential identity, need, and hard constraint MUST appear (1) in a direct learner-originating phrase, (2) in a general request, question, or response when useful, and (3) in vocab using the ordinary target-language term. Do not replace a concise identity or constraint only with an enumeration of examples.
+Each line above is one destination group, already ordered across the encounter (before → during → after).
 
-## Step 1 — write each conversation
+## Step 0 — establish the fact and coverage boundary
 
-For EACH conversation title above, write one short, realistic, two-sided exchange for the situation. The title is only a compact navigation label; do not repeat every title word in the dialogue.
+Before translating anything, silently make four inventories:
 
-- 3–6 turns, aim for 4. Each turn is ONE card. Prefer fewer turns when extra turns would require invented detail.
-- Use the natural speech act for the setting. Do not ask an ability or identity question when the learner would naturally make an invitation, request, offer, refusal, or greeting instead. Before emitting a line, check that its English intent is socially natural in this situation, then render that intent idiomatically in ${langName}; never translate an awkward English sentence literally.
-- Use context to select the relevant phrase frames, register, and substitutions, not to decorate every line with concrete detail. If a context answer assigns the learner a role, every speaker:"you" line must be valid for that role; never make the learner perform the partner's role.
-- Include at least one reusable learner-originating line when the situation gives the learner a need, preference, constraint, intention, or identity to express. Teach what the learner is, can do, wants, needs, prefers, refuses, or cannot accept; do not teach only questions and partner replies.
-- Keep lines short and adaptable. Prefer phrases that can be reused by changing one word or short phrase. A phrase is too specific if the learner would need to memorize it again rather than substitute a slot.
-- Use no more than one or two concrete situation-specific nouns per line unless the noun is itself a core learning target. Do not invent personal backstory, technical commentary, or observations about a person's performance, appearance, or circumstances.
-- Give each conversation a compact progression, but allow confirmation, reassurance, acknowledgment, or repetition when that is the natural reply. Do not invent facts solely to create progression.
-- Across the phrasebook, cover both sides of natural choices when relevant: acceptance and refusal/deferral, available and unavailable, allowed and not allowed, success and recovery, or continuation and closure. Prefer short functional contrasts over branching storylines; do not force a negative branch where unnatural.
-- For safety, allergy, dietary, religious, or other hard constraints, never infer that a named item or action is compatible from its name alone. Prioritize verification, modification, and refusal language. A partner may present a specific option as compatible only after the exchange explicitly confirms the relevant ingredients, preparation, or conditions.
-- Keep each conversation DISTINCT from the others — no turn that merely repeats another conversation's line.
+1. STATED FACTS: the topic and context assertions you may rely on. Preserve their exact practical
+   meaning.
+2. UNSTATED FACTS: medically, culturally, religiously, or personally significant claims that were not
+   supplied. Do not infer them. One constraint never silently implies another: a diet is not an allergy,
+   an identity is not a medical condition, and an unspecified tolerance remains unknown.
+3. ESSENTIAL CONCEPTS: the primary action; every explicit learner identity, need, and hard constraint;
+   the conventional category term needed to explain each identity or constraint without merely listing
+   examples; and only indispensable situation anchors. Record the conventional ${langName} lemma for
+   each, retaining essential loanwords.
+4. COMMUNICATIVE FUNCTIONS needed for the selected groups: self-description, request, verification,
+   modification, acceptance, refusal, recovery, and closure, as applicable.
 
-Emit each conversation as a group: title = the conversation title above (verbatim), cards = its turns in order. Each turn card: text = the spoken line, translation = its English gloss, reading per the rules below, type = "phrase", and notes = a JSON object naming the speaker, {"speaker":"you"} or {"speaker":"partner"}.
+Do not emit these inventories. Use them as the source of truth for the phrase bank and vocab.
 
-## Step 2 — the vocab group
+## Step 1 — silently plan the phrase bank
 
-After the conversations, emit ONE final group with title exactly "vocab", holding the highest-value situation-specific WORDS drawn from across all the conversations.
+Plan a compact bank before writing any conversation. Every bank item must have:
 
-- 10–15 word cards (type "word"), aim for 12: nouns, adjectives, and verbs the learner will say, hear, point at, or choose between.
-- Nouns in citation form (with an article where the language needs it); verbs in the infinitive / dictionary form; modifiers in reusable form.
-- Build vocab by scanning the completed conversations, not from the topic alone. Put the topic's essential concepts first: its primary action plus every explicit identity, need, or hard constraint. Use each concept's reusable citation form, even when the conversation uses an inflected form. Then draw from every conversation when useful, prioritizing words that support reuse and learner self-expression over peripheral terminology.
-- Exclude words unchanged in English and obvious loanwords only when they add no practical learning value. ALWAYS include the conventional target-language term for an essential identity, constraint, need, or action, even when it is borrowed or resembles English. Also exclude generic courtesy basics, duplicate near-synonyms, and encyclopedic, menu-catalog, or glossary-only words. Do not optimize for filling the count; omit a weak card.
-- When a situation involves a hard constraint, prioritize words for stating the constraint, verifying it, modifying a request, accepting an alternative, or refusing an unsafe/unavailable option.
-- Each vocab card's notes is a JSON object naming the phrase it came from: {"source":"<the exact ${langName} line it appeared in>"}.
-- Every vocab card's English translation must use the ordinary learner-facing meaning; do not make the gloss artificially specialized merely to differ from the target text.
+- communicative intent;
+- one natural ${langName} phrase and an ordinary English gloss;
+- speaker: "you" or "partner";
+- essential concepts covered;
+- positive, negative, or alternative role when applicable;
+- a reusable substitution: the one word or short phrase a learner can swap, or "none";
+- exactly one destination conversation title from the selected list.
 
-## Step 3 — name the phrasebook
+The bank MUST contain:
+
+- a direct speaker:"you" phrase that performs the primary action when it is the learner's action;
+- a direct speaker:"you" phrase for every explicit learner identity, need, and hard constraint;
+- useful learner requests, questions, modifications, responses, and refusals supported by those concepts;
+- likely partner language the learner must recognize;
+- both positive and negative or alternative outcomes when the situation naturally involves a choice;
+- at least one emitted source phrase for EVERY essential concept so its lemma can appear in vocab.
+
+Approve an item only if it is idiomatic, socially appropriate, concise, reusable nearby, consistent
+with the stated facts, free of significant unstated claims, and valid for the learner's selected role.
+Reject literal translations of awkward English speech acts, invented observations, personal backstory,
+technical commentary, and one-off connector lines.
+
+For safety, allergy, dietary, religious, or other hard constraints, never infer that a named item or
+action is compatible from its name alone. Plan verification, modification, and refusal language before
+any specific recommendation. A partner may present a specific option as compatible only after a bank
+item explicitly verifies the relevant ingredients, preparation, or conditions.
+
+Do not emit the bank as a separate object.
+
+## Step 2 — assemble conversation groups from the bank
+
+For EACH selected title, emit one group using ONLY its approved bank items, copied verbatim. Do not
+invent greetings, acknowledgments, transitions, or other lines during assembly merely to create flow.
+
+- Usually use 3–6 cards, aiming for 4; use fewer rather than add an unplanned line.
+- Each card contains one spoken phrase. Keep it short and adaptable; generally use no more than one or
+  two concrete situation-specific nouns unless a noun is itself a core learning target.
+- Include partner replies that help the learner recognize likely language.
+- Alternatives belong in the SAME group. Two or three alternatives may appear consecutively even when
+  that makes the group non-linear; assign every alternative the same speaker. Never repeat an invitation
+  or question merely to force acceptance and refusal into a fake linear exchange.
+- Outside an alternatives set, alternate speakers when natural. Phrase quality, coverage, and factual
+  safety take precedence over turn-taking and narrative coherence.
+- Keep groups distinct; place each bank item in exactly one group.
+
+Each card: text = the planned spoken phrase, translation = its planned ordinary English gloss, reading
+per the rules below, type = "phrase", and notes = {"speaker":"you"} or {"speaker":"partner"}.
+
+## Step 3 — build vocab from the same inventory and bank
+
+Emit ONE final group titled exactly "vocab", with 10–15 useful situation-specific word cards, aiming
+for 12. Select required lemmas directly from the ESSENTIAL CONCEPTS inventory, then select supporting
+words that occur in approved phrase-bank items. Do not rediscover vocab from the topic after assembly.
+
+- Include the conventional target-language lemma for EVERY essential concept, including the primary
+  action and every explicit identity, need, and hard constraint, even when it is a loanword or resembles
+  English.
+- Use reusable citation forms: nouns with an article where needed, verbs in infinitive/dictionary form,
+  and modifiers in reusable form.
+- After required lemmas, prioritize words supporting verification, modification, alternatives,
+  learner self-expression, and reuse across nearby situations.
+- Exclude generic courtesy basics, duplicate near-synonyms, and encyclopedic, menu-catalog, or
+  glossary-only words. Do not pad with weak cards.
+- Each word must occur in at least one emitted conversation line. Its notes must name that exact
+  ${langName} source line: {"source":"…"}.
+- Use an ordinary learner-facing English gloss; do not specialize it artificially.
+
+## Step 4 — verify invariants
+
+Before emitting JSON, silently verify:
+
+- every essential concept occurs in an emitted phrase and has a vocab card;
+- the primary action and every essential identity, need, and hard constraint have a direct learner phrase;
+- every conventional essential loanword is retained;
+- stated facts remain true and no significant unstated fact was invented;
+- safety-sensitive recommendations follow explicit verification;
+- every speaker:"you" phrase respects the learner's role;
+- explicit proficiency changes complexity; absent proficiency remains level-neutral;
+- every conversation card came from the planned bank and every vocab card from its inventory/bank.
+
+Repair the bank and assembled output until all checks pass.
+
+## Step 5 — name the phrasebook
 
 Produce a single top-level title: a concise one-line English name (2–4 words, at most ${MAX_TITLE_LENGTH} characters), Title Case, capturing the whole situation at a glance. Do not merely restate the raw topic. E.g. "dinner with my partner's parents" → "Dinner With The Parents".
 
