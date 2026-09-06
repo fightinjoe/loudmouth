@@ -370,20 +370,32 @@ describe('validateTextbookGenerateResponse', () => {
 // ---------------------------------------------------------------------------
 
 describe('prompt builders', () => {
-  test('buildTextbookQuestionsPrompt includes the topic, fact boundary, and caps', () => {
+  test('buildTextbookQuestionsPrompt plans explicit questions and checklist coverage', () => {
     const prompt = buildTextbookQuestionsPrompt({ topic: 'salsa dancing', language: 'es' });
     assert.match(prompt, /salsa dancing/);
     assert.match(prompt, /Hard cap: 6 questions/);
     assert.match(prompt, /Hard cap: 7 conversations/);
-    assert.match(prompt, /2–5 words/);
-    assert.match(prompt, /Avoid "and", slashes, parentheticals/);
-    assert.match(prompt, /Proficiency or language confidence is not a required axis/);
-    assert.match(prompt, /defining identity or hard constraint/);
-    assert.match(prompt, /never assume one significant fact from another/);
-    assert.match(prompt, /neutral "Not specified" option/);
-    assert.match(prompt, /never combine a medical condition with an ethical constraint/);
-    assert.match(prompt, /performs the topic's primary action/);
-    assert.match(prompt, /do not split acceptance\/refusal/);
+    assert.match(prompt, /PRIMARY ACTION/);
+    assert.match(prompt, /explicit learner IDENTITY, NEED, and HARD CONSTRAINT/);
+    assert.match(prompt, /Never ask the learner to qualify, weaken/);
+    assert.match(prompt, /neutral\s+"Not specified" option/);
+    assert.match(prompt, /Never combine a medical condition with an ethical\s+constraint/);
+    assert.match(prompt, /cross-contamination tolerance.*significant\s+unknowns/s);
+    assert.match(prompt, /Do NOT add "Not specified" to ordinary situational questions/);
+    assert.match(prompt, /No option may contradict or weaken a stated topic fact/);
+    assert.match(prompt, /Proficiency or language confidence is optional/);
+    assert.match(prompt, /title explicitly names the PRIMARY ACTION/);
+    assert.match(prompt, /does not substitute\s+for performing the action/);
+    assert.match(prompt, /states it\s+directly/);
+    assert.match(prompt, /title must contain that identity term/);
+    assert.match(prompt, /one umbrella communicative goal/);
+    assert.match(prompt, /Do not join outcomes with "and" or "or"/);
+    assert.match(prompt, /do not add a second accept, decline, or refusal goal/);
+    assert.match(prompt, /Reject any\s+redundant accept, decline, or refusal title/);
+    assert.match(prompt, /Titles must be 2–5 words/);
+    assert.match(prompt, /safety verification.*precede.*recommendation/s);
+    assert.match(prompt, /direct statement first, verification next/);
+    assert.match(prompt, /literal\s+validity check/);
   });
 
   test('buildTextbookGeneratePrompt plans a phrase bank before assembling selected groups', () => {

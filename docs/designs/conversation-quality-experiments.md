@@ -1,8 +1,8 @@
 # Design: Conversation quality experiments
 
-Generated on 2026-09-04. Updated on 2026-09-05 after the latest Experiment B evaluation.
+Generated on 2026-09-04. Updated on 2026-09-05 after starting Experiment E.
 Branch: api_improvements
-Status: EXPERIMENT A COMPLETE; EXPERIMENT B COMPLETE (INSUFFICIENT); EXPERIMENT D NEXT; C DEFERRED
+Status: A COMPLETE; B COMPLETE (INSUFFICIENT); E COMPLETE (PARTIAL); D NEXT; C DEFERRED
 Mode: Builder
 
 ## Goal
@@ -18,8 +18,10 @@ Improve practical conversational quality while preserving the `{ title, groups }
 - **Experiment B is complete as an experiment.** Phrase-bank-first prompting improved the outputs, but
   the latest evaluation did not establish that `google` meets the quality bar. Preserve its current
   implementation and root eval outputs as the control; do not keep changing B.
-- **Experiment D is next.** It tests whether one more bounded, single-call design can bring `google`
-  close enough to Luna without losing Google's latency advantage.
+- **Experiment E is complete with a partial pass.** Better Google-generated contexts reliably restore
+  identity, primary-action, and safety-order goals, but occasional checklist-policy misses remain.
+- **Experiment D is next.** It targets remaining second-call vocab, phrase-selection, gloss, and safety
+  failures while preserving Google's latency advantage.
 - **Experiment C remains deferred.** A general rewrite call is too broad and slow for the specific gaps
   currently observed.
 
@@ -344,23 +346,123 @@ The critic should not add content indiscriminately or rewrite correct regional/r
 
 Use only if A and B leave recurring defects. Measure quality gains against added latency, cost, rewrite regressions, and malformed-response rate.
 
+## Experiment E — context and checklist generation
+
+**Status: complete; partial pass.** Call 1 now produces materially better Google questions and
+checklists without changing the response or client flow.
+
+### Why E precedes D
+
+The hand-corrected context diagnostic showed that call 1 is a material part of Google's quality gap.
+Across five corrected-context attempts:
+
+- direct `I am vegan` and vegan vocab appeared in 5/5 vegan outputs;
+- an actual ordering group appeared in 5/5;
+- same-speaker salsa responses were grouped correctly in every successful salsa output;
+- `order` vocab still appeared in only 1/5 and `animal-derived` vocab in 2/5;
+- literal `¿Bailas?`, fragments, and gloss mismatches remained;
+- one of five salsa attempts returned `502` after malformed JSON and retries.
+
+Better context therefore fixes several coverage failures but not the second-call selection failures D
+targets. E should establish the best context Google can generate before D measures residual call-2 gaps.
+
+### Call-1 requirements
+
+Before writing questions or checklist items, call 1 must identify the topic's stated facts, primary
+learner action, explicit identity/need/constraint, applicable alternatives, and safety ordering.
+
+Questions must:
+
+- ask only unknown axes that materially change the taught language;
+- never ask the learner to weaken, redefine, or explain the motivation for a stated identity;
+- separate medical, ethical, dietary, cultural, religious, and cross-contamination claims;
+- use `Not specified` as the default for significant unstated facts;
+- choose a useful ordinary default for non-sensitive situational axes rather than making every answer
+  unspecified;
+- avoid options that contradict the topic;
+- ask proficiency only when it materially changes complexity.
+
+The checked checklist must:
+
+- contain a goal where the learner performs the primary action itself;
+- contain a direct statement goal for every explicit identity, need, and hard constraint;
+- use one umbrella response goal for positive/negative alternatives, never an `and`/`or` title;
+- place safety verification before recommendation, transaction, or acceptance;
+- reserve required goals before optional social, payment, and closure material;
+- keep every title to 2–5 words and one communicative goal.
+
+### Evaluation
+
+1. Preserve `run_b5` as the original Google-generated call-1 control and the current hand-corrected
+   contexts plus `context-diagnostic/` runs as the idealized-context diagnostic.
+2. Generate call 1 with `google` five times for salsa and five times for vegan food. Save every
+   questions/checklist response independently.
+3. Score stated-fact preservation, question usefulness, option separation, defaults, primary-action
+   coverage, direct identity coverage, alternatives title, safety order, and title scanability.
+4. For each passing context, run Google call 2 once and check whether it reproduces the hand-corrected
+   context gains.
+5. Compare the resulting full Google → Google outputs with both `run_b5` and the hand-corrected outputs.
+
+### Success gates
+
+- 5/5 vegan call-1 outputs preserve vegan as stated and never infer allergy or tolerance.
+- 5/5 include distinct checked goals for stating vegan identity and placing the order.
+- 5/5 salsa outputs use a single-goal umbrella title for responding to invitations.
+- 5/5 include the topic's primary action as a checked goal.
+- Every significant unknown uses a neutral default; ordinary axes use useful defaults.
+- Every title is 2–5 words with no conjunction, slash, parenthetical, or combined goal.
+- All ten call-1 responses are valid on the first attempt.
+- Passing contexts reproduce the direct-identity, vegan-vocab, actual-ordering, and alternative-grouping
+  gains seen with hand-corrected contexts.
+
+### Results
+
+The final call-1 passes produced:
+
+- 10/10 valid first-attempt responses;
+- 5/5 vegan contexts preserving vegan as stated, using neutral cross-contamination defaults, naming a
+  direct vegan statement goal, naming the order action, and placing verification before ordering;
+- 5/5 salsa contexts naming the invitation action and an umbrella invitation-response goal;
+- 9/10 contexts satisfying every mechanical title rule; one vegan title used `and`;
+- one of five salsa contexts adding a redundant decline goal beside its umbrella response goal.
+
+Google call 2 was then run on three passing salsa contexts and three passing final vegan contexts:
+
+- direct `I am vegan`, vegan vocab, and an actual order appeared in 3/3 final vegan outputs;
+- `order` vocab appeared in 2/3 and `animal-derived` vocab in 1/3;
+- all three salsa outputs opened with a natural invitation and omitted literal `¿Bailas?`;
+- awkward order glosses, incomplete phrases, and insufficiently verified recommendations remained.
+
+Experiment E confirms that call 1 caused a material share of Google's prior failures. It does not close
+the remaining call-2 selection and vocab-retention gap. The improved call-1 prompt becomes the new
+baseline; the residual failures move to D.
+
+### Decision rule
+
+- If E meets its call-1 gates and reproduces the diagnostic gains, keep the improved call-1 prompt and
+  proceed to D using E-generated contexts.
+- If call 1 improves but call 2 still misses required vocab or selects weak phrases, treat those as D
+  scope rather than adding more checklist wording.
+- If E cannot reliably generate the required checklist with Google, do not hide the failure with a
+  hand-authored production context; evaluate whether call 1 needs a stronger model separately from the
+  preferred fast call-2 path.
+
 ## Experiment D — lean verified seed bank for Google
 
-**Status: next.** Determine whether Google Flash Lite can meet the quality bar without giving up its
-single-call latency advantage. The prompt and internal format remain provider-independent; evaluation
-is optimized around `google`, then checked once across the other backends for compatibility.
+
+**Status: next.** Determine whether Google Flash Lite can meet the remaining call-2 quality bar without
+giving up its single-call latency advantage. The prompt and internal format remain provider-independent;
+evaluation is optimized around `google`, then checked across other backends.
 
 ### Problem
 
-Google is not simply missing all good language. It often generates the required phrase and then fails
-to promote it:
+With Experiment E contexts, Google now reliably receives explicit identity, primary-action, alternative,
+and safety-order goals. The remaining failures are inside call 2:
 
-- it emits natural `¿Quieres bailar?` but puts literal `¿Bailas?` first;
-- it uses `ヴィーガン` in conversation but omits the same essential loanword from vocab;
-- it teaches the consequences of vegan identity without the direct identity statement;
-- it labels a group `Confirm The Order` without including the primary action `order`;
-- it generates positive and negative material but distributes it across groups rather than aligning
-  same-speaker alternatives.
+- required `order` and `animal-derived` vocab still disappear across runs;
+- awkward order glosses and incomplete phrases survive self-editing;
+- a recommendation may claim a specific dish is suitable without verifying that dish;
+- required language appears in conversation but is not consistently promoted into vocab.
 
 This is primarily a **selection, reservation, and coverage-accounting** problem. A general rewrite
 critic would be broader, slower, and riskier than the observed gap requires.
@@ -434,9 +536,10 @@ receipt; no semantic content is silently patched service-side.
 - **Structure:** zero duplicate conversation cards, broken vocab sources, malformed responses,
   validation retries, or provider compatibility failures.
 - **Latency:** Google D generation p50 at most 8.5 seconds, p95 at most 12 seconds, and no request reaches
-  the 15-second timeout. Current reference is 6.660s salsa / 7.371s vegan.
+  the 15-second timeout. Latest passing E contexts measured roughly 5.7–6.7s for salsa and 7.1–8.4s for
+  vegan food.
 - **Cost and tokens:** average Google generation cost at most $0.010 and total tokens no more than 15%
-  above the paired B control. Model-call count remains one.
+  above the paired E control. Model-call count remains one.
 - **Relative quality:** blinded practical-language scoring places Google D within 0.5 points of Luna on
   a five-point idiomaticity/reuse scale while matching or exceeding Luna's semantic-invariant pass rate.
 
@@ -445,7 +548,7 @@ receipt; no semantic content is silently patched service-side.
 - Reject D if the compact receipt causes any provider failure in the compatibility run or repeats B3's
   retry pattern.
 - Reject D if semantic coverage improves by sacrificing fact safety, role fidelity, or useful language.
-- Reject D if latency, token, or cost gates fail; retain Experiment B as the production path.
+- Reject D if latency, token, or cost gates fail; retain Experiment E as the production path.
 - Do not fall through to an unvalidated response when receipt validation fails.
 - Do not add Experiment C as a stopgap. If the one-call receipt remains incomplete but otherwise meets
   reliability gates, separately evaluate a very small planner-before-generator call as a new decision;
@@ -460,26 +563,28 @@ are not yet reliable: Google misses the direct vegan identity and essential voca
 the primary action in vocab; natural opening selection, fact neutrality, and alternative alignment
 remain inconsistent.
 
-The seven unmet requirements above now define Experiment D; Experiment B remains frozen as its control.
-Alternatives are resolved as consecutive same-speaker variants within one umbrella-goal group. Full
-exposed planning remains rejected because B3 lost reliability and doubled Google output.
+Experiment E is complete with a partial pass. It establishes that call 1 was a material bottleneck:
+Google now reliably generates direct vegan-identity, primary-action, and safety-order goals, and passing
+contexts reproduce direct identity, vegan vocab, actual ordering, and natural salsa invitations.
+Occasional redundant/missing alternative goals and one conjunction title keep E from a perfect pass.
 
-Experiment D is the next implementation experiment because it directly targets Google's selection and
-coverage-accounting gap while preserving one-call generation. Ship it only if every semantic,
-reliability, latency, cost, and compatibility gate passes. Experiment C remains deferred; a broad critic
-is not justified while the known failures are structural and the preferred model's primary advantage is
-speed.
+Experiment D is next and targets the residual call-2 failures: required vocab retention, natural
+candidate selection, fragments, gloss accuracy, and recommendation safety. Experiment B remains frozen
+as the earlier control; full exposed planning remains rejected because B3 lost reliability and doubled
+Google output.
+
+Experiment C remains deferred. A broad critic is not justified while the known failures can still be
+separated between call 1 and call 2 and the preferred model's primary advantage is speed.
 
 ## Verification plan
 
 1. Preserve `run_a4` under both topic directories as the final Experiment A baseline.
 2. Preserve the current root YAML files and `context.json` files as the latest Experiment B control.
 3. Run API contract tests before each live evaluation.
-4. Score the current B outputs and future D outputs on semantic coverage first, reuse second,
-   grammar/idiomaticity third, and story coherence last.
-5. Use pinned default, selected-role, proficiency, and strict-constraint contexts; regenerate call 1
-   separately to assess checklist quality and the stated/unstated fact boundary.
+4. Score E-generated contexts before running call 2; then score full E outputs and future D outputs on
+   semantic coverage first, reuse second, grammar/idiomaticity third, and story coherence last.
+5. Use pinned default, selected-role, proficiency, and strict-constraint contexts.
 6. Record latency, cost, malformed output, retries, duplicate cards, vocab-source integrity, and
    unplanned connector lines for every sample.
-7. Apply Experiment D's paired-control protocol and ship/rollback gates without relaxing a failed
-   invariant in exchange for better dialogue.
+7. Apply Experiment E's call-1 gates before Experiment D's paired-control protocol; do not relax a
+   failed invariant in exchange for better dialogue.

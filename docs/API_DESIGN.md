@@ -215,16 +215,21 @@ Malformed context returns `400`.
 }
 ```
 
-Questions are dynamically authored for the topic, not a fixed demographic form. Options are short,
-mutually exclusive, and meaningful to generation. `default` must be one of `options`. Maximum six
-questions. Proficiency or language confidence is optional, but when call 1 selects that axis, call 2
-must honor the chosen answer.
+Questions are dynamically authored for the topic, not a fixed demographic form. They ask only unknown
+axes that materially change the language. A stated identity or constraint is fixed and is not weakened,
+redefined, or reopened as a question. Options are short, mutually exclusive, and cannot contradict the
+topic. Significant unstated facts use a neutral `Not specified` default; ordinary situational axes use
+the most plausible useful default. Maximum six questions. Proficiency or language confidence is
+optional, but when call 1 selects that axis, call 2 honors the chosen answer.
 
-Checklist items are the **conversations to prepare** for the situation — short, learner-recognizable
-titles ordered along the encounter's arc (before → during → after). `checked` is the model's suggested
-default. Each checked item becomes exactly one conversation group in call 2. A defining identity or
-hard constraint requires a default-checked conversation for stating it directly before verification,
-modification, or transaction conversations. Maximum seven items; one group is reserved for `vocab`.
+Checklist items are the **conversations to prepare** for the situation—short, learner-recognizable
+titles ordered along the encounter's arc. `checked` is the model's suggested default. Each checked item
+becomes exactly one conversation group in call 2. Required goals are reserved before optional social,
+payment, or closure material: the learner performing the primary action; direct statement of every
+explicit identity, need, or hard constraint; an umbrella response goal for applicable alternatives;
+and safety verification before recommendation or transaction. Titles are 2–5 words and one
+communicative goal; they do not join positive/negative outcomes with `and` or `or`. Maximum seven items;
+one group is reserved for `vocab`.
 
 ### Call 2 response
 
@@ -273,12 +278,14 @@ the endpoint response and provider-independent execution path.
 
 ### Model requirements
 
-Call 1 must infer only the context axes that materially change the generated chapter. An unstated
-medical, cultural, religious, or personal fact requires a neutral `Not specified` option as the
-default, and distinct kinds of claims must not be combined into one option. Call 1 must avoid padding
-questions and default-check a conversation where the learner performs the topic's primary action. A
-defining identity or hard constraint also requires a checked conversation for stating the learner's
-need directly.
+Call 1 first identifies stated facts, the primary learner action, explicit identities/needs/constraints,
+applicable alternatives, and safety ordering. It asks only unknown context axes that materially change
+the generated chapter. A significant unstated medical, cultural, religious, or personal fact requires
+its own neutral `Not specified` default; ordinary situational axes use a useful likely default. Distinct
+claims are not combined, and no option may contradict or redefine the topic. Call 1 avoids padding,
+default-checks a goal where the learner performs the primary action, creates a direct statement goal for
+each identity/need/constraint, uses one umbrella goal for positive/negative responses, and places safety
+verification before recommendation or transaction.
 
 Call 2 must:
 

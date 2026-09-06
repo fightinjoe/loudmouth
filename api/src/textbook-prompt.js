@@ -48,24 +48,110 @@ const LANG_LEVELS = { zh: 'HSK 1–4', ja: 'JLPT N5–N3' };
 function buildTextbookQuestionsPrompt({ topic, language }) {
   const langName = LANG_NAMES[language] || language;
 
-  return `You are planning a bespoke, situation-specific phrasebook for a language learner — think "a custom textbook chapter for tonight," not a generic curriculum. The learner has given you a topic or situation; your job here is NOT to generate the phrasebook yet, only to figure out what to ask them so the eventual phrasebook is genuinely tailored to their actual situation.
+  return `You are planning a bespoke, situation-specific phrasebook for a language learner. The learner
+has given you a topic; do NOT generate target-language phrases yet. Produce the questions that materially
+tailor the phrasebook and the checked conversation goals that the generation call must teach.
+
+The next model receives selected answers and checked checklist labels verbatim. Assume it will not repair
+a vague title or notice a missing goal. Make required meaning explicit here without adding implementation
+detail to learner-facing labels.
 
 Topic/situation: ${topic}
 Target language: ${langName}
 
+## Step 0 — identify what must survive
+
+Silently identify:
+
+- STATED FACTS supplied by the topic;
+- the PRIMARY ACTION the learner must perform;
+- every explicit learner IDENTITY, NEED, and HARD CONSTRAINT;
+- likely decisions or outcomes for which the learner needs positive and negative responses;
+- safety verification that must precede a recommendation when applicable.
+
+Do not emit this inventory. Use it to author and audit the questions and checklist.
+
 ## Step 1 — dynamic context questions
 
-Read the topic and infer the axes that would MEANINGFULLY CHANGE what phrasebook content should be generated — not generic demographic filler, but the questions this SPECIFIC topic actually turns on. Example: a dance topic turns on role (leading/following) and scene/style; a family-dinner topic would instead turn on relationship-to-host and dietary needs. Do not ask the same fixed question set for every topic — derive it from this topic.
+Ask only about unknown axes that would materially change the language taught: role, setting, relationship,
+interaction goal, operational constraints, or proficiency when relevant. Derive questions from this topic;
+do not reuse a fixed demographic form.
 
-Treat the learner's topic as stated fact. Ask about a medically, culturally, religiously, or personally significant fact only when its answer would materially change generation; never assume one significant fact from another. When the topic does not supply the answer, include a neutral "Not specified" option and make it the default so tailoring never invents a fact. Keep distinct claims in distinct options: never combine a medical condition with an ethical constraint, or dietary identity with cross-contamination tolerance.
-For each question, produce a short label and a small set of mutually exclusive, genuinely-different-in-effect options, plus a sensible default (must be one of the options). **Hard cap: ${MAX_QUESTIONS} questions.** Most topics need far fewer — only ask what actually changes the output. Proficiency or language confidence is not a required axis, but MAY be asked when it would materially change the phrases; when asked, the selected answer will be honored during generation.
+- Treat stated topic facts as fixed. Never ask the learner to qualify, weaken, explain the motivation for,
+  or redefine a stated identity or constraint.
+- A conventional identity or constraint named in the topic already has its ordinary meaning. Do not ask
+  whether the learner is strict, flexible, motivated by health or ethics, or willing to accept exceptions.
+  Those questions reopen the stated fact. Ask only genuinely separate operational unknowns.
+- Never infer one medically, culturally, religiously, or personally significant fact from another.
+  Allergy, cross-contamination tolerance, religious practice, and ethical exceptions are significant
+  unknowns. If one materially affects generation, ask it as its own question, include a neutral
+  "Not specified" option, and make that the default.
+- Keep distinct facts in distinct questions and options. Never combine a medical condition with an ethical
+  constraint, or dietary identity with cross-contamination tolerance.
+- Do NOT add "Not specified" to ordinary situational questions merely to avoid choosing a useful default.
+  For non-sensitive axes, choose the most ordinary plausible default for the topic.
+- Use a short 2–4 word noun-phrase label, not a full-sentence question. Options must be short, mutually
+  exclusive, and materially different. No option may contradict or weaken a stated topic fact.
+- Proficiency or language confidence is optional, not a fixed requirement. Ask it only when complexity
+  would materially change; if asked, its answer will be honored during generation.
+**Hard cap: ${MAX_QUESTIONS} questions.** Usually ask 2–4; use more only when every answer changes taught language.
 
-## Step 2 — the conversations to prep
+## Step 2 — conversations to prepare
 
-Propose the short CONVERSATIONS this situation breaks into — the scenes the learner would actually go through, in the order they happen (before → during → after). Each checklist item is ONE conversation, named by a short, scan-friendly TITLE that describes one communicative goal. Use 2–5 words, preferably a simple verb phrase. Avoid "and", slashes, parentheticals, etiquette explanations, and other implementation detail. For example, prefer "Ask Someone To Dance" to "Ask Someone To Dance & Read The Room's Etiquette". Do not use a vague label like "Dinner" or a word-category label like "Food Vocabulary". Always include and default-check a conversation in which the learner performs the topic's primary action; preparation, verification, payment, or closure does not replace the action itself. If the topic or context contains a defining identity or hard constraint, also include and default-check a conversation for stating that need directly before verification, modification, or transaction conversations. A conversation may later contain multiple same-speaker alternatives, so do not split acceptance/refusal or available/unavailable variants into duplicate checklist items. **Hard cap: ${MAX_CHECKLIST_ITEMS} conversations.** Do not add a vocab item; vocabulary is generated separately.
-## Content quality bar (non-negotiable)
+Propose the short CONVERSATIONS the learner should rehearse, ordered across the encounter. Each checked
+item becomes exactly one generated conversation group, so reserve required goals before optional social,
+payment, or closure material.
+For a safety-sensitive identity, need, or constraint, build required goals in this order:
+"State the constraint" → "Verify the conditions" → "Request changes or respond to alternatives" →
+"Perform the primary action" → "Pay or close" when applicable. The primary-action goal is required but
+must not appear before verification.
 
-Read like a thoughtful assistant who understands the situation, not a form generator. Favor concise, specific options and checklist titles over generic ones. Reject stiff or textbook-flavored phrasing in the labels themselves.
+- Include and default-check one goal whose title explicitly names the PRIMARY ACTION the learner performs.
+  The action word or a direct synonym must appear in the title. Preparing, asking availability, verifying,
+  confirming, paying, or closing does not substitute for performing the action.
+- For every explicit identity, need, or hard constraint, include and default-check a goal that states it
+  directly. Use the pattern "State [specific identity or constraint]" when natural; do not replace the
+  named identity with a vague label such as preferences, requirements, or restrictions.
+  If the topic names an identity, the title must contain that identity term and describe self-identification,
+  not merely restrictions or requirements.
+- Include verification, modification, refusal, recovery, or closure goals when the situation needs them.
+  For safety-sensitive situations, place verification before recommendation, transaction, or acceptance.
+- Put positive and negative responses under one umbrella communicative goal, such as "Respond To
+  Invitations" or "Respond To Offers". Do not join outcomes with "and" or "or", and do not create
+  separate checklist items for acceptance and refusal.
+  Once this umbrella goal exists, do not add a second accept, decline, or refusal goal unless refusal is
+  itself a distinct safety action.
+- Titles must be 2–5 words, scan-friendly, and one communicative goal, preferably a simple verb phrase.
+  Avoid conjunctions, slashes, parentheticals, vague scene names, etiquette explanations, and word-category
+  labels. Do not add a vocab item; vocabulary is generated separately.
+
+**Hard cap: ${MAX_CHECKLIST_ITEMS} conversations.**
+
+## Step 3 — coverage audit
+
+Before emitting JSON:
+
+1. Locate a checked title that explicitly names the primary action. If none exists, replace an optional
+   item with it.
+2. Locate a checked title that explicitly names each stated identity, need, and hard constraint. A stated
+   identity's own term must appear in its title; generic requirements or restrictions do not count.
+3. Confirm one umbrella response goal covers applicable positive/negative alternatives. Reject any
+   redundant accept, decline, or refusal title unless it represents a distinct safety action.
+4. For a safety-sensitive identity, need, or constraint, compare checklist positions against the required
+   sequence above: direct statement first, verification next, modification or alternatives next, and
+   the primary action only afterward. Reorder the checklist if those positions are wrong.
+5. Mechanically inspect every checklist title: split it on spaces; require 2–5 words; reject it if it
+   contains the whole word "and" or "or", an ampersand, a slash, or parentheses. This is a literal
+   validity check, not a stylistic preference.
+6. Inspect every question: reject it if it redefines a stated fact, combines distinct significant facts,
+   uses a non-neutral default for a significant unknown, or has a label longer than four words.
+
+Repair every failure before emitting JSON.
+
+## Content quality bar
+
+Read like a thoughtful assistant who understands the situation, not a form generator. Favor concise,
+specific options and labels. Reject generic padding, contradictions, and stiff or textbook-flavored titles.
 
 ## Output format
 
