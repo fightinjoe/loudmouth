@@ -46,4 +46,12 @@ async function callAnthropic(prompt, { maxOutputTokens = 1024 } = {}) {
 // which Anthropic rejects before generation.
 callAnthropic.maxOutputTokens = 8192;
 
+// Haiku streams roughly 125 output tokens/sec, so a /textbook generate call
+// (~2.6k-3.1k output tokens) measures 20-26s wall — well past the shared
+// 15s default, which made every /textbook Claude request 502 on timeout
+// (see evals/budget-report.md: claude FAILED every scene count on latency
+// alone, with valid JSON). 60s matches the chatgpt and g-flash posture and
+// leaves >2x headroom over the observed worst case.
+callAnthropic.timeoutMs = 60000;
+
 module.exports = { callAnthropic, ANTHROPIC_MODEL };

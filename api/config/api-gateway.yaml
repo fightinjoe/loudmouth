@@ -10,6 +10,12 @@ schemes:
 
 x-google-backend:
   address: https://YOUR_CLOUD_RUN_URL
+  # ESPv2 defaults to a 15s backend deadline, which is shorter than the
+  # in-process LLM timeouts (60s for claude, chatgpt, and g-flash) and would
+  # return an opaque 504 before the service could answer. Keep this above the
+  # longest handler timeout so the service's own 502 surfaces instead.
+  # Max permitted is 600.0.
+  deadline: 90.0
 
 paths:
   /lookup:

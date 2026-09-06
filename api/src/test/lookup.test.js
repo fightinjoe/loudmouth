@@ -419,6 +419,12 @@ describe('handleLookup', () => {
     assert.equal(callAnthropic.maxOutputTokens, 8192);
   });
 
+  test('Anthropic adapter advertises an extended timeout', () => {
+    // Claude Haiku takes 20-26s on a /textbook generate call; the shared 15s
+    // default timed every one of them out (evals/budget-report.md).
+    assert.equal(callAnthropic.timeoutMs, 60000);
+  });
+
   test('OpenAI adapter targets the Luna model', () => {
     assert.equal(OPENAI_MODEL, 'gpt-5.6-luna');
   });

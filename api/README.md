@@ -232,6 +232,13 @@ Provider token ceilings are applied automatically: Claude Haiku receives at most
 30,000-token ceiling. This keeps `/textbook` and `/lookup` compatible with each
 provider's completion-token limit.
 
+Per-provider request timeouts are applied the same way: `gemini-3.5-flash-lite`
+keeps the shared 15s budget, while Claude Haiku, GPT-5.6 Luna, and Gemini 3.8
+Flash each get 60s. Claude Haiku needs it — a `/textbook` generate call measures
+20-26s, so the shared 15s budget failed every one of them with a 502.
+The gateway's own backend `deadline` (`config/api-gateway.yaml`) is set to 90s so
+it never cuts off a request before the service's timeout does.
+
 ## Testing the deployed service
 
 After `deploy.sh` completes, it prints the gateway URL. Export it and run smoke tests:

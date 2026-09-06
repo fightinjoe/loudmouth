@@ -365,7 +365,6 @@ describe('validateTextbookGenerateResponse', () => {
 });
 
 // ---------------------------------------------------------------------------
-// prompt builders — sanity checks that key rules made it into the text
 // ---------------------------------------------------------------------------
 
 describe('prompt builders', () => {
@@ -374,33 +373,41 @@ describe('prompt builders', () => {
     assert.match(prompt, /salsa dancing/);
     assert.match(prompt, /Hard cap: 6 questions/);
     assert.match(prompt, /Hard cap: 7 conversations/);
+    assert.match(prompt, /2–5 words/);
+    assert.match(prompt, /Avoid "and", slashes, parentheticals/);
+    assert.match(prompt, /Proficiency or language confidence is not a required axis/);
+    assert.match(prompt, /defining identity or hard constraint/);
   });
 
   test('buildTextbookGeneratePrompt lists the conversations and requires a vocab group', () => {
     const prompt = buildTextbookGeneratePrompt({
       topic: 'salsa dancing',
       language: 'es',
-      context: { answers: { 'Salsa scene': 'Cuban style' }, checklist: ['Ask someone to dance', 'Compliments on the floor'] },
+      context: {
+        answers: { 'Salsa scene': 'Cuban style', 'Language Confidence': 'Beginner' },
+        checklist: ['Ask someone to dance', 'Compliments on the floor'],
+      },
     });
     assert.match(prompt, /Salsa scene: Cuban style/);
+    assert.match(prompt, /Language Confidence: Beginner/);
     assert.match(prompt, /- Ask someone to dance/);
     assert.match(prompt, /- Compliments on the floor/);
     assert.match(prompt, /one group per conversation/);
-    assert.match(prompt, /aim for 6/);
-    assert.match(prompt, /At least two turns must depend on/);
-    assert.match(prompt, /concrete progression/);
-    assert.match(prompt, /partner reply must give the learner new information/);
-    assert.match(prompt, /Alternate speakers strictly/);
-    assert.match(prompt, /Keep each conversation DISTINCT/);
-    assert.match(prompt, /title exactly "vocab"/);
-    assert.match(prompt, /10–15 word cards/);
-    assert.match(prompt, /central action or state named by the topic/);
-    assert.match(prompt, /first vocab card MUST be its reusable citation form/);
-    assert.match(prompt, /"speaker":"you"/);
-    assert.match(prompt, /"source"/);
-    assert.match(prompt, /translation must differ materially/);
-    assert.doesNotMatch(prompt, /Example conversation/);
-    assert.match(prompt, /do NOT assume or bias toward any learner proficiency level/);
+    assert.match(prompt, /aim for 4/);
+    assert.match(prompt, /Use context to select the relevant phrase frames/);
+    assert.match(prompt, /learner-originating line/);
+    assert.match(prompt, /changing one word or short phrase/);
+    assert.match(prompt, /no more than one or two concrete situation-specific nouns/);
+    assert.match(prompt, /confirmation, reassurance, acknowledgment/);
+    assert.match(prompt, /positive\/negative and alternative outcomes/);
+    assert.match(prompt, /ALWAYS include the conventional target-language term/);
+    assert.match(prompt, /ordinary learner-facing meaning/);
+    assert.match(prompt, /natural speech act for the setting/);
+    assert.match(prompt, /never translate an awkward English sentence literally/);
+    assert.match(prompt, /default to level-neutral/);
+    assert.match(prompt, /HONOR it/);
+    assert.match(prompt, /ESSENTIAL CONCEPTS/);
+    assert.match(prompt, /never infer that a named item or action is compatible/);
     assert.match(prompt, /"phrase" for a conversation turn/);
   });
 

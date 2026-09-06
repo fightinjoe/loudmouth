@@ -25,8 +25,13 @@ the result, and returns a self-contained response. The client owns phrasebook st
 - The shared output ceiling is 30,000 tokens for Google. Provider adapters may lower it when required:
   Claude Haiku uses 8,192 and GPT-5.6 Luna uses 16,384. A response truncated at the effective ceiling
   follows the invalid-response `502` path.
-- Google and Claude target p50 latency below 4 seconds with a 15-second request timeout. GPT-5.6 Luna
-  uses a 60-second timeout because large JSON responses can exceed the shared budget.
+- `gemini-3.5-flash-lite` targets p50 latency below 4 seconds and keeps the shared 15-second request
+  timeout. Claude Haiku, GPT-5.6 Luna, and Gemini 3.8 Flash each use a 60-second timeout: their
+  larger JSON responses routinely exceed the shared budget. Claude Haiku in particular measures
+  20-26 seconds on a `/textbook` generate call.
+- The API Gateway backend deadline (`deadline` in `api/config/api-gateway.yaml`) must stay above the
+  longest adapter timeout. ESPv2 defaults it to 15 seconds, which would return an opaque gateway
+  `504` before a slow-but-healthy backend could answer.
 
 ## `/lookup`
 
@@ -130,8 +135,33 @@ The shared prompt must work across all backends without backend-specific rules. 
 then generating a complete phrasebook. It uses the same route for two calls; the presence of `context`
 selects the call mode.
 
-Initial generation is situation-first and level-independent. It does not expose `ability`, `formality`,
-or `audience` settings. Difficulty and explanation depth are handled by later, scoped client actions.
+Initial generation defaults to situation-first, level-neutral language. It does not expose fixed
+`ability`, `formality`, or `audience` request fields. When a dynamically selected context question asks
+about proficiency or language confidence, call 2 honors that answer when choosing vocabulary and
+sentence complexity without dropping essential practical content.
+
+### Quality objective
+
+The primary output of `/textbook` is a set of meaningful, reusable words and phrases that help the
+learner converse in the target language. Realistic conversations are the generation mechanism for
+discovering and validating that language, not an excuse to optimize for story realism.
+
+Generation priorities, in order:
+
+1. Reusable, memorizable words and phrases.
+2. The learner's ability to express their needs, preferences, constraints, intentions, and identity.
+3. The learner's ability to understand likely partner language.
+4. Useful positive/negative and alternative outcomes.
+5. Natural conversational sequencing.
+6. Situational detail only when it improves reuse or comprehension.
+
+Every primary action, explicit learner identity, explicit need, and hard constraint in the topic or
+selected context is an essential concept. Generation teaches each essential identity, need, and
+constraint directly rather than relying only on implications or lists of examples.
+
+Context selects the language that matters—phrase frames, register, and substitutions. It should not
+force concrete names, technical details, personal backstory, or observations into otherwise reusable
+lines.
 
 ### Request
 
@@ -186,12 +216,14 @@ Malformed context returns `400`.
 
 Questions are dynamically authored for the topic, not a fixed demographic form. Options are short,
 mutually exclusive, and meaningful to generation. `default` must be one of `options`. Maximum six
-questions.
+questions. Proficiency or language confidence is optional, but when call 1 selects that axis, call 2
+must honor the chosen answer.
 
 Checklist items are the **conversations to prepare** for the situation — short, learner-recognizable
 titles ordered along the encounter's arc (before → during → after). `checked` is the model's suggested
-default. Each checked item becomes exactly one conversation group in call 2. Maximum seven items (one
-of the eight groups is reserved for `vocab`).
+default. Each checked item becomes exactly one conversation group in call 2. A defining identity or
+hard constraint requires a default-checked conversation for stating it directly before verification,
+modification, or transaction conversations. Maximum seven items; one group is reserved for `vocab`.
 
 ### Call 2 response
 
@@ -212,9 +244,9 @@ of the eight groups is reserved for `vocab`).
 A missing or blank title is not an error; the client falls back to the raw topic.
 
 Generation treats each selected checklist item as a short, two-sided conversation. Conversation groups
-stay in the selected encounter order; their turns alternate speakers, advance causally, and carry
-speaker metadata in `notes` as `{"speaker":"you"}` or `{"speaker":"partner"}`. The learner's supplied
-role and context constrain their lines.
+stay in the selected encounter order; their turns alternate speakers and carry speaker metadata in
+`notes` as `{"speaker":"you"}` or `{"speaker":"partner"}`. The learner's supplied role and context
+constrain their lines.
 
 The final group is titled `vocab`. It contains 10–15 useful situation-specific word cards extracted
 from the generated conversations, including reusable citation forms for conjugated verbs. Each vocab
@@ -228,30 +260,43 @@ distinguish vocabulary from conversation content.
 ### Model requirements
 
 Call 1 must infer only the context axes that materially change the generated chapter. It must avoid
-padding questions and default-check the goals that carry the core interaction.
+padding questions and default-check the goals that carry the core interaction. A defining identity or
+hard constraint requires a checked conversation for stating the learner's need directly.
 
 Call 2 must:
 
-- emit one short, realistic conversation for every selected checklist item, preserving encounter order;
-- ground at least two turns per conversation in supplied context such as role, scene, relationship,
-  skill level, constraint, object, or action;
-- give each conversation a causal progression: initiation or situation, meaningful reply, and response
-  or resolution;
-- include at least one partner reply that supplies information, asks a question, makes a decision, or
-  changes what happens next;
-- respect any learner role in the context when assigning dialogue actions and speakers;
-- teach language the learner will say, hear, point at, choose, or substitute in the situation;
-- include both sides of each exchange, including likely replies;
+- optimize first for reusable, memorizable words and phrases; conversations are a means to select and
+  validate language, not the primary quality target;
+- identify the topic's primary action plus every explicit learner identity, need, and hard constraint
+  as essential concepts;
+- teach each essential identity, need, and hard constraint in a direct learner-originating phrase, a
+  general request, question, or response when useful, and a `vocab` card;
+- include reusable learner self-expression of needs, preferences, constraints, intentions, and identity;
+- default to level-neutral language, but honor an explicit proficiency or language-confidence context
+  answer when choosing vocabulary and sentence complexity;
+- use context to choose relevant phrase frames, register, and substitutions, not to decorate every line
+  with concrete or technical detail;
+- keep each conversation short and coherent, but permit a confirmation, reassurance, or acknowledgment
+  when that is the natural reply; do not invent facts solely to create progression;
+- include both sides of the exchange, including likely replies;
+- include positive and negative or alternative outcomes when the situation naturally involves a choice;
+- prefer phrases that can be adapted by changing one word or short phrase;
 - include a final `vocab` group with 10–15 useful situation-specific word cards drawn from the
-  conversations;
-- place the topic's central action or state first in `vocab`, in reusable citation form, when it occurs
-  in a conversation;
-- omit generic survival padding and encyclopedic or glossary-only material;
+  conversations, led by the essential concepts;
+- preserve the conventional target-language term for an essential concept even when it is a loanword
+  or resembles English;
+- when a situation involves safety, allergy, dietary, religious, or other hard constraints, never infer
+  compatibility from an item's or action's name; a partner may present a specific option as compatible
+  only after the exchange confirms the relevant ingredients, preparation, or conditions;
+- respect any learner role in the context when assigning dialogue actions and speakers;
+- omit generic survival padding, invented personal backstory, technical commentary, and encyclopedic
+  or glossary-only material;
 - alternate dialogue speakers strictly so no speaker responds to their own prior turn;
 - return raw JSON with no prose or code fences.
 
-The quality bar is conversational and practical, not textbook-stiff. The shared prompt and card-reading
-rules are backend-independent.
+The quality bar is conversational and practical, but reuse and memorization take precedence over story
+realism. The shared prompt and card-reading rules are backend-independent.
+
 
 ### Generation robustness
 
