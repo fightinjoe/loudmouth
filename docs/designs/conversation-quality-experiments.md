@@ -1,8 +1,8 @@
 # Design: Conversation quality experiments
 
-Generated on 2026-09-04. Updated on 2026-09-05 after starting Experiment E.
+Generated on 2026-09-04. Updated on 2026-09-06 after rejecting Experiment D.
 Branch: api_improvements
-Status: A COMPLETE; B COMPLETE (INSUFFICIENT); E COMPLETE (PARTIAL); D NEXT; C DEFERRED
+Status: A COMPLETE; B COMPLETE (INSUFFICIENT); E COMPLETE (PARTIAL); D REJECTED; C DEFERRED
 Mode: Builder
 
 ## Goal
@@ -20,8 +20,8 @@ Improve practical conversational quality while preserving the `{ title, groups }
   implementation and root eval outputs as the control; do not keep changing B.
 - **Experiment E is complete with a partial pass.** Better Google-generated contexts reliably restore
   identity, primary-action, and safety-order goals, but occasional checklist-policy misses remain.
-- **Experiment D is next.** It targets remaining second-call vocab, phrase-selection, gloss, and safety
-  failures while preserving Google's latency advantage.
+- **Experiment D is rejected.** Its first treatment repeated B3's validation-retry pattern and passed
+  receipt validation without the required animal-derived vocab; its $0.010324 cost also left no margin.
 - **Experiment C remains deferred.** A general rewrite call is too broad and slow for the specific gaps
   currently observed.
 
@@ -450,9 +450,9 @@ baseline; the residual failures move to D.
 ## Experiment D — lean verified seed bank for Google
 
 
-**Status: next.** Determine whether Google Flash Lite can meet the remaining call-2 quality bar without
-giving up its single-call latency advantage. The prompt and internal format remain provider-independent;
-evaluation is optimized around `google`, then checked across other backends.
+**Status: rejected; rolled back.** The first Google treatment hit multiple explicit stop conditions.
+Experiment E remains the production path; the D prompt, receipt validator, and contract tests were
+removed.
 
 ### Problem
 
@@ -543,6 +543,28 @@ receipt; no semantic content is silently patched service-side.
 - **Relative quality:** blinded practical-language scoring places Google D within 0.5 points of Luna on
   a five-point idiomaticity/reuse scale while matching or exceeding Luna's semantic-invariant pass rate.
 
+### Results
+
+Five evaluation contexts were pinned: default-neutral salsa, beginner Follow, intermediate Lead,
+default-neutral vegan, and strict vegan with allergy unspecified. The first treatment used the
+default-neutral vegan context. It was stopped before the planned 25-sample paired run because one sample
+was already enough to trigger the rollback rules:
+
+- the first model response contained malformed JSON and required a validation retry, repeating B3's
+  reliability failure and violating the zero-retry structure gate;
+- the successful retry took 9.118 seconds, used 6,590 total tokens, and cost $0.010324. One sample
+  cannot decide the average-cost gate, but it left no margin below the $0.010 target;
+- it retained direct `I am vegan`, `ヴィーガン` vocab, and `注文する` vocab, but omitted an
+  animal-derived lemma from vocab even though `動物性のもの` appeared in conversation;
+- the service accepted the response because exact-reference validation can prove only that each declared
+  receipt item points to emitted cards. It cannot prove that every essential concept was declared or
+  that a declared vocab reference is the correct lemma without independently deriving the inventory.
+
+The last point falsifies the lean-receipt hypothesis, not merely this prompt wording. A self-reported
+receipt is structurally verifiable but not complete enough to enforce semantic coverage. Continuing the
+paired run would spend evaluation budget after the experiment had already made its zero-retry and
+25/25 semantic-coverage gates impossible.
+
 ### Stop and rollback rules
 
 - Reject D if the compact receipt causes any provider failure in the compatibility run or repeats B3's
@@ -568,10 +590,10 @@ Google now reliably generates direct vegan-identity, primary-action, and safety-
 contexts reproduce direct identity, vegan vocab, actual ordering, and natural salsa invitations.
 Occasional redundant/missing alternative goals and one conjunction title keep E from a perfect pass.
 
-Experiment D is next and targets the residual call-2 failures: required vocab retention, natural
-candidate selection, fragments, gloss accuracy, and recommendation safety. Experiment B remains frozen
-as the earlier control; full exposed planning remains rejected because B3 lost reliability and doubled
-Google output.
+Experiment D is rejected. Its self-reported receipt could validate exact references but could not prove
+that the model declared every required concept. The first treatment also repeated B3's malformed-output
+retry and left no cost margin. The implementation was rolled back, leaving Experiment E as the current
+path.
 
 Experiment C remains deferred. A broad critic is not justified while the known failures can still be
 separated between call 1 and call 2 and the preferred model's primary advantage is speed.
@@ -581,10 +603,10 @@ separated between call 1 and call 2 and the preferred model's primary advantage 
 1. Preserve `run_a4` under both topic directories as the final Experiment A baseline.
 2. Preserve the current root YAML files and `context.json` files as the latest Experiment B control.
 3. Run API contract tests before each live evaluation.
-4. Score E-generated contexts before running call 2; then score full E outputs and future D outputs on
-   semantic coverage first, reuse second, grammar/idiomaticity third, and story coherence last.
+4. Score E-generated contexts and any future experiments on semantic coverage first, reuse second,
+   grammar/idiomaticity third, and story coherence last.
 5. Use pinned default, selected-role, proficiency, and strict-constraint contexts.
 6. Record latency, cost, malformed output, retries, duplicate cards, vocab-source integrity, and
    unplanned connector lines for every sample.
-7. Apply Experiment E's call-1 gates before Experiment D's paired-control protocol; do not relax a
-   failed invariant in exchange for better dialogue.
+7. Preserve the Experiment D contexts and stopped first-treatment artifact as evidence; do not resume
+   the paired run without a new mechanism that can verify inventory completeness independently.
