@@ -1,5 +1,6 @@
 const { handleLookup } = require('./lookup');
 const { handleTextbook } = require('./textbook');
+const { handleContext } = require('./context');
 const { callAnthropic } = require('./llms/anthropic');
 const { callOpenAI } = require('./llms/openai');
 const { callGenAI, callGenAIFlash } = require('./llms/genai');
@@ -35,6 +36,10 @@ exports.translate = async (req, res) => {
 
   if (path === '/textbook') {
     return handleTextbook(req, res, LLM_REGISTRY);
+  }
+
+  if (path === '/context') {
+    return handleContext(req, res, LLM_REGISTRY);
   }
 
   return res.status(404).json({ error: `Unknown path: ${path}` });

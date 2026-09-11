@@ -1,8 +1,9 @@
 ---
 name: api-design
 description: >
-  Current API contract for Catchphrase. Covers /lookup's stateless translation primitive and
-  /textbook's guided phrasebook generation: requests, responses, model behavior, and service flow.
+  Current API contract for Catchphrase. Covers /lookup's stateless translation primitive,
+  /context's situation setup (questions and checklist for a seed), and /textbook's guided
+  phrasebook generation: requests, responses, model behavior, and service flow.
 status: CURRENT
 ---
 
@@ -126,6 +127,92 @@ The shared prompt must work across all backends without backend-specific rules. 
 5. Prefer common, conversational language. Reject stiff, textbook, exam-flavored, and near-duplicate
    content.
 6. Return raw JSON matching the response shape, without service-owned fields.
+
+## `/context`
+
+### Purpose
+
+`/context` sets up situation preparation. Given a **seed** — a situation, activity, or topic
+("salsa dancing in Austin, TX", "feeling sick") — and a target language, one model call
+returns clarifying questions and a checklist of conversations to prepare. The client presents
+both and collects the learner's selections. `/context` is stateless and lives in parallel
+with `/textbook`, which keeps its own two-call flow.
+
+The prompt is the endpoint's primary artifact; the service is a thin wrapper around it. The
+prompt's versioned history, accepted version, and per-version hand-test outputs live in
+[`prompts/context/`](../prompts/context/) (each version has a `NOTES.md`); the service
+serves a byte-identical copy (`api/src/context-prompt.txt`). A prompt change is made by
+cutting a new version there, hand-testing it against the standard seeds, and copying the
+accepted version in.
+
+Latency is the primary metric: the endpoint targets under 10 seconds end to end. The
+default backend `gemini-3.5-flash-lite` measured 1.1–1.6 seconds across the v03 baseline
+seeds.
+
+### Request
+
+```json
+{
+  "seed": "salsa dancing in Austin, TX",
+  "language": "zh | ja | es | cs",
+  "llm": "google | g-flash | claude | chatgpt"
+}
+```
+
+| Field | Required | Default | Rules |
+|---|---:|---|---|
+| `seed` | yes | — | Situation, activity, or topic; at most 200 characters |
+| `language` | yes | — | Target language; the prompt is language-aware |
+| `llm` | no | `google` | Model backend |
+
+The prompt is language-aware: the target language is injected into the prompt so the model
+may spend a question on a register or cultural axis when the language makes one matter for
+the seed (e.g. dashi/hidden-ingredient strictness for vegan food in Japanese). No cultural
+axis is required; most seeds get none.
+
+### Response
+
+```json
+{
+  "questions": [
+    { "label": "string", "options": ["string"] }
+  ],
+  "checklist": [
+    { "label": "string", "checked": true }
+  ],
+  "usage": { "model": "string", "inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "costUsd": null, "durationMs": 0 }
+}
+```
+
+Unlike `/textbook` call 1, a question carries no `default` field: **the first option is the
+default**, and the model orders each option list most-likely-first. The model is asked for
+2–5 questions with 2–5 options each and 5–8 checklist items; the service clamps overflow
+(max 5 questions, 5 options, 8 checklist items) rather than failing, and rejects a response
+with no questions or no checklist as a `502`.
+
+Questions gather unknown **facts** about the learner or their situation — role, conversation
+partner, key preferences or constraints — that change which phrases are generated:
+
+- Labels are short natural questions ("Where are you eating?"), never fragments.
+- One axis per question; distinct axes (e.g. kind of symptoms vs. their severity) get
+  separate questions rather than one merged question.
+- Options are terse, mutually exclusive, valid answers to their label — never a list of
+  topics. Topic-shaped choices become separate yes/no questions.
+- The model asks only what the seed genuinely needs (often 2 or 3 questions), never asks
+  what the seed already states, and never pads.
+
+The checklist owns the **conversations to prepare**: 2–5 word titles the learner instantly
+recognizes, one communicative goal each, ordered along the encounter's arc, with `checked`
+as the model's suggested default. Questions must never poach this axis — a question whose
+options are conversational tasks or goals is a defect.
+
+### Execution
+
+One model call per request, single-turn, JSON output (`responseMimeType: application/json`
+on Google backends). The service validates the request before the call (`400`), validates
+and clamps the model JSON after it, and returns `502` on model failure, timeout, or
+structurally invalid output. Output ceiling 2,000 tokens; the shared 15-second timeout
+applies as a hard backstop.
 
 ## `/textbook`
 
@@ -341,7 +428,7 @@ returns `502`.
 
 ## Service flow
 
-Both endpoints follow `service → model → service`.
+Every endpoint follows `service → model → service`.
 
 ```text
 request
@@ -350,6 +437,7 @@ request
   │
   ├─ model call
   │    /lookup: translate, disambiguate, and group
+  │    /context: questions and checklist for a seed
   │    /textbook call 1: questions and checklist
   │    /textbook call 2: phrasebook sections and dialogue
   │
