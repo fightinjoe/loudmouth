@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"questions\": [\n    {\n      \"label\": \"Who are you asking?\",\n      \"options\": [\"Passerby on the street\", \"Shop clerk or station staff\", \"Police officer\", \"Hotel receptionist\"]\n    },\n    {\n      \"label\": \"How do you want to travel?\",\n      \"options\": [\"Walking\", \"Public transit\", \"Driving or taxi\"]\n    }\n  ],\n  \"checklist\": [\n    { \"label\": \"Get someone's attention\", \"checked\": true },\n    { \"label\": \"Ask for a specific place\", \"checked\": true },\n    { \"label\": \"Understand distance and time\", \"checked\": true },\n    { \"label\": \"Understand basic directions\", \"checked\": true },\n    { \"label\": \"Ask to repeat or slow down\", \"checked\": true },\n    { \"label\": \"Confirm arrival\", \"checked\": false }\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPpDn+pFLGBg9g9bBk26toBPgem36oPqX2s8mqmZOv7NlMTKa7JMpZNtlPaWVm0w7wU26pysHbkXg4NMxKMv4Hi2gIlodYV26zimY3gk74Q7NMCXniRp8r"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 821,
+    "candidatesTokenCount": 205,
+    "totalTokenCount": 1026,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 821
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "7CWjaoWPFZmM_PUPrtrbkAg"
+}

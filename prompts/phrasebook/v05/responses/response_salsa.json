@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"conversations\": [\n    {\n      \"title\": \"Accept or decline a dance\",\n      \"lines\": [\n        { \"speaker\": \"partner\", \"text\": \"Wanna dance?\" },\n        { \"speaker\": \"you\", \"text\": \"I'd love to.\" },\n        { \"speaker\": \"you\", \"text\": \"I'm taking a break right now.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"Maybe later!\" }\n      ]\n    },\n    {\n      \"title\": \"Compliment someone's dancing\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"You're a great dancer.\" },\n        { \"speaker\": \"partner\", \"text\": \"Thanks so much!\" },\n        { \"speaker\": \"you\", \"text\": \"Where'd you learn to move like that?\" },\n        { \"speaker\": \"partner\", \"text\": \"I take classes on Tuesdays.\" }\n      ]\n    },\n    {\n      \"title\": \"Chat between songs\",\n      \"lines\": [\n        { \"speaker\": \"partner\", \"text\": \"Come here often?\" },\n        { \"speaker\": \"you\", \"text\": \"It's my first time here.\" },\n        { \"speaker\": \"partner\", \"text\": \"How do you like it?\" },\n        { \"speaker\": \"you\", \"text\": \"The band is amazing.\" },\n        { \"speaker\": \"partner\", \"text\": \"They play here every weekend.\" }\n      ]\n    }\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIP+YfgVWfxpc36JLdztFMLzg1EQM3/ZyAsXgzW20zsyG6X8S+552M3v/+tmTBrQNmOvxa0mRICrfMw4JZKywUDVqDYH/ZYLabgzCGxxiWBPpvuqYJbloMd"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1048,
+    "candidatesTokenCount": 357,
+    "totalTokenCount": 1405,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1048
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "yL2lat32Ab_j_uMPsJ-B6Ac"
+}

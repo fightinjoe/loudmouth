@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"conversations\": [\n    {\n      \"title\": \"Accept or decline a dance\",\n      \"lines\": [\n        { \"speaker\": \"partner\", \"text\": \"Would you like to dance?\" },\n        { \"speaker\": \"you\", \"text\": \"I'd love to.\" },\n        { \"speaker\": \"you\", \"text\": \"I'm taking a break right now.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"No worries at all.\" },\n        { \"speaker\": \"partner\", \"text\": \"Maybe next song.\", \"or\": true }\n      ]\n    },\n    {\n      \"title\": \"Compliment someone's dancing\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"You're a great dancer.\" },\n        { \"speaker\": \"partner\", \"text\": \"Thank you so much.\" },\n        { \"speaker\": \"you\", \"text\": \"Where did you learn to move like that?\" },\n        { \"speaker\": \"partner\", \"text\": \"I take classes downtown.\" },\n        { \"speaker\": \"partner\", \"text\": \"I just practice a lot.\", \"or\": true }\n      ]\n    },\n    {\n      \"title\": \"Chat between songs\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"Do you come here often?\" },\n        { \"speaker\": \"partner\", \"text\": \"Every weekend.\" },\n        { \"speaker\": \"partner\", \"text\": \"This is my first time here.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"The live band tonight is amazing.\" },\n        { \"speaker\": \"partner\", \"text\": \"They always play great music.\" }\n      ]\n    }\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIP4kCigmCY8nCy+NfVs/1+E/gUqDwwd5O6kPWPDmnDURuzJORQ96Vewg7+wwJO0HlG9L8UunQXti2+r7u7xQSwHVDlbBofPcNZxS04AGM5CYQ8bRk15ScD"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1048,
+    "candidatesTokenCount": 410,
+    "totalTokenCount": 1458,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1048
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "UFmlateYHI22_PUPi6nI2Qg"
+}

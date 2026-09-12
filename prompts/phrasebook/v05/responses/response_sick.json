@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"conversations\": [\n    {\n      \"title\": \"Describe my symptoms\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"My stomach hurts.\" },\n        { \"speaker\": \"you\", \"text\": \"I have terrible diarrhea.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"How long has it hurt?\" },\n        { \"speaker\": \"you\", \"text\": \"Since this morning.\" },\n        { \"speaker\": \"you\", \"text\": \"Since yesterday.\", \"or\": true }\n      ]\n    },\n    {\n      \"title\": \"Ask about medication\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"What do you suggest for stomach pain?\" },\n        { \"speaker\": \"partner\", \"text\": \"Take these pills after meals.\" },\n        { \"speaker\": \"you\", \"text\": \"How often should I take them?\" },\n        { \"speaker\": \"partner\", \"text\": \"Three times a day.\" },\n        { \"speaker\": \"you\", \"text\": \"Thank you.\" }\n      ]\n    },\n    {\n      \"title\": \"Explain allergies\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"Does this medicine have aspirin?\" },\n        { \"speaker\": \"partner\", \"text\": \"Yes, it does.\" },\n        { \"speaker\": \"you\", \"text\": \"I'm allergic to aspirin.\" },\n        { \"speaker\": \"partner\", \"text\": \"Let me find something else for you.\" },\n        { \"speaker\": \"you\", \"text\": \"Thank you.\" }\n      ]\n    }\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPJqSNTRCznMYopQX2Tb6Cc4uGaXy4AYIbFcuKOjRousGT/W2dD9+wCkGPJPiWaOfhz8lwW4S4Ur8TmBJcjpXtg4Gj6Llm878ZFYzCYaGaGDb5vhkyYchT"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1054,
+    "candidatesTokenCount": 385,
+    "totalTokenCount": 1439,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1054
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "z72laraJBqWw_PUPgvawkAM"
+}

@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"conversations\": [\n    {\n      \"title\": \"Accept or decline a dance\",\n      \"lines\": [\n        { \"speaker\": \"partner\", \"text\": \"Wanna dance?\" },\n        { \"speaker\": \"you\", \"text\": \"I'd love to.\" },\n        { \"speaker\": \"you\", \"text\": \"I'm taking a break right now.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"No worries.\" },\n        { \"speaker\": \"partner\", \"text\": \"Maybe later?\", \"or\": true }\n      ]\n    },\n    {\n      \"title\": \"Compliment someone's dancing\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"You're a great dancer.\" },\n        { \"speaker\": \"partner\", \"text\": \"Thanks!\" },\n        { \"speaker\": \"you\", \"text\": \"I love your spins.\" },\n        { \"speaker\": \"partner\", \"text\": \"Appreciate it.\" },\n        { \"speaker\": \"partner\", \"text\": \"You're doing great too.\", \"or\": true }\n      ]\n    },\n    {\n      \"title\": \"Chat between songs\",\n      \"lines\": [\n        { \"speaker\": \"partner\", \"text\": \"Come here often?\" },\n        { \"speaker\": \"you\", \"text\": \"It's my first time here.\" },\n        { \"speaker\": \"you\", \"text\": \"I come every week.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"How do you like it?\" },\n        { \"speaker\": \"you\", \"text\": \"I'm having a blast.\" },\n        { \"speaker\": \"partner\", \"text\": \"Me too.\" }\n      ]\n    }\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPnhrUECRJg9ygTH9gYQsBxQI3qmSkMnPRTYbc3G51fo6wFg1AckCqKUGhhbyUcl4xpDrXYwcvPjCT0zt/VeXpG+Km9HN5JbojJCjyBZyeRbW66C1I5nfX"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1048,
+    "candidatesTokenCount": 416,
+    "totalTokenCount": 1464,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1048
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "TlmlatPULdC9_uMPyoC1wQo"
+}

@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"conversations\": [\n    {\n      \"title\": \"Accept or decline a dance\",\n      \"lines\": [\n        { \"speaker\": \"partner\", \"text\": \"Would you like to dance?\" },\n        { \"speaker\": \"you\", \"text\": \"I'd love to.\" },\n        { \"speaker\": \"you\", \"text\": \"I'm taking a break right now.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"No worries.\" },\n        { \"speaker\": \"partner\", \"text\": \"Maybe next song.\", \"or\": true }\n      ]\n    },\n    {\n      \"title\": \"Compliment someone's dancing\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"You're a great dancer.\" },\n        { \"speaker\": \"partner\", \"text\": \"Thank you so much.\" },\n        { \"speaker\": \"you\", \"text\": \"I like your style.\" },\n        { \"speaker\": \"partner\", \"text\": \"You're doing great too.\" },\n        { \"speaker\": \"you\", \"text\": \"Thanks for the dance.\" },\n        { \"speaker\": \"partner\", \"text\": \"My pleasure.\" }\n      ]\n    },\n    {\n      \"title\": \"Chat between songs\",\n      \"lines\": [\n        { \"speaker\": \"partner\", \"text\": \"Do you come here often?\" },\n        { \"speaker\": \"you\", \"text\": \"It's my first time here.\" },\n        { \"speaker\": \"partner\", \"text\": \"How do you like it?\" },\n        { \"speaker\": \"you\", \"text\": \"I love the music.\" },\n        { \"speaker\": \"partner\", \"text\": \"It's a great band tonight.\" },\n        { \"speaker\": \"you\", \"text\": \"Really amazing.\" }\n      ]\n    }\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIP7l6t6v2IKwD+uUwPhcw9kjl9VbacMT4A7HtL+EdPTZsXsu4x6CEFQuqvC5gzZ3ixF7WmyNT0aCtE+At7aHlXQ8+93LuzsND6Vt+7q2k0rcCVqvP9+eXV"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1048,
+    "candidatesTokenCount": 435,
+    "totalTokenCount": 1483,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1048
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "n1elauCNMLqQ-8YPytDVmQs"
+}

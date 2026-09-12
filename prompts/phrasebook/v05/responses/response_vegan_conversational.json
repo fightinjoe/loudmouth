@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"conversations\": [\n    {\n      \"title\": \"State my dietary restrictions\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"I'm vegan.\" },\n        { \"speaker\": \"partner\", \"text\": \"What does that mean?\" },\n        { \"speaker\": \"you\", \"text\": \"I don't eat meat, fish, eggs, or dairy.\" },\n        { \"speaker\": \"you\", \"text\": \"I don't eat any animal products at all.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"Does that include dashi broth?\" },\n        { \"speaker\": \"you\", \"text\": \"Yes, I can't have fish broth.\" },\n        { \"speaker\": \"partner\", \"text\": \"Understood.\" }\n      ]\n    },\n    {\n      \"title\": \"Ask about hidden ingredients\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"Does this have any meat in it?\" },\n        { \"speaker\": \"partner\", \"text\": \"Yes, it has pork.\" },\n        { \"speaker\": \"partner\", \"text\": \"No, it's meatless.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"Does it have dashi or fish broth?\" },\n        { \"speaker\": \"partner\", \"text\": \"Yes, the soup uses fish broth.\" },\n        { \"speaker\": \"partner\", \"text\": \"No, it's plant-based broth.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"Does it contain honey or eggs?\" },\n        { \"speaker\": \"partner\", \"text\": \"It has eggs.\" },\n        { \"speaker\": \"partner\", \"text\": \"No, it's completely vegan.\", \"or\": true }\n      ]\n    },\n    {\n      \"title\": \"Order vegan dishes\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"I'll take the vegetable stir-fry.\" },\n        { \"speaker\": \"partner\", \"text\": \"Would you like rice with that?\" },\n        { \"speaker\": \"you\", \"text\": \"Yes, please.\" },\n        { \"speaker\": \"you\", \"text\": \"No, just the stir-fry, please.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"Can I get you anything to drink?\" },\n        { \"speaker\": \"you\", \"text\": \"Just water, please.\" },\n        { \"speaker\": \"partner\", \"text\": \"Coming right up.\" }\n      ]\n    }\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPYukuvHEPRFzRA/JKC3FWiJ5duWrUbku2yB8M3D2PrnoJWJUPLVzQ/px5gjbRMnzHbU6Bx7JjUNr56AAsSAcps7Ozhv+dain5ceo6PAoenWFiRT/1Kf4+"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1058,
+    "candidatesTokenCount": 603,
+    "totalTokenCount": 1661,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1058
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "g8SlasuaK7O9_uMPgYSM2Qk"
+}

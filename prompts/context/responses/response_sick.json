@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"questions\": [\n    {\n      \"label\": \"Where are you seeking help?\",\n      \"options\": [\n        \"Pharmacy\",\n        \"Hospital or clinic\",\n        \"Speaking with a hotel receptionist\",\n        \"Talking to a friend or coworker\"\n      ]\n    },\n    {\n      \"label\": \"What kind of symptoms do you have?\",\n      \"options\": [\n        \"Cold, flu, or fever\",\n        \"Stomach or digestive issues\",\n        \"Pain or injury\",\n        \"Allergic reaction or rash\"\n      ]\n    },\n    {\n      \"label\": \"How severe is the situation?\",\n      \"options\": [\n        \"Mild discomfort\",\n        \"Moderate, need specific medicine\",\n        \"Severe, urgent medical care needed\"\n      ]\n    }\n  ],\n  \"checklist\": [\n    {\n      \"label\": \"Describe my symptoms\",\n      \"checked\": true\n    },\n    {\n      \"label\": \"Ask about medication\",\n      \"checked\": true\n    },\n    {\n      \"label\": \"Explain allergies\",\n      \"checked\": true\n    },\n    {\n      \"label\": \"Ask for the doctor or clinic\",\n      \"checked\": true\n    },\n    {\n      \"label\": \"Discuss payment and insurance\",\n      \"checked\": false\n    },\n    {\n      \"label\": \"Ask for a sick leave note\",\n      \"checked\": false\n    }\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPAZ0vjX1IJMDkolg+kHbbjR3PFNXv5aivb0lJjGD60PDYJtOGy49aqh8C6GFyRNq9UAo0tzReaIyfJD/CEg8TY4dVMl4M31OR5IYuMl5qBSwMkUXhvCfT"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 821,
+    "candidatesTokenCount": 333,
+    "totalTokenCount": 1154,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 821
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "7SWjav_VHrnVjMcPiIy82Ag"
+}
