@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"conversations\": [\n    {\n      \"title\": \"Ask for a specific place\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"Where's the train station?\" },\n        { \"speaker\": \"partner\", \"text\": \"It's near the main square.\" },\n        { \"speaker\": \"partner\", \"text\": \"It's far from here.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"Can I take the bus there?\" },\n        { \"speaker\": \"partner\", \"text\": \"Yes, take bus twenty-two.\" },\n        { \"speaker\": \"you\", \"text\": \"Thanks a lot.\" }\n      ],\n      \"vocab\": [\"station\", \"square\", \"bus\", \"near\", \"far\", \"take\"]\n    },\n    {\n      \"title\": \"Understand basic directions\",\n      \"lines\": [\n        { \"speaker\": \"partner\", \"text\": \"Go straight ahead.\" },\n        { \"speaker\": \"partner\", \"text\": \"Turn left at the corner.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"Is it on the right?\" },\n        { \"speaker\": \"partner\", \"text\": \"Yes, right beside the shop.\" },\n        { \"speaker\": \"you\", \"text\": \"Thank you.\" }\n      ],\n      \"vocab\": [\"straight\", \"left\", \"right\", \"corner\", \"shop\"]\n    },\n    {\n      \"title\": \"Ask to repeat or slow down\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"Could you speak slower, please?\" },\n        { \"speaker\": \"partner\", \"text\": \"Sure, go straight and turn right.\" },\n        { \"speaker\": \"you\", \"text\": \"Could you repeat that?\" },\n        { \"speaker\": \"partner\", \"text\": \"Turn right at the traffic lights.\" },\n        { \"speaker\": \"you\", \"text\": \"Got it, thanks.\" }\n      ],\n      \"vocab\": [\"slow\", \"repeat\", \"light\", \"street\"]\n    }\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPigvN7i7rs1Nyw2clKSaGiDbf0uk32tW+BhumF4gGSLb3R7z8hp4vS3qJRkgXOtLBSpIOyfAkSXReqMfCF06OMRim4P6exsqiGf0szn2Pz/1CWEYrI7SQ"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1238,
+    "candidatesTokenCount": 484,
+    "totalTokenCount": 1722,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1238
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "0fOlaqblE7Pf_uMP-8yasQk"
+}
