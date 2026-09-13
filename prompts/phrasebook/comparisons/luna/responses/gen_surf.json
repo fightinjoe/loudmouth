@@ -1,0 +1,36 @@
+{
+  "id": "chatcmpl-ENTys2W1yZH0SToKLVcfThPpmdXCx",
+  "object": "chat.completion",
+  "created": 1789265498,
+  "model": "gpt-5.6-luna",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"conversations\": [\n    {\n      \"title\": \"Rent a surfboard\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"I'd like to rent a surfboard.\" },\n        { \"speaker\": \"partner\", \"text\": \"What kind of board do you need?\" },\n        { \"speaker\": \"you\", \"text\": \"A funboard, please.\" },\n        { \"speaker\": \"you\", \"text\": \"A longboard, please.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"How long will you rent it?\" },\n        { \"speaker\": \"you\", \"text\": \"For three days.\" },\n        { \"speaker\": \"you\", \"text\": \"Just for today.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"How much is it?\" },\n        { \"speaker\": \"partner\", \"text\": \"It's twenty dollars a day.\" },\n        { \"speaker\": \"you\", \"text\": \"I'll take it, thanks.\" }\n      ],\n      \"vocab\": [\"rent\", \"surfboard\", \"funboard\", \"longboard\", \"day\", \"price\"]\n    },\n    {\n      \"title\": \"Ask about wave conditions\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"What's the surf like today?\" },\n        { \"speaker\": \"partner\", \"text\": \"The waves are small and clean.\" },\n        { \"speaker\": \"partner\", \"text\": \"The waves are big and choppy.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"Are there strong currents?\" },\n        { \"speaker\": \"partner\", \"text\": \"No, the current is weak.\" },\n        { \"speaker\": \"partner\", \"text\": \"Yes, the current is strong.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"When's the best time to surf?\" },\n        { \"speaker\": \"partner\", \"text\": \"Early morning.\" },\n        { \"speaker\": \"you\", \"text\": \"Thanks, I'll go then.\" }\n      ],\n      \"vocab\": [\"wave\", \"current\", \"strong\", \"clean\", \"surf\", \"early\"]\n    },\n    {\n      \"title\": \"Get local food recommendations\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"Where can I get good local food?\" },\n        { \"speaker\": \"partner\", \"text\": \"Try the soda near the plaza.\" },\n        { \"speaker\": \"partner\", \"text\": \"Try the fish market.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"What do you recommend?\" },\n        { \"speaker\": \"partner\", \"text\": \"Try the casado.\" },\n        { \"speaker\": \"partner\", \"text\": \"Try the ceviche.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"Is it spicy?\" },\n        { \"speaker\": \"partner\", \"text\": \"No, it's mild.\" },\n        { \"speaker\": \"partner\", \"text\": \"Yes, it's spicy.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"I'll try the casado, thanks.\" }\n      ],\n      \"vocab\": [\"recommend\", \"soda\", \"plaza\", \"casado\", \"ceviche\", \"spicy\"]\n    }\n  ]\n}",
+        "refusal": null,
+        "annotations": []
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1154,
+    "completion_tokens": 2423,
+    "total_tokens": 3577,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 1151,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 1663,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "service_tier": "default",
+  "system_fingerprint": null
+}

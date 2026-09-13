@@ -1,0 +1,36 @@
+{
+  "id": "chatcmpl-ENTyHZNHaRcQU2iWLtfFL9cW4Yb2q",
+  "object": "chat.completion",
+  "created": 1789265461,
+  "model": "gpt-5.6-luna",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\n  \"conversations\": [\n    {\n      \"title\": \"Accept or decline a dance\",\n      \"lines\": [\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"Would you like to dance?\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"Sure, I'd love to.\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"No, thank you.\",\n          \"or\": true\n        },\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"We'll go slowly.\"\n        },\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"Maybe next song.\",\n          \"or\": true\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"I'm a complete beginner.\"\n        },\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"That's okay.\"\n        }\n      ],\n      \"vocab\": [\"dance\", \"beginner\", \"slowly\", \"song\"]\n    },\n    {\n      \"title\": \"Compliment someone's dancing\",\n      \"lines\": [\n        {\n          \"speaker\": \"you\",\n          \"text\": \"You dance really well.\"\n        },\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"Thanks, that's kind of you.\"\n        },\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"How long have you been dancing?\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"I'm just starting.\"\n        },\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"You'll learn quickly.\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"Thanks.\"\n        }\n      ],\n      \"vocab\": [\"dance\", \"well\", \"start\", \"learn\", \"quickly\"]\n    },\n    {\n      \"title\": \"Chat between songs\",\n      \"lines\": [\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"Is this your first time here?\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"Yes, it is.\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"No, I come sometimes.\",\n          \"or\": true\n        },\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"Do you live in Austin?\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"Yes, I live here.\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"No, I'm visiting.\",\n          \"or\": true\n        },\n        {\n          \"speaker\": \"partner\",\n          \"text\": \"Would you like to dance again?\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"Sure, I'd love to.\"\n        },\n        {\n          \"speaker\": \"you\",\n          \"text\": \"Maybe later.\",\n          \"or\": true\n        }\n      ],\n      \"vocab\": [\"first\", \"sometimes\", \"live\", \"visit\", \"later\"]\n    }\n  ]\n}",
+        "refusal": null,
+        "annotations": []
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1152,
+    "completion_tokens": 2927,
+    "total_tokens": 4079,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 1149,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 2263,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "service_tier": "default",
+  "system_fingerprint": null
+}

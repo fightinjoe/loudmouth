@@ -1,0 +1,13 @@
+{
+  "seed": "asking directions",
+  "language": "cs",
+  "answers": {
+    "Who are you asking?": "Passerby on the street",
+    "How do you want to travel?": "Public transit"
+  },
+  "checklist": [
+    "Ask for a specific place",
+    "Understand basic directions",
+    "Ask to repeat or slow down"
+  ]
+}

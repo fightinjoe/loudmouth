@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"lines\": [\n    \"¿Vienes por aquí muy seguido?\",\n    \"Es mi primera vez.\",\n    \"Vengo todas las semanas.\",\n    \"¿Qué te parece la música?\",\n    \"El grupo está increíble.\",\n    \"Siempre tocan muy buenos temas.\"\n  ],\n  \"vocab\": [\n    \"música\",\n    \"grupo\",\n    \"canción\",\n    \"vez\",\n    \"semana\",\n    \"tocar\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIP6YUPKID+jLe7yyaYT8A0ds+RFpikqR1k75LpJRnDbW+fYEvFJmzhlGKMsHTKBLjp8SliJg/6qCeS6v72AU4/z2dv0H1oj8IRI6Q4BisMHI81Mhiw8aZ9"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 495,
+    "candidatesTokenCount": 111,
+    "totalTokenCount": 606,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 495
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "tPylar7DNMm5sOIPx7q5qQ8"
+}

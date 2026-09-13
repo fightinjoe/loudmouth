@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"lines\": [\n    \"¿Alquilan tablas de surf?\",\n    \"Sí, ¿qué medida necesitás?\",\n    \"Necesito una tabla larga, por favor.\",\n    \"Necesito una tabla corta, por favor.\",\n    \"¿Cuántos días?\",\n    \"Solo por hoy.\",\n    \"Por tres días, por favor.\"\n  ],\n  \"vocab\": [\n    \"alquilar\",\n    \"tabla de surf\",\n    \"medida\",\n    \"tabla larga\",\n    \"tabla corta\",\n    \"día\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPkLbe0+Gnfzf6tBzfjnBLRwqEbrT1CU7lw1n9lu44rbn4oAS2XYOiWPHZkwI+rUaSylgKdwB2tSIRQlD7H5CxJtLzR6v3QPE61Yp9kYDzIFpzFgGkLfJG"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 511,
+    "candidatesTokenCount": 129,
+    "totalTokenCount": 640,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 511
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "_PylaoTGJtWL-sAPko7W-Qo"
+}

@@ -1,0 +1,13 @@
+{
+  "seed": "ordering vegan food",
+  "language": "ja",
+  "answers": {
+    "How strict is your diet?": "Fully vegan (no dashi, honey, etc.)",
+    "What kind of place are you eating at?": "Standard restaurant or izakaya"
+  },
+  "checklist": [
+    "State my dietary restrictions",
+    "Ask about hidden ingredients",
+    "Order vegan dishes"
+  ]
+}

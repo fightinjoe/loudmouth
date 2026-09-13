@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"lines\": [\n    \"Kde je vlakové nádraží?\",\n    \"Je to blízko hlavního náměstí.\",\n    \"Je to odsud daleko.\",\n    \"Můžu tam jet autobusem?\",\n    \"Ano, jeďte autobusem dvacet dva.\",\n    \"Mockrát děkuji.\"\n  ],\n  \"vocab\": [\n    \"nádraží\",\n    \"náměstí\",\n    \"autobus\",\n    \"blízko\",\n    \"daleko\",\n    \"jet\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPvBQ/7KI9XrIbhKyb/9f9Nvi/F3/IDMtnEsWhowSeE/p7kVzbZdx/yzT2mkAqFxU+NTtr9Bki59GSFbbkGqhEuQ5tgFIOI6z/va5wo38UMyyar8TAJIyZ"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 498,
+    "candidatesTokenCount": 130,
+    "totalTokenCount": 628,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 498
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "t_ylaoeNM9jf-sAPkLuX0Qw"
+}

@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"lines\": [\n    \"¿Quieres bailar?\",\n    \"Me encantaría.\",\n    \"No sé bailar salsa.\",\n    \"Te enseño.\",\n    \"¡Órale!\",\n    \"Tal vez la próxima.\"\n  ],\n  \"vocab\": [\n    \"bailar\",\n    \"aprender\",\n    \"enseñar\",\n    \"encantar\",\n    \"próximo\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPGIjxifS7fUvGLhyEe0FnCvW8N9WGRD3iWQDYQVTo30xtxLZKPyd7FdrT2VzWKlrC8Lm9yH8vDBwOb+V3ZvXJP8fri+TDcTD+++DViaBM8j8Kdgq34Uau"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 496,
+    "candidatesTokenCount": 96,
+    "totalTokenCount": 592,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 496
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "tPylaoahNdC9_uMPyoC1wQo"
+}

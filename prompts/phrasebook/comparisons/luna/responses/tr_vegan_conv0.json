@@ -1,0 +1,36 @@
+{
+  "id": "chatcmpl-ENTzkxztZbEgR4glXAGRTSDq48NTv",
+  "object": "chat.completion",
+  "created": 1789265552,
+  "model": "gpt-5.6-luna",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"lines\":[\"ヴィーガンです。\",\"魚[さかな]の出汁[だし]は大丈夫[だいじょうぶ]ですか？\",\"いいえ、魚[さかな]の出汁[だし]は口[くち]にしません。\",\"肉[にく]、魚[さかな]、乳製品[にゅうせいひん]、卵[たまご]は食[た]べられません。\",\"わかりました。\"],\"vocab\":[\"ヴィーガン\",\"肉[にく]\",\"魚[さかな]\",\"乳製品[にゅうせいひん]\",\"卵[たまご]\",\"出汁[だし]\"]}",
+        "refusal": null,
+        "annotations": []
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 574,
+    "completion_tokens": 1202,
+    "total_tokens": 1776,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 1024,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "service_tier": "default",
+  "system_fingerprint": null
+}

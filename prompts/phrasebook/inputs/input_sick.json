@@ -1,0 +1,14 @@
+{
+  "seed": "feeling sick",
+  "language": "zh",
+  "answers": {
+    "Where are you seeking help?": "Pharmacy",
+    "What kind of symptoms do you have?": "Stomach or digestive issues",
+    "How severe is the situation?": "Moderate, need specific medicine"
+  },
+  "checklist": [
+    "Describe my symptoms",
+    "Ask about medication",
+    "Explain allergies"
+  ]
+}

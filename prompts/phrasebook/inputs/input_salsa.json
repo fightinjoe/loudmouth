@@ -1,0 +1,13 @@
+{
+  "seed": "salsa dancing in Austin, TX",
+  "language": "es",
+  "answers": {
+    "What is your dancing ability?": "Complete beginner",
+    "Who are you going with?": "Going solo"
+  },
+  "checklist": [
+    "Accept or decline a dance",
+    "Compliment someone's dancing",
+    "Chat between songs"
+  ]
+}

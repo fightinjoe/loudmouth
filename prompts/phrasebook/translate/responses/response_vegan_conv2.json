@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"lines\": [\n    \"豆腐[とうふ]のサラダをください。\",\n    \"かしこまりました。\",\n    \"野菜[やさい]の天[てん]ぷら[ぷら]、卵[たまご]なしでできますか？\",\n    \"衣[ころも]から卵[たまご]を抜[ぬ]くことはできません。\",\n    \"はい、できますよ。\",\n    \"じゃあ枝豆[えだまめ]にします。\"\n  ],\n  \"vocab\": [\n    \"豆腐[とうふ]\",\n    \"サラダ\",\n    \"天[てん]ぷら[ぷら]\",\n    \"衣[ころも]\",\n    \"抜[ぬ]く\",\n    \"代[か]わりに\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIP/OIBOr7W9G0RjflxAmSlLRDuN+UY+/I4jcl7GzKcgEkcbnzHqsV86pI7FEwt8jwFI3xcRR7vzmjM+P3NT0ZL/CxkE/l39XfjVvAzQgCafTTlcE2rdKZM"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 605,
+    "candidatesTokenCount": 173,
+    "totalTokenCount": 778,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 605
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "2wOmat_YI7jUjMcPruqpwAo"
+}

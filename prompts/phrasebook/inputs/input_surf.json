@@ -1,0 +1,13 @@
+{
+  "seed": "surf vacation in Costa Rica",
+  "language": "es",
+  "answers": {
+    "What is your current surfing level?": "Intermediate renting gear",
+    "Where are you staying?": "Surf camp or hostel"
+  },
+  "checklist": [
+    "Rent a surfboard",
+    "Ask about wave conditions",
+    "Get local food recommendations"
+  ]
+}

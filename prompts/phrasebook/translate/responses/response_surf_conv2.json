@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"lines\": [\n    \"¿Dónde hay un buen lugar para comer por aquí?\",\n    \"¿Quieres comida típica o hamburguesas?\",\n    \"Quiero comida típica.\",\n    \"Quisiera una hamburguesa, por favor.\",\n    \"Prueba en el casado de más abajo.\",\n    \"¿Qué es lo bueno ahí?\",\n    \"El pescado siempre es fresco.\"\n  ],\n  \"vocab\": [\n    \"comer\",\n    \"comida\",\n    \"típico\",\n    \"calle\",\n    \"pescado\",\n    \"fresco\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPYOV4F9aX9PRSUC5gddTRHBmQCoW+FVplP3MdjiP4sQLxGgzSGWZ/rme0eBIixJpZLz7hSaww+sOE6M1WLIBAF9VaW+QVjsY60GUMcm0GYHY6+rHr+Ees"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 516,
+    "candidatesTokenCount": 135,
+    "totalTokenCount": 651,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 516
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "_Pylar6TJtWY_uMP5v7roAM"
+}

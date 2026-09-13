@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"lines\": [\n    \"これには肉[にく]が入[はい]っていますか？\",\n    \"はい、鶏肉[とりにく]が入[はい]っています。\",\n    \"いいえ、野菜[やさい]だけです。\",\n    \"魚[さかな]のだしは使[つか]われていますか？\",\n    \"はい、使[つか]われています。\",\n    \"いいえ、使[つか]われていません。\",\n    \"ハチミツはどうですか？\"\n  ],\n  \"vocab\": [\n    \"鶏肉[とりにく]\",\n    \"野菜[やさい]\",\n    \"含[ふく]む\",\n    \"ハチミツ\",\n    \"材料[ざいりょう]\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPf5Q1JGHuxCNp6uZkirxjiRh7S49G5vnFwQtzY08lgP3NRW5vfTxN49aovzkhhEEKRguFMKBbeliTzWI1LrXLha4uchWOEdY420VTHdWUqbz7M6edxVtF"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 598,
+    "candidatesTokenCount": 173,
+    "totalTokenCount": 771,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 598
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "2wOmapnPJouR_uMP4eqYuAg"
+}

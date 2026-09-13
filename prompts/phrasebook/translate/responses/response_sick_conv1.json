@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"lines\": [\n    \"你[nǐ]有[yǒu]治[zhì]胃[wèi]痛[tòng]的[de]药[yào]吗[ma]？\",\n    \"吃[chī]这[zhè]些[xiē]药[yào]片[piàn]。\",\n    \"我[wǒ]该[gāi]吃[chī]几[jǐ]颗[kē]？\",\n    \"饭[fàn]后[hòu]吃[chī]两[liǎng]颗[kē]。\",\n    \"这[zhè]药[yào]效[xiào]强[qiáng]吗[ma]？\",\n    \"药[yào]效[xiào]适[shì]中[zhōng]。\"\n  ],\n  \"vocab\": [\n    \"药[yào]片[piàn]\",\n    \"饭[fàn]\",\n    \"强[qiáng]\",\n    \"吃[chī]\",\n    \"剂[jì]量[liàng]\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPUpJlVVfgyGN2ZUmwzmI6/aP/7V4CSoKy0P1atCPDARb3kHUZYQK5/FnV+HQgxathjJaGCuOO/BiWE87y0k+yBNWlPVerfy3UPYRiTnbYxONoJRHzuglB"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 558,
+    "candidatesTokenCount": 256,
+    "totalTokenCount": 814,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 558
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "3AOmatzBL4vn_uMPzdWM2AU"
+}

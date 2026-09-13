@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"lines\": [\n    \"¿Cómo están las olas hoy?\",\n    \"Están bastante pequeñas ahorita.\",\n    \"Están muy grandes ahorita.\",\n    \"¿A qué hora es la marea alta?\",\n    \"Como al mediodía.\",\n    \"¿Cuál playa es mejor para principiantes?\",\n    \"Fíjate en el lado norte.\"\n  ],\n  \"vocab\": [\n    \"ola\",\n    \"condición\",\n    \"marea\",\n    \"playa\",\n    \"pequeño\",\n    \"grande\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIP1y3nS1MIF4N28dcUOxljNPSnhh1gmaMleeSMYpPu6tIBolj+7hYcTficJhicoElAnKqJknFgtlEQr9r6SFvR/3hE2xtQFEHud/CHPyIr8Ggji53hORrt"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 507,
+    "candidatesTokenCount": 129,
+    "totalTokenCount": 636,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 507
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "_PylauSSJvWV_uMPyZft-Qg"
+}
