@@ -44,7 +44,7 @@ Implemented service obligations (rationale in `NOTES.md` §"Service-owed work"):
 3. 429 backoff; API Gateway deadline must stay above total worst-case (gen retry +
    chunk retry).
 4. Vocab: pool per-conversation lists, dedup by English word (keep first), cap.
-5. ja `romanization` via mechanical kana→rōmaji from the inline readings.
+5. ja `romanization` from model-supplied, index-aligned modified Hepburn arrays; invalid entries fall back to WanaKana without retrying the chunk.
 6. `notes.source` on drawn vocab cards = the translated target-language line at
    the matched English source index. Exact/common inflected English forms are
    matched within the originating conversation; no source is invented for unmatched

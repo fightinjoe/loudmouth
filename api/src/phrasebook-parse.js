@@ -22,7 +22,6 @@ const VOCAB_CARDS_PER_TOPIC = 5;
 
 const CJK_RUN_SOURCE = '[\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff々〆ヶ]+';
 const INLINE_READING_RE = new RegExp(`(${CJK_RUN_SOURCE})\\[([^\\[\\]]+)\\]`, 'gu');
-const CJK_RE = new RegExp(CJK_RUN_SOURCE, 'u');
 const STRAY_BRACKET_GROUP_RE = /\[[^\[\]]*\]/gu;
 const LONE_BRACKET_RE = /[\[\]]/gu;
 const ENGLISH_TOKEN_RE = /[a-z]+(?:['’][a-z]+)*/giu;
@@ -272,7 +271,15 @@ function parseInlineReading(value) {
   };
 }
 
-function validateTranslationResponse(raw, conversation) {
+function latinRomanization(value) {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.normalize('NFC').trim().replace(/\s+/gu, ' ');
+  return /\p{Script=Latin}/u.test(normalized)
+    && /^[\p{Script=Latin}\p{M}\p{N}\p{P}\p{Zs}]+$/u.test(normalized)
+    ? normalized : undefined;
+}
+
+function validateTranslationResponse(raw, conversation, language) {
   const parsed = parseModelJson(raw);
   if (!Array.isArray(parsed.lines) || parsed.lines.length !== conversation.lines.length) {
     const count = Array.isArray(parsed.lines) ? parsed.lines.length : 'non-array';
@@ -294,20 +301,45 @@ function validateTranslationResponse(raw, conversation) {
     return normalized;
   });
 
-  return {
+  const result = {
     lines: validateStrings(parsed.lines, 'lines'),
     vocab: validateStrings(parsed.vocab, 'vocab'),
   };
+  if (language === 'ja') {
+    for (const [field, targets] of [
+      ['lineRomanizations', result.lines],
+      ['vocabRomanizations', result.vocab],
+    ]) {
+      const supplied = parsed[field];
+      // A count mismatch makes every index suspect; do not attach a shifted
+      // model romanization to the wrong Japanese line.
+      const aligned = Array.isArray(supplied) && supplied.length === targets.length;
+      result[field] = targets.map((target, index) => {
+        const normalized = aligned ? latinRomanization(supplied[index]) : undefined;
+        if (normalized) return normalized;
+        const kana = parseInlineReading(target).reading
+          .map(([base, annotation]) => annotation ? ` ${annotation}` : base).join('');
+        const romaji = toRomaji(kana).trim().replace(/ha(?=$|[\s\p{P}])/gu, 'wa');
+        const fallback = latinRomanization(field === 'lineRomanizations'
+          ? romaji.charAt(0).toUpperCase() + romaji.slice(1)
+          : romaji);
+        console.warn({
+          event: 'phrasebook_romanization_fallback',
+          field,
+          index,
+          reason: aligned ? 'invalid_entry' : 'unaligned_array',
+          available: !!fallback,
+        });
+        // Unannotated kanji cannot be read mechanically. Keep the card rather
+        // than return Japanese characters as romanization or fail the chunk.
+        return fallback;
+      });
+    }
+  }
+  return result;
 }
 
-function romanizeJapanese(tokens) {
-  const kana = tokens.map(([base, annotation]) => annotation || base).join('');
-  if (!kana || CJK_RE.test(kana)) return undefined;
-  const romanization = toRomaji(kana).trim();
-  return romanization || undefined;
-}
-
-function buildCard({ language, target, translation, type, context, notes }) {
+function buildCard({ language, target, romanization, translation, type, context, notes }) {
   const parsed = parseInlineReading(target);
   const card = {
     lang: language,
@@ -321,10 +353,7 @@ function buildCard({ language, target, translation, type, context, notes }) {
   if (language === 'ja' || language === 'zh') {
     card.reading = parsed.reading;
   }
-  if (language === 'ja') {
-    const romanization = romanizeJapanese(parsed.reading);
-    if (romanization) card.romanization = romanization;
-  }
+  if (language === 'ja' && romanization) card.romanization = romanization;
 
   validateCard(card, `${type} card`);
   return card;
@@ -409,6 +438,7 @@ function assemblePhrasebook({ seed, language, conversations, translations }) {
     cards: conversation.lines.map((line, lineIndex) => buildCard({
       language,
       target: translations[conversationIndex].lines[lineIndex],
+      romanization: translations[conversationIndex].lineRomanizations?.[lineIndex],
       translation: line.text,
       type: 'phrase',
       context: conversation.title,
@@ -429,6 +459,7 @@ function assemblePhrasebook({ seed, language, conversations, translations }) {
         pooled.set(key, {
           english,
           target: translated.vocab[wordIndex],
+          romanization: translated.vocabRomanizations?.[wordIndex],
           context: conversation.title,
           source: sourceIndex < 0 ? undefined : groups[conversationIndex].cards[sourceIndex].text,
         });
@@ -438,9 +469,10 @@ function assemblePhrasebook({ seed, language, conversations, translations }) {
 
   const vocabCards = Array.from(pooled.values())
     .slice(0, vocabularyLimit(conversations.length))
-    .map(({ english, target, context, source }) => buildCard({
+    .map(({ english, target, romanization, context, source }) => buildCard({
       language,
       target,
+      romanization,
       translation: english,
       type: 'word',
       context,

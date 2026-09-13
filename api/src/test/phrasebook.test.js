@@ -116,6 +116,15 @@ test('a missing opening quote retries the Japanese chunk without repairing its c
       'いいえ、野菜[やさい]出汁[だし]です。',
     ],
     vocab: ['出汁[だし]', '魚[さかな]', '肉[にく]', '具[ぐ]材[ざい]', '含[ふく]む'],
+    lineRomanizations: [
+      'Sakana no dashi ga haitte imasu ka?',
+      'Hai, haitte imasu yo.',
+      'Iie, haitte imasen yo.',
+      'Niku no dashi wa tsukawarete imasu ka?',
+      'Hai, torigara dashi desu.',
+      'Iie, yasai dashi desu.',
+    ],
+    vocabRomanizations: ['dashi', 'sakana', 'niku', 'guzai', 'fukumu'],
   };
   const malformed = JSON.stringify(translated).replace('"魚', '魚');
   let translationCalls = 0;
@@ -191,14 +200,113 @@ test('client disconnect after its request body is read cancels generation', asyn
   assert.equal(res.listenerCount('close'), 0);
 });
 
-test('ruby normalization and kana romanization preserve target text', () => {
+test('ruby normalization preserves target text alongside contextual romanization', () => {
   assert.deepEqual(parseInlineReading('食[た]べる[bad]。'), { text: '食べる。', reading: [['食', 'た'], ['べる。', null]] });
-  const result = assemblePhrasebook({ seed: 'eat', language: 'ja', conversations: [{ ...first, title: 'Eat' }], translations: [{ lines: ['食[た]べます。', 'はい。', '払[はら]います。', '後[あと]で払[はら]います。'], vocab: ['借[か]りる', '板[いた]', '払[はら]う'] }] });
+  const result = assemblePhrasebook({ seed: 'eat', language: 'ja', conversations: [{ ...first, title: 'Eat' }], translations: [{
+    lines: ['食[た]べます。', 'はい。', '払[はら]います。', '後[あと]で払[はら]います。'],
+    vocab: ['借[か]りる', '板[いた]', '払[はら]う'],
+    lineRomanizations: ['Tabemasu.', 'Hai.', 'Haraimasu.', 'Ato de haraimasu.'],
+    vocabRomanizations: ['kariru', 'ita', 'harau'],
+  }] });
   const card = result.groups[0].cards[0];
   assert.equal(card.text, '食べます。');
-  assert.match(card.romanization, /^tabemasu/);
+  assert.equal(card.romanization, 'Tabemasu.');
   assert.equal(card.reading.map(t => t[0]).join(''), card.text);
   assert.equal(JSON.parse(result.groups[1].cards[0].notes).source, card.text);
+});
+
+test('invalid Japanese romanization falls back without retrying valid translations', async () => {
+  const japanese = {
+    lines: ['私[わたし]はビーガンです。', '母[はは]はコーヒーを飲[の]みます。', '東京[とうきょう]へ行[い]きます。', '禁煙[きんえん]です。'],
+    vocab: ['ビーガン', 'コーヒー', '禁煙[きんえん]'],
+    lineRomanizations: ['Watashi wa bīgan desu.', 'Haha wa kōhī o nomimasu.', 'Tōkyō e ikimasu.', "Kin'en desu."],
+    vocabRomanizations: ['bīgan', 'kōhī', "kin'en"],
+  };
+  for (const { response, firstRomaji, thirdRomaji, coffeeRomaji } of [
+    {
+      response: { ...japanese, lineRomanizations: undefined },
+      firstRomaji: 'Watashihabiigandesu.',
+      thirdRomaji: 'Toukyouhe ikimasu.',
+      coffeeRomaji: 'kōhī',
+    },
+    {
+      response: { ...japanese, vocabRomanizations: ['kōhī'] },
+      firstRomaji: 'Watashi wa bīgan desu.',
+      thirdRomaji: 'Tōkyō e ikimasu.',
+      coffeeRomaji: 'koohii',
+    },
+    {
+      response: {
+        ...japanese,
+        lineRomanizations: [japanese.lineRomanizations[0], '', '東京へ行きます。', japanese.lineRomanizations[3]],
+        vocabRomanizations: ['bīgan', null, "kin'en"],
+      },
+      firstRomaji: 'Watashi wa bīgan desu.',
+      thirdRomaji: 'Toukyouhe ikimasu.',
+      coffeeRomaji: 'koohii',
+    },
+  ]) {
+    let calls = 0;
+    const result = await performPhrasebook(
+      { ...input, language: 'ja', checklist: [first.title] },
+      { [backendName]: async (prompt) => {
+        if (prompt.startsWith('You are the conversation generator')) return reply({ conversations: [first] });
+        calls++;
+        return reply(response);
+      } },
+      { backendName },
+    );
+    assert.equal(calls, 1);
+    assert.equal(result.groups[0].cards[0].romanization, firstRomaji);
+    assert.equal(result.groups[0].cards[2].romanization, thirdRomaji);
+    assert.equal(result.groups[0].cards[2].text, '東京へ行きます。');
+    assert.equal(result.groups[1].cards[1].romanization, coffeeRomaji);
+  }
+});
+
+test('unreadable fallback omits romanization without losing the Japanese card', async () => {
+  const result = await performPhrasebook(
+    { ...input, language: 'ja', checklist: [first.title] },
+    { [backendName]: async (prompt) => {
+      if (prompt.startsWith('You are the conversation generator')) return reply({ conversations: [first] });
+      return reply({
+        lines: ['私です。', 'はい。', 'いいえ。', 'どうぞ。'],
+        vocab: ['私', 'はい', 'いいえ'],
+      });
+    } },
+    { backendName },
+  );
+  assert.equal(result.groups[0].cards[0].text, '私です。');
+  assert.equal(Object.hasOwn(result.groups[0].cards[0], 'romanization'), false);
+  assert.equal(result.groups[0].cards[1].romanization, 'Hai.');
+  assert.equal(Object.hasOwn(result.groups[1].cards[0], 'romanization'), false);
+});
+
+test('mechanical fallback spaces ruby starts and changes only segment-final ha', async () => {
+  const result = await performPhrasebook(
+    { ...input, language: 'ja', checklist: [first.title] },
+    { [backendName]: async (prompt) => {
+      if (prompt.startsWith('You are the conversation generator')) return reply({ conversations: [first] });
+      return reply({
+        lines: [
+          'これには出汁[だし]が入[はい]っていますか',
+          '私[わたし]は、母[はは]は',
+          'はい。',
+          '私[わたし]はビーガンです。',
+        ],
+        vocab: ['出汁[だし]', '入[はい]る', 'これは'],
+        lineRomanizations: ['', '', '', 'Watashi wa bīgan desu.'],
+      });
+    } },
+    { backendName },
+  );
+  assert.deepEqual(result.groups[0].cards.map(c => c.romanization), [
+    'Koreniwa dashiga haitteimasuka',
+    'Watashiwa, hahawa',
+    'Hai.',
+    'Watashi wa bīgan desu.',
+  ]);
+  assert.deepEqual(result.groups[1].cards.map(c => c.romanization), ['dashi', 'hairu', 'korewa']);
 });
 
 test('raw replacement syntax and template markers stay literal in client text', () => {

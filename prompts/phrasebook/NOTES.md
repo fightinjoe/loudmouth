@@ -57,7 +57,7 @@ a separate prompt; the service fans out one translate call per conversation.
    parse failure (both failure modes observed and recovered in hand-testing); 502 after.
 3. 429 retry with backoff (free tier = 15 req/min; a full request bursts 4 calls).
 4. Vocab pooling + dedup by English word (keep first); service-side caps.
-5. ja romanization: mechanical kana→rōmaji from inline readings at card assembly.
+5. ja romanization: contextual modified Hepburn from the translation model, with mechanical WanaKana fallback for invalid entries (see `translate/NOTES.md`).
 6. Card assembly per CARD_SCHEMA.md; `notes.source` example lines for drawn vocab
    (prompt-supplied examples only for expansion words — future).
 7. `/context` revision track: accept `ability`, offer preset phrase packs.

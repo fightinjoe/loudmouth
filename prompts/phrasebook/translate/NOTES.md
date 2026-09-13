@@ -13,6 +13,7 @@ One call per conversation chunk (service `Promise.all`s 3 in parallel). Inputs:
 `reading_rules_ja.txt` / `reading_rules_zh.txt`; empty for es/cs). Output:
 `{ "lines": [...], "vocab": [...] }` — translations **by index**, no English echo
 (halves output tokens; service validates counts and assembles by index, never by text).
+Japanese additionally returns `lineRomanizations` and `vocabRomanizations`, matched by index.
 
 ## Key design decisions
 
@@ -30,9 +31,22 @@ One call per conversation chunk (service `Promise.all`s 3 in parallel). Inputs:
   fragile `ReadingToken` nesting never enters model output; the service regex-parses
   `base[reading]` → tokens and a bad annotation degrades to no-ruby-on-that-word.
   YAML rejected: loses JSON-mode enforcement and fails silently (bad indent parses).
-  `responseSchema` remains available as envelope hardening.
-- **Romanization is NOT prompt work**: inline readings yield the full kana sequence;
-  service applies a mechanical kana→rōmaji table at card assembly.
+  Google translation calls use an exact-count JSON schema for envelope hardening.
+- **Contextual romanization (2026-09-13):** Japanese translation now supplies modified
+  Hepburn alongside the target strings. A kana table cannot distinguish particles or
+  word boundaries. The service checks array counts and Latin-script strings. It keeps
+  valid entries and substitutes WanaKana output from kana/ruby for invalid ones.
+  Missing or wrong-count arrays fall back as a whole to avoid shifted associations.
+  Romanization failures log a warning, not a retry or endpoint failure. If kanji lack
+  readings and WanaKana cannot produce Latin output, only `romanization` is omitted.
+  The mechanical fallback spaces ruby starts, changes segment-final `ha` to `wa`, and
+  capitalizes phrases. These are readability heuristics, not grammatical analysis;
+  genuine words ending in `ha` can change as well. Valid model entries are untouched.
+  `reading_rules_ja.txt` owns spacing, macrons, particles, consonants, and capitalization.
+  Live fixed-English checks produced `Watashi wa bīgan desu.`, `Haha wa kōhī o nomimasu.`,
+  `Tōkyō e ikimasu.`, `matcha`, `sensei`, `kin'en`, and `shin'yō`.
+  Full Japanese and Spanish generation also passed. This is not semantic validation:
+  one fixed-English run emitted a stray Chinese character in a Japanese target line.
 
 ## Lessons (from deleted v00–v04)
 

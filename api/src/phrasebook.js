@@ -263,6 +263,11 @@ async function translateConversation({
     required: ['lines', 'vocab'],
     additionalProperties: false,
   };
+  if (parsedRequest.language === 'ja') {
+    responseJsonSchema.properties.lineRomanizations = responseJsonSchema.properties.lines;
+    responseJsonSchema.properties.vocabRomanizations = responseJsonSchema.properties.vocab;
+    responseJsonSchema.required.push('lineRomanizations', 'vocabRomanizations');
+  }
 
   for (let attempt = 0; ; attempt++) {
     const reply = await callLlmWithRateLimitRetry({
@@ -278,7 +283,7 @@ async function translateConversation({
       retryDelaysMs,
     });
     try {
-      return validateTranslationResponse(reply.text, conversation);
+      return validateTranslationResponse(reply.text, conversation, parsedRequest.language);
     } catch (error) {
       console.error({
         event: 'validation_error',

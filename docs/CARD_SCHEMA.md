@@ -49,6 +49,15 @@ The term batch format is the interchange format between external generators (AI 
 
 The app renders `reading` as ruby text (e.g. `<ruby>菜<rt>cài</rt></ruby>`). `romanization` is a separate optional field for Latin-alphabet transcription and is independent of `reading`.
 
+For Japanese `/phrasebook` cards, `romanization` uses modified Hepburn with word spaces,
+contextual particle readings (`wa`, `e`, `o`), and long-vowel macrons. Example:
+`私はビーガンです。` → `Watashi wa bīgan desu.`. The translation model supplies romanization
+for both phrases and vocabulary. Invalid entries fall back to WanaKana conversion from
+kana and ruby readings. The fallback spaces ruby starts, changes segment-final `ha` to `wa`,
+and capitalizes phrases; it does not perform grammatical word segmentation.
+If missing kanji readings make mechanical conversion impossible, omit `romanization`
+without discarding the card.
+
 ## Definition vs. translation vs. notes
 
 Three text fields carry meaning, and they are **not** interchangeable:

@@ -12,7 +12,7 @@ CONVERSATION — {{TITLE}}:
 WORDS:
 {{WORDS}}
 
-Return JSON only, exactly this shape:
+Return JSON only, using this shape plus any fields required by the language rules below:
 
 { "lines": ["string"], "vocab": ["string"] }
 
