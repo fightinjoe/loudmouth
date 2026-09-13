@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"conversations\": [\n    {\n      \"title\": \"Rent a surfboard\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"I need to rent a surfboard.\" },\n        { \"speaker\": \"partner\", \"text\": \"What size do you want?\" },\n        { \"speaker\": \"you\", \"text\": \"I'd like a mid-length board, please.\" },\n        { \"speaker\": \"you\", \"text\": \"I'll take a longboard, please.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"How many days?\" },\n        { \"speaker\": \"you\", \"text\": \"Just for today.\" },\n        { \"speaker\": \"you\", \"text\": \"For three days, please.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"That's twenty dollars.\" }\n      ]\n    },\n    {\n      \"title\": \"Ask about wave conditions\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"How are the waves today?\" },\n        { \"speaker\": \"partner\", \"text\": \"They're pretty big right now.\" },\n        { \"speaker\": \"partner\", \"text\": \"They're small and clean.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"Where's the best spot for intermediates?\" },\n        { \"speaker\": \"partner\", \"text\": \"Try the point break down the beach.\" },\n        { \"speaker\": \"partner\", \"text\": \"Stay near the river mouth.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"Thanks for the tip.\" }\n      ]\n    },\n    {\n      \"title\": \"Get local food recommendations\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"Where's a good place to eat nearby?\" },\n        { \"speaker\": \"partner\", \"text\": \"Try the soda on the main road.\" },\n        { \"speaker\": \"you\", \"text\": \"What's the best dish here?\" },\n        { \"speaker\": \"partner\", \"text\": \"Get the fish casado.\" },\n        { \"speaker\": \"partner\", \"text\": \"The chicken rice is really good.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"Is it close by?\" },\n        { \"speaker\": \"partner\", \"text\": \"It's a five-minute walk.\" }\n      ]\n    }\n  ],\n  \"vocab\": [\n    \"board\",\n    \"size\",\n    \"day\",\n    \"waves\",\n    \"spot\",\n    \"beach\",\n    \"food\",\n    \"road\",\n    \"fish\",\n    \"rent\",\n    \"want\",\n    \"big\",\n    \"small\",\n    \"close\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPExnYymuHbfDu2orwChlNPnGbDSLBk4S8t8iO4Y5u6Gd9+AHnhFnWKHmjPyY7tFAn8InerD/G8fUn3Vibcw/0ZJfbMRRBgpbEh2lqFGGGp6ODE0Wn7B6F"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1214,
+    "candidatesTokenCount": 653,
+    "totalTokenCount": 1867,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1214
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "huelavmFE5nQjMcP6OnQqAk"
+}

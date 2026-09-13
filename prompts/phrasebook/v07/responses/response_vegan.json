@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"conversations\": [\n    {\n      \"title\": \"State my dietary restrictions\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"I'm vegan.\" },\n        { \"speaker\": \"partner\", \"text\": \"Are you okay with fish broth?\" },\n        { \"speaker\": \"you\", \"text\": \"No, I don't eat fish or meat.\" },\n        { \"speaker\": \"you\", \"text\": \"No animal products at all, please.\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"Got it.\" }\n      ]\n    },\n    {\n      \"title\": \"Ask about hidden ingredients\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"Does this have dairy in it?\" },\n        { \"speaker\": \"partner\", \"text\": \"Yes, it contains butter.\" },\n        { \"speaker\": \"partner\", \"text\": \"No, it's completely plant-based.\", \"or\": true },\n        { \"speaker\": \"you\", \"text\": \"What about egg or honey?\" },\n        { \"speaker\": \"partner\", \"text\": \"There's no egg, but it has honey.\" },\n        { \"speaker\": \"partner\", \"text\": \"Neither of those are in it.\", \"or\": true }\n      ]\n    },\n    {\n      \"title\": \"Order vegan dishes\",\n      \"lines\": [\n        { \"speaker\": \"you\", \"text\": \"I'll take the vegetable ramen, please.\" },\n        { \"speaker\": \"partner\", \"text\": \"The broth is made with kelp.\" },\n        { \"speaker\": \"you\", \"text\": \"That's great.\" },\n        { \"speaker\": \"you\", \"text\": \"Could you make it without bonito flakes?\", \"or\": true },\n        { \"speaker\": \"partner\", \"text\": \"Sure. Anything else?\" },\n        { \"speaker\": \"you\", \"text\": \"That's everything, thank you.\" }\n      ]\n    }\n  ],\n  \"vocab\": [\n    \"vegan\",\n    \"meat\",\n    \"fish\",\n    \"dairy\",\n    \"egg\",\n    \"honey\",\n    \"butter\",\n    \"broth\",\n    \"vegetable\",\n    \"plant-based\",\n    \"ingredient\",\n    \"contain\",\n    \"without\",\n    \"kelp\"\n  ]\n}",
+            "thoughtSignature": "El4KXAERTTIPpu0cr3+cgJtO3TVLxhDkFpQfuhF4rQ76e0SIkmFhxbqo1vfc3txaA3zGJGQEv2WTEyU6O5GV6b9/doQER8KqyU8mSHfDdkM5WHu54hAc9PUSIVPBWQt+"
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1225,
+    "candidatesTokenCount": 553,
+    "totalTokenCount": 1778,
+    "promptTokensDetails": [
+      {
+        "modality": "TEXT",
+        "tokenCount": 1225
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.5-flash-lite",
+  "responseId": "iOelaq3hH_Gy_PUPn8CTsA8"
+}
