@@ -3,7 +3,7 @@
  * generation (/textbook)" "Internal flow".
  *
  * REQUEST FLOW
- *   POST /textbook { topic, language, llm?, context? }
+ *   POST /textbook { topic, language, context? }
  *        │
  *        │  1. PARSE (textbook-parse.js): validate + apply defaults, branch
  *        │     call mode on presence of `context`                  → 400
@@ -24,6 +24,7 @@ const { parseTextbookRequest } = require('./textbook-parse');
 const { buildTextbookQuestionsPrompt, buildTextbookGeneratePrompt } = require('./textbook-prompt');
 const { validateTextbookQuestionsResponse, validateTextbookGenerateResponse } = require('./textbook-validate');
 const { buildUsageReport } = require('./pricing');
+const { getBackendName } = require('./llm-config');
 
 // Call 1 returns short label/option strings, not card content — a few
 // hundred tokens of headroom is ample (docs/API_DESIGN.md "2a. Generate
@@ -52,10 +53,13 @@ class TextbookTimeoutError extends Error {}
 
 function callWithTimeout(handler, prompt, opts, timeoutMs) {
   return new Promise((resolve, reject) => {
+    const controller = new AbortController();
     const timer = setTimeout(() => {
-      reject(new TextbookTimeoutError(`LLM request timed out after ${timeoutMs}ms`));
+      const error = new TextbookTimeoutError(`LLM request timed out after ${timeoutMs}ms`);
+      controller.abort(error);
+      reject(error);
     }, timeoutMs);
-    handler(prompt, opts).then(
+    handler(prompt, { ...opts, signal: controller.signal }).then(
       (value) => { clearTimeout(timer); resolve(value); },
       (err) => { clearTimeout(timer); reject(err); },
     );
@@ -89,40 +93,41 @@ async function callLlm(handler, llmName, route, prompt, maxOutputTokens, timeout
  * @param {{ timeoutMs?: number }} [opts]
  * @returns {Promise<object>} { questions, checklist } or { groups }
  */
-async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_TIMEOUT_MS } = {}) {
-  const { topic, language, llm, mode, context } = parsedRequest;
-  const effectiveTimeoutMs = registry[llm]?.timeoutMs || timeoutMs;
-
-  const handler = registry[llm];
+async function performTextbook(
+  parsedRequest,
+  registry,
+  { timeoutMs = TEXTBOOK_TIMEOUT_MS } = {},
+) {
+  const { topic, language, mode, context } = parsedRequest;
+  const backendName = getBackendName();
+  const handler = registry[backendName];
   if (!handler) {
-    const err = new Error(`Unknown LLM: ${llm}`);
-    err.status = 400;
-    err.supported = Object.keys(registry);
-    throw err;
+    throw new Error(`Configured LLM backend is not registered: ${backendName}`);
   }
+  const effectiveTimeoutMs = handler.timeoutMs || timeoutMs;
 
   if (mode === 'questions') {
     const prompt = buildTextbookQuestionsPrompt({ topic, language });
-    const { text: raw, model, usage, durationMs } = await callLlm(handler, llm, 'textbook:questions', prompt, TEXTBOOK_QUESTIONS_MAX_TOKENS, effectiveTimeoutMs);
+    const { text: raw, model, usage, durationMs } = await callLlm(handler, backendName, 'textbook:questions', prompt, TEXTBOOK_QUESTIONS_MAX_TOKENS, effectiveTimeoutMs);
 
     let result;
     try {
       result = validateTextbookQuestionsResponse(raw);
     } catch (err) {
-      console.error({ event: 'validation_error', route: 'textbook:questions', llm, raw, error: err.message });
+      console.error({ event: 'validation_error', route: 'textbook:questions', llm: backendName, raw, error: err.message });
       const wrapped = new Error('Invalid response from LLM');
       wrapped.status = 502;
       throw wrapped;
     }
 
     if (result.warnings.length > 0) {
-      console.warn({ event: 'textbook_questions_clamped', llm, topic, warnings: result.warnings });
+      console.warn({ event: 'textbook_questions_clamped', llm: backendName, topic, warnings: result.warnings });
     }
 
     const usageReport = buildUsageReport(model, usage, durationMs);
     const { questions, checklist } = result.response;
-    console.log({ event: 'textbook_questions_ok', llm, language, questions: questions.length, checklist: checklist.length, topic });
-    console.log({ event: 'usage', route: 'textbook:questions', llm, ...usageReport });
+    console.log({ event: 'textbook_questions_ok', llm: backendName, language, questions: questions.length, checklist: checklist.length, topic });
+    console.log({ event: 'usage', route: 'textbook:questions', llm: backendName, ...usageReport });
 
     return { ...result.response, usage: usageReport };
   }
@@ -136,31 +141,31 @@ async function performTextbook(parsedRequest, registry, { timeoutMs = TEXTBOOK_T
   // would only make it slower.
   let result, model, usage, durationMs;
   for (let attempt = 1; ; attempt++) {
-    const call = await callLlm(handler, llm, 'textbook:generate', prompt, maxOutputTokens, effectiveTimeoutMs);
+    const call = await callLlm(handler, backendName, 'textbook:generate', prompt, maxOutputTokens, effectiveTimeoutMs);
     try {
       result = validateTextbookGenerateResponse(call.text);
       ({ model, usage, durationMs } = call);
       break;
     } catch (err) {
-      console.error({ event: 'validation_error', route: 'textbook:generate', llm, attempt, raw: call.text, error: err.message });
+      console.error({ event: 'validation_error', route: 'textbook:generate', llm: backendName, attempt, raw: call.text, error: err.message });
       if (attempt > TEXTBOOK_GENERATE_RETRIES) {
         const wrapped = new Error('Invalid response from LLM');
         wrapped.status = 502;
         throw wrapped;
       }
-      console.warn({ event: 'textbook_generate_retry', llm, attempt, error: err.message });
+      console.warn({ event: 'textbook_generate_retry', llm: backendName, attempt, error: err.message });
     }
   }
 
   if (result.warnings.length > 0) {
-    console.warn({ event: 'textbook_generate_clamped', llm, topic, warnings: result.warnings });
+    console.warn({ event: 'textbook_generate_clamped', llm: backendName, topic, warnings: result.warnings });
   }
 
   const usageReport = buildUsageReport(model, usage, durationMs);
   const { groups } = result.response;
   const cardCount = groups.reduce((n, g) => n + g.cards.length, 0);
-  console.log({ event: 'textbook_generate_ok', llm, language, groups: groups.length, cards: cardCount, topic });
-  console.log({ event: 'usage', route: 'textbook:generate', llm, ...usageReport });
+  console.log({ event: 'textbook_generate_ok', llm: backendName, language, groups: groups.length, cards: cardCount, topic });
+  console.log({ event: 'usage', route: 'textbook:generate', llm: backendName, ...usageReport });
 
   return { ...result.response, usage: usageReport };
 }

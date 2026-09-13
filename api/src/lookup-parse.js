@@ -2,22 +2,20 @@
  * Parse layer for /lookup (docs/API_DESIGN.md "1. Parse [service]" + Inputs table).
  *
  * Splits the raw `term` request field into `term` + `context` on the FIRST '(',
- * validates every input parameter, and applies defaults — all before any model
- * call. Returns `{ error }` (with an optional `supported` list, for the `llm`
- * enum) on the first violation, or `{ value }` with every field normalized.
+ * validates every input parameter and applies defaults — all before any model
+ * call. Returns `{ error }` on the first violation, or `{ value }` with every
+ * field normalized.
  */
 
 const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
 const ABILITIES = ['none', 'beginner', 'intermediate', 'advanced'];
 const FORMALITIES = ['casual', 'polite', 'formal'];
 const AUDIENCES = ['stranger', 'staff', 'acquaintance', 'family'];
-const LLMS = ['google', 'g-flash', 'claude', 'chatgpt'];
 
 const DEFAULTS = {
   ability: 'beginner',
   formality: 'polite',
   audience: 'staff',
-  llm: 'google',
 };
 
 const MAX_TERM_LENGTH = 200;
@@ -60,7 +58,10 @@ function parseLookupRequest(body) {
     return { error: 'Request body must be a JSON object' };
   }
 
-  const { term: rawTerm, language, ability, formality, audience, llm } = body;
+  const { term: rawTerm, language, ability, formality, audience } = body;
+  if (Object.hasOwn(body, 'llm')) {
+    return { error: 'Field "llm" is server-controlled and must not be provided' };
+  }
 
   if (typeof rawTerm !== 'string' || !rawTerm.trim()) {
     return { error: 'Missing or empty field: term' };
@@ -87,11 +88,6 @@ function parseLookupRequest(body) {
     return { error: `Field "audience" must be one of ${AUDIENCES.join(', ')}` };
   }
 
-  const resolvedLlm = llm === undefined ? DEFAULTS.llm : llm;
-  if (!LLMS.includes(resolvedLlm)) {
-    return { error: `Unknown LLM: ${resolvedLlm}`, supported: LLMS };
-  }
-
   const { term, context } = parseTerm(rawTerm);
   if (!term) {
     return { error: 'Missing or empty field: term (no term before "(")' };
@@ -105,7 +101,6 @@ function parseLookupRequest(body) {
       ability: resolvedAbility,
       formality: resolvedFormality,
       audience: resolvedAudience,
-      llm: resolvedLlm,
     },
   };
 }
@@ -117,7 +112,6 @@ module.exports = {
   ABILITIES,
   FORMALITIES,
   AUDIENCES,
-  LLMS,
   DEFAULTS,
   MAX_TERM_LENGTH,
 };

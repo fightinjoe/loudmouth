@@ -22,7 +22,7 @@
  *   npm run eval:budget                      # salsa fixture, all backends, N=3,5,8
  *   npm run eval:budget -- --all             # every fixture under evals/
  *   npm run eval:budget -- --dir=talking-to-a-doctor-about-a-headcold
- *   npm run eval:budget -- --llm=google,claude --n=4,6
+ *   npm run eval:budget -- --llm=gemini-3.5-flash-lite,claude --n=4,6
  *   npm run eval:budget -- --dry-run         # build prompts, no model calls (free)
  *
  * Requires GCP_PROJECT_ID / ANTHROPIC_API_KEY / OPENAI_API_KEY for real calls
@@ -32,29 +32,21 @@
 const fs = require('fs');
 const path = require('path');
 
-const { callGenAI, callGenAIFlash } = require('../src/llms/genai');
-const { callAnthropic } = require('../src/llms/anthropic');
-const { callOpenAI } = require('../src/llms/openai');
-const { buildTextbookGeneratePrompt } = require('../src/textbook-prompt');
-const { computeCostUsd } = require('../src/pricing');
+const { LLM_REGISTRY } = require('../../src/llm-config');
+const { buildTextbookGeneratePrompt } = require('../../src/textbook-prompt');
+const { computeCostUsd } = require('../../src/pricing');
 const {
   genderInstruction,
   readingInstructions,
   cardReadingExample,
-} = require('../src/lookup-prompt');
+} = require('../../src/lookup-prompt');
 
 // ---------------------------------------------------------------------------
 // backends + effective gates (mirror textbook.js: adapter capability first,
 // else the shared /textbook generate ceiling/timeout)
 // ---------------------------------------------------------------------------
 
-const REGISTRY = {
-  google: callGenAI,
-  'g-flash': callGenAIFlash,
-  claude: callAnthropic,
-  chatgpt: callOpenAI,
-};
-const ALL_LLMS = Object.keys(REGISTRY);
+const ALL_LLMS = Object.keys(LLM_REGISTRY);
 
 // docs/API_DESIGN.md shared conventions + src/textbook.js constants.
 const SHARED_CEILING_TOKENS = 30000; // TEXTBOOK_GENERATE_MAX_TOKENS
@@ -191,7 +183,7 @@ function resolveNs(value) {
   return String(value).split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => Number.isInteger(n) && n > 0);
 }
 
-const EVALS_DIR = __dirname;
+const EVALS_DIR = path.resolve(__dirname, '..');
 
 function discoverFixtures(flags) {
   if (flags.dir) return [String(flags.dir)];
@@ -215,7 +207,7 @@ function loadFixture(name) {
 // ---------------------------------------------------------------------------
 
 async function measureCell({ llm, prompt, dryRun }) {
-  const handler = REGISTRY[llm];
+  const handler = LLM_REGISTRY[llm];
   const ceiling = ceilingFor(handler);
   const timeout = timeoutFor(handler);
 
@@ -334,7 +326,7 @@ async function main() {
   sections.push('Effective per-backend gates:');
   sections.push('');
   for (const llm of llms) {
-    const h = REGISTRY[llm];
+    const h = LLM_REGISTRY[llm];
     sections.push(`- **${llm}**: ceiling ${ceilingFor(h)} output tokens, timeout ${timeoutFor(h)} ms`);
   }
   sections.push('');

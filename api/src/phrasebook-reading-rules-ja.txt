@@ -1,0 +1,5 @@
+- Annotate readings inline in every translation, lines and vocab alike:
+  write each kanji run as 漢字[かんじ] — the run followed immediately by its
+  hiragana reading in square brackets. Kana and katakana get no annotation.
+  Okurigana stay outside the brackets: 抜[ぬ]く, never 抜く[ぬく].
+  Example: 出汁[だし]は大丈夫[だいじょうぶ]ですか？

@@ -15,7 +15,7 @@ function getClient() {
   return client;
 }
 
-async function callAnthropic(prompt, { maxOutputTokens = 1024 } = {}) {
+async function callAnthropic(prompt, { maxOutputTokens = 1024, signal } = {}) {
   const anthropic = getClient();
 
   const message = await anthropic.messages.create({
@@ -23,7 +23,7 @@ async function callAnthropic(prompt, { maxOutputTokens = 1024 } = {}) {
     temperature: 0.2,
     max_tokens: maxOutputTokens,
     messages: [{ role: 'user', content: prompt }],
-  });
+  }, { signal });
 
   const text = message?.content?.[0]?.text;
 

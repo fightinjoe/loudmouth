@@ -8,6 +8,19 @@ const { validateTextbookQuestionsResponse, validateTextbookGenerateResponse } = 
 const { buildTextbookQuestionsPrompt, buildTextbookGeneratePrompt } = require('../textbook-prompt');
 const { handleTextbook } = require('../textbook');
 
+const BACKEND = 'gemini-3.5-flash-lite';
+process.env.LLM_BACKEND = BACKEND;
+
+async function withBackend(name, fn) {
+  const previous = process.env.LLM_BACKEND;
+  process.env.LLM_BACKEND = name;
+  try {
+    return await fn();
+  } finally {
+    process.env.LLM_BACKEND = previous;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -91,17 +104,16 @@ describe('parseTextbookRequest', () => {
     assert.match(result.error, /200/);
   });
 
-  test('invalid enum values → error', () => {
+  test('invalid language and client-selected llm → error', () => {
     assert.match(parseTextbookRequest({ topic: 'a', language: 'fr' }).error, /language/);
-    assert.match(parseTextbookRequest({ topic: 'a', language: 'es', llm: 'gpt5' }).error, /Unknown LLM/);
+    assert.match(parseTextbookRequest({ topic: 'a', language: 'es', llm: 'claude' }).error, /server-controlled/);
   });
 
-  test('context absent → mode "questions", defaults applied', () => {
+  test('context absent → mode "questions"', () => {
     const result = parseTextbookRequest({ topic: 'salsa dancing', language: 'es' });
     assert.deepEqual(result.value, {
       topic: 'salsa dancing',
       language: 'es',
-      llm: 'google',
       mode: 'questions',
     });
   });
@@ -119,15 +131,6 @@ describe('parseTextbookRequest', () => {
     assert.match(parseTextbookRequest({ topic: 'a', language: 'es', context: null }).error, /context/);
   });
 
-  test('explicit values override defaults', () => {
-    const result = parseTextbookRequest({ topic: 'a', language: 'zh', llm: 'claude' });
-    assert.equal(result.value.llm, 'claude');
-  });
-
-  test('accepts g-flash as an explicit backend', () => {
-    const result = parseTextbookRequest({ topic: 'salsa dancing', language: 'es', llm: 'g-flash' });
-    assert.equal(result.value.llm, 'g-flash');
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -461,41 +464,46 @@ describe('prompt builders', () => {
 describe('handleTextbook', () => {
   test('missing topic/language → 400', async () => {
     const res = makeRes();
-    await handleTextbook({ body: { language: 'es' } }, res, { google: async () => happyQuestionsRaw() });
+    await handleTextbook({ body: { language: 'es' } }, res, { [BACKEND]: async () => happyQuestionsRaw() });
     assert.equal(res.statusCode, 400);
   });
 
-  test('unknown llm → 400', async () => {
+  test('client-selected llm → 400', async () => {
     const res = makeRes();
-    await handleTextbook({ body: { ...VALID_QUESTIONS_BODY, llm: 'not-a-model' } }, res, { google: async () => happyQuestionsRaw() });
+    await handleTextbook({ body: { ...VALID_QUESTIONS_BODY, llm: 'claude' } }, res, { [BACKEND]: async () => happyQuestionsRaw() });
     assert.equal(res.statusCode, 400);
   });
 
   test('context not an object → 400', async () => {
     const res = makeRes();
-    await handleTextbook({ body: { ...VALID_QUESTIONS_BODY, context: 'oops' } }, res, { google: async () => happyQuestionsRaw() });
+    await handleTextbook({ body: { ...VALID_QUESTIONS_BODY, context: 'oops' } }, res, { [BACKEND]: async () => happyQuestionsRaw() });
     assert.equal(res.statusCode, 400);
   });
 
   test('LLM throws → 502 "LLM request failed"', async () => {
     const res = makeRes();
-    const registry = { google: async () => { throw new Error('boom'); } };
+    const registry = { [BACKEND]: async () => { throw new Error('boom'); } };
     await handleTextbook({ body: VALID_QUESTIONS_BODY }, res, registry);
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'LLM request failed');
   });
 
-  test('LLM times out → 502 "LLM request failed" via a distinct code path from a throw', async () => {
+  test('LLM timeout aborts the model request and returns 502', async () => {
     const res = makeRes();
-    const registry = { google: () => new Promise(() => {}) }; // never resolves
+    let observedSignal;
+    const registry = { [BACKEND]: (prompt, { signal }) => {
+      observedSignal = signal;
+      return new Promise(() => {});
+    } };
     await handleTextbook({ body: VALID_QUESTIONS_BODY }, res, registry, { timeoutMs: 10 });
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'LLM request failed');
+    assert.equal(observedSignal.aborted, true);
   });
 
   test('truncated JSON → 502 "Invalid response from LLM"', async () => {
     const res = makeRes();
-    const registry = { google: async () => reply(happyQuestionsRaw().slice(0, -5)) };
+    const registry = { [BACKEND]: async () => reply(happyQuestionsRaw().slice(0, -5)) };
     await handleTextbook({ body: VALID_QUESTIONS_BODY }, res, registry);
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'Invalid response from LLM');
@@ -503,7 +511,7 @@ describe('handleTextbook', () => {
 
   test('call 1 (no context) happy path → 200 with { questions, checklist } and usage', async () => {
     const res = makeRes();
-    const registry = { google: async () => reply(happyQuestionsRaw()) };
+    const registry = { [BACKEND]: async () => reply(happyQuestionsRaw()) };
     await handleTextbook({ body: VALID_QUESTIONS_BODY }, res, registry);
     assert.equal(res.statusCode, 200);
     assert.ok(Array.isArray(res.body.questions));
@@ -522,7 +530,7 @@ describe('handleTextbook', () => {
 
   test('call 2 (context present) happy path → 200 with { groups }', async () => {
     const res = makeRes();
-    const registry = { google: async () => reply(happyGenerateRaw()) };
+    const registry = { [BACKEND]: async () => reply(happyGenerateRaw()) };
     await handleTextbook({ body: VALID_GENERATE_BODY }, res, registry);
     assert.equal(res.statusCode, 200);
     assert.ok(Array.isArray(res.body.groups));
@@ -534,7 +542,7 @@ describe('handleTextbook', () => {
   test('call 2 retries on a transient validation failure, then succeeds → 200', async () => {
     const res = makeRes();
     let calls = 0;
-    const registry = { google: async () => { calls += 1; return reply(calls === 1 ? 'not json' : happyGenerateRaw()); } };
+    const registry = { [BACKEND]: async () => { calls += 1; return reply(calls === 1 ? 'not json' : happyGenerateRaw()); } };
     await handleTextbook({ body: VALID_GENERATE_BODY }, res, registry);
     assert.equal(calls, 2);
     assert.equal(res.statusCode, 200);
@@ -544,7 +552,7 @@ describe('handleTextbook', () => {
   test('call 2 that stays invalid → 502 after the bounded retries (called more than once)', async () => {
     const res = makeRes();
     let calls = 0;
-    const registry = { google: async () => { calls += 1; return reply('not json'); } };
+    const registry = { [BACKEND]: async () => { calls += 1; return reply('not json'); } };
     await handleTextbook({ body: VALID_GENERATE_BODY }, res, registry);
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'Invalid response from LLM');
@@ -554,20 +562,20 @@ describe('handleTextbook', () => {
   test('call 2 surfaces the model title through to the 200 body', async () => {
     const res = makeRes();
     const raw = JSON.stringify({ title: 'Salsa Social Dancing', groups: [{ title: 'Ask someone to dance', cards: [makeCard()] }] });
-    const registry = { google: async () => reply(raw) };
+    const registry = { [BACKEND]: async () => reply(raw) };
     await handleTextbook({ body: VALID_GENERATE_BODY }, res, registry);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.title, 'Salsa Social Dancing');
   });
 
-  test('picks the requested llm out of the registry', async () => {
+  test('uses the server-selected backend from the registry', async () => {
     const res = makeRes();
     let calledWith = null;
     const registry = {
-      google: async () => { throw new Error('should not be called'); },
+      [BACKEND]: async () => { throw new Error('should not be called'); },
       claude: async (prompt) => { calledWith = prompt; return reply(happyQuestionsRaw()); },
     };
-    await handleTextbook({ body: { ...VALID_QUESTIONS_BODY, llm: 'claude' } }, res, registry);
+    await withBackend('claude', () => handleTextbook({ body: VALID_QUESTIONS_BODY }, res, registry));
     assert.equal(res.statusCode, 200);
     assert.ok(typeof calledWith === 'string' && calledWith.length > 0);
   });
@@ -580,7 +588,7 @@ describe('handleTextbook', () => {
       return reply(happyGenerateRaw());
     };
     claude.maxOutputTokens = 8192;
-    await handleTextbook({ body: { ...VALID_GENERATE_BODY, llm: 'claude' } }, res, { claude });
+    await withBackend('claude', () => handleTextbook({ body: VALID_GENERATE_BODY }, res, { claude }));
     assert.equal(res.statusCode, 200);
     assert.equal(options.maxOutputTokens, 8192);
   });

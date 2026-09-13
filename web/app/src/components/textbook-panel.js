@@ -1,5 +1,5 @@
 import { openBottomSheet } from "./bottom-sheet.js";
-import { getTextbookQuestions, generateTextbook } from "../js/textbook-api.js";
+import { getContext, generatePhrasebook } from "../js/phrasebook-api.js";
 import { createDeck, importCards } from "../js/db.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { icon } from "./icon.js";
@@ -75,10 +75,10 @@ export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss
     state.error = null;
     rerender();
     try {
-      const { questions, checklist } = await getTextbookQuestions({ topic, language: lang, ability });
+      const { questions, checklist } = await getContext({ seed: topic, language: lang });
       state.questions = questions;
-      state.checklist = checklist.map((item) => ({ ...item }));
-      state.answers = Object.fromEntries(questions.map((q) => [q.label, q.default]));
+      state.checklist = normalizeChecklist(checklist);
+      state.answers = Object.fromEntries(questions.map((q) => [q.label, q.options[0]]));
       state.step = "questions";
     } catch (err) {
       state.error = err?.message || "Something went wrong. Please try again.";
@@ -94,19 +94,17 @@ export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss
     rerender();
     const checkedLabels = state.checklist.filter((item) => item.checked).map((item) => item.label);
     try {
-      const { title, groups } = await generateTextbook({
-        topic: state.topic,
+      const { title, groups } = await generatePhrasebook({
+        seed: state.topic,
         language: lang,
-        ability,
-        context: { answers: state.answers, checklist: checkedLabels },
+        answers: state.answers,
+        checklist: checkedLabels,
       });
-      // Bug 6: the phrasebook name is the API's concise title; fall back to
-      // the raw topic only when the model omitted it.
+      // /phrasebook supplies the saved title; keep the entered seed as a
+      // defensive fallback for an omitted or blank title.
       const deckName = (title && title.trim()) || state.topic;
       const deck = await createDeck(deckName, lang, { ability });
-      const cards = groups.flatMap((group) =>
-        group.cards.map((card) => ({ ...card, context: group.title })),
-      );
+      const cards = groups.flatMap((group) => group.cards);
       await importCards(cards, deck.id);
       sheet.close();
       onCreated(deck);
@@ -182,7 +180,10 @@ export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss
     panel.querySelectorAll('[data-action="textbook/toggle-checklist-item"]').forEach((row) => {
       row.addEventListener("click", () => {
         const idx = Number(row.dataset.index);
-        state.checklist[idx].checked = !state.checklist[idx].checked;
+        const item = state.checklist[idx];
+        const checkedCount = state.checklist.filter((candidate) => candidate.checked).length;
+        if ((item.checked && checkedCount === 1) || (!item.checked && checkedCount === 8)) return;
+        item.checked = !item.checked;
         rerender();
       });
     });
@@ -349,6 +350,17 @@ function renderErrorStep(state, lang) {
       <button class="tappable textbook-retry" data-action="textbook/retry">Try again</button>
     </div>
   `);
+}
+
+function normalizeChecklist(checklist) {
+  let checkedCount = 0;
+  const normalized = checklist.map((item) => {
+    const checked = Boolean(item.checked) && checkedCount < 8;
+    if (checked) checkedCount += 1;
+    return { ...item, checked };
+  });
+  if (normalized.length > 0 && checkedCount === 0) normalized[0].checked = true;
+  return normalized;
 }
 
 function esc(str) {

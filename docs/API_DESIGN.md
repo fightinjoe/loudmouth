@@ -1,38 +1,37 @@
 ---
 name: api-design
 description: >
-  Current API contract for Catchphrase. Covers /lookup's stateless translation primitive,
-  /context's situation setup (questions and checklist for a seed), and /textbook's guided
-  phrasebook generation: requests, responses, model behavior, and service flow.
+  Current API contract for Catchphrase. Covers /context's situation setup and /phrasebook's
+  English-generation and parallel-translation pipeline, plus retained /lookup and /textbook
+  endpoints. Defines requests, responses, server-owned model selection, and trust boundaries.
 status: CURRENT
 ---
 
 # Catchphrase API design
 
-The API is a stateless Cloud Run service. It accepts a request, makes one or two model calls, validates
-the result, and returns a self-contained response. The client owns phrasebook storage and history.
+The API is a stateless Cloud Run service. The client owns phrasebook storage and creation state.
+Guided creation calls `/context`, collects answers and selected topics, then calls `/phrasebook`.
 
 ## Shared conventions
 
 - Supported languages: `zh`, `ja`, `es`, `cs`.
-- Supported LLM backends: `google`, `g-flash`, `claude`, `chatgpt`; default `google`.
+- Backend selection is server-owned: `LLM_BACKEND=gemini-3.5-flash-lite` by default.
+  Other configuration values are `g-flash`, `claude`, and `chatgpt`. `google` is not an alias.
+  Requests must not contain `llm`; a supplied selector returns `400`. Invalid server configuration
+  fails startup. Restart the local API with another backend to compare models using the same client.
 - Invalid input returns `400` before a model call.
 - Model failure, timeout, malformed JSON, or invalid output returns `502`.
 - The service validates and limits model output; callers receive no partial model response.
-- Cards follow [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md). The service supplies `context`, `id`, and
-  `importedAt` where the relevant client flow requires them.
+- Cards follow [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md). The service supplies `context`;
+  the client assigns storage IDs and import timestamps.
 - Japanese reading tokens are normalized by the service: kana and katakana are not ruby-annotated,
   and adjacent unannotated reading tokens are merged.
 - The shared output ceiling is 30,000 tokens for Google. Provider adapters may lower it when required:
   Claude Haiku uses 8,192 and GPT-5.6 Luna uses 16,384. A response truncated at the effective ceiling
   follows the invalid-response `502` path.
-- `gemini-3.5-flash-lite` targets p50 latency below 4 seconds and keeps the shared 15-second request
-  timeout. Claude Haiku, GPT-5.6 Luna, and Gemini 3.8 Flash each use a 60-second timeout: their
-  larger JSON responses routinely exceed the shared budget. Claude Haiku in particular measures
-  20-26 seconds on a `/textbook` generate call.
-- The API Gateway backend deadline (`deadline` in `api/config/api-gateway.yaml`) must stay above the
-  longest adapter timeout. ESPv2 defaults it to 15 seconds, which would return an opaque gateway
-  `504` before a slow-but-healthy backend could answer.
+- Provider timeout and token limits remain backend-specific. The phrasebook pipeline additionally
+  bounds the complete generation, translation, and retry sequence; its gateway deadline must exceed
+  that bound, not merely one model call. See the implementation limits below.
 
 ## `/lookup`
 
@@ -49,8 +48,7 @@ continuity comes from the client passing a returned card's `definition` or `cont
   "language": "zh | ja | es | cs",
   "ability": "none | beginner | intermediate | advanced",
   "formality": "casual | polite | formal",
-  "audience": "stranger | staff | acquaintance | family",
-  "llm": "google | g-flash | claude | chatgpt"
+  "audience": "stranger | staff | acquaintance | family"
 }
 ```
 
@@ -61,7 +59,6 @@ continuity comes from the client passing a returned card's `definition` or `cont
 | `ability` | no | `beginner` | Changes difficulty, not intent |
 | `formality` | no | `polite` | Soft register anchor, not a filter |
 | `audience` | no | `staff` | Intended conversation partner |
-| `llm` | no | `google` | Model backend |
 
 A `term` may include a parenthetical context. The service splits on the first `(`. Text before it is
 the term; text after it is context. Remaining parentheses are stripped. A missing closing `)` is
@@ -135,8 +132,7 @@ The shared prompt must work across all backends without backend-specific rules. 
 `/context` sets up situation preparation. Given a **seed** — a situation, activity, or topic
 ("salsa dancing in Austin, TX", "feeling sick") — and a target language, one model call
 returns clarifying questions and a checklist of conversations to prepare. The client presents
-both and collects the learner's selections. `/context` is stateless and lives in parallel
-with `/textbook`, which keeps its own two-call flow.
+both, collects selections, and submits them to `/phrasebook`; the server retains no setup session.
 
 The prompt is the endpoint's primary artifact; the service is a thin wrapper around it. The
 prompt's versioned history, accepted version, and per-version hand-test outputs live in
@@ -154,8 +150,7 @@ seeds.
 ```json
 {
   "seed": "salsa dancing in Austin, TX",
-  "language": "zh | ja | es | cs",
-  "llm": "google | g-flash | claude | chatgpt"
+  "language": "zh | ja | es | cs"
 }
 ```
 
@@ -163,7 +158,6 @@ seeds.
 |---|---:|---|---|
 | `seed` | yes | — | Situation, activity, or topic; at most 200 characters |
 | `language` | yes | — | Target language; the prompt is language-aware |
-| `llm` | no | `google` | Model backend |
 
 The prompt is language-aware: the target language is injected into the prompt so the model
 may spend a question on a register or cultural axis when the language makes one matter for
@@ -214,217 +208,163 @@ and clamps the model JSON after it, and returns `502` on model failure, timeout,
 structurally invalid output. Output ceiling 2,000 tokens; the shared 15-second timeout
 applies as a hard backstop.
 
-## `/textbook`
+## `/phrasebook`
 
 ### Purpose
 
-`/textbook` prepares a learner for a topic or situation by guiding them through context selection and
-then generating a complete phrasebook. It uses the same route for two calls; the presence of `context`
-selects the call mode.
-
-Initial generation defaults to situation-first, level-neutral language. It does not expose fixed
-`ability`, `formality`, or `audience` request fields. When a dynamically selected context question asks
-about proficiency or language confidence, call 2 honors that answer when choosing vocabulary and
-sentence complexity without dropping essential practical content.
-
-### Quality objective
-
-The primary output of `/textbook` is a set of meaningful, reusable words and phrases that help the
-learner converse in the target language. Realistic conversations are the generation mechanism for
-discovering and validating that language, not an excuse to optimize for story realism.
-
-Required semantic coverage, factual fidelity, role fidelity, and safety are non-negotiable gates.
-Among outputs satisfying those invariants, generation priorities are:
-
-1. Reusable, memorizable words and phrases.
-2. The learner's ability to express their needs, preferences, constraints, intentions, and identity.
-3. The learner's ability to understand likely partner language.
-4. Useful positive/negative and alternative outcomes.
-5. Natural conversational sequencing.
-6. Situational detail only when it improves reuse or comprehension.
-
-Every primary action, explicit learner identity, explicit need, and hard constraint in the topic or
-selected context is an essential concept. Generation teaches each essential identity, need, and
-constraint directly rather than relying only on implications or lists of examples.
-
-Context selects the language that matters—phrase frames, register, and substitutions. It should not
-force concrete names, technical details, personal backstory, or observations into otherwise reusable
-lines.
+Generate one short two-sided conversation for every selected topic, then translate each conversation
+and its vocabulary together. The accepted prompts are in `prompts/phrasebook/`; this endpoint
+implements them without reopening prompt development.
 
 ### Request
 
-Call 1 omits `context`:
-
 ```json
 {
-  "topic": "dinner with my partner's parents",
-  "language": "zh | ja | es | cs",
-  "llm": "google | g-flash | claude | chatgpt"
-}
-```
-
-Call 2 includes the opaque state returned by call 1 plus the learner's selections:
-
-```json
-{
-  "topic": "dinner with my partner's parents",
-  "language": "zh | ja | es | cs",
-  "context": {
-    "answers": { "Relationship": "Partner's parents" },
-    "checklist": ["Introduce myself", "Discuss food"]
+  "seed": "ordering vegan food",
+  "language": "ja",
+  "ability": "basics",
+  "answers": {
+    "Where are you eating?": "Standard restaurant"
   },
-  "llm": "google | g-flash | claude | chatgpt"
-}
-```
-
-| Field | Required | Default | Rules |
-|---|---:|---|---|
-| `topic` | yes | — | Topic, situation, or activity; at most 200 characters |
-| `language` | yes | — | Target language |
-| `context` | call 2 | absent | JSON object; presence selects call 2 |
-| `llm` | no | `google` | Model backend |
-
-`context` is opaque state from call 1. The service validates only that it is an object, not an array or
-string. Its internal keys are not prescribed beyond the conceptual `answers` and `checklist` shape.
-Malformed context returns `400`.
-
-### Call 1 response
-
-```json
-{
-  "questions": [
-    { "label": "string", "options": ["string"], "default": "string" }
-  ],
   "checklist": [
-    { "label": "string", "checked": true }
-  ],
-  "usage": { "model": "string", "inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "costUsd": null, "durationMs": 0 }
+    "State my dietary restrictions",
+    "Ask about hidden ingredients"
+  ]
 }
 ```
 
-Questions are dynamically authored for the topic, not a fixed demographic form. They ask only unknown
-axes that materially change the language. A stated identity or constraint is fixed and is not weakened,
-redefined, or reopened as a question. Options are short, mutually exclusive, and cannot contradict the
-topic. Significant unstated facts use a neutral `Not specified` default; ordinary situational axes use
-the most plausible useful default. Maximum six questions. Proficiency or language confidence is
-optional, but when call 1 selects that axis, call 2 honors the chosen answer.
+- `seed` is required, non-empty, and at most 200 characters.
+- `language` is required: `zh`, `ja`, `es`, or `cs`.
+- `ability` is required: `none`, `basics`, or `conversational`. **There is no API default.**
+  The client explicitly sends the literal `basics` until an ability UI is introduced.
+- `answers` is a required question-to-answer string map; an empty map is allowed. At most five
+  entries, with question labels at most 200 characters and answers at most 500 characters.
+- `checklist` is a required ordered list of 1–8 selected topic strings, at most 120 characters each.
+  The learner chooses the count; three topics are only the prompt-development fixture size.
+- `llm` is rejected. The server's `LLM_BACKEND` selects the provider for both stages.
 
-Checklist items are the **conversations to prepare** for the situation—short, learner-recognizable
-titles ordered along the encounter's arc. `checked` is the model's suggested default. Each checked item
-becomes exactly one conversation group in call 2. Required goals are reserved before optional social,
-payment, or closure material: the learner performing the primary action; direct statement of every
-explicit identity, need, or hard constraint; an umbrella response goal for applicable alternatives;
-and safety verification before recommendation or transaction. Titles are 2–5 words and one
-communicative goal; they do not join positive/negative outcomes with `and` or `or`. Maximum seven items;
-one group is reserved for `vocab`.
+Ability controls which material is worth spending lines on, not a grammar-difficulty scale:
+`none` includes first-week language, `basics` assumes it, and `conversational` concentrates on
+situation-specific language. The `/lookup` ability vocabulary is separate and unchanged.
 
-### Call 2 response
+### Response
 
 ```json
 {
-  "title": "Annual Physical Visit",
+  "title": "ordering vegan food",
   "groups": [
     {
-      "title": "English section heading",
-      "cards": ["Card"]
-    }
+      "title": "State my dietary restrictions",
+      "cards": [
+        {
+          "lang": "ja",
+          "type": "phrase",
+          "text": "ヴィーガンです。",
+          "translation": "I'm vegan.",
+          "reading": [["ヴィーガンです。", null]],
+          "context": "State my dietary restrictions",
+          "notes": "{\"speaker\":\"you\"}"
+        }
+      ]
+    },
+    { "title": "vocab", "cards": [] }
   ],
-  "usage": { "model": "string", "inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "costUsd": null, "durationMs": 0 }
+  "usage": {
+    "model": "gemini-3.5-flash-lite",
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "totalTokens": 0,
+    "costUsd": null,
+    "durationMs": 0
+  }
 }
 ```
 
-`title` is a concise phrasebook name, preferably 2–4 Title Case words, clamped to 60 characters.
-A missing or blank title is not an error; the client falls back to the raw topic.
+The example shows the envelope and card shape, not required content counts.
+The title comes from the seed; no extra naming model call is made. Conversation groups follow
+selected-topic order. The final `vocab` group pools vocabulary from those conversations.
+Each conversation card's `translation` is the English generation line; `text` is its translated
+target-language line with inline ruby markup removed.
 
-Generation treats each selected checklist item as a short, two-sided conversation assembled from a
-planned phrase bank. Conversation groups stay in the selected encounter order. Each card carries
-speaker metadata in `notes` as `{"speaker":"you"}` or `{"speaker":"partner"}`. The learner's supplied
-role and context constrain their lines. Positive/negative alternatives remain in the same group and may
-appear consecutively with the same speaker; phrase quality and coverage take precedence over a strictly
-linear exchange.
+`notes` remains a JSON-encoded string, not a new object-valued card field:
+- Conversation cards carry `speaker: "you" | "partner"` and `or: true` when an alternative.
+  Alternatives may be interleaved with the other speaker's lines; an earlier line by the
+  same speaker is required, not immediate adjacency.
+- Drawn vocabulary carries `source`, an exact target-language source line. Expansion vocabulary
+  with no identified source line omits it; the service does not invent example sentences.
+  Matching uses English tokens and common inflections within the originating conversation, then
+  maps that source index to the translated line. It does not infer synonyms or derivations.
 
-The final group is titled `vocab`. It contains 10–15 useful situation-specific word cards extracted
-from the generated conversations, including reusable citation forms for conjugated verbs. Each vocab
-card identifies an exact source conversation line in `notes` as `{"source":"…"}`.
+The service sets card `context` to the originating topic title, including vocabulary provenance.
+Vocabulary is deduplicated case-insensitively by English word, preserving the first occurrence and
+its translation, capped at the lesser of 24 words or five times the selected-topic count.
+Kanji/hanzi `base[reading]` runs become `ReadingToken` pairs; stray bracket annotations are removed.
+Japanese romanization is derived mechanically from kana and inline readings, not generated by an LLM.
+Missing readings cannot be inferred by mechanical conversion.
 
-There are at most eight groups total, including `vocab`, and at most 15 cards per group. The model does
-not emit `context`, `id`, or `importedAt`; the service sets each card's `context` to its group's title.
-Every card follows `CARD_SCHEMA.md`; `/textbook` includes `type` (`word` or `phrase`) so the client can
-distinguish vocabulary from conversation content.
+### Execution and failure behavior
 
-Before emitting conversations, call 2 internally separates stated facts, significant unstated facts,
-essential concepts, and applicable communicative functions. It then plans a compact phrase bank.
-Each planned item records its intent, target-language phrase and ordinary English gloss, speaker,
-essential-concept coverage, polarity/alternative role, reusable substitution, and destination group.
-The intermediate inventories and phrase bank are not returned to the caller.
+1. Validate the request before any model call.
+2. Generate English conversations and per-conversation vocabulary in one call.
+3. Validate the generation; retry once on invalid output.
+4. Translate each conversation and its vocabulary in parallel. Results are assembled **by index,
+   never by title text**, regardless of completion order.
+5. Validate each translated chunk's line and vocabulary counts and string values. Retry a malformed
+   or count-mismatched chunk once; never return a partially translated phrasebook.
+6. Normalize readings, assemble cards, pool vocabulary, and aggregate provider usage and costs.
 
-Conversation cards are copied from approved phrase-bank items; assembly does not invent connector lines.
-Required vocab lemmas come from the same essential-concept inventory, and supporting vocab must occur in
-an emitted bank phrase. This planning remains inside the existing single generation call, preserving
-the endpoint response and provider-independent execution path.
+Each logical model attempt has a 15-second budget on the default backend or the adapter's extended
+60-second budget. That budget includes up to three 429 retries with 2/4/8-second backoff.
+Generation and chunk validation each allow one new logical attempt after invalid output.
+The longest critical path is two generation attempts plus two parallel-translation attempts:
+60 seconds on the default backend or 240 seconds with a 60-second adapter. The complete request
+has a 245-second hard deadline, API Gateway allows 270 seconds, and Cloud Run allows 300 seconds.
+Exhausted model/validation failures return `502`; aborted requests stop outstanding provider calls.
+Generation output is capped at 6,000 tokens and each translation at 4,000 tokens, subject to
+provider ceilings. Generation validates 4–10 lines and 3–6 vocabulary entries per conversation.
+`durationMs` is wall-clock pipeline time, not the sum of overlapping translation durations.
+Usage includes reported token consumption from invalid responses that caused retries.
 
-### Model requirements
+Generation and translation prompt copies, including Japanese and Chinese reading-rule files, must
+remain byte-identical to the accepted source files. Reading rules substitute into
+`{{READING_RULES}}`; Spanish and Czech substitute an empty string.
 
-Call 1 first identifies stated facts, the primary learner action, explicit identities/needs/constraints,
-applicable alternatives, and safety ordering. It asks only unknown context axes that materially change
-the generated chapter. A significant unstated medical, cultural, religious, or personal fact requires
-its own neutral `Not specified` default; ordinary situational axes use a useful likely default. Distinct
-claims are not combined, and no option may contradict or redefine the topic. Call 1 avoids padding,
-default-checks a goal where the learner performs the primary action, creates a direct statement goal for
-each identity/need/constraint, uses one umbrella goal for positive/negative responses, and places safety
-verification before recommendation or transaction.
+The measured accepted three-topic pipeline was approximately 2.6–3.3 seconds on
+`gemini-3.5-flash-lite`; this is a baseline, not a guarantee for eight topics or alternate providers.
+The normal-operation target remains under 10 seconds.
 
-Call 2 must:
+### Client migration
 
-- identify the topic's primary action plus every explicit learner identity, need, and hard constraint,
-  including the conventional category term needed to explain an identity or constraint without merely
-  listing examples, as essential concepts with conventional target-language lemmas;
-- separate stated facts from significant unstated medical, cultural, religious, and personal claims;
-- plan every conversation card in a phrase bank before assembly, including intent, gloss, speaker,
-  concept coverage, polarity/alternative role, reusable substitution, and destination group;
-- teach the primary action and each essential identity, need, and hard constraint in a direct
-  learner-originating phrase, and ensure every essential concept occurs in an emitted phrase and a
-  `vocab` card;
-- include reusable learner self-expression of needs, preferences, constraints, intentions, and identity;
-- default to level-neutral language, but honor an explicit proficiency or language-confidence context
-  answer when choosing vocabulary and sentence complexity;
-- use context to choose relevant phrase frames, register, and substitutions, not to decorate every line
-  with concrete or technical detail;
-- keep each conversation short and coherent, but permit a confirmation, reassurance, or acknowledgment
-  when that is the natural reply; do not invent facts solely to create progression;
-- include both sides of the exchange, including likely replies;
-- include positive and negative or alternative outcomes in the same conversation group when the
-  situation naturally involves a choice; alternatives may be consecutive same-speaker cards;
-- prefer phrases that can be adapted by changing one word or short phrase;
-- include a final `vocab` group with 10–15 useful situation-specific word cards drawn from the
-  conversations, led by the essential concepts;
-- preserve the conventional target-language term for an essential concept even when it is a loanword
-  or resembles English;
-- when a situation involves safety, allergy, dietary, religious, or other hard constraints, never infer
-  compatibility from an item's or action's name; a partner may present a specific option as compatible
-  only after the exchange confirms the relevant ingredients, preparation, or conditions;
-- respect any learner role in the context when assigning dialogue actions and speakers;
-- omit generic survival padding, invented personal backstory, technical commentary, and encyclopedic
-  or glossary-only material;
-- assemble conversation groups only from planned phrase-bank items; do not invent connector lines;
-- return raw JSON with no prose or code fences.
+The creation UI and persistence flow are unchanged:
+- Topic entry calls `/context` with `{ seed, language }`, not `/textbook` with `topic`.
+- Question selection uses the first option as default, without a response `default` field.
+- Final submission calls `/phrasebook` with flat `answers` and `checklist`, plus explicit
+  `ability: "basics"`, not a nested `context` object.
+- The complete returned phrasebook is committed only after successful generation.
+- Clients do not choose the backend.
 
-The quality bar is conversational and practical, but reuse and memorization take precedence over story
-realism. The shared prompt and card-reading rules are backend-independent.
+### Trust boundary and deferred work
 
+All client text, including answers and selected topic labels, is untrusted. Request validation,
+bounded fan-out, and strict output validation constrain structure and resource consumption; they do
+**not** establish that the model ignored prompt injection. This stateless contract does not authenticate
+labels as originating in an earlier `/context` response. Server-issued selection identifiers or
+signed setup state require a separate API design decision.
 
-### Generation robustness
+The accepted `/context` prompt remains unchanged. Ability-aware setup, static preset phrase packs,
+and removal of repair-style checklist topics are deferred. Explicit repair topics continue to work;
+they must not be removed before replacement packs exist.
 
-Model-emitted JSON is occasionally malformed, most often in Japanese `reading` token arrays. Call 2
-hardens generation before falling back to `502`:
+## Retained `/textbook` endpoint
 
-- a missing comma between adjacent array or object elements is repaired;
-- a structurally malformed `reading` token is dropped, keeping the card without furigana (reading is
-  an optional display aid, not core content);
-- the generation is retried once on any remaining validation failure.
+`/textbook` remains available but is no longer used by the migrated creation client. Its first request
+uses `{ topic, language }`; its second uses `{ topic, language, context: { answers, checklist } }`.
+It returns explicit question defaults for setup and `{ title, groups, usage }` for generation.
+Its existing prompts, validation, and card assembly remain separate from `/phrasebook`.
+Like other routes, it now uses server-owned backend configuration and rejects request `llm`.
 
-These recover the response in place where possible; only a still-invalid result after the retry
-returns `502`.
+`/lookup` remains the supporting translation endpoint. Retirement of these endpoints and the
+historical fan-out design is not part of this client migration.
 
 ## Service flow
 
@@ -439,22 +379,23 @@ request
   │    /lookup: translate, disambiguate, and group
   │    /context: questions and checklist for a seed
   │    /textbook call 1: questions and checklist
-  │    /textbook call 2: phrasebook sections and dialogue
+  │    /textbook call 2: legacy phrasebook sections and dialogue
+  │    /phrasebook: English generation → parallel conversation translations
   │
   └─ validate, normalize, cap, set service-owned fields, attach usage
        → response
 ```
 
-The service rejects invalid input before the model call. After the call it validates the response
-shape, drops empty groups, trims excess items from the end while preserving model order, normalizes
-Japanese readings, sets `context`, attaches usage, and returns the endpoint envelope.
+The service rejects invalid input before model calls. Each endpoint validates its output according
+to its own contract; phrasebook conversation coverage is never silently clamped away. Cards are
+normalized, assigned service-owned context, and returned with usage metadata.
 
 ## Shared implementation
 
 The endpoints share:
 
 - the API router, CORS, method handling, and `204`/`405`/`404` behavior;
-- the `LLM_REGISTRY` and provider adapters, including explicit effective output-token ceilings;
+- server-owned backend configuration, the `LLM_REGISTRY`, and provider adapters;
 - card validation and Japanese reading normalization;
 - usage accounting and pricing;
 - the card-schema reading, gender-collapse, and optional-field rules.

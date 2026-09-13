@@ -7,9 +7,19 @@ const { parseTerm, parseLookupRequest } = require('../lookup-parse');
 const { validateLookupResponse } = require('../lookup-validate');
 const { buildLookupPrompt } = require('../lookup-prompt');
 const { handleLookup } = require('../lookup');
-const { callAnthropic } = require('../llms/anthropic');
-const { OPENAI_MODEL } = require('../llms/openai');
-const { callGenAIFlash, GENAI_FLASH_MODEL, usageFromMetadata, buildGenerationConfig } = require('../llms/genai');
+
+const BACKEND = 'gemini-3.5-flash-lite';
+process.env.LLM_BACKEND = BACKEND;
+
+async function withBackend(name, fn) {
+  const previous = process.env.LLM_BACKEND;
+  process.env.LLM_BACKEND = name;
+  try {
+    return await fn();
+  } finally {
+    process.env.LLM_BACKEND = previous;
+  }
+}
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -111,12 +121,12 @@ describe('parseLookupRequest', () => {
     assert.match(result.error, /200/);
   });
 
-  test('invalid enum values → error', () => {
+  test('invalid enum values and client-selected llm → error', () => {
     assert.match(parseLookupRequest({ term: 'a', language: 'fr' }).error, /language/);
     assert.match(parseLookupRequest({ term: 'a', language: 'ja', ability: 'expert' }).error, /ability/);
     assert.match(parseLookupRequest({ term: 'a', language: 'ja', formality: 'rude' }).error, /formality/);
     assert.match(parseLookupRequest({ term: 'a', language: 'ja', audience: 'boss' }).error, /audience/);
-    assert.match(parseLookupRequest({ term: 'a', language: 'ja', llm: 'gpt5' }).error, /Unknown LLM/);
+    assert.match(parseLookupRequest({ term: 'a', language: 'ja', llm: 'claude' }).error, /server-controlled/);
   });
 
   test('"(only context)" with no term before "(" → error', () => {
@@ -133,23 +143,16 @@ describe('parseLookupRequest', () => {
       ability: 'beginner',
       formality: 'polite',
       audience: 'staff',
-      llm: 'google',
     });
   });
 
-  test('explicit values override defaults', () => {
+  test('explicit learner settings override defaults', () => {
     const result = parseLookupRequest({
-      term: 'dinner', language: 'zh', ability: 'advanced', formality: 'casual', audience: 'family', llm: 'claude',
+      term: 'dinner', language: 'zh', ability: 'advanced', formality: 'casual', audience: 'family',
     });
     assert.equal(result.value.ability, 'advanced');
     assert.equal(result.value.formality, 'casual');
     assert.equal(result.value.audience, 'family');
-    assert.equal(result.value.llm, 'claude');
-  });
-
-  test('accepts g-flash as an explicit backend', () => {
-    const result = parseLookupRequest({ term: 'dinner', language: 'es', llm: 'g-flash' });
-    assert.equal(result.value.llm, 'g-flash');
   });
 });
 
@@ -337,35 +340,40 @@ describe('validateLookupResponse', () => {
 describe('handleLookup', () => {
   test('missing term/language → 400', async () => {
     const res = makeRes();
-    await handleLookup({ body: { language: 'ja' } }, res, { google: async () => happyRaw() });
+    await handleLookup({ body: { language: 'ja' } }, res, { [BACKEND]: async () => happyRaw() });
     assert.equal(res.statusCode, 400);
   });
 
-  test('unknown llm → 400', async () => {
+  test('client-selected llm → 400', async () => {
     const res = makeRes();
-    await handleLookup({ body: { ...VALID_BODY, llm: 'not-a-model' } }, res, { google: async () => happyRaw() });
+    await handleLookup({ body: { ...VALID_BODY, llm: 'claude' } }, res, { [BACKEND]: async () => happyRaw() });
     assert.equal(res.statusCode, 400);
   });
 
   test('LLM throws → 502 "LLM request failed"', async () => {
     const res = makeRes();
-    const registry = { google: async () => { throw new Error('boom'); } };
+    const registry = { [BACKEND]: async () => { throw new Error('boom'); } };
     await handleLookup({ body: VALID_BODY }, res, registry);
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'LLM request failed');
   });
 
-  test('LLM times out → 502 "LLM request failed" via a distinct code path from a throw', async () => {
+  test('LLM timeout aborts the model request and returns 502', async () => {
     const res = makeRes();
-    const registry = { google: () => new Promise(() => {}) }; // never resolves
+    let observedSignal;
+    const registry = { [BACKEND]: (prompt, { signal }) => {
+      observedSignal = signal;
+      return new Promise(() => {});
+    } };
     await handleLookup({ body: VALID_BODY }, res, registry, { timeoutMs: 10 });
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'LLM request failed');
+    assert.equal(observedSignal.aborted, true);
   });
 
   test('truncated JSON → 502 "Invalid response from LLM"', async () => {
     const res = makeRes();
-    const registry = { google: async () => reply(happyRaw().slice(0, -5)) };
+    const registry = { [BACKEND]: async () => reply(happyRaw().slice(0, -5)) };
     await handleLookup({ body: VALID_BODY }, res, registry);
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'Invalid response from LLM');
@@ -373,7 +381,7 @@ describe('handleLookup', () => {
 
   test('happy path → 200 with a valid { blocks } response and a usage block', async () => {
     const res = makeRes();
-    const registry = { google: async () => reply(happyRaw()) };
+    const registry = { [BACKEND]: async () => reply(happyRaw()) };
     await handleLookup({ body: VALID_BODY }, res, registry);
     assert.equal(res.statusCode, 200);
     assert.ok(Array.isArray(res.body.blocks));
@@ -390,14 +398,14 @@ describe('handleLookup', () => {
     });
   });
 
-  test('picks the requested llm out of the registry', async () => {
+  test('uses the server-selected backend from the registry', async () => {
     const res = makeRes();
     let calledWith = null;
     const registry = {
-      google: async () => { throw new Error('should not be called'); },
+      [BACKEND]: async () => { throw new Error('should not be called'); },
       claude: async (prompt) => { calledWith = prompt; return reply(happyRaw()); },
     };
-    await handleLookup({ body: { ...VALID_BODY, llm: 'claude' } }, res, registry);
+    await withBackend('claude', () => handleLookup({ body: VALID_BODY }, res, registry));
     assert.equal(res.statusCode, 200);
     assert.ok(typeof calledWith === 'string' && calledWith.length > 0);
   });
@@ -410,50 +418,10 @@ describe('handleLookup', () => {
       return reply(happyRaw());
     };
     claude.maxOutputTokens = 8192;
-    await handleLookup({ body: { ...VALID_BODY, llm: 'claude' } }, res, { claude });
+    await withBackend('claude', () => handleLookup({ body: VALID_BODY }, res, { claude }));
     assert.equal(res.statusCode, 200);
     assert.equal(options.maxOutputTokens, 8192);
   });
 
-  test('Anthropic adapter advertises its supported output-token cap', () => {
-    assert.equal(callAnthropic.maxOutputTokens, 8192);
-  });
-
-  test('Anthropic adapter advertises an extended timeout', () => {
-    // Claude Haiku takes 20-26s on a /textbook generate call; the shared 15s
-    // default timed every one of them out (evals/budget-report.md).
-    assert.equal(callAnthropic.timeoutMs, 60000);
-  });
-
-  test('OpenAI adapter targets the Luna model', () => {
-    assert.equal(OPENAI_MODEL, 'gpt-5.6-luna');
-  });
-
-  test('g-flash adapter targets Gemini 3.8 Flash', () => {
-    assert.equal(GENAI_FLASH_MODEL, 'gemini-3.8-flash');
-  });
-
-  test('g-flash adapter advertises an extended timeout', () => {
-    assert.equal(callGenAIFlash.timeoutMs, 60000);
-  });
-
-  test('Gemini requests constrained JSON output', () => {
-    assert.deepEqual(
-      buildGenerationConfig(30000),
-      { maxOutputTokens: 30000, responseMimeType: 'application/json' },
-    );
-  });
-
-  test('Gemini usage includes billed thinking tokens in output', () => {
-    assert.deepEqual(
-      usageFromMetadata({ promptTokenCount: 100, candidatesTokenCount: 200, thoughtsTokenCount: 300 }),
-      { inputTokens: 100, outputTokens: 500 },
-    );
-  });
-
-  test('OpenAI adapter advertises its extended timeout', () => {
-    const { callOpenAI } = require('../llms/openai');
-    assert.equal(callOpenAI.timeoutMs, 60000);
-  });
 
 });

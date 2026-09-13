@@ -73,7 +73,7 @@ phase, not part of initial generation.
 
 ### Phase 1 — Prep and review
 
-- Guided phrasebook creation through `/textbook`.
+- Guided phrasebook creation through `/context` → `/phrasebook`.
 - Dynamic context questions and a checklist of the conversations to prepare.
 - Complete phrasebook generation: several short two-sided conversations plus a vocabulary group.
 - Three-tab review (Conversations / Vocab / Starred): flip review, direction toggle, swipe
@@ -92,10 +92,14 @@ phase, not part of initial generation.
 
 - **Clients:** mobile-first PWA and native iOS app in one monorepo.
 - **Storage:** client-side IndexedDB for the library; no accounts, sync, or server-held library.
-- **API:** Cloud Run service in `api/`. `/textbook` handles guided creation in two calls; `/lookup`
-  remains the stateless translation primitive for supporting lookup/expansion flows. Both reuse the
-  same LLM registry, card validation, reading normalization, CORS, and error conventions.
-- **LLMs:** `google`, `g-flash`, `claude`, or `chatgpt`, selected by the caller in the prototype.
+- **API:** Cloud Run service in `api/`. `/context` returns setup questions and topic choices;
+  `/phrasebook` generates English conversations, then translates each conversation in parallel.
+  `/lookup` remains the supporting translation primitive; `/textbook` is retained but not used by
+  the migrated creation client. Cards, usage accounting, and provider adapters are shared.
+- **LLMs:** server-selected with `LLM_BACKEND`, default `gemini-3.5-flash-lite`; clients cannot
+  select a backend. Alternate server values are `g-flash`, `claude`, and `chatgpt`.
+- **Creation ability:** the client sends `ability: "basics"` explicitly; the API requires
+  `none | basics | conversational`. No new ability UI is introduced by this migration.
 - **Audio:** Web Speech API on mobile browsers. iOS Safari is the primary target; desktop audio is
   unsupported.
 

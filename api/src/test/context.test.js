@@ -5,8 +5,10 @@ const assert = require('node:assert/strict');
 
 const { parseContextRequest, validateContextResponse, handleContext } = require('../context');
 const { buildContextPrompt } = require('../context-prompt');
+const { getBackendName, LLM_REGISTRY } = require('../llm-config');
 
-const SUPPORTED_LLMS = ['google', 'g-flash', 'claude', 'chatgpt'];
+const BACKEND = 'gemini-3.5-flash-lite';
+process.env.LLM_BACKEND = BACKEND;
 
 function makeRes() {
   return {
@@ -39,46 +41,71 @@ function validModelOutput() {
 
 function makeRegistry(text = validModelOutput()) {
   return {
-    google: async () => ({ text, model: 'gemini-3.5-flash-lite', usage: { inputTokens: 800, outputTokens: 200 } }),
+    [BACKEND]: async () => ({ text, model: BACKEND, usage: { inputTokens: 800, outputTokens: 200 } }),
   };
 }
 
+describe('llm configuration', () => {
+  test('defaults to Gemini 3.5 Flash Lite and exposes no google alias', () => {
+    const previous = process.env.LLM_BACKEND;
+    delete process.env.LLM_BACKEND;
+    try {
+      assert.equal(getBackendName(), BACKEND);
+      assert.equal(LLM_REGISTRY.google, undefined);
+      assert.equal(typeof LLM_REGISTRY[BACKEND], 'function');
+    } finally {
+      if (previous === undefined) delete process.env.LLM_BACKEND;
+      else process.env.LLM_BACKEND = previous;
+    }
+  });
+
+  test('rejects an unknown configured backend', () => {
+    const previous = process.env.LLM_BACKEND;
+    process.env.LLM_BACKEND = 'not-a-backend';
+    try {
+      assert.throws(() => getBackendName(), /Invalid LLM_BACKEND/);
+    } finally {
+      if (previous === undefined) delete process.env.LLM_BACKEND;
+      else process.env.LLM_BACKEND = previous;
+    }
+  });
+});
+
 describe('parseContextRequest', () => {
-  test('accepts a valid request and applies the default llm', () => {
-    const parsed = parseContextRequest({ seed: 'salsa dancing in Austin, TX', language: 'es' }, SUPPORTED_LLMS);
-    assert.deepEqual(parsed, { value: { seed: 'salsa dancing in Austin, TX', language: 'es', llm: 'google' } });
+  test('accepts a valid request', () => {
+    const parsed = parseContextRequest({ seed: 'salsa dancing in Austin, TX', language: 'es' });
+    assert.deepEqual(parsed, { value: { seed: 'salsa dancing in Austin, TX', language: 'es' } });
   });
 
   test('trims the seed', () => {
-    const parsed = parseContextRequest({ seed: '  feeling sick  ', language: 'zh' }, SUPPORTED_LLMS);
+    const parsed = parseContextRequest({ seed: '  feeling sick  ', language: 'zh' });
     assert.equal(parsed.value.seed, 'feeling sick');
   });
 
   test('rejects a missing or empty seed', () => {
-    assert.ok(parseContextRequest({ language: 'es' }, SUPPORTED_LLMS).error);
-    assert.ok(parseContextRequest({ seed: '   ', language: 'es' }, SUPPORTED_LLMS).error);
+    assert.ok(parseContextRequest({ language: 'es' }).error);
+    assert.ok(parseContextRequest({ seed: '   ', language: 'es' }).error);
   });
 
   test('rejects a seed over 200 characters', () => {
-    const parsed = parseContextRequest({ seed: 'x'.repeat(201), language: 'es' }, SUPPORTED_LLMS);
+    const parsed = parseContextRequest({ seed: 'x'.repeat(201), language: 'es' });
     assert.match(parsed.error, /200/);
   });
 
   test('rejects an unsupported language', () => {
-    const parsed = parseContextRequest({ seed: 'surf vacation', language: 'fr' }, SUPPORTED_LLMS);
+    const parsed = parseContextRequest({ seed: 'surf vacation', language: 'fr' });
     assert.ok(parsed.error);
     assert.deepEqual(parsed.supported, ['zh', 'ja', 'es', 'cs']);
   });
 
-  test('rejects an unknown llm', () => {
-    const parsed = parseContextRequest({ seed: 'surf vacation', language: 'es', llm: 'grok' }, SUPPORTED_LLMS);
-    assert.ok(parsed.error);
-    assert.deepEqual(parsed.supported, SUPPORTED_LLMS);
+  test('rejects a client-selected llm', () => {
+    const parsed = parseContextRequest({ seed: 'surf vacation', language: 'es', llm: 'claude' });
+    assert.match(parsed.error, /server-controlled/);
   });
 
   test('rejects a non-object body', () => {
-    assert.ok(parseContextRequest(null, SUPPORTED_LLMS).error);
-    assert.ok(parseContextRequest([], SUPPORTED_LLMS).error);
+    assert.ok(parseContextRequest(null).error);
+    assert.ok(parseContextRequest([]).error);
   });
 });
 
@@ -155,7 +182,7 @@ describe('handleContext', () => {
 
   test('returns 400 before any model call on invalid input', async () => {
     let called = false;
-    const registry = { google: async () => { called = true; } };
+    const registry = { [BACKEND]: async () => { called = true; } };
     const res = makeRes();
     await handleContext({ body: { language: 'es' } }, res, registry);
     assert.equal(res.statusCode, 400);
@@ -174,18 +201,23 @@ describe('handleContext', () => {
   });
 
   test('returns 502 on model failure', async () => {
-    const registry = { google: async () => { throw new Error('boom'); } };
+    const registry = { [BACKEND]: async () => { throw new Error('boom'); } };
     const res = makeRes();
     await handleContext({ body: { seed: 'feeling sick', language: 'zh' } }, res, registry);
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'LLM request failed');
   });
 
-  test('returns 502 on timeout', async () => {
-    const registry = { google: () => new Promise(() => {}) };
+  test('returns 502 on timeout and aborts the model request', async () => {
+    let observedSignal;
+    const registry = { [BACKEND]: (prompt, { signal }) => {
+      observedSignal = signal;
+      return new Promise(() => {});
+    } };
     const res = makeRes();
     await handleContext({ body: { seed: 'feeling sick', language: 'zh' } }, res, registry, { timeoutMs: 20 });
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'LLM request failed');
+    assert.equal(observedSignal.aborted, true);
   });
 });

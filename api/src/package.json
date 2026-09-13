@@ -5,14 +5,15 @@
     "start": "node index.js",
     "dev": "set -a && source ../.env && set +a && FUNCTION_TARGET=translate npx @google-cloud/functions-framework",
     "test": "node --test test/",
-    "eval:textbook": "deno run --allow-net --allow-read --allow-write --allow-env ../evals/eval-textbook.js",
-    "eval:budget": "set -a && source ../.env && set +a && node ../evals/eval-budget.js"
+    "eval:textbook": "deno run --allow-net --allow-read --allow-write --allow-env ../evals/scripts/eval-textbook.js",
+    "eval:budget": "set -a && source ../.env && set +a && node ../evals/scripts/eval-budget.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@google-cloud/functions-framework": "^3.4.5",
     "@google/genai": "^1.50.1",
-    "openai": "^4.85.0"
+    "openai": "^4.85.0",
+    "wanakana": "^5.3.1"
   },
   "engines": {
     "node": ">=20"

@@ -24,7 +24,7 @@ const LANGUAGE_NAMES = {
 function buildContextPrompt({ seed, language }) {
   return TEMPLATE
     .replaceAll('{{LANGUAGE}}', LANGUAGE_NAMES[language])
-    .replaceAll('{{SEED}}', seed);
+    .replaceAll('{{SEED}}', () => seed);
 }
 
 module.exports = { buildContextPrompt, LANGUAGE_NAMES };

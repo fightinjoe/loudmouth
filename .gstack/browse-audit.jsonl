@@ -208,3 +208,35 @@
 {"ts":"2026-09-02T20:13:34.409Z","cmd":"goto","args":"https://ai.google.dev/gemini-api/docs/pricing","origin":"https://ai.google.dev/gemini-api/docs/pricing","durationMs":412,"status":"ok","hasCookies":false,"mode":"launched"}
 {"ts":"2026-09-02T20:13:39.323Z","cmd":"text","args":"","origin":"https://ai.google.dev/gemini-api/docs/pricing","durationMs":7,"status":"ok","hasCookies":false,"mode":"launched"}
 {"ts":"2026-09-02T20:20:59.620Z","cmd":"stop","args":"","origin":"https://ai.google.dev/gemini-api/docs/pricing","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:31:22.923Z","cmd":"goto","args":"http://127.0.0.1:5173","origin":"http://127.0.0.1:5173/","durationMs":260,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:31:47.909Z","cmd":"snapshot","args":"-i","origin":"http://127.0.0.1:5173/","durationMs":29,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:33:26.081Z","cmd":"click","args":"@e1","origin":"http://127.0.0.1:5173/","durationMs":65,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:33:36.051Z","cmd":"snapshot","args":"-i","origin":"http://127.0.0.1:5173/","durationMs":5,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:34:10.609Z","cmd":"select","args":"@e10 ja","origin":"http://127.0.0.1:5173/","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:34:10.647Z","cmd":"select","args":"@e15 advanced","origin":"http://127.0.0.1:5173/","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:34:10.695Z","cmd":"click","args":"@e20","origin":"http://127.0.0.1:5173/","durationMs":15,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:34:19.053Z","cmd":"snapshot","args":"-i","origin":"http://127.0.0.1:5173/","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:36:43.117Z","cmd":"js","args":"(() => { const original = window.fetch; window.__creationRequests = []; window.fetch = async (...args) => { if (typeof args[0] === \"string\" && /^http:\\/\\/localhost:8080/.test(args[0])) { const body = …","origin":"http://127.0.0.1:5173/","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:36:49.691Z","cmd":"viewport","args":"390x844","origin":"http://127.0.0.1:5173/","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:40:32.240Z","cmd":"fill","args":"@e11 ordering vegan food","origin":"http://127.0.0.1:5173/","durationMs":21,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:40:32.290Z","cmd":"click","args":"@e12","origin":"http://127.0.0.1:5173/","durationMs":14,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:41:00.151Z","cmd":"snapshot","args":"-i","origin":"http://127.0.0.1:5173/","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:43:41.816Z","cmd":"click","args":"@e20","origin":"http://127.0.0.1:5173/","durationMs":14,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:43:57.077Z","cmd":"snapshot","args":"-i","origin":"http://127.0.0.1:5173/","durationMs":6,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:44:06.546Z","cmd":"click","args":"@e18","origin":"http://127.0.0.1:5173/","durationMs":15,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:45:14.342Z","cmd":"snapshot","args":"-i","origin":"http://127.0.0.1:5173/","durationMs":4,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:45:27.890Z","cmd":"click","args":"@e11","origin":"http://127.0.0.1:5173/","durationMs":20,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:45:38.102Z","cmd":"snapshot","args":"-i","origin":"http://127.0.0.1:5173/","durationMs":5,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:45:44.195Z","cmd":"click","args":"@e18","origin":"http://127.0.0.1:5173/","durationMs":19,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:45:58.008Z","cmd":"snapshot","args":"-i","origin":"http://127.0.0.1:5173/","durationMs":15,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:46:07.979Z","cmd":"console","args":"--errors","origin":"http://127.0.0.1:5173/","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:46:07.979Z","cmd":"screenshot","args":"--viewport /tmp/phrasebook-conversations.png","origin":"http://127.0.0.1:5173/","durationMs":22,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:46:07.993Z","cmd":"js","args":"window.__creationRequests","origin":"http://127.0.0.1:5173/","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:46:53.824Z","cmd":"click","args":"@e11","origin":"http://127.0.0.1:5173/","durationMs":26,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:46:53.857Z","cmd":"console","args":"--clear","origin":"http://127.0.0.1:5173/","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:46:53.938Z","cmd":"reload","args":"","origin":"http://127.0.0.1:5173/","durationMs":47,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:46:54.001Z","cmd":"snapshot","args":"-i","origin":"http://127.0.0.1:5173/","durationMs":26,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:47:00.898Z","cmd":"click","args":"@e11","origin":"http://127.0.0.1:5173/","durationMs":24,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:47:00.975Z","cmd":"screenshot","args":"--viewport /tmp/phrasebook-vocab.png","origin":"http://127.0.0.1:5173/","durationMs":41,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:47:01.011Z","cmd":"console","args":"--errors","origin":"http://127.0.0.1:5173/","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-09-13T15:49:07.168Z","cmd":"closetab","args":"","origin":"about:blank","durationMs":47,"status":"ok","hasCookies":false,"mode":"launched"}

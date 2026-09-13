@@ -44,8 +44,8 @@ export function renderCardsHTML(deck, cards, tab = "conversations") {
       return `<div class="deck-view-empty text-center fg-secondary"><p>No starred terms yet. Tap the star on a card to save it here.</p></div>`;
     }
   } else if (tab === "vocab") {
-    // Vocab tab: the `word` cards as a flat list (they share the one "vocab"
-    // group, so no collapsible group wrapper is needed).
+    // Vocab is determined only by card type; provenance in `context` remains
+    // intact and does not affect which tab owns the card.
     const words = cards.filter((c) => c.type === "word");
     if (words.length === 0) {
       return `<div class="deck-view-empty text-center fg-secondary"><p>No vocabulary yet.</p></div>`;

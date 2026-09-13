@@ -22,7 +22,7 @@ The term batch format is the interchange format between external generators (AI 
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `lang` | `"zh"` \| `"ja"` | ✅ | Language code |
+| `lang` | `"zh"` \| `"ja"` \| `"es"` \| `"cs"` | yes | Language code |
 | `text` | string | ✅ | Word or phrase in the target language |
 | `translation` | string | ✅ | English translation (1–2 most common senses) |
 | `type` | `"word"` \| `"phrase"` \| `"sentence"` | — | Term type |
@@ -62,6 +62,11 @@ Three text fields carry meaning, and they are **not** interchangeable:
 - **`notes`** (optional) — grammar, collocations, or usage tips (e.g. `"used with the particle を"`).
   Register does **not** go here — it has its own field, `formality`.
 
+For `/phrasebook`, structured metadata is JSON-encoded inside the existing `notes` string:
+conversation cards use `{"speaker":"you"}` or `{"speaker":"partner"}`, adding `"or":true` for
+an alternative line. Drawn vocabulary uses `{"source":"exact target-language conversation line"}`;
+vocabulary without an identified source omits it. These are not object-valued `notes` fields.
+
 So a single card can carry translation + definition + notes:
 
 ```json
@@ -95,6 +100,8 @@ heading it belongs to, e.g. `"Ordering at a restaurant"` or `"Teasing your host 
   many different `context` groups).
 - In the `/lookup` API the **service** copies the group's `title` into each group card's `context`; the
   model does not emit it (see `docs/API_DESIGN.md`, "Model behavior" / "Internal flow").
+- In `/phrasebook`, conversation cards and pooled vocabulary cards preserve their originating
+  conversation topic as `context`; the vocabulary response group itself is titled `vocab`.
 
 ## Constraints
 

@@ -118,8 +118,8 @@ describe("renderCardsHTML — Group wrapper (collapsible sections, Figma node 75
 
   it("renders type: word cards as a flat vocab list on the vocab tab, excluded from conversations", () => {
     const cards = [
-      { ...card({ id: "c1", text: "水", translation: "water", createdAt: "2026-01-01T00:00:00.000Z", context: "vocab" }), type: "word" },
-      { ...card({ id: "c2", text: "茶", translation: "tea", createdAt: "2026-01-02T00:00:00.000Z", context: "vocab" }), type: "word" },
+      { ...card({ id: "c1", text: "水", translation: "water", createdAt: "2026-01-01T00:00:00.000Z", context: "At the market" }), type: "word" },
+      { ...card({ id: "c2", text: "茶", translation: "tea", createdAt: "2026-01-02T00:00:00.000Z" }), type: "word" },
     ];
     const vocabHtml = renderCardsHTML(deck, cards, "vocab");
     expect(vocabHtml).toContain('data-card-id="c1"');

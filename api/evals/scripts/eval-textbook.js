@@ -6,26 +6,23 @@
  * output, decide what a better output would be, mine the differences for
  * prompt edits."
  *
- * It drives the REAL, already-running dev server (no prompt fork, no mocked
- * LLM) through /textbook's full TWO-CALL flow and writes one YAML file per
- * model into a per-prompt directory:
+ * It drives the real, already-running dev server through /textbook's full
+ * two-call flow and writes one YAML file for the server-configured model:
  *
  *   api/evals/<prompt-slug>/
- *   ├── context.json           # the pinned prompt + call-1 output (shared)
- *   ├── es-gemini.yaml         # <language>-<model>.yaml, one per model
- *   ├── es-haiku.yaml
- *   └── ...
+ *   ├── context.json           # the pinned prompt + call-1 output
+ *   └── es-gemini.yaml         # <language>-<served-model>.yaml
  *
  * Flow:
- *   1. POST /textbook { topic, language, llm }               → { questions, checklist }
- *      Run ONCE, by the first target LLM, and saved to context.json. If
- *      context.json already exists in the prompt directory it is REUSED and
- *      call 1 is skipped, so every model generates from the SAME context.
+ *   1. POST /textbook { topic, language }                    → { questions, checklist }
+ *      Run once and save to context.json. If context.json already exists in
+ *      the prompt directory it is reused and call 1 is skipped.
  *   2. Auto-answer: each question → its own `default`; checklist → the checked
  *      items (or ALL items with --checklist=all, or all items when nothing is
  *      checked). Stored in context.json as { answers, checklist }.
- *   3. For EACH target LLM: POST /textbook { ..., context }  → { title, groups }
- *      and write <language>-<model>.yaml.
+ *   3. POST /textbook { topic, language, context }            → { title, groups }
+ *      and write <language>-<served-model>.yaml. The backend is selected only
+ *      by the running server's LLM_BACKEND environment variable.
  *
  * File shape (per model):
  *   - Above the divider: `ideal` — hand-editable YAML, English-only fields
@@ -37,33 +34,31 @@
  *     byte what the API returned. Fully replaced on every run; never hand-edit.
  *
  * USAGE
- *   # New prompt: seed context.json (via the first LLM) and run every model.
- *   deno run --allow-net --allow-read --allow-write evals/eval-textbook.js \
+ *   # New prompt: seed context.json and generate with the configured backend.
+ *   deno run --allow-net --allow-read --allow-write --allow-env scripts/eval-textbook.js \
  *     --topic="salsa dancing in austin, tx" --language=es \
- *     [--llm=all] [--checklist=default|all] [--url=http://localhost:8080] [--force]
+ *     [--checklist=default|all] [--url=http://localhost:8080] [--force]
  *
  *   # Rerun: from inside a prompt directory (it has context.json), the saved
  *   # prompt is reused and the model files are overwritten. --dir=PATH does the
  *   # same without cd-ing.
- *   cd evals/salsa-dancing-in-austin-tx && deno run ../eval-textbook.js
+ *   cd evals/salsa-dancing-in-austin-tx && deno run ../scripts/eval-textbook.js
  *
- * --llm accepts `all` (default — every model), a single model, or a
- * comma-separated subset (e.g. --llm=google,claude). topic/language are read
- * from context.json when present; otherwise they come from flags or an
- * interactive prompt (requires a real TTY on stdin).
+ * Backend selection is intentionally absent: start the dev server with the
+ * desired LLM_BACKEND, then run this script. topic/language are read from
+ * context.json when present; otherwise they come from flags or an interactive
+ * prompt (requires a real TTY on stdin).
  *
  * Requires the dev server already running (`cd src && npm run dev`).
  */
 
 const ENUMS = {
   language: ['zh', 'ja', 'es', 'cs'],
-  llm: ['google', 'g-flash', 'claude', 'chatgpt'],
   checklist: ['default', 'all'],
 };
-const ALL_LLMS = ENUMS.llm;
-const DEFAULTS = { llm: 'all', checklist: 'default' };
+const DEFAULTS = { checklist: 'default' };
 
-const EVALS_DIR = new URL('./', import.meta.url);
+const EVALS_DIR = new URL('../', import.meta.url);
 const CONTEXT_FILE = 'context.json';
 const DIVIDER = [
   '# ============================================================',
@@ -132,20 +127,8 @@ function promptEnum(flags, key, { required }) {
   }
 }
 
-// --llm=all → every model; a single model or comma list → that subset.
-function resolveLlms(value) {
-  const raw = value || DEFAULTS.llm;
-  if (raw === 'all') return [...ALL_LLMS];
-  const llms = raw.split(',').map((s) => s.trim()).filter(Boolean);
-  const bad = llms.filter((l) => !ALL_LLMS.includes(l));
-  if (bad.length) {
-    throw new Error(`--llm=${raw} invalid; use "all", or one/comma-list of ${ALL_LLMS.join(', ')}`);
-  }
-  return llms;
-}
 
-// Sample filenames encode the served model by nickname (gpt-5.6-luna → "luna").
-// Falls back to the raw served model string, then the llm enum.
+// Sample filenames encode the model reported by the server.
 const MODEL_NICKNAMES = {
   'gemini-3.5-flash-lite': 'gemini',
   'gemini-3.8-flash': 'g-flash',
@@ -306,7 +289,7 @@ async function readContext(dirUrl) {
 // hand-edited ideal section unless --force reseeds it.
 async function writeSample(dirUrl, { input, context, questionsResponse, generateResponse, force }) {
   const servedModel = generateResponse && generateResponse.usage && generateResponse.usage.model;
-  const model = MODEL_NICKNAMES[servedModel] || servedModel || input.llm;
+  const model = MODEL_NICKNAMES[servedModel] || servedModel || 'unknown-model';
   const fileUrl = new URL(`${slug(`${input.language}-${model}`)}.yaml`, dirUrl);
 
   const questionsAndAnswers = (questionsResponse.questions || []).map((q) => ({
@@ -350,7 +333,9 @@ async function writeSample(dirUrl, { input, context, questionsResponse, generate
 
 async function main() {
   const flags = parseFlags(Deno.args);
-  const llms = resolveLlms(flags.llm);
+  if (flags.llm) {
+    throw new Error('--llm is no longer supported; select the server backend with LLM_BACKEND');
+  }
 
   let workDir = resolveWorkDir(flags);
   let saved = await readContext(workDir);
@@ -374,7 +359,7 @@ async function main() {
     console.log(`Reusing prompt from ${workDir.pathname}context.json: "${topic}" (${language}) — ${context.checklist.length} section(s)`);
   } else {
     // No pinned context — this is a new prompt. Collect topic/language, then
-    // let the FIRST target LLM run call 1 and seed context.json.
+    // run call 1 and seed context.json.
     topic = promptTopic(flags);
     language = promptEnum(flags, 'language', { required: true });
     const checklistMode = promptEnum(flags, 'checklist', { required: false });
@@ -382,9 +367,8 @@ async function main() {
     // Anchor a new prompt at evals/<slug>/ unless the caller pinned --dir.
     if (!flags.dir) workDir = new URL(`${slug(topic)}/`, EVALS_DIR);
 
-    const firstLlm = llms[0];
-    console.log(`Call 1 — ${flags.url}/textbook (questions) for "${topic}" (${language}, ${firstLlm})...`);
-    questionsResponse = await postTextbook(flags.url, { topic, language, llm: firstLlm });
+    console.log(`Call 1 — ${flags.url}/textbook (questions) for "${topic}" (${language})...`);
+    questionsResponse = await postTextbook(flags.url, { topic, language });
     console.log(`  ${questionsResponse.questions.length} questions, ${questionsResponse.checklist.length} checklist items`);
     context = buildContext(questionsResponse, checklistMode);
 
@@ -393,34 +377,28 @@ async function main() {
       new URL(CONTEXT_FILE, workDir),
       `${JSON.stringify({ topic, language, questionsResponse, context }, null, 2)}\n`,
     );
-    console.log(`Wrote ${new URL(CONTEXT_FILE, workDir).pathname} — shared by every model`);
+    console.log(`Wrote ${new URL(CONTEXT_FILE, workDir).pathname}`);
   }
 
   await Deno.mkdir(workDir, { recursive: true });
-  console.log(`Generating ${llms.length} model(s): ${llms.join(', ')} — ${context.checklist.length} section(s)\n`);
+  console.log(`Generating with the server-configured backend — ${context.checklist.length} section(s)\n`);
 
-  const failures = [];
-  for (const llm of llms) {
-    const input = { topic, language, llm };
-    try {
-      const generateResponse = await postTextbook(flags.url, { topic, language, llm, context });
-      const cardCount = (generateResponse.groups || []).reduce((n, g) => n + g.cards.length, 0);
-      const { fileUrl, seeded } = await writeSample(workDir, {
-        input,
-        context,
-        questionsResponse,
-        generateResponse,
-        force: flags.force,
-      });
-      console.log(`✓ ${llm}: ${generateResponse.groups.length} groups, ${cardCount} cards → ${fileUrl.pathname}${seeded ? ' (seeded ideal)' : ' (preserved ideal)'}`);
-    } catch (err) {
-      failures.push({ llm, message: err.message });
-      console.log(`✗ ${llm}: ${err.message}`);
-    }
+  const input = { topic, language };
+  try {
+    const generateResponse = await postTextbook(flags.url, { topic, language, context });
+    const cardCount = (generateResponse.groups || []).reduce((n, g) => n + g.cards.length, 0);
+    const { fileUrl, model, seeded } = await writeSample(workDir, {
+      input,
+      context,
+      questionsResponse,
+      generateResponse,
+      force: flags.force,
+    });
+    console.log(`✓ ${model}: ${generateResponse.groups.length} groups, ${cardCount} cards → ${fileUrl.pathname}${seeded ? ' (seeded ideal)' : ' (preserved ideal)'}`);
+  } catch (err) {
+    console.log(`✗ ${err.message}`);
+    Deno.exit(1);
   }
-
-  console.log(`\nDone: ${llms.length - failures.length}/${llms.length} model(s) succeeded.`);
-  if (failures.length) Deno.exit(1);
 }
 
 if (import.meta.main) {
@@ -430,4 +408,4 @@ if (import.meta.main) {
   });
 }
 
-export { slug, stripToEnglish, emitIdealYaml, buildContext, resolveLlms, DIVIDER };
+export { slug, stripToEnglish, emitIdealYaml, buildContext, DIVIDER };

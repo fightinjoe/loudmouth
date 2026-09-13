@@ -11,6 +11,12 @@ description: >
 > **Naming.** **Loudmouth** is the internal code name (repo, packages, identifiers). **Catchphrase** is
 > the public product name used in all user-facing copy. The collection noun is **phrasebook** (one word).
 
+**Current creation integration:** the existing guided creation UI calls `/context` with
+`{ seed, language }`, defaults each question to its first option, then calls `/phrasebook` with
+`{ seed, language, ability: "basics", answers, checklist }`. Topic selections are user-controlled
+(1–8); no new ability control is introduced. Backend selection is server-only. Existing stored
+ability and lookup UI conventions below do not determine the new phrasebook request's ability.
+
 ### Information Architecture
 
 This app organizes its UI according to the **Pane Protocol** (`web/docs/PANE_PROTOCOL.html`), the source of truth for pane vocabulary, the layer stack, state, transitions, and gestures; this doc describes the product-level design on top of it. Terms — *pane*, *layer*, *scrim*, *handle* — carry their protocol meanings. For how iOS maps this protocol onto SwiftUI, see `ios/ARCHITECTURE.md`.

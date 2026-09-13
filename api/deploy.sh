@@ -9,6 +9,7 @@ REGION="${GCP_LOCATION:-us-central1}"
 # Vertex AI serves Gemini 3.x from `global`/`us`/`eu`, NOT regional endpoints
 # like us-central1 — kept separate from REGION, which the gateway/Cloud Run use.
 VERTEX_LOCATION="${GCP_VERTEX_LOCATION:-global}"
+LLM_BACKEND="${LLM_BACKEND:-gemini-3.5-flash-lite}"
 SERVICE_NAME="translation-api"
 SA_NAME="translation-api-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -19,6 +20,7 @@ CONFIG_ID="translation-api-config-$(date +%Y%m%d-%H%M%S)"
 echo "==> Project:  ${PROJECT_ID}"
 echo "==> Region:   ${REGION}"
 echo "==> Vertex:   ${VERTEX_LOCATION}"
+echo "==> LLM:      ${LLM_BACKEND}"
 
 # ---------------------------------------------------------------------------
 # 1. Enable required APIs
@@ -104,8 +106,9 @@ gcloud run deploy "${SERVICE_NAME}" \
   --function="translate" \
   --region="${REGION}" \
   --no-allow-unauthenticated \
+  --timeout="300s" \
   --service-account="${SA_EMAIL}" \
-  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=${REGION},GCP_VERTEX_LOCATION=${VERTEX_LOCATION}" \
+  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=${REGION},GCP_VERTEX_LOCATION=${VERTEX_LOCATION},LLM_BACKEND=${LLM_BACKEND}" \
   --set-secrets="ANTHROPIC_API_KEY=anthropic-api-key:latest,OPENAI_API_KEY=openai-api-key:latest" \
   --project="${PROJECT_ID}"
 

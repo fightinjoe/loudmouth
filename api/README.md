@@ -1,314 +1,176 @@
-# Catchphrase Lookup API
+# Catchphrase API
 
-A Node.js Cloud Run function that serves `/lookup` — translation + AI-clustered related terms —
-and `/textbook` — a guided, two-call phrasebook generator — via multiple LLM backends, with an
-API Gateway handling rate limiting.
+Stateless Node.js Cloud Run service. Guided creation uses **`/context` → `/phrasebook`**;
+`/lookup` remains the supporting translation endpoint. `/textbook` is retained for legacy callers,
+not used by the migrated creation client.
 
-See `docs/API_DESIGN.md` for the endpoint contract (inputs, outputs, internal flow, model
-behavior) and `docs/CARD_SCHEMA.md` for the `Card` shape.
+[`docs/API_DESIGN.md`](../docs/API_DESIGN.md) is the endpoint contract; see
+[`docs/CARD_SCHEMA.md`](../docs/CARD_SCHEMA.md) for cards and reading tokens.
 
-## Project structure
+## Endpoints
 
-```
-api/
-├── config/
-│   └── api-gateway.yaml      # OpenAPI 2.0 spec + rate limiting (60 req/min)
-├── src/
-│   ├── index.js                # Cloud Run entry point, path routing (/lookup, /textbook)
-│   ├── lookup.js               # /lookup route handler (parse → generate → finish)
-│   ├── lookup-parse.js         # /lookup request validation + defaults
-│   ├── lookup-prompt.js        # /lookup prompt builder for the single model call
-│   ├── lookup-validate.js      # /lookup response validator, limits, context assignment
-│   ├── textbook.js             # /textbook route handler (two-call: questions → generate)
-│   ├── textbook-parse.js       # /textbook request validation + defaults (both call modes)
-│   ├── textbook-prompt.js      # /textbook prompt builders + limit constants
-│   ├── textbook-validate.js    # /textbook response validators (questions + generate)
-│   ├── card-validate.js        # Shared Card-shape validators (docs/CARD_SCHEMA.md)
-│   ├── test/
-│   │   ├── lookup.test.js      # /lookup unit tests (node --test)
-│   │   └── textbook.test.js    # /textbook unit tests (node --test)
-│   ├── package.json
-│   └── llms/
-│       ├── anthropic.js        # Claude via Anthropic SDK
-│       ├── openai.js           # GPT-5.6 Luna via OpenAI SDK
-│       └── genai.js            # Gemini via Google GenAI SDK
-├── evals/
-│   ├── eval-textbook.js       # /textbook multi-model YAML sample exporter (deno)
-│   └── <prompt-slug>/         # per-prompt dir: context.json + <language>-<model>.yaml
-├── deploy.sh                   # Idempotent GCP deploy script
-└── README.md
+### `POST /context`
+
+```json
+{ "seed": "ordering vegan food", "language": "ja" }
 ```
 
-## Endpoint
+Returns `{ questions, checklist, usage }`. Questions have `label` and `options`; the **first option**
+is the default. Checklist entries have `label` and `checked`. No server session is created.
+
+### `POST /phrasebook`
+
+```json
+{
+  "seed": "ordering vegan food",
+  "language": "ja",
+  "ability": "basics",
+  "answers": { "Where are you eating?": "Standard restaurant" },
+  "checklist": ["State my dietary restrictions", "Ask about hidden ingredients"]
+}
+```
+
+`ability` is required (`none`, `basics`, `conversational`), with **no API default**. The client
+currently sends the constant `basics`; this migration does not add an ability control.
+The learner chooses 1–8 topics. `answers` and `checklist` are top-level fields, not nested in `context`.
+
+Returns `{ title, groups, usage }`: one card group per topic in selection order and a final pooled
+`vocab` group. English generation is followed by parallel conversation-sized translation calls;
+assembly is by index. The service validates output, retries invalid generation/chunks once,
+backs off on 429, and returns no partial phrasebook. See API_DESIGN for exact bounds and deadlines.
 
 ### `POST /lookup`
 
-Looks up a term and returns a direct translation plus AI-clustered related groups.
-
-**Request:**
 ```json
-{
-  "term": "bathroom",
-  "language": "ja",
-  "ability": "beginner",
-  "formality": "casual",
-  "audience": "staff",
-  "llm": "google"
-}
+{ "term": "bathroom", "language": "ja", "formality": "casual", "audience": "staff" }
 ```
 
-- `term` — required, max 200 characters. May carry a parenthetical for context, e.g.
-  `"surf (v. to ride a wave)"`.
-- `language` — required, `"zh"` \| `"ja"` \| `"es"` \| `"cs"`.
-- `ability` — optional, `"none"` \| `"beginner"` \| `"intermediate"` \| `"advanced"` (default `"beginner"`).
-- `formality` — optional, `"casual"` \| `"polite"` \| `"formal"` (default `"polite"`).
-- `audience` — optional, `"stranger"` \| `"staff"` \| `"acquaintance"` \| `"family"` (default `"staff"`).
-- `llm` — optional, `"google"` \| `"g-flash"` \| `"claude"` \| `"chatgpt"` (default `"google"`).
+Returns `{ blocks, usage }`. Required `term` is at most 200 characters. Optional lookup defaults:
+`ability: "beginner"`, `formality: "polite"`, `audience: "staff"`. Lookup uses its existing
+`none | beginner | intermediate | advanced` ability vocabulary, not phrasebook's vocabulary.
 
-**Response:**
-```json
-{
-  "blocks": [
-    {
-      "card": {
-        "lang": "ja",
-        "text": "トイレ",
-        "reading": [["トイレ", null]],
-        "translation": "toilet, restroom",
-        "definition": "the toilet / restroom (not the bath)",
-        "formality": "casual"
-      },
-      "groups": [
-        {
-          "title": "Using the toilet",
-          "cards": ["..."]
-        }
-      ]
-    }
-  ],
-  "usage": {
-    "model": "gemini-3.5-flash-lite",
-    "inputTokens": 812,
-    "outputTokens": 4193,
-    "totalTokens": 5005,
-    "costUsd": 0.0021,
-    "durationMs": 1842
-  }
-}
+### Retained `POST /textbook`
+
+Setup: `{ topic, language }`. Generation: `{ topic, language, context: { answers, checklist } }`.
+The old route remains separate from the accepted phrasebook pipeline.
+
+## Server-owned model selection
+
+Clients cannot choose a backend. All endpoints reject a request `llm` field.
+
+| `LLM_BACKEND` | Provider model |
+|---|---|
+| `gemini-3.5-flash-lite` (default) | Gemini 3.5 Flash Lite |
+| `g-flash` | Gemini 3.8 Flash |
+| `claude` | Claude Haiku |
+| `chatgpt` | GPT-5.6 Luna |
+
+`google` is no longer a selector or alias. Invalid configuration fails startup. To compare models,
+restart the local API with another `LLM_BACKEND`, then use the same app or HTTP requests. No testing
+header or request override is exposed. Usage reports the actual provider model, token counts,
+estimated USD cost, and elapsed time. `/phrasebook` aggregates reported usage across calls and
+retries, with wall-clock duration rather than summed parallel-call durations. Rates live in
+`src/pricing.js`; unknown rates produce `costUsd: null`.
+
+## Implementation map
+
+- `src/index.js`: CORS, method handling, and endpoint routing.
+- `src/llm-config.js`: server backend configuration and provider registry.
+- `src/context.js`, `context-prompt.js`, `context-prompt.txt`: setup validation and accepted prompt.
+- `src/phrasebook*.js` and phrasebook text files: pipeline, validation, prompt assembly, and cards.
+- `src/llms/`: provider adapters and their timeout/output capabilities.
+- `src/card-validate.js`, `pricing.js`: shared card and cost rules.
+- `src/test/`: Node regression tests.
+- `config/api-gateway.yaml`: routes, gateway deadlines, and rate quota.
+
+Accepted prompt sources are under `prompts/context/` and `prompts/phrasebook/`. Service copies must
+stay byte-identical, including Japanese/Chinese reading rules. Edit and accept source prompts first;
+then copy and verify with `diff`. Static preset packs and the ability-aware context prompt are deferred.
+
+## Local development
+
+From `api/src`:
+
+```bash
+npm install
+gcloud auth application-default login
+export GCP_PROJECT_ID=YOUR_PROJECT_ID
+export GCP_VERTEX_LOCATION=global
+export LLM_BACKEND=gemini-3.5-flash-lite
+npx functions-framework --target=translate --port=8080
 ```
 
-Both `/lookup` and `/textbook` 200 responses carry a `usage` block reporting the LLM
-token counts, estimated `costUsd`, and elapsed LLM `durationMs` for that call. `costUsd`
-is `null` when the served model has no configured rates; token counts and duration are
-always reported. The same usage figures are emitted as a structured
-`{ event: 'usage', ... }` log line to STDOUT under `npm run dev`.
+Alternatively, populate `api/.env` and use the existing `npm run dev` script. The Google adapters use
+Vertex AI and require application-default credentials. `GCP_VERTEX_LOCATION` defaults to `global`;
+use `global`, `us`, or `eu`, not a regional model endpoint such as `us-central1`.
+`GCP_LOCATION` remains the separate Cloud Run/Gateway deployment region.
 
-Cost estimates use the USD-per-1,000,000-token rates in `src/pricing.js`, keyed by the exact model
-string each provider reports. Gemini 3.8 Flash uses its promotional standard rates through
-December 31, 2026; update that entry when Google's 2027 rates take effect.
+For alternate providers, configure `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` on the server and restart
+with `LLM_BACKEND=claude` or `LLM_BACKEND=chatgpt`.
 
-See `docs/API_DESIGN.md` for the full contract, including disambiguation, group limits
-(≤4 blocks, ≤8 groups total, ≤15 cards/group), and worked examples.
+Point the web client at the local API using `VITE_API_URL=http://localhost:8080` when starting
+Vite. The client and API must be migrated together for production: the new client requires the new
+routes, and old clients that submit `llm` are rejected. Local verification does not deploy either.
 
-## First-time setup
+```bash
+curl -sS http://localhost:8080/context \
+  -H 'Content-Type: application/json' \
+  -d '{"seed":"ordering vegan food","language":"ja"}'
 
-### 1. Authenticate with GCP
+curl -sS http://localhost:8080/phrasebook \
+  -H 'Content-Type: application/json' \
+  -d '{"seed":"ordering vegan food","language":"ja","ability":"basics","answers":{},"checklist":["State my dietary restrictions"]}'
+```
+
+### Verification
+
+```bash
+# api/src
+npm test
+
+# web/app
+npm test
+npm run build
+```
+
+Exercise the actual local app through topic entry, first-option question defaults, checklist
+selection, generation, and persisted conversation/vocabulary views. Include one and eight selected
+topics, all four languages, invalid/missing ability, client-supplied `llm`, translation count mismatch,
+retry exhaustion, and out-of-order parallel completion. Historical evaluation outputs are evidence
+of their recorded prompts/models, not current configuration documentation.
+
+## Deployment reference
+
+Production deployment is a separate operator action:
 
 ```bash
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
 export GCP_PROJECT_ID=YOUR_PROJECT_ID
-```
-
-### 2. Populate secrets in Secret Manager
-
-After running `deploy.sh` for the first time, it will print instructions if secrets need values. To add them manually:
-
-```bash
-echo -n 'sk-ant-...' | gcloud secrets versions add anthropic-api-key \
-  --data-file=- --project=$GCP_PROJECT_ID
-
-echo -n 'sk-...' | gcloud secrets versions add openai-api-key \
-  --data-file=- --project=$GCP_PROJECT_ID
-```
-
-### 3. Deploy
-
-```bash
 ./deploy.sh
 ```
 
-Or, if reading values from the local ENV:
+`deploy.sh` enables required APIs, prepares Secret Manager secrets and the service account, deploys
+the Cloud Run function, and updates API Gateway. It prints instructions for missing secret values.
+Set server `LLM_BACKEND` for the intended provider. Gateway and Cloud Run deadlines must exceed the
+complete phrasebook request budget, including generation and chunk retries plus backoff.
 
-```
-set -a && source .env && set +a && ./deploy.sh
-```
+API Gateway rate quota is configured under `x-google-management.quota.limits` in
+`config/api-gateway.yaml`. Provider quotas are separate: one phrasebook request produces multiple
+model calls, so gateway request limiting alone does not prevent provider 429 responses.
 
-The script is idempotent — safe to re-run after config changes. It will:
-- Enable required GCP APIs
-- Create secrets (if missing) and print instructions to populate them
-- Create and configure the `translation-api-sa` service account
-- Deploy the Cloud Run function
-- Create or update the API Gateway
-- Print the final gateway URL and a ready-to-run `curl` test
+## Errors and trust boundary
 
-## Local development
+- `400`: invalid request, missing required fields, invalid enum, or client backend selection.
+- `502`: model failure, deadline, or invalid output after applicable retries.
+- `OPTIONS` returns `204`; unsupported methods `405`; unknown paths `404`.
 
-### Prerequisites
+Request text is untrusted. Structural validation and output validation are not a prompt-injection
+security guarantee. The current API does not verify that submitted question/topic labels came from
+a prior `/context` response. See API_DESIGN's trust-boundary section before changing public inputs.
 
-```bash
-cd src && npm install
-gcloud auth application-default login   # required for Vertex AI
-```
+## Adding a provider
 
-The Google backends use Vertex AI: `google` selects **`gemini-3.5-flash-lite`** and `g-flash`
-selects **`gemini-3.8-flash`**. Both are served from the `global`, `us`, or `eu` endpoints—not
-regional endpoints such as `us-central1`. `GCP_VERTEX_LOCATION` defaults to `global` and remains
-separate from `GCP_LOCATION`, the gateway and Cloud Run region. Leave `.env` at `global` unless the
-project requires the `us` or `eu` data-residency endpoint.
-
-### Run locally
-
-```bash
-cd src
-
-# If you're getting a `GCP_PROJECT_ID enviornment variable is not set` error
-set -a && source ../.env && set +a
-
-npm run dev
-```
-
-The function will be available at `http://localhost:8080`. Test it:
-
-```bash
-curl -X POST http://localhost:8080/lookup \
-  -H 'Content-Type: application/json' \
-  -d '{"term": "bathroom", "language": "ja", "formality": "casual", "audience": "staff"}'
-```
-
-For Anthropic and OpenAI locally, set the env vars directly:
-
-```bash
-ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... npm run dev
-```
-
-### Tests and evals
-
-```bash
-cd src
-npm test                       # unit tests (node --test)
-
-# Subjective-review sample exporter for /textbook. Requires the dev server
-# running (npm run dev) and `deno` on PATH. Drives /textbook's two-call flow
-# (questions → generate) across every model and writes one hand-editable YAML
-# per model to evals/<prompt-slug>/<language>-<model>.yaml. The first model
-# runs call 1 once and pins its output to evals/<prompt-slug>/context.json;
-# every model then generates call 2 from that SAME context, so the samples are
-# directly comparable. The raw `actual` block below the divider captures the
-# pinned questions/answers plus both raw responses; the `ideal` section above
-# the divider is seeded once and preserved across reruns.
-npm run eval:textbook -- \
-  --topic="salsa dancing in austin, tx" --language=es --llm=all \
-  --checklist=default --url=http://localhost:8080
-```
-
-`--llm` accepts `all` (default — every model), a single model
-(`google|g-flash|claude|chatgpt`), or a comma-separated subset. `--checklist=default`
-generates only the checklist items the first model marked checked (falling back
-to all if none are); `--checklist=all` generates every item. Pass `--force` to
-reseed each model's `ideal` section from its fresh response.
-
-To rerun an existing prompt — reusing its pinned `context.json` and overwriting
-the model files — run from inside its directory (or point `--dir` at it):
-
-```bash
-cd evals/salsa-dancing-in-austin-tx && deno run ../eval-textbook.js
-# or, from src/:
-npm run eval:textbook -- --dir=../evals/salsa-dancing-in-austin-tx
-```
-
-Provider token ceilings are applied automatically: Claude Haiku receives at most
-8,192 output tokens, GPT-5.6 Luna at most 16,384, and Google retains the
-30,000-token ceiling. This keeps `/textbook` and `/lookup` compatible with each
-provider's completion-token limit.
-
-Per-provider request timeouts are applied the same way: `gemini-3.5-flash-lite`
-keeps the shared 15s budget, while Claude Haiku, GPT-5.6 Luna, and Gemini 3.8
-Flash each get 60s. Claude Haiku needs it — a `/textbook` generate call measures
-20-26s, so the shared 15s budget failed every one of them with a 502.
-The gateway's own backend `deadline` (`config/api-gateway.yaml`) is set to 90s so
-it never cuts off a request before the service's timeout does.
-
-## Testing the deployed service
-
-After `deploy.sh` completes, it prints the gateway URL. Export it and run smoke tests:
-
-```bash
-export GATEWAY_URL=https://YOUR_GATEWAY_HOST
-```
-
-The gateway URL is `https://translation-api-gateway-2qqw247r.uc.gateway.dev`
-
-```bash
-curl -s -X POST $GATEWAY_URL/lookup \
-  -H 'Content-Type: application/json' \
-  -d '{"term": "bathroom", "language": "ja", "formality": "casual", "audience": "staff"}' | jq .
-
-curl -s -X POST $GATEWAY_URL/lookup \
-  -H 'Content-Type: application/json' \
-  -d '{"term": "hello", "language": "es", "llm": "claude"}' | jq .
-
-curl -s -X POST $GATEWAY_URL/lookup \
-  -H 'Content-Type: application/json' \
-  -d '{"term": "surf (v. to ride a wave)", "language": "cs", "llm": "chatgpt"}' | jq .
-```
-
-### Error handling
-
-```bash
-# Unknown LLM → 400
-curl -s -X POST $GATEWAY_URL/lookup \
-  -H 'Content-Type: application/json' \
-  -d '{"term": "hello", "language": "es", "llm": "gpt-5"}' | jq .
-
-# Missing field → 400
-curl -s -X POST $GATEWAY_URL/lookup \
-  -H 'Content-Type: application/json' \
-  -d '{"term": "hello"}' | jq .
-
-# Invalid language → 400
-curl -s -X POST $GATEWAY_URL/lookup \
-  -H 'Content-Type: application/json' \
-  -d '{"term": "hello", "language": "fr"}' | jq .
-```
-
-View live logs:
-
-```bash
-gcloud logging read \
-  'resource.type="cloud_run_revision" AND resource.labels.service_name="translation-api"' \
-  --limit=50 --project=$GCP_PROJECT_ID --format=json | jq '.[].jsonPayload'
-```
-
-## Adding a new LLM provider
-
-1. Create `src/llms/your-provider.js` — export a `callYourProvider(prompt)` function that returns a string.
-2. Add one line to `LLM_REGISTRY` in `src/index.js`:
-   ```js
-   'your-model-name': callYourProvider,
-   ```
-3. Add the new model name to the `enum` lists in `config/api-gateway.yaml`.
-4. Re-run `./deploy.sh`.
-
-No other files change.
-
-## Changing rate limits
-
-Rate limits are defined entirely in `config/api-gateway.yaml` under `x-google-management.quota.limits`. To change the limit from 60 to 120 requests/minute:
-
-```yaml
-values:
-  STANDARD: 120
-```
-
-Then re-run `./deploy.sh`. No code changes required.
+Implement the existing adapter contract `{ text, model, usage }`, register its server configuration
+key in `src/llm-config.js`, and declare appropriate timeout/token capabilities. Add pricing if known.
+Update operator documentation and exercise the pipeline before deployment. Do not add a client enum.

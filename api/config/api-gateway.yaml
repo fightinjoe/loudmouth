@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   title: Catchphrase Lookup API
-  description: Routes /lookup requests to a Cloud Run service backed by multiple LLM backends
+  description: Routes language-learning requests to a Cloud Run service with a server-selected LLM backend
   version: "1.0"
 
 host: "translation-api-gateway-2qqw247r.uc.gateway.dev"
@@ -10,12 +10,11 @@ schemes:
 
 x-google-backend:
   address: https://YOUR_CLOUD_RUN_URL
-  # ESPv2 defaults to a 15s backend deadline, which is shorter than the
-  # in-process LLM timeouts (60s for claude, chatgpt, and g-flash) and would
-  # return an opaque 504 before the service could answer. Keep this above the
-  # longest handler timeout so the service's own 502 surfaces instead.
+  # The phrasebook pipeline can spend up to 245s across bounded generation,
+  # translation, retry, and backoff stages. Keep this above its hard request
+  # deadline so the service's own response surfaces instead of an opaque 504.
   # Max permitted is 600.0.
-  deadline: 90.0
+  deadline: 270.0
 
 paths:
   /lookup:
@@ -79,14 +78,6 @@ paths:
                   - staff
                   - acquaintance
                   - family
-              llm:
-                type: string
-                description: Which model backend generates the response (default "google")
-                enum:
-                  - google
-                  - g-flash
-                  - claude
-                  - chatgpt
       responses:
         200:
           description: Successful lookup
@@ -116,7 +107,7 @@ paths:
                             items:
                               $ref: '#/definitions/Card'
         400:
-          description: Bad request (missing/invalid field, unknown llm)
+          description: Bad request (missing/invalid field or client-selected llm)
         502:
           description: LLM request failed or returned an invalid response
   /textbook:
@@ -166,14 +157,6 @@ paths:
                   - beginner
                   - intermediate
                   - advanced
-              llm:
-                type: string
-                description: Which model backend generates the response (default "google")
-                enum:
-                  - google
-                  - g-flash
-                  - claude
-                  - chatgpt
               context:
                 type: object
                 description: >
@@ -227,7 +210,148 @@ paths:
                       items:
                         $ref: '#/definitions/Card'
         400:
-          description: Bad request (missing/invalid field, unknown llm)
+          description: Bad request (missing/invalid field or client-selected llm)
+        502:
+          description: LLM request failed or returned an invalid response
+
+  /context:
+    options:
+      summary: CORS preflight
+      operationId: contextOptions
+      parameters: []
+      responses:
+        204:
+          description: CORS preflight response
+    post:
+      summary: Generate clarifying questions and a topic checklist
+      operationId: context
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - seed
+              - language
+            properties:
+              seed:
+                type: string
+                maxLength: 200
+                description: Situation, activity, or topic. Max 200 characters.
+              language:
+                type: string
+                enum: [zh, ja, es, cs]
+      responses:
+        200:
+          description: Clarifying questions, checklist, and model usage
+          schema:
+            type: object
+            properties:
+              questions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    label:
+                      type: string
+                    options:
+                      type: array
+                      items:
+                        type: string
+              checklist:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    label:
+                      type: string
+                    checked:
+                      type: boolean
+              usage:
+                type: object
+        400:
+          description: Bad request (missing/invalid field or client-selected llm)
+        502:
+          description: LLM request failed or returned an invalid response
+  /phrasebook:
+    options:
+      summary: CORS preflight
+      operationId: phrasebookOptions
+      parameters: []
+      responses:
+        204:
+          description: CORS preflight response
+    post:
+      summary: Generate a bespoke phrasebook from selected context
+      operationId: phrasebook
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - seed
+              - language
+              - ability
+              - answers
+              - checklist
+            properties:
+              seed:
+                type: string
+                maxLength: 200
+                description: Situation, activity, or topic. Max 200 characters.
+              language:
+                type: string
+                enum: [zh, ja, es, cs]
+              ability:
+                type: string
+                enum: [none, basics, conversational]
+              answers:
+                type: object
+                maxProperties: 5
+                additionalProperties:
+                  type: string
+                  maxLength: 500
+              checklist:
+                type: array
+                minItems: 1
+                maxItems: 8
+                items:
+                  type: string
+                  maxLength: 120
+      responses:
+        200:
+          description: Phrasebook title, conversation groups, vocabulary group, and model usage
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+              groups:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    cards:
+                      type: array
+                      items:
+                        $ref: '#/definitions/Card'
+              usage:
+                type: object
+        400:
+          description: Bad request (missing/invalid field or client-selected llm)
         502:
           description: LLM request failed or returned an invalid response
 

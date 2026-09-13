@@ -1,4 +1,4 @@
-  /**
+/**
  * /context handler. See docs/API_DESIGN.md "/context".
  *
  * First step of the prompt-first guided-creation split: given a seed
@@ -8,8 +8,8 @@
  * seed.
  *
  * REQUEST FLOW
- *   POST /context { seed, language, llm? }
- *        │  1. PARSE: validate + apply defaults                     → 400
+ *   POST /context { seed, language }
+ *        │  1. PARSE: validate                                  → 400
  *        ▼
  *   buildContextPrompt({ seed, language })
  *        │  2. GENERATE — one LLM call, 15s timeout                 → 502
@@ -22,9 +22,9 @@
 
 const { buildContextPrompt } = require('./context-prompt');
 const { buildUsageReport } = require('./pricing');
+const { getBackendName } = require('./llm-config');
 
 const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
-const DEFAULT_LLM = 'google';
 const MAX_SEED_LENGTH = 200;
 
 // v03 hand-tests measured 194-333 output tokens across five seeds; 2,000 is
@@ -45,10 +45,13 @@ class ContextTimeoutError extends Error {}
 
 function callWithTimeout(handler, prompt, opts, timeoutMs) {
   return new Promise((resolve, reject) => {
+    const controller = new AbortController();
     const timer = setTimeout(() => {
-      reject(new ContextTimeoutError(`LLM request timed out after ${timeoutMs}ms`));
+      const error = new ContextTimeoutError(`LLM request timed out after ${timeoutMs}ms`);
+      controller.abort(error);
+      reject(error);
     }, timeoutMs);
-    handler(prompt, opts).then(
+    handler(prompt, { ...opts, signal: controller.signal }).then(
       (value) => { clearTimeout(timer); resolve(value); },
       (err) => { clearTimeout(timer); reject(err); },
     );
@@ -57,14 +60,17 @@ function callWithTimeout(handler, prompt, opts, timeoutMs) {
 
 /**
  * @param {object} body   parsed request body
- * @returns {{ error: string, supported?: string[] }|{ value: { seed: string, language: string, llm: string } }}
+ * @returns {{ error: string, supported?: string[] }|{ value: { seed: string, language: string } }}
  */
-function parseContextRequest(body, supportedLlms) {
+function parseContextRequest(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { error: 'Request body must be a JSON object' };
   }
 
-  const { seed, language, llm = DEFAULT_LLM } = body;
+  const { seed, language } = body;
+  if (Object.hasOwn(body, 'llm')) {
+    return { error: '"llm" is server-controlled and must not be provided' };
+  }
 
   if (typeof seed !== 'string' || seed.trim() === '') {
     return { error: '"seed" is required and must be a non-empty string' };
@@ -75,11 +81,8 @@ function parseContextRequest(body, supportedLlms) {
   if (!LANGUAGES.includes(language)) {
     return { error: `"language" must be one of: ${LANGUAGES.join(', ')}`, supported: LANGUAGES };
   }
-  if (!supportedLlms.includes(llm)) {
-    return { error: `Unknown LLM: ${llm}`, supported: supportedLlms };
-  }
 
-  return { value: { seed: seed.trim(), language, llm } };
+  return { value: { seed: seed.trim(), language } };
 }
 
 function isNonEmptyString(v) {
@@ -149,14 +152,22 @@ function validateContextResponse(raw) {
  * Pure core: runs GENERATE + FINISH for an already-parsed request. Reused by
  * the route handler and any future eval harness.
  *
- * @param {{ seed: string, language: string, llm: string }} parsedRequest
+ * @param {{ seed: string, language: string }} parsedRequest
  * @param {Record<string, Function>} registry   LLM_REGISTRY
  * @param {{ timeoutMs?: number }} [opts]
  * @returns {Promise<object>} { questions, checklist, usage }
  */
-async function performContext(parsedRequest, registry, { timeoutMs = CONTEXT_TIMEOUT_MS } = {}) {
-  const { seed, language, llm } = parsedRequest;
-  const handler = registry[llm];
+async function performContext(
+  parsedRequest,
+  registry,
+  { timeoutMs = CONTEXT_TIMEOUT_MS } = {},
+) {
+  const { seed, language } = parsedRequest;
+  const backendName = getBackendName();
+  const handler = registry[backendName];
+  if (!handler) {
+    throw new Error(`Configured LLM backend is not registered: ${backendName}`);
+  }
   const effectiveTimeoutMs = handler.timeoutMs || timeoutMs;
 
   const prompt = buildContextPrompt({ seed, language });
@@ -167,9 +178,9 @@ async function performContext(parsedRequest, registry, { timeoutMs = CONTEXT_TIM
     reply = await callWithTimeout(handler, prompt, { maxOutputTokens: CONTEXT_MAX_TOKENS }, effectiveTimeoutMs);
   } catch (err) {
     if (err instanceof ContextTimeoutError) {
-      console.error({ event: 'llm_timeout', route: 'context', llm, error: err.message });
+      console.error({ event: 'llm_timeout', route: 'context', llm: backendName, error: err.message });
     } else {
-      console.error({ event: 'llm_error', route: 'context', llm, error: err.message, stack: err.stack });
+      console.error({ event: 'llm_error', route: 'context', llm: backendName, error: err.message, stack: err.stack });
     }
     const wrapped = new Error('LLM request failed');
     wrapped.status = 502;
@@ -181,20 +192,20 @@ async function performContext(parsedRequest, registry, { timeoutMs = CONTEXT_TIM
   try {
     result = validateContextResponse(reply.text);
   } catch (err) {
-    console.error({ event: 'validation_error', route: 'context', llm, raw: reply.text, error: err.message });
+    console.error({ event: 'validation_error', route: 'context', llm: backendName, raw: reply.text, error: err.message });
     const wrapped = new Error('Invalid response from LLM');
     wrapped.status = 502;
     throw wrapped;
   }
 
   if (result.warnings.length > 0) {
-    console.warn({ event: 'context_clamped', llm, seed, warnings: result.warnings });
+    console.warn({ event: 'context_clamped', llm: backendName, seed, warnings: result.warnings });
   }
 
   const usageReport = buildUsageReport(reply.model, reply.usage, durationMs);
   const { questions, checklist } = result.response;
-  console.log({ event: 'context_ok', llm, language, questions: questions.length, checklist: checklist.length, seed });
-  console.log({ event: 'usage', route: 'context', llm, ...usageReport });
+  console.log({ event: 'context_ok', llm: backendName, language, questions: questions.length, checklist: checklist.length, seed });
+  console.log({ event: 'usage', route: 'context', llm: backendName, ...usageReport });
 
   return { questions, checklist, usage: usageReport };
 }
@@ -206,7 +217,7 @@ async function performContext(parsedRequest, registry, { timeoutMs = CONTEXT_TIM
  * @param {{ timeoutMs?: number }} [opts]        override for tests
  */
 async function handleContext(req, res, registry, opts = {}) {
-  const parsed = parseContextRequest(req.body || {}, Object.keys(registry));
+  const parsed = parseContextRequest(req.body || {});
   if (parsed.error) {
     return res.status(400).json({
       error: parsed.error,

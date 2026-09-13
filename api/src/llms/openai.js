@@ -15,14 +15,14 @@ function getClient() {
   return client;
 }
 
-async function callOpenAI(prompt, { maxOutputTokens = 1024 } = {}) {
+async function callOpenAI(prompt, { maxOutputTokens = 1024, signal } = {}) {
   const openai = getClient();
 
   const completion = await openai.chat.completions.create({
     model: OPENAI_MODEL,
     max_completion_tokens: maxOutputTokens,
     messages: [{ role: 'user', content: prompt }],
-  });
+  }, { signal });
 
   const text = completion?.choices?.[0]?.message?.content;
 

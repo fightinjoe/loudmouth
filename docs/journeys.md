@@ -383,9 +383,9 @@ retained on the deck, not logged to history, not recoverable.
   "topic", broader than Journey 1's "Enter word or phrase".
 - **HISTORY** section below (recent topics), same visual treatment as Journey 1's Input-mode
   history — reuses the same `History item` component.
-- No VIBE settings on this screen — VIBE (formality/audience) is not surfaced in the Textbook flow
-  at all; only the topic and language feed generation. `/textbook` is level-independent and takes no
-  `ability` (removed 2026-09-01) — the New-phrasebook ability selector is not passed to this flow.
+- No VIBE settings on this screen. Guided generation sends a client-side constant
+  `ability: "basics"`; no new ability UI is introduced, and the historical New-phrasebook
+  ability value is not used for this request.
 - *Implementation:* This is stack-position 1 of the linear flow. Reuses the Input-mode field/
   history visual pattern from `lookup-panel.js`, but the placeholder copy and submit affordance
   differ (see below).
@@ -395,8 +395,8 @@ retained on the deck, not logged to history, not recoverable.
   button (same position/role as Journey 1's clear affordance).
 - A **forward chevron `>`** appears bottom-right of the input, replacing Journey 1's implicit
   return-key-only submit. Tapping it (not pressing return) submits the topic.
-- *Implementation:* `/textbook`'s first call (no `context`) fires on chevron tap:
-  `{ topic, language }`.
+- *Implementation:* `POST /context` fires on chevron tap with `{ seed, language }`;
+  `seed` contains the entered topic.
 
 **5. Action pane · Textbook mode — context questions + checklist** (`Navigation pane - empty state`, 769:17816)
 - Header unchanged (back chevron + language label + ✕ clear); topic text now shown read-only above
@@ -408,12 +408,9 @@ retained on the deck, not logged to history, not recoverable.
   questions (and whatever labels/options) make sense for the given topic; four is just this
   example's count.
 - A forward chevron `>` at the bottom submits.
-- *Implementation:* This whole screen's content — every question's label + options + default,
-  reused `Select/Default` markup already established in `new-phrasebook-panel.js`/
-  `lookup-panel.js`'s VIBE selects — comes from the **same `/textbook` response** as the checklist
-  in the next frame. They render together (this doc splits them into two Figma-frame steps only
-  because the mock's checklist frame, node `782:19808`, is a distinct screenshot — in the actual
-  response and likely the actual UI they are one payload, possibly one scrollable screen).
+- *Implementation:* Question labels and options come from the same `/context` response as the
+  checklist. The client uses each question's first option as its default; there is no response
+  `default` field. Existing select markup and question/checklist screens remain unchanged.
 
 **6. Action pane · Textbook mode — checklist** (`Navigation pane - empty state`, 782:19808)
 - Below the (now presumably collapsed or scrolled-past) context questions, a **Checklist**
@@ -428,9 +425,9 @@ retained on the deck, not logged to history, not recoverable.
   generated phrasebook — checked items become the sections that actually get generated. No item
   text entry, no regenerate action (confirmed: no undo/redo on this flow) — simple check/uncheck
   only, reusing a plain checkbox-row list (no existing checklist component in the codebase; keep
-  it minimal). On final submit, `/textbook`'s second call fires with `context` populated —
-  `{ topic, language, context: { answers: {...}, checklist: [...checked labels...] } }`
-  (exact shape is an implementation detail of the API contract, not fixed here).
+  it minimal). On final submit, `POST /phrasebook` sends
+  `{ seed, language, ability: "basics", answers: {...}, checklist: [...checked labels...] }`.
+  The user selects 1–8 topics; no request `llm` or nested `context` is sent.
 
 **7. Action pane · Textbook mode — generating**
 - Not present as a distinct mock frame — the transition from submitting the checklist to landing
@@ -469,17 +466,15 @@ retained on the deck, not logged to history, not recoverable.
 
 1. **New `textbook` action-pane content mode**, sibling to `lookup`/`new-phrasebook`/`review` —
    internally linear (topic → questions+checklist → generating → done), not a push/pop stack.
-2. **`/textbook` is a new, separate endpoint from `/lookup`** (not a mode flag on `/lookup`) — see
-   `docs/API_DESIGN.md`. One route, two calls distinguished by the presence/absence of a `context`
-   request field: absent → return context questions + checklist; present → bulk-generate the full
-   phrasebook.
+2. **Two endpoints: `/context` → `/phrasebook`**, separate from supporting `/lookup`.
+   The first returns questions/checklist; the second generates the full phrasebook from the
+   seed, language, explicit ability, answers, and selected topics. See `docs/API_DESIGN.md`.
 3. **Forward-chevron submit**, not return-key — a deliberate, scoped deviation from Journey 1's
    resolved return-key-only rule; applies only within this new content mode.
-4. **Context questions are fully dynamic per topic** — arbitrary label/options/default per
-   question, AI-authored, no fixed schema in the client. The client renders whatever the API
-   returns using the existing `Select` markup pattern.
-5. **Checklist and context questions are generated together**, in `/textbook`'s first call — one
-   LLM response, not two separate calls for questions vs. checklist.
+4. **Context questions are fully dynamic per topic** — arbitrary labels and options;
+   the first option supplies the initial answer. The client uses existing `Select` markup.
+5. **Checklist and context questions are generated together**, in `/context` — one
+   LLM response, not separate calls for questions and checklist.
 6. **Checked checklist items become the generated phrasebook's section titles** — same `context`-
    field mechanism Journey 1 already uses for group-sourced saves; no new data model needed.
 7. **Direct commit, no preview, no undo.** Generation success immediately creates the deck and

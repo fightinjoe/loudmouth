@@ -21,14 +21,13 @@ const GATEWAY_URL = import.meta.env.VITE_API_URL || "https://translation-api-gat
  * @param {string} [params.ability]
  * @param {string} [params.formality]
  * @param {string} [params.audience]
- * @param {string} [params.llm]
  * @returns {Promise<{ blocks: Array }>}
  */
-export async function lookup({ term, language, ability, formality, audience, llm }) {
+export async function lookup({ term, language, ability, formality, audience }) {
   const res = await fetch(`${GATEWAY_URL}/lookup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ term, language, ability, formality, audience, llm }),
+    body: JSON.stringify({ term, language, ability, formality, audience }),
   });
 
   if (!res.ok) {

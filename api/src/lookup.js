@@ -2,7 +2,7 @@
  * /lookup handler. See docs/API_DESIGN.md "Internal flow".
  *
  * REQUEST FLOW
- *   POST /lookup { term, language, ability?, formality?, audience?, llm? }
+ *   POST /lookup { term, language, ability?, formality?, audience? }
  *        │
  *        │  1. PARSE (lookup-parse.js): validate + apply defaults, split
  *        │     term on first "(" → { term, context }             → 400
@@ -21,6 +21,7 @@ const { parseLookupRequest } = require('./lookup-parse');
 const { buildLookupPrompt } = require('./lookup-prompt');
 const { validateLookupResponse } = require('./lookup-validate');
 const { buildUsageReport } = require('./pricing');
+const { getBackendName } = require('./llm-config');
 
 // Worst case ~124 cards (4 blocks + 8 groups x 15 cards) at ~150 tokens/card ==
 // ~18.6k tokens of content; 30000 gives headroom over that ceiling
@@ -38,10 +39,13 @@ class LookupTimeoutError extends Error {}
 
 function callWithTimeout(handler, prompt, opts, timeoutMs) {
   return new Promise((resolve, reject) => {
+    const controller = new AbortController();
     const timer = setTimeout(() => {
-      reject(new LookupTimeoutError(`LLM request timed out after ${timeoutMs}ms`));
+      const error = new LookupTimeoutError(`LLM request timed out after ${timeoutMs}ms`);
+      controller.abort(error);
+      reject(error);
     }, timeoutMs);
-    handler(prompt, opts).then(
+    handler(prompt, { ...opts, signal: controller.signal }).then(
       (value) => { clearTimeout(timer); resolve(value); },
       (err) => { clearTimeout(timer); reject(err); },
     );
@@ -53,20 +57,21 @@ function callWithTimeout(handler, prompt, opts, timeoutMs) {
  * the /lookup route handler and the eval harness (evals/lookup.eval.js).
  * Throws an Error with a `.status` (400/502) on any failure.
  *
- * @param {{ term: string, context: string, language: string, ability: string, formality: string, audience: string, llm: string }} parsedRequest
+ * @param {{ term: string, context: string, language: string, ability: string, formality: string, audience: string }} parsedRequest
  * @param {Record<string, Function>} registry   LLM_REGISTRY
  * @param {{ timeoutMs?: number }} [opts]
  * @returns {Promise<{ blocks: object[] }>}
  */
-async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEOUT_MS } = {}) {
-  const { term, context, language, ability, formality, audience, llm } = parsedRequest;
-
-  const handler = registry[llm];
+async function performLookup(
+  parsedRequest,
+  registry,
+  { timeoutMs = LOOKUP_TIMEOUT_MS } = {},
+) {
+  const { term, context, language, ability, formality, audience } = parsedRequest;
+  const backendName = getBackendName();
+  const handler = registry[backendName];
   if (!handler) {
-    const err = new Error(`Unknown LLM: ${llm}`);
-    err.status = 400;
-    err.supported = Object.keys(registry);
-    throw err;
+    throw new Error(`Configured LLM backend is not registered: ${backendName}`);
   }
   const effectiveTimeoutMs = handler.timeoutMs || timeoutMs;
 
@@ -79,9 +84,9 @@ async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEO
     reply = await callWithTimeout(handler, prompt, { maxOutputTokens }, effectiveTimeoutMs);
   } catch (err) {
     if (err instanceof LookupTimeoutError) {
-      console.error({ event: 'llm_timeout', route: 'lookup', llm, error: err.message });
+      console.error({ event: 'llm_timeout', route: 'lookup', llm: backendName, error: err.message });
     } else {
-      console.error({ event: 'llm_error', route: 'lookup', llm, error: err.message, stack: err.stack });
+      console.error({ event: 'llm_error', route: 'lookup', llm: backendName, error: err.message, stack: err.stack });
     }
     const wrapped = new Error('LLM request failed');
     wrapped.status = 502;
@@ -95,21 +100,21 @@ async function performLookup(parsedRequest, registry, { timeoutMs = LOOKUP_TIMEO
   try {
     result = validateLookupResponse(raw, { context });
   } catch (err) {
-    console.error({ event: 'validation_error', route: 'lookup', llm, raw, error: err.message });
+    console.error({ event: 'validation_error', route: 'lookup', llm: backendName, raw, error: err.message });
     const wrapped = new Error('Invalid response from LLM');
     wrapped.status = 502;
     throw wrapped;
   }
 
   if (result.warnings.length > 0) {
-    console.warn({ event: 'lookup_clamped', llm, term, warnings: result.warnings });
+    console.warn({ event: 'lookup_clamped', llm: backendName, term, warnings: result.warnings });
   }
 
   const usageReport = buildUsageReport(model, usage, durationMs);
   const { blocks } = result.response;
   const groupCount = blocks.reduce((n, b) => n + b.groups.length, 0);
-  console.log({ event: 'lookup_ok', llm, language, blocks: blocks.length, groups: groupCount, term });
-  console.log({ event: 'usage', route: 'lookup', llm, ...usageReport });
+  console.log({ event: 'lookup_ok', llm: backendName, language, blocks: blocks.length, groups: groupCount, term });
+  console.log({ event: 'usage', route: 'lookup', llm: backendName, ...usageReport });
 
   return { ...result.response, usage: usageReport };
 }

@@ -11,11 +11,6 @@
  */
 
 const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
-const LLMS = ['google', 'g-flash', 'claude', 'chatgpt'];
-
-const DEFAULTS = {
-  llm: 'google',
-};
 
 const MAX_TOPIC_LENGTH = 200;
 
@@ -28,7 +23,10 @@ function parseTextbookRequest(body) {
     return { error: 'Request body must be a JSON object' };
   }
 
-  const { topic, language, llm, context } = body;
+  const { topic, language, context } = body;
+  if (Object.hasOwn(body, 'llm')) {
+    return { error: 'Field "llm" is server-controlled and must not be provided' };
+  }
 
   if (typeof topic !== 'string' || !topic.trim()) {
     return { error: 'Missing or empty field: topic' };
@@ -38,11 +36,6 @@ function parseTextbookRequest(body) {
   }
   if (typeof language !== 'string' || !LANGUAGES.includes(language)) {
     return { error: `Field "language" must be one of ${LANGUAGES.join(', ')}` };
-  }
-
-  const resolvedLlm = llm === undefined ? DEFAULTS.llm : llm;
-  if (!LLMS.includes(resolvedLlm)) {
-    return { error: `Unknown LLM: ${resolvedLlm}`, supported: LLMS };
   }
 
   // Presence (not shape) of `context` selects the call mode. It must be a
@@ -61,7 +54,6 @@ function parseTextbookRequest(body) {
     value: {
       topic: topic.trim(),
       language,
-      llm: resolvedLlm,
       mode,
       ...(mode === 'generate' ? { context: resolvedContext } : {}),
     },
@@ -71,7 +63,5 @@ function parseTextbookRequest(body) {
 module.exports = {
   parseTextbookRequest,
   LANGUAGES,
-  LLMS,
-  DEFAULTS,
   MAX_TOPIC_LENGTH,
 };

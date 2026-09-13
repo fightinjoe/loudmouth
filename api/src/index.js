@@ -1,16 +1,12 @@
 const { handleLookup } = require('./lookup');
 const { handleTextbook } = require('./textbook');
 const { handleContext } = require('./context');
-const { callAnthropic } = require('./llms/anthropic');
-const { callOpenAI } = require('./llms/openai');
-const { callGenAI, callGenAIFlash } = require('./llms/genai');
+const { handlePhrasebook } = require('./phrasebook');
+const { getBackendName, LLM_REGISTRY } = require('./llm-config');
 
-const LLM_REGISTRY = {
-  'google': callGenAI,
-  'g-flash': callGenAIFlash,
-  'claude': callAnthropic,
-  'chatgpt': callOpenAI,
-};
+// Fail during process startup rather than on the first request when the
+// configured backend name is invalid.
+getBackendName();
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -40,6 +36,10 @@ exports.translate = async (req, res) => {
 
   if (path === '/context') {
     return handleContext(req, res, LLM_REGISTRY);
+  }
+
+  if (path === '/phrasebook') {
+    return handlePhrasebook(req, res, LLM_REGISTRY);
   }
 
   return res.status(404).json({ error: `Unknown path: ${path}` });
