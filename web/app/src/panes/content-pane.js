@@ -38,24 +38,6 @@ import { getLookupHistory } from "../js/preferences.js";
 import { loadDeckData } from "./content-pane-load.js";
 import { SUGGESTED_PHRASEBOOKS } from "../js/suggested-phrasebooks.js";
 
-// Group collapse/expand is DOM-only transient state (see content/toggle-group).
-// A list re-render rebuilds every group collapsed; these helpers carry the
-// user's expanded groups across a re-render, keyed by the group's section title.
-function snapshotExpandedGroups(region) {
-  const expanded = new Set();
-  region.querySelectorAll('.card-group[data-collapsed="false"]').forEach((g) => {
-    if (g.dataset.groupKey) expanded.add(g.dataset.groupKey);
-  });
-  return expanded;
-}
-
-function restoreExpandedGroups(region, expanded) {
-  if (!expanded.size) return;
-  region.querySelectorAll(".card-group").forEach((g) => {
-    if (expanded.has(g.dataset.groupKey)) g.dataset.collapsed = "false";
-  });
-}
-
 export default {
   namespace: "content",
 
@@ -200,14 +182,7 @@ export default {
               next.editMode && next.editOrder
                 ? next.editOrder.map((id) => next.cards.find((c) => c.id === id)).filter(Boolean)
                 : next.cards;
-            // A list re-render (e.g. star toggle, card edit) rebuilds group
-            // markup with the default-collapsed state; snapshot which groups
-            // the user had expanded and restore them so an unrelated card
-            // mutation doesn't collapse an open group.
-            const expanded = snapshotExpandedGroups(listRegion);
-            if (setListHTMLSafe(listRegion, renderCardsHTML(next.deck, visible, next.tab))) {
-              restoreExpandedGroups(listRegion, expanded);
-            }
+            setListHTMLSafe(listRegion, renderCardsHTML(next.deck, visible, next.tab));
             // Refresh the tabs bar so the starred count and active-tab
             // highlight track card/tab changes (skip on pure reorder ticks).
             if (cardsChanged || tabChanged) {
@@ -327,18 +302,6 @@ export default {
       await updateDeckAccessTime(realDeck.id);
       ui.transition("nav/reload");
       ui.transition("content/select-deck", { id: realDeck.id });
-    });
-
-    // Group collapse/expand (Figma "Group", node 754:6178) is transient UI
-    // state, not app data — toggled directly on the DOM via a data attribute,
-    // no ui.transition, so it never triggers a content-slice re-render (which
-    // would blow away in-progress swipe-reveal state elsewhere in the list)
-    // and needs no persistence. Mirrors the existing
-    // `.lookup-vibe-group[data-expanded]` toggle pattern in lookup-panel.js.
-    delegate.register("content/toggle-group", (_e, el) => {
-      const group = el.closest(".card-group");
-      if (!group) return;
-      group.dataset.collapsed = group.dataset.collapsed === "true" ? "false" : "true";
     });
 
     delegate.register("content/browse-back", () => ui.transition("content/browse-back"));

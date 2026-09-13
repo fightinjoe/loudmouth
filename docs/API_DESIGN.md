@@ -325,6 +325,12 @@ provider ceilings. Generation validates 4–10 lines and 3–6 vocabulary entrie
 `durationMs` is wall-clock pipeline time, not the sum of overlapping translation durations.
 Usage includes reported token consumption from invalid responses that caused retries.
 
+On Google backends, translation calls also supply a JSON response schema requiring `lines` and
+`vocab` arrays of strings with exactly the source item counts and no additional properties.
+This constrains generation rather than repairing malformed JSON after the fact. Strict parsing,
+content validation, and the bounded retry remain in place. Other providers retain their existing
+prompt-and-validation output handling.
+
 Generation and translation prompt copies, including Japanese and Chinese reading-rule files, must
 remain byte-identical to the accepted source files. Reading rules substitute into
 `{{READING_RULES}}`; Spanish and Czech substitute an empty string.

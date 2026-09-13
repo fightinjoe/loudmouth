@@ -27,21 +27,22 @@ function usageFromMetadata(meta = {}) {
     outputTokens: (meta.candidatesTokenCount ?? 0) + (meta.thoughtsTokenCount ?? 0),
   };
 }
-function buildGenerationConfig(maxOutputTokens, signal) {
+function buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema) {
   return {
     maxOutputTokens,
     responseMimeType: 'application/json',
+    ...(responseJsonSchema ? { responseJsonSchema } : {}),
     ...(signal ? { abortSignal: signal } : {}),
   };
 }
 
 
-async function callGenAIModel(model, prompt, { maxOutputTokens = 1024, signal } = {}) {
+async function callGenAIModel(model, prompt, { maxOutputTokens = 1024, signal, responseJsonSchema } = {}) {
   const ai = getClient();
   const result = await ai.models.generateContent({
     model,
     contents: prompt,
-    config: buildGenerationConfig(maxOutputTokens, signal),
+    config: buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema),
   });
 
   const text = result.text;

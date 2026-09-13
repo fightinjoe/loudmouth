@@ -181,15 +181,7 @@ ruby {
   display: none;
 }
 
-/* ── Phrasebook term card (Figma "Term", node 754:6178) ──
-   The target-language term (large, body color) with inline per-character ruby
-   readings on top, its English translation (smaller, muted) stacked beneath —
-   a left-aligned vertical stack, no divider, no visible play icon (tapping the
-   row itself speaks the card; see content-pane-actions.js). Rows sit
-   edge-to-edge inside a Group wrapper (below) rather than as individually
-   gapped cards; swipe still reveals edit/star/delete behind each row. A
-   standalone (ungrouped) row outside any Group keeps the old gapped-card
-   spacing so it doesn't look like a stray fragment of a group. */
+/* Phrasebook cards retain their swipe actions inside each bubble. */
 
 .card-row-wrapper {
   position: relative;
@@ -1377,89 +1369,60 @@ ruby {
   padding: 1rem 1.25rem 0.375rem;
 }
 
-/* ── Group wrapper (Figma "Group", node 754:6178) ──
-   A bordered, rounded-16px container around one section's rows plus an
-   integrated footer row toggling collapsed/expanded. Collapsed state clips
-   the rows region to a fixed height (matching the Figma 256px collapsed
-   wrapper) with a bottom fade signaling more content below — reuses the
-   .lookup-group-fade gradient technique. Toggled by content/toggle-group
-   (content-pane.js) flipping [data-collapsed] directly, no re-render. */
-
+/* Named groups are always fully visible, with space between messages. */
 .card-group {
-  position: relative;
-  /* Direct child of the flex-column, scrolling card list — must keep its
-     natural height (rows + footer) instead of flex-shrinking to fit the
-     viewport, else the rows overflow the border box and the footer renders
-     below it, invisible. The standalone .card-row-wrapper uses .shrink-0 for
-     the same reason. */
   flex-shrink: 0;
-  border: 1px solid hsl(var(--gray-200-tint) / 0.2);
-  border-radius: 16px;
-  overflow: hidden;
 }
 
 .card-group-rows {
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.card-group .card-row-wrapper + .card-row-wrapper {
-  border-top: 2px solid var(--bg-surface);
-}
 .card-group .card-row {
-  padding: 20px 20px 10px;
+  padding: 20px;
+  border-radius: 16px;
   background: hsl(var(--gray-50));
 }
 
-/* Collapsed: clip the rows region to ~2.5 rows and fade the cut edge. */
-.card-group[data-collapsed="true"] .card-group-rows {
-  max-height: 256px;
-  overflow: hidden;
-}
-.card-group[data-collapsed="true"] .card-group-rows::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 58px;
-  background: linear-gradient(to bottom, hsl(var(--gray-50) / 0), hsl(var(--gray-50)));
-  pointer-events: none;
-  z-index: 2; /* above .card-row's z-index: 1 stacking context */
+.deck-view-list .card-row-wrapper[data-speaker] {
+  width: 88%;
+  border-radius: 16px;
 }
 
-.card-group-footer {
-  width: 100%;
-  height: 52px;
-  padding: 16px 8px 16px 20px;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border-default);
-  text-align: left;
+.deck-view-list .card-row-wrapper[data-speaker="you"] {
+  align-self: flex-end;
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
 }
 
-.card-group-footer-count {
-  flex: 1;
-  min-width: 0;
+.deck-view-list .card-row-wrapper[data-speaker="partner"] {
+  align-self: flex-start;
+  margin-right: auto;
+  border-bottom-left-radius: 4px;
 }
 
-.card-group-footer-label {
-  color: var(--accent);
-  flex-shrink: 0;
+.deck-view-list [data-speaker="you"] .card-row {
+  background: var(--bg-blue-tint);
+  border-radius: 16px 16px 4px 16px;
 }
 
-.card-group-footer-chevron {
-  color: var(--accent);
-  flex-shrink: 0;
-  transition: transform 150ms ease;
+.deck-view-list [data-speaker="partner"] .card-row {
+  background: hsl(var(--gray-50));
+  border-radius: 16px 16px 16px 4px;
 }
 
-/* Collapsed shows "View" + chevron pointing down; expanded shows "Collapse"
-   + chevron flipped to point up (same unfold-more glyph, rotated). */
-.card-group-footer-view { display: none; }
-.card-group-footer-collapse { display: none; }
-.card-group[data-collapsed="true"] .card-group-footer-view { display: inline; }
-.card-group:not([data-collapsed="true"]) .card-group-footer-collapse { display: inline; }
-.card-group:not([data-collapsed="true"]) .card-group-footer-chevron {
-  transform: rotate(180deg);
+.deck-view-list [data-speaker="you"] .card-term {
+  text-align: right;
+}
+
+.deck-view-list [data-speaker] .card-row[data-starred="true"] {
+  background: var(--bg-starred);
+}
+
+.card-term-speaker {
+  color: var(--fg-caption);
 }
 
 /* ── Suggested phrasebooks + unsaved preview (PH-008) ── */

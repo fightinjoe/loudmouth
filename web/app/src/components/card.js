@@ -15,8 +15,15 @@ import { icon } from "./icon.js";
  */
 export function renderCardRow(card, readingDisplay = "reading") {
   const isStarred = !!card.state?.starredAt;
+  let speaker;
+  try {
+    const notes = JSON.parse(card.notes);
+    if (notes?.speaker === "you" || notes?.speaker === "partner") speaker = notes.speaker;
+  } catch {
+    // Older cards can have plain-text notes rather than conversation metadata.
+  }
   return `
-    <div class="card-row-wrapper shrink-0 overflow-hidden" data-card-id="${card.id}">
+    <div class="card-row-wrapper shrink-0 overflow-hidden"${speaker ? ` data-speaker="${speaker}"` : ""} data-card-id="${card.id}">
       <div class="inset flex-row reverse items-center gap-md">
         <button
           class="icon-button bg-blue fg-white tappable"
@@ -34,7 +41,7 @@ export function renderCardRow(card, readingDisplay = "reading") {
       </div>
 
       <div class="card-row flex-row items-start justify-between tappable" data-action="content/play-card" data-card-id="${card.id}" data-starred="${isStarred}">
-        ${renderCardContent(card, readingDisplay)}
+        ${renderCardContent(card, readingDisplay, speaker)}
         <button
           class="card-star tappable shrink-0"
           data-action="content/star-card"
@@ -56,7 +63,7 @@ export function renderCardRow(card, readingDisplay = "reading") {
 // a left-aligned vertical stack, no divider, no visible play control (tapping
 // the row itself plays audio; see renderCardRow). Starred state is shown by
 // the inline star toggle in renderCardRow, not a text prefix.
-function renderCardContent(card, readingDisplay = "reading") {
+function renderCardContent(card, readingDisplay = "reading", speaker) {
   // Furigana ruby only when displaying 'reading' and structured tokens exist;
   // otherwise the reading renders as a plain line below the term.
   const hasRuby = readingDisplay === "reading" && Array.isArray(card.reading);
@@ -65,6 +72,7 @@ function renderCardContent(card, readingDisplay = "reading") {
 
   return `
     <div class="card-term flex-col flex-1 min-w-0" ${hasRuby ? "data-has-ruby" : ""}>
+      ${speaker ? `<div class="card-term-speaker section-label">${speaker === "you" ? "You" : "Partner"}</div>` : ""}
       <div class="card-term-target fg-body">${cjk}</div>
       ${hasRuby ? "" : `<div class="card-term-reading text-body2">${reading}</div>`}
       <div class="card-term-english fg-secondary">${card.translation || ""}</div>

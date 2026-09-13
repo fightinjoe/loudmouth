@@ -93,6 +93,51 @@ test('malformed generation and a count-mismatched chunk retry without rerunning 
   assert.equal(result.usage.outputTokens, 25);
 });
 
+test('a missing opening quote retries the Japanese chunk without repairing its content', async () => {
+  const conversation = {
+    title: 'Ask about hidden ingredients',
+    lines: [
+      { speaker: 'you', text: 'Does it contain fish stock?' },
+      { speaker: 'partner', text: 'Yes, it does.' },
+      { speaker: 'partner', text: 'No, it does not.', or: true },
+      { speaker: 'you', text: 'Is meat stock used?' },
+      { speaker: 'partner', text: 'Yes, it is chicken stock.' },
+      { speaker: 'partner', text: 'No, it is vegetable stock.', or: true },
+    ],
+    vocab: ['stock', 'fish', 'meat', 'ingredient', 'contain'],
+  };
+  const translated = {
+    lines: [
+      '魚[さかな]の出汁[だし]が入[はい]っていますか？',
+      'はい、入[はい]っていますよ。',
+      'いいえ、入[はい]っていませんよ。',
+      '肉[にく]の出汁[だし]は使[つか]われていますか？',
+      'はい、鶏[とり]ガラ出汁[だし]です。',
+      'いいえ、野菜[やさい]出汁[だし]です。',
+    ],
+    vocab: ['出汁[だし]', '魚[さかな]', '肉[にく]', '具[ぐ]材[ざい]', '含[ふく]む'],
+  };
+  const malformed = JSON.stringify(translated).replace('"魚', '魚');
+  let translationCalls = 0;
+  const result = await performPhrasebook(
+    { ...input, language: 'ja', checklist: [conversation.title] },
+    { [backendName]: async (prompt) => {
+      if (prompt.startsWith('You are the conversation generator')) {
+        return reply({ conversations: [conversation] });
+      }
+      return reply(++translationCalls === 1 ? malformed : translated);
+    } },
+    { backendName },
+  );
+  assert.equal(translationCalls, 2);
+  assert.equal(result.groups[0].cards[0].text, '魚の出汁が入っていますか？');
+  assert.deepEqual(result.groups[0].cards[0].reading, [
+    ['魚', 'さかな'], ['の', null], ['出汁', 'だし'], ['が', null],
+    ['入', 'はい'], ['っていますか？', null],
+  ]);
+  assert.equal(result.groups[0].cards[5].translation, 'No, it is vegetable stock.');
+});
+
 test('exhausted malformed chunk fails the whole request and cancels unfinished siblings', async () => {
   let siblingAborted = false;
   await assert.rejects(run(async (prompt, { signal }) => {

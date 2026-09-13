@@ -186,52 +186,6 @@ describe("content pane — Add/Review entry points (PH-002/PH-007/PH-009)", () =
   });
 });
 
-describe("content pane — group collapse/expand (Figma node 754:6178)", () => {
-  it("content/toggle-group flips data-collapsed on the clicked group, no ui.transition/re-render", () => {
-    const { ui, rootEl } = mountPane();
-    const before = ui.get("content");
-
-    const group = document.createElement("div");
-    group.className = "card-group";
-    group.dataset.collapsed = "true";
-    const footer = document.createElement("button");
-    footer.dataset.action = "content/toggle-group";
-    group.appendChild(footer);
-    rootEl.appendChild(group);
-
-    footer.click();
-    expect(group.dataset.collapsed).toBe("false");
-
-    footer.click();
-    expect(group.dataset.collapsed).toBe("true");
-
-    // Purely a DOM toggle — the content slice itself is untouched.
-    expect(ui.get("content")).toBe(before);
-  });
-
-  it("toggling one group does not affect a sibling group", () => {
-    const { rootEl } = mountPane();
-
-    const groupA = document.createElement("div");
-    groupA.className = "card-group";
-    groupA.dataset.collapsed = "true";
-    const footerA = document.createElement("button");
-    footerA.dataset.action = "content/toggle-group";
-    groupA.appendChild(footerA);
-
-    const groupB = document.createElement("div");
-    groupB.className = "card-group";
-    groupB.dataset.collapsed = "true";
-
-    rootEl.appendChild(groupA);
-    rootEl.appendChild(groupB);
-
-    footerA.click();
-    expect(groupA.dataset.collapsed).toBe("false");
-    expect(groupB.dataset.collapsed).toBe("true");
-  });
-});
-
 describe("content pane — save-preview (PH-008)", () => {
   beforeEach(() => {
     createDeck.mockClear();

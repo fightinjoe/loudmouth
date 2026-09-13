@@ -123,6 +123,7 @@ async function callLlmWithRateLimitRetry({
   handler,
   prompt,
   maxOutputTokens,
+  responseJsonSchema,
   timeoutMs,
   signal,
   usageAccumulator,
@@ -149,6 +150,7 @@ async function callLlmWithRateLimitRetry({
         const reply = await Promise.race([
           Promise.resolve().then(() => handler(prompt, {
             maxOutputTokens,
+            ...(responseJsonSchema ? { responseJsonSchema } : {}),
             signal: callController.signal,
           })),
           aborted.promise,
@@ -242,12 +244,32 @@ async function translateConversation({
     language: parsedRequest.language,
     conversation,
   });
+  const responseJsonSchema = {
+    type: 'object',
+    properties: {
+      lines: {
+        type: 'array',
+        items: { type: 'string' },
+        minItems: conversation.lines.length,
+        maxItems: conversation.lines.length,
+      },
+      vocab: {
+        type: 'array',
+        items: { type: 'string' },
+        minItems: conversation.vocab.length,
+        maxItems: conversation.vocab.length,
+      },
+    },
+    required: ['lines', 'vocab'],
+    additionalProperties: false,
+  };
 
   for (let attempt = 0; ; attempt++) {
     const reply = await callLlmWithRateLimitRetry({
       handler,
       prompt,
       maxOutputTokens: PHRASEBOOK_TRANSLATION_MAX_TOKENS,
+      responseJsonSchema,
       timeoutMs: callTimeoutMs,
       signal,
       usageAccumulator,

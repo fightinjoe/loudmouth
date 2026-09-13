@@ -42,6 +42,8 @@ The primary content mode: all terms for one phrasebook. Header: a **menu** butto
 
 Terms are shown grouped. Each saved term carries an optional **group context** (e.g. "Ordering at a restaurant") that determines its section; terms with no context render in an **untitled group** at the top with no header. **Ordering differs by section:** the untitled top section (standalone look-up terms) is **newest-first** (a new look-up term prepends to the top); within every **named** group, order is **oldest-first** (newest on the bottom). (Reconciles DESIGN's group-order rule with journeys.md J3's "new term appears at the top.")
 
+Named groups are always fully expanded, with no collapse control or phrase-count footer. Conversation cards use the speaker metadata in `notes`: **YOU** cards are right-aligned blue-tinted bubbles, and **PARTNER** cards are left-aligned neutral bubbles. Speaker labels identify each side. Cards without speaker metadata retain their standard layout.
+
 A bottom **action bar** with two actions is the phrasebook's control surface:
 
 - **Add** — opens the action pane at **Input mode** (the look-up stack below) to translate and add terms.
