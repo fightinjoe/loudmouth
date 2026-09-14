@@ -22,9 +22,11 @@ The web app normally assigns `id`, `createdAt`, and `importIndex` when importing
 ```
 
 This `{ cards }` envelope is accepted by the standalone batch parser. It is **not** the
-`/phrasebook` response envelope, which is `{ title, groups: [{ title, cards }], usage }`.
-Guided creation flattens those groups for storage; card `context` and `notes` preserve conversation
-provenance and speaker metadata. See [API_DESIGN.md](./API_DESIGN.md) for the endpoint contract.
+`/phrasebook` response envelope, which is `{ title, groups: [{ title, cards, vocab }], usage }`.
+Each group's `cards` contains phrases and `vocab` contains its normalized word cards. Guided creation
+selects groups by request index, then pools, deduplicates, and caps selected vocabulary before
+flattening for storage. Card `context` and `notes` preserve conversation provenance and speaker
+metadata. See [API_DESIGN.md](./API_DESIGN.md) for the endpoint contract.
 
 The web storage export is a different shape, `{ cards, decks }`, containing stored records and their
 IDs and metadata. It must not be confused with a generator's content-only card batch.
@@ -122,8 +124,8 @@ language inappropriate outside close, trusted relationships) and implies slang.
 `context` is the human-readable title of the conversation or topic group associated with a card, such
 as `"Ordering at a restaurant"` or `"Teasing your host family"`.
 
-- `/phrasebook` sets conversation cards and pooled vocabulary cards to their originating conversation
-  topic; the response's pooled vocabulary group itself is titled `vocab`.
+- `/phrasebook` sets phrase and vocabulary cards to their originating conversation topic. The client
+  retains the first selected occurrence's context when deduplicating vocabulary for storage.
 - Clients use `context` to preserve group membership across storage, browsing, and review filters.
 - Omit `context` when a card has no meaningful group provenance.
 - It is free-form display text, not an id, and is independent of `deckIds`; a phrasebook may contain

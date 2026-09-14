@@ -54,32 +54,34 @@ questions, selects conversations to prepare, and receives a complete phrasebook.
 4. **Answer clarification questions.**
    - The action pane shows the entered situation under the language header.
    - Each dynamic question is a select whose initial value is the first returned option.
-   - Answers stay in local creation state and can be revised before generation.
-   - Continue advances to conversation selection without another API call.
+   - Answers stay in local creation state. Changing an answer invalidates earlier speculative work.
+   - Continue advances to conversation selection and starts `/phrasebook` for all suggested topics.
 
 5. **Choose conversations.**
    - The checklist presents short communicative goals returned by `/context`.
    - The endpoint's suggested checked state is preserved initially.
    - The learner may toggle items while keeping at least one and no more than eight selected.
-   - Back returns to the clarification questions without discarding answers.
+   - Back returns to clarification questions without discarding answers or unchanged generation work.
+   - Generation finishes in the background without saving or navigating away.
 
 6. **Generate the phrasebook.**
-   - Continue submits `{ seed, language, ability: "basics", answers, checklist }` to `/phrasebook`.
-   - The action pane shows `Building your phrasebook…` while the complete result is generated and
-     translated.
+   - Continue reuses the speculative request rather than sending another request.
+   - The action pane shows `Building your phrasebook…` for at least 1000 ms after confirmation, or
+     until generation finishes if longer, then starts saving the selected result.
    - Backend selection is not exposed in the client.
 
 7. **Commit and open.**
-   - Only a successful response creates the local phrasebook and imports its cards.
-   - Conversation groups retain checklist order; the final `vocab` group holds pooled vocabulary.
+   - Only explicit Continue plus a successful response creates the local phrasebook and imports cards.
+   - Selected conversation bundles retain checklist order. The client pools their vocabulary,
+     deduplicates by normalized English word, and caps at `min(24, 5 × selected topics)`.
    - The action pane closes and the new phrasebook opens in the content pane.
 
 ### State and failure rules
 
-- Creation state is ephemeral. Dismissing before success leaves no draft or empty phrasebook.
+- Creation state is ephemeral. Dismissing aborts outstanding requests and discards uncommitted results.
 - Back walks checklist → questions → topic; Back from topic dismisses creation.
 - A context-request error returns to the topic stage on retry. A generation error returns to the
-  checklist stage on retry. Previously entered choices remain available.
+  checklist stage on retry and starts fresh generation. Previously entered choices remain available.
 - The client never exposes a partly generated or partly imported phrasebook.
 - The ability selected during setup is stored with the phrasebook. The generation call currently uses
   `basics` explicitly.

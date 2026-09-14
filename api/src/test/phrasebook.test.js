@@ -58,8 +58,45 @@ test('interleaved alternatives from accepted conversations survive generation', 
   assert.deepEqual(JSON.parse(result.groups[0].cards[3].notes), { speaker: 'partner', or: true });
 });
 
+test('short complete exchanges survive generation and translation without padding', async () => {
+  const conversations = [
+    {
+      title: 'Greet the barista',
+      lines: [
+        { speaker: 'you', text: 'Morning!' },
+        { speaker: 'partner', text: 'Good morning!' },
+      ],
+      vocab: ['morning', 'barista', 'day'],
+    },
+    {
+      title: 'Thank the staff',
+      lines: [
+        { speaker: 'you', text: 'Thank you so much.' },
+        { speaker: 'partner', text: "You're welcome. Have a nice day!" },
+        { speaker: 'you', text: 'See you later.' },
+      ],
+      vocab: ['thank', 'welcome', 'day', 'goodbye'],
+    },
+  ];
+  const translations = [
+    { lines: ['¡Buenos días!', '¡Buenos días!'], vocab: ['mañana', 'barista', 'día'] },
+    { lines: ['Muchas gracias.', 'De nada. ¡Que tengas un buen día!', 'Hasta luego.'], vocab: ['agradecer', 'bienvenido', 'día', 'adiós'] },
+  ];
+  const result = await performPhrasebook(
+    { ...input, checklist: conversations.map(conversation => conversation.title) },
+    { [backendName]: async (prompt) => {
+      if (isGenerationPrompt(prompt)) return reply({ conversations });
+      const index = conversations.findIndex(conversation => conversation.title === promptData(prompt).conversation.title);
+      return reply(translations[index]);
+    } },
+    { backendName },
+  );
+  assert.deepEqual(result.groups.map(group => group.cards.map(card => card.text)), translations.map(chunk => chunk.lines));
+  assert.deepEqual(result.groups.map(group => group.cards.map(card => card.translation)), conversations.map(conversation => conversation.lines.map(line => line.text)));
+});
+
 // Identical titles deliberately rule out title-keyed translation assembly.
-test('out-of-order chunks preserve index, alternatives, and first vocabulary provenance', async () => {
+test('out-of-order chunks preserve index, alternatives, and per-conversation vocabulary', async () => {
   const finished = [];
   const result = await run(async (prompt) => {
     if (isGenerationPrompt(prompt)) return reply({ conversations: [first, second] });
@@ -72,10 +109,14 @@ test('out-of-order chunks preserve index, alternatives, and first vocabulary pro
   assert.equal(result.groups[0].cards[0].text, 'Alquilo tablas.');
   assert.equal(result.groups[1].cards[0].text, 'Como pescado.');
   assert.deepEqual(JSON.parse(result.groups[0].cards[3].notes), { speaker: 'you', or: true });
-  const pay = result.groups[2].cards.filter(c => c.translation === 'pay');
-  assert.equal(pay.length, 1);
-  assert.equal(pay[0].text, 'pagar');
-  assert.equal(JSON.parse(pay[0].notes).source, 'Pagaré.');
+  const firstPay = result.groups[0].vocab.filter(card => card.translation === 'pay');
+  const secondPay = result.groups[1].vocab.filter(card => card.translation === 'pay');
+  assert.equal(firstPay.length, 1);
+  assert.equal(secondPay.length, 1);
+  assert.equal(firstPay[0].text, 'pagar');
+  assert.equal(secondPay[0].text, 'abonar');
+  assert.deepEqual(JSON.parse(firstPay[0].notes), { source: 'Pagaré.' });
+  assert.deepEqual(JSON.parse(secondPay[0].notes), { source: 'Voy a pagar.' });
   assert.equal(result.usage.inputTokens, 30);
 });
 
@@ -216,7 +257,16 @@ test('ruby normalization preserves target text alongside contextual romanization
   assert.equal(card.text, '食べます。');
   assert.equal(card.romanization, 'Tabemasu.');
   assert.equal(card.reading.map(t => t[0]).join(''), card.text);
-  assert.equal(JSON.parse(result.groups[1].cards[0].notes).source, card.text);
+  assert.deepEqual(result.groups[0].vocab[0], {
+    lang: 'ja',
+    text: '借りる',
+    translation: 'rent',
+    type: 'word',
+    context: 'Eat',
+    notes: JSON.stringify({ source: card.text }),
+    reading: [['借', 'か'], ['りる', null]],
+    romanization: 'kariru',
+  });
 });
 
 test('invalid Japanese romanization falls back without retrying valid translations', async () => {
@@ -264,7 +314,7 @@ test('invalid Japanese romanization falls back without retrying valid translatio
     assert.equal(result.groups[0].cards[0].romanization, firstRomaji);
     assert.equal(result.groups[0].cards[2].romanization, thirdRomaji);
     assert.equal(result.groups[0].cards[2].text, '東京へ行きます。');
-    assert.equal(result.groups[1].cards[1].romanization, coffeeRomaji);
+    assert.equal(result.groups[0].vocab[1].romanization, coffeeRomaji);
   }
 });
 
@@ -283,7 +333,7 @@ test('unreadable fallback omits romanization without losing the Japanese card', 
   assert.equal(result.groups[0].cards[0].text, '私です。');
   assert.equal(Object.hasOwn(result.groups[0].cards[0], 'romanization'), false);
   assert.equal(result.groups[0].cards[1].romanization, 'Hai.');
-  assert.equal(Object.hasOwn(result.groups[1].cards[0], 'romanization'), false);
+  assert.equal(Object.hasOwn(result.groups[0].vocab[0], 'romanization'), false);
 });
 
 test('mechanical fallback spaces ruby starts and changes only segment-final ha', async () => {
@@ -310,7 +360,7 @@ test('mechanical fallback spaces ruby starts and changes only segment-final ha',
     'Hai.',
     'Watashi wa bīgan desu.',
   ]);
-  assert.deepEqual(result.groups[1].cards.map(c => c.romanization), ['dashi', 'hairu', 'korewa']);
+  assert.deepEqual(result.groups[0].vocab.map(c => c.romanization), ['dashi', 'hairu', 'korewa']);
 });
 
 test('generation and translation prompts keep untrusted values in JSON input', () => {

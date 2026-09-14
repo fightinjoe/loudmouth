@@ -35,9 +35,12 @@ is the default. Checklist entries have `label` and `checked`. No server session 
 `ability` is required and must be `none`, `basics`, or `conversational`. The learner chooses 1–8
 checklist topics. `answers` and `checklist` are top-level fields, not nested under a context object.
 
-Returns `{ title, groups, usage }`: one conversation group per topic in selection order and a final
-pooled `vocab` group. English generation is followed by parallel conversation-sized translation
-calls; assembly is by index. The service validates output, retries invalid generation or translation
+Returns `{ title, groups, usage }`: one `{ title, cards, vocab }` conversation bundle per request topic,
+in request order. `vocab` contains normalized word cards without cross-topic deduplication or a global
+cap. The client prefetches all topics while the learner selects, then filters bundles by index before
+pooling, deduplicating, and capping vocabulary locally. API and web must deploy together.
+English generation is followed by parallel conversation-sized translation calls; assembly is by index.
+The service validates output, retries invalid generation or translation
 chunks once, backs off on provider rate limits, and returns no partial phrasebook. See API_DESIGN for
 exact bounds and deadlines.
 

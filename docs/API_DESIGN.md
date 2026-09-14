@@ -10,7 +10,8 @@ status: CURRENT
 # Catchphrase API design
 
 The API is a stateless Cloud Run service. The client owns phrasebook storage and creation state.
-Guided creation calls `/context`, collects answers and selected topics, then calls `/phrasebook`.
+Guided creation calls `/context`, collects answers, then speculatively calls `/phrasebook` with all
+suggested topics while the learner chooses which conversations to keep.
 
 ## Source layout
 
@@ -157,12 +158,14 @@ The creation panel:
 
 1. Calls `/context` with `{ seed, language }`.
 2. Initializes each question to its first option.
-3. Preserves the returned checklist defaults while allowing the learner to change topic selections.
-4. Calls `/phrasebook` with flat `answers` and selected checklist labels, plus explicit
-   `ability: "basics"`.
+3. On advancing from questions, calls `/phrasebook` with copied flat `answers`, all checklist labels
+   in order, and explicit `ability: "basics"`.
+4. Preserves checklist defaults and allows local topic selection while generation runs.
+5. On final Continue, reuses the pending or ready response and commits only selected conversations
+   plus their locally pooled vocabulary.
 
-The setup state remains client-side and ephemeral. Leaving before generation succeeds creates no draft
-or partial phrasebook.
+Setup and speculative results remain client-side and ephemeral. A completed request does not save or
+navigate automatically. Dismissal aborts outstanding requests and discards uncommitted results.
 
 ## `/phrasebook`
 
@@ -229,9 +232,9 @@ situation-specific language.
           "context": "State my dietary restrictions",
           "notes": "{\"speaker\":\"you\"}"
         }
-      ]
-    },
-    { "title": "vocab", "cards": [] }
+      ],
+      "vocab": []
+    }
   ],
   "usage": {
     "model": "gemini-3.5-flash-lite",
@@ -245,10 +248,10 @@ situation-specific language.
 ```
 
 The example shows the envelope and card shape, not required content counts. The title comes from the
-seed; no extra naming model call is made. Conversation groups follow selected-topic order. The final
-`vocab` group pools vocabulary from those conversations. Each conversation card's `translation` is
-the English generation line; `text` is its translated target-language line with inline ruby markup
-removed.
+seed; no extra naming model call is made. Conversation groups follow request-topic order. Each group
+contains `cards` (phrase cards) and `vocab` (fully normalized word cards for that conversation).
+There is no pooled vocabulary group in the response. Each conversation card's `translation` is the
+English generation line; `text` is its translated target-language line with inline ruby markup removed.
 
 `notes` remains a JSON-encoded string, not a new object-valued card field:
 
@@ -261,8 +264,12 @@ removed.
   that source index to the translated line. It does not infer synonyms or derivations.
 
 The service sets card `context` to the originating topic title, including vocabulary provenance.
-Vocabulary is deduplicated case-insensitively by English word, preserving the first occurrence and its
-translation, capped at the lesser of 24 words or five times the selected-topic count.
+The API preserves all per-conversation vocabulary, including duplicates across groups, without a global
+cap. The client first selects groups by request index, then pools their vocabulary in checklist order.
+It deduplicates by the English `translation` normalized with NFKC and `toLocaleLowerCase('en-US')`,
+preserving the first selected occurrence's translation and source metadata, and caps the result at
+the lesser of 24 words or five times the selected-topic count. Filtering must precede deduplication
+and capping so unselected conversations cannot remove selected vocabulary.
 
 Kanji and hanzi `base[reading]` runs become `ReadingToken` pairs; stray bracket annotations are removed.
 Japanese translation chunks additionally return `lineRomanizations` and `vocabRomanizations`, matched
@@ -299,7 +306,7 @@ client-stored cards are not rewritten; new `/phrasebook` responses use these rul
    never by title text**, regardless of completion order.
 5. Validate each translated chunk's line and vocabulary counts and string values. Retry a malformed
    or count-mismatched chunk once; never return a partially translated phrasebook.
-6. Normalize readings, assemble cards, pool vocabulary, and aggregate provider usage and costs.
+6. Normalize readings, assemble per-conversation phrase and vocabulary cards, and aggregate usage/costs.
 
 Each logical model attempt has a 15-second budget on the default backend or the adapter's extended
 60-second budget. That budget includes up to three `429` retries with 2/4/8-second backoff. Generation
@@ -310,7 +317,9 @@ Gateway allows 270 seconds, and Cloud Run allows 300 seconds.
 
 Exhausted model or validation failures return `502`; aborted requests stop outstanding provider calls.
 Generation output is capped at 6,000 tokens and each translation at 4,000 tokens, subject to provider
-ceilings. Generation validates 4–10 lines and 3–6 vocabulary entries per conversation. `durationMs` is
+ceilings. Generation validates 2–10 lines and 3–6 vocabulary entries per conversation. The prompt asks
+for complete exchanges without padding; greetings and farewells may take just two or three lines.
+Completeness remains a prompt requirement, not a semantic validator guarantee. `durationMs` is
 wall-clock pipeline time, not the sum of overlapping translation durations. Usage includes reported
 token consumption from invalid responses that caused retries.
 
@@ -328,10 +337,22 @@ Reading rules are inserted into `{{READING_RULES}}`; Spanish and Czech insert an
 
 - Topic entry calls `/context` with `{ seed, language }`.
 - Question selection uses the first option as its default, without a response `default` field.
-- Final submission calls `/phrasebook` with flat `answers` and `checklist`, plus explicit
-  `ability: "basics"`.
-- The complete returned phrasebook is committed only after successful generation.
-- Clients do not choose the backend.
+- Advancing from questions starts one `/phrasebook` request with all checklist topics, copied flat
+  `answers`, and explicit `ability: "basics"`. Toggling topics never sends another request.
+- Final Continue uses the existing pending or ready result, selects groups by index (titles may
+  duplicate), and commits selected phrases and locally pooled vocabulary.
+- Back without input changes reuses work. Changing an answer or seed invalidates and aborts it;
+  request-identity guards ignore stale responses.
+- Background failures leave the checklist usable. Final Continue surfaces the error; retry preserves
+  selections and starts fresh work. Dismissal aborts context and phrasebook requests.
+- No automatic save or navigation occurs when speculative generation finishes. Persistence begins
+  only after final Continue and successful generation; incomplete saves are rolled back.
+- Clients do not choose the backend. This response contract requires deploying API and web together.
+
+Speculation hides generation behind checklist interaction but does not guarantee lower latency:
+all-topic English generation is larger, and the response still waits for every translation, including
+topics the learner eventually discards. Usage includes all generated topics. Compare final
+Continue-to-usable-phrasebook time and cost per saved phrasebook when evaluating this prototype.
 
 ## Trust boundary and deferred work
 

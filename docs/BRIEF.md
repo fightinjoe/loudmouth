@@ -93,7 +93,9 @@ phase, not part of initial generation.
 - **Storage:** client-side IndexedDB for the library; no accounts, sync, or server-held library.
 - **API:** Cloud Run service in `api/`. `/context` returns setup questions and conversation choices;
   `/phrasebook` generates English conversations, translates each conversation in parallel, and returns
-  the complete phrasebook. Cards, usage accounting, and provider adapters are shared.
+  conversation bundles with per-topic vocabulary. The web client starts generation after questions,
+  while topics are being selected, then filters bundles and pools vocabulary locally on final Continue.
+  Cards, usage accounting, and provider adapters are shared.
 - **LLMs:** server-selected with `LLM_BACKEND`, default `gemini-3.5-flash-lite`; clients cannot
   select a backend. Alternate server values are `g-flash`, `claude`, and `chatgpt`.
 - **Creation ability:** the client sends `ability: "basics"` explicitly; the API requires

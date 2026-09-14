@@ -24,7 +24,9 @@ Return JSON only, exactly this shape:
 
 RULES:
 - "you" is the learner; "partner" is the person they are talking to.
-- 4 to 10 lines per conversation.
+- 2 to 10 lines per conversation. Use only as many lines as the complete
+  exchange needs; a greeting or farewell may take just 2 or 3 lines.
+  Do not pad a naturally short exchange to reach a longer length.
 - Each line is ONE phrase: one short sentence, easy to memorize and recall.
   Never pack two phrases into one line.
 - Use the simplest form of each phrase: just the core phrase, with no

@@ -404,7 +404,10 @@ async function performPhrasebook(
     const elapsedMs = performance.now() - startedAt;
     const totals = usageAccumulator.snapshot(backendName);
     const usage = buildUsageReport(totals.model, totals.usage, elapsedMs);
-    const cardCount = response.groups.reduce((count, group) => count + group.cards.length, 0);
+    const cardCount = response.groups.reduce(
+      (count, group) => count + group.cards.length + group.vocab.length,
+      0,
+    );
     console.log({
       event: 'phrasebook_ok',
       llm: backendName,

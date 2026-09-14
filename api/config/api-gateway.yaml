@@ -134,9 +134,13 @@ paths:
                   maxLength: 120
       responses:
         200:
-          description: Phrasebook title, conversation groups, vocabulary group, and model usage
+          description: Phrasebook title, conversation groups with per-conversation vocabulary, and model usage
           schema:
             type: object
+            required:
+              - title
+              - groups
+              - usage
             properties:
               title:
                 type: string
@@ -144,11 +148,20 @@ paths:
                 type: array
                 items:
                   type: object
+                  required:
+                    - title
+                    - cards
+                    - vocab
                   properties:
                     title:
                       type: string
                     cards:
                       type: array
+                      items:
+                        $ref: '#/definitions/Card'
+                    vocab:
+                      type: array
+                      description: Fully normalized word cards for this conversation
                       items:
                         $ref: '#/definitions/Card'
               usage:

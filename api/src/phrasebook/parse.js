@@ -13,12 +13,10 @@ const MAX_ANSWER_VALUE_LENGTH = 500;
 const MIN_CHECKLIST_ITEMS = 1;
 const MAX_CHECKLIST_ITEMS = 8;
 const MAX_CHECKLIST_ITEM_LENGTH = 120;
-const MIN_LINES_PER_CONVERSATION = 4;
+const MIN_LINES_PER_CONVERSATION = 2;
 const MAX_LINES_PER_CONVERSATION = 10;
 const MIN_VOCAB_PER_CONVERSATION = 3;
 const MAX_VOCAB_PER_CONVERSATION = 6;
-const MAX_VOCAB_CARDS = 24;
-const VOCAB_CARDS_PER_TOPIC = 5;
 
 const CJK_RUN_SOURCE = '[\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff々〆ヶ]+';
 const INLINE_READING_RE = new RegExp(`(${CJK_RUN_SOURCE})\\[([^\\[\\]]+)\\]`, 'gu');
@@ -424,62 +422,39 @@ function findVocabularySource(vocabulary, conversations) {
   return undefined;
 }
 
-function vocabularyLimit(topicCount) {
-  return Math.min(MAX_VOCAB_CARDS, topicCount * VOCAB_CARDS_PER_TOPIC);
-}
-
 function assemblePhrasebook({ seed, language, conversations, translations }) {
   if (translations.length !== conversations.length) {
     throw new Error('Translation result count does not match conversation count');
   }
 
-  const groups = conversations.map((conversation, conversationIndex) => ({
-    title: conversation.title,
-    cards: conversation.lines.map((line, lineIndex) => buildCard({
+  const groups = conversations.map((conversation, conversationIndex) => {
+    const translated = translations[conversationIndex];
+    const cards = conversation.lines.map((line, lineIndex) => buildCard({
       language,
-      target: translations[conversationIndex].lines[lineIndex],
-      romanization: translations[conversationIndex].lineRomanizations?.[lineIndex],
+      target: translated.lines[lineIndex],
+      romanization: translated.lineRomanizations?.[lineIndex],
       translation: line.text,
       type: 'phrase',
       context: conversation.title,
       notes: { speaker: line.speaker, ...(line.or ? { or: true } : {}) },
-    })),
-  }));
-
-  const pooled = new Map();
-  for (let conversationIndex = 0; conversationIndex < conversations.length; conversationIndex++) {
-    const conversation = conversations[conversationIndex];
-    const translated = translations[conversationIndex];
-    for (let wordIndex = 0; wordIndex < conversation.vocab.length; wordIndex++) {
-      const english = conversation.vocab[wordIndex];
-      const key = english.normalize('NFKC').toLocaleLowerCase('en-US');
-      if (!pooled.has(key)) {
-        const source = findVocabularySource(english, [conversation]);
-        const sourceIndex = conversation.lines.findIndex((line) => line.text === source);
-        pooled.set(key, {
-          english,
-          target: translated.vocab[wordIndex],
-          romanization: translated.vocabRomanizations?.[wordIndex],
-          context: conversation.title,
-          source: sourceIndex < 0 ? undefined : groups[conversationIndex].cards[sourceIndex].text,
-        });
-      }
-    }
-  }
-
-  const vocabCards = Array.from(pooled.values())
-    .slice(0, vocabularyLimit(conversations.length))
-    .map(({ english, target, romanization, context, source }) => buildCard({
-      language,
-      target,
-      romanization,
-      translation: english,
-      type: 'word',
-      context,
-      ...(source ? { notes: { source } } : {}),
     }));
+    const vocab = conversation.vocab.map((english, wordIndex) => {
+      const source = findVocabularySource(english, [conversation]);
+      const sourceIndex = conversation.lines.findIndex((line) => line.text === source);
+      return buildCard({
+        language,
+        target: translated.vocab[wordIndex],
+        romanization: translated.vocabRomanizations?.[wordIndex],
+        translation: english,
+        type: 'word',
+        context: conversation.title,
+        ...(sourceIndex < 0 ? {} : { notes: { source: cards[sourceIndex].text } }),
+      });
+    });
 
-  groups.push({ title: 'vocab', cards: vocabCards });
+    return { title: conversation.title, cards, vocab };
+  });
+
   return { title: seed, groups };
 }
 
@@ -490,7 +465,6 @@ module.exports = {
   parseInlineReading,
   lineContainsVocabulary,
   findVocabularySource,
-  vocabularyLimit,
   assemblePhrasebook,
   LANGUAGES,
   ABILITIES,
@@ -505,6 +479,4 @@ module.exports = {
   MAX_LINES_PER_CONVERSATION,
   MIN_VOCAB_PER_CONVERSATION,
   MAX_VOCAB_PER_CONVERSATION,
-  MAX_VOCAB_CARDS,
-  VOCAB_CARDS_PER_TOPIC,
 };

@@ -1,17 +1,17 @@
 import { openBottomSheet } from "./bottom-sheet.js";
 import { getContext, generatePhrasebook } from "../js/phrasebook-api.js";
-import { createDeck, importCards } from "../js/db.js";
+import { createDeck, deleteDeck, importCards } from "../js/db.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { icon } from "./icon.js";
 import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header.js";
 import { escapeHTML } from "../js/utils.js";
 
-
+const PHRASEBOOK_MIN_LOADING_MS = 1000;
 /**
  * Opens the `creation` action-pane: a linear flow from topic entry through
- * context questions and a checklist to generation. Nothing is persisted
- * until generation succeeds, when the deck and all cards are committed via
- * `createDeck` and `importCards`. Context answers are transient.
+ * context questions and a checklist. Generation starts speculatively behind
+ * the checklist; nothing is persisted until the user explicitly continues,
+ * when the selected phrase and vocabulary cards are committed together.
  *
  * @param {HTMLElement} appEl
  * @param {{ lang: string, ability: string }} params - the phrasebook's fixed
@@ -24,6 +24,7 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
   const state = {
     step: "topic", // 'topic' | 'questions' | 'checklist' | 'generating' | 'error'
     topic: "",
+    contextSeed: null,
     questions: [],
     checklist: [],
     answers: {},
@@ -31,22 +32,69 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
     // Which step a transient 'generating'/'error' resolves back to: a failed
     // topic-submit lands on 'topic'; a failed context-submit on 'checklist'.
     resumeStep: "topic",
+    contextRequest: null,
+    phrasebookRequest: null,
+    commitPromise: null,
   };
+  let dismissed = false;
+  let completed = false;
+  let closeObserver = null;
 
   const sheet = openBottomSheet(appEl, {
     kind: "creation",
     size: "full",
     bodyHTML: `<div class="creation-panel-inner flex-col flex-1">${renderStep(state, lang)}</div>`,
-    onClose: onDismiss,
+    onClose: () => {
+      dispose();
+      onDismiss?.();
+    },
     onMount: (panel) => {
       bind(panel);
       focusInputIfPresent(panel);
     },
   });
+  const closeSheet = sheet.close;
+  sheet.close = () => {
+    dispose();
+    closeSheet();
+  };
+  // Bottom-sheet scrim and swipe dismissal close through private callbacks,
+  // so observe those surfaces too rather than waiting for transition cleanup.
+  sheet.scrim.addEventListener("click", dispose);
+  let wasVisible = false;
+  closeObserver = new MutationObserver(() => {
+    if (sheet.panel.classList.contains("bottom-sheet--visible")) {
+      wasVisible = true;
+    } else if (wasVisible) {
+      dispose();
+    }
+  });
+  closeObserver.observe(sheet.panel, { attributes: true, attributeFilter: ["class"] });
 
   return sheet;
 
+  function dispose() {
+    if (dismissed || completed) return;
+    dismissed = true;
+    closeObserver?.disconnect();
+    abortContextRequest();
+    invalidatePhrasebook();
+  }
+
+  function abortContextRequest() {
+    const request = state.contextRequest;
+    state.contextRequest = null;
+    request?.controller.abort();
+  }
+
+  function invalidatePhrasebook() {
+    const request = state.phrasebookRequest;
+    state.phrasebookRequest = null;
+    request?.controller.abort();
+  }
+
   function rerender({ focusInput = false } = {}) {
+    if (dismissed) return;
     const inner = sheet.panel.querySelector(".creation-panel-inner");
     if (!inner) return;
     inner.innerHTML = renderStep(state, lang);
@@ -65,51 +113,157 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
 
   async function submitTopic(rawTopic) {
     const topic = (rawTopic || "").trim();
-    if (!topic) return;
+    if (!topic || dismissed) return;
+
     state.topic = topic;
     state.resumeStep = "topic";
-    state.step = "generating";
     state.error = null;
+    if (topic === state.contextSeed) {
+      state.step = "questions";
+      rerender();
+      return;
+    }
+
+    abortContextRequest();
+    invalidatePhrasebook();
+    state.contextSeed = null;
+    state.questions = [];
+    state.checklist = [];
+    state.answers = {};
+    state.step = "generating";
     rerender();
+
+    const controller = new AbortController();
+    const request = { controller };
+    state.contextRequest = request;
     try {
-      const { questions, checklist } = await getContext({ seed: topic, language: lang });
+      const { questions, checklist } = await getContext({
+        seed: topic,
+        language: lang,
+        signal: controller.signal,
+      });
+      if (dismissed || state.contextRequest !== request) return;
+      state.contextRequest = null;
+      state.contextSeed = topic;
       state.questions = questions;
       state.checklist = normalizeChecklist(checklist);
       state.answers = Object.fromEntries(questions.map((q) => [q.label, q.options[0]]));
       state.step = "questions";
     } catch (err) {
+      if (dismissed || state.contextRequest !== request) return;
+      state.contextRequest = null;
       state.error = err?.message || "Something went wrong. Please try again.";
       state.step = "error";
     }
     rerender();
   }
 
+  function ensurePhrasebookRequest() {
+    if (state.phrasebookRequest) return state.phrasebookRequest;
+
+    const controller = new AbortController();
+    const request = {
+      controller,
+      status: "pending",
+      result: null,
+      error: null,
+      promise: null,
+    };
+    const answers = { ...state.answers };
+    const checklist = state.checklist.map((item) => item.label);
+    state.phrasebookRequest = request;
+    request.promise = generatePhrasebook({
+      seed: state.topic,
+      language: lang,
+      answers,
+      checklist,
+      signal: controller.signal,
+    }).then(
+      (result) => {
+        if (!dismissed && state.phrasebookRequest === request) {
+          request.status = "ready";
+          request.result = result;
+        }
+      },
+      (err) => {
+        if (!dismissed && state.phrasebookRequest === request) {
+          request.status = "error";
+          request.error = err;
+        }
+      },
+    );
+    return request;
+  }
+
   async function submitContext() {
+    if (dismissed || state.commitPromise) return;
+    const request = ensurePhrasebookRequest();
+    if (request.status === "error") {
+      showPhrasebookError(request.error);
+      return;
+    }
+
+    const selectedIndexes = state.checklist
+      .map((item, index) => (item.checked ? index : -1))
+      .filter((index) => index >= 0);
     state.resumeStep = "checklist";
     state.step = "generating";
     state.error = null;
     rerender();
-    const checkedLabels = state.checklist.filter((item) => item.checked).map((item) => item.label);
+
+    const commitPromise = commitPhrasebook(request, selectedIndexes);
+    state.commitPromise = commitPromise;
+    await commitPromise;
+    if (state.commitPromise === commitPromise) state.commitPromise = null;
+  }
+
+  async function commitPhrasebook(request, selectedIndexes) {
+    await Promise.all([
+      request.promise,
+      new Promise((resolve) => setTimeout(resolve, PHRASEBOOK_MIN_LOADING_MS)),
+    ]);
+    if (dismissed || state.phrasebookRequest !== request) return;
+    if (request.status === "error") {
+      showPhrasebookError(request.error);
+      return;
+    }
+
+    let deck = null;
     try {
-      const { title, groups } = await generatePhrasebook({
-        seed: state.topic,
-        language: lang,
-        answers: state.answers,
-        checklist: checkedLabels,
-      });
-      // /phrasebook supplies the saved title; keep the entered seed as a
-      // defensive fallback for an omitted or blank title.
+      const { title, groups } = request.result;
+      const cards = selectCards(groups, selectedIndexes);
       const deckName = (title && title.trim()) || state.topic;
-      const deck = await createDeck(deckName, lang, { ability });
-      const cards = groups.flatMap((group) => group.cards);
+      deck = await createDeck(deckName, lang, { ability });
+      if (dismissed) {
+        await deleteDeck(deck.id);
+        return;
+      }
       await importCards(cards, deck.id);
-      sheet.close();
+      if (dismissed) {
+        await deleteDeck(deck.id);
+        return;
+      }
+      completed = true;
+      closeObserver?.disconnect();
+      closeSheet();
       onCreated(deck);
     } catch (err) {
-      state.error = err?.message || "Something went wrong. Please try again.";
-      state.step = "error";
-      rerender();
+      if (deck) {
+        try {
+          await deleteDeck(deck.id);
+        } catch (cleanupError) {
+          err = cleanupError;
+        }
+      }
+      if (!dismissed) showPhrasebookError(err);
     }
+  }
+
+  function showPhrasebookError(err) {
+    state.resumeStep = "checklist";
+    state.error = err?.message || "Something went wrong. Please try again.";
+    state.step = "error";
+    rerender();
   }
 
   // Header back walks the two-page context stack (checklist → questions →
@@ -141,7 +295,11 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
       inputEl.value = state.topic;
       autoGrowInput(inputEl);
       inputEl.addEventListener("input", (e) => {
-        state.topic = e.target.value;
+        const nextTopic = e.target.value;
+        if (state.contextSeed !== null && nextTopic.trim() !== state.contextSeed) {
+          invalidatePhrasebook();
+        }
+        state.topic = nextTopic;
         const wrap = panel.querySelector(".creation-input-wrap");
         if (wrap) wrap.dataset.hasValue = state.topic.length > 0 ? "true" : "false";
         const submitBtn = panel.querySelector('[data-action="creation/submit-topic"]');
@@ -151,6 +309,7 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
     }
 
     panel.querySelector('[data-action="creation/clear"]')?.addEventListener("click", () => {
+      if (state.contextSeed !== null) invalidatePhrasebook();
       state.topic = "";
       rerender({ focusInput: true });
     });
@@ -163,12 +322,15 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
   function bindQuestionsStep(panel) {
     panel.querySelectorAll('[data-action="creation/answer"]').forEach((select) => {
       select.addEventListener("change", () => {
+        if (state.answers[select.dataset.label] === select.value) return;
         state.answers[select.dataset.label] = select.value;
+        invalidatePhrasebook();
       });
     });
 
     panel.querySelector('[data-action="creation/to-checklist"]')?.addEventListener("click", () => {
       state.step = "checklist";
+      ensurePhrasebookRequest();
       rerender();
     });
   }
@@ -194,9 +356,33 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
     panel.querySelector('[data-action="creation/retry"]')?.addEventListener("click", () => {
       state.step = state.questions.length > 0 ? state.resumeStep : "topic";
       state.error = null;
+      if (state.step === "checklist") {
+        invalidatePhrasebook();
+        ensurePhrasebookRequest();
+      }
       rerender({ focusInput: state.step === "topic" });
     });
   }
+}
+
+function selectCards(groups, selectedIndexes) {
+  const phraseCards = [];
+  const vocabularyCards = [];
+  const seenTranslations = new Set();
+  const vocabularyLimit = Math.min(24, selectedIndexes.length * 5);
+
+  for (const index of selectedIndexes) {
+    const group = groups[index];
+    phraseCards.push(...group.cards);
+    for (const card of group.vocab) {
+      const key = card.translation.normalize("NFKC").toLocaleLowerCase("en-US");
+      if (seenTranslations.has(key)) continue;
+      seenTranslations.add(key);
+      if (vocabularyCards.length < vocabularyLimit) vocabularyCards.push(card);
+    }
+  }
+
+  return [...phraseCards, ...vocabularyCards];
 }
 
 // ── Render ───────────────────────────────────────────────────────────────

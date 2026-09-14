@@ -58,18 +58,24 @@ Creation uses two sequential action-pane modes:
 The creation mode is a linear flow:
 
 ```text
-topic → questions → conversation checklist → generating → phrasebook
+topic → questions → conversation checklist (generation runs) → wait if needed → phrasebook
 ```
 
 Topic submission calls `/context` with `{ seed, language }`. Each returned question initially uses its
-first option. The learner may change the answers and select 1–8 checklist topics. Final submission calls
-`/phrasebook` with `{ seed, language, ability: "basics", answers, checklist }`; model selection remains
+first option. Advancing from questions starts `/phrasebook` with
+`{ seed, language, ability: "basics", answers, checklist }`, where `checklist` contains all suggested
+topics. The learner selects 1–8 topics locally while generation runs; model selection remains
 server-owned.
 
-Nothing is persisted while the learner is answering questions or selecting conversations. Once
-`/phrasebook` succeeds, the client creates the phrasebook and imports every returned card as one commit.
-Failure keeps the learner's current creation state available for retry. Leaving before success creates
-no partial phrasebook or draft.
+Nothing is persisted while answering questions or selecting conversations, even if generation has
+finished. Final Continue reuses the pending or ready response, keeps selected conversation bundles by
+index, then pools, deduplicates, and caps their vocabulary before saving. It never starts a duplicate
+request. Back without changes reuses work; changing answers or the seed invalidates it.
+Confirmation shows the loading state for at least 1000 ms before saving and displaying the phrasebook,
+configured by `PHRASEBOOK_MIN_LOADING_MS` in `web/app/src/components/creation-panel.js`.
+This minimum overlaps any remaining generation time rather than adding a delay after generation.
+Background failure leaves the checklist usable until Continue surfaces it; retry preserves choices.
+Dismissal aborts outstanding requests and discards uncommitted results. Incomplete saves are rolled back.
 
 The selected setup ability remains local phrasebook metadata. The current generation client explicitly
 uses the API's `basics` ability until product behavior connects those concepts.
