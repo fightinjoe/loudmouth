@@ -61,7 +61,10 @@ The creation mode is a linear flow:
 topic → questions → conversation checklist (generation runs) → wait if needed → phrasebook
 ```
 
-Topic submission calls `/context` with `{ seed, language }`. Each returned question initially uses its
+Topic submission calls `/context` with `{ seed, language }` and independently starts
+`/phrasebook-title` with `{ seed }`. Naming never blocks any step. When saving, the client freezes the
+available short English title or uses the seed if naming has not succeeded; late responses cannot
+rename the phrasebook. Each returned question initially uses its
 first option. Advancing from questions starts `/phrasebook` with
 `{ seed, language, ability: "basics", answers, checklist }`, where `checklist` contains all suggested
 topics. The learner selects 1–8 topics locally while generation runs; model selection remains

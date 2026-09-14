@@ -1,5 +1,5 @@
 import { openBottomSheet } from "./bottom-sheet.js";
-import { getContext, generatePhrasebook } from "../js/phrasebook-api.js";
+import { getContext, generatePhrasebook, getPhrasebookTitle } from "../js/phrasebook-api.js";
 import { createDeck, deleteDeck, importCards } from "../js/db.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { icon } from "./icon.js";
@@ -33,6 +33,8 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
     // topic-submit lands on 'topic'; a failed context-submit on 'checklist'.
     resumeStep: "topic",
     contextRequest: null,
+    titleRequest: null,
+    frozenTitle: null,
     phrasebookRequest: null,
     commitPromise: null,
   };
@@ -78,6 +80,7 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
     dismissed = true;
     closeObserver?.disconnect();
     abortContextRequest();
+    abortTitleRequest();
     invalidatePhrasebook();
   }
 
@@ -85,6 +88,30 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
     const request = state.contextRequest;
     state.contextRequest = null;
     request?.controller.abort();
+  }
+
+  function abortTitleRequest() {
+    const request = state.titleRequest;
+    state.titleRequest = null;
+    request?.controller.abort();
+  }
+
+  function ensureTitleRequest(seed) {
+    if (state.titleRequest?.seed === seed) return;
+    abortTitleRequest();
+    state.frozenTitle = null;
+    const request = { seed, controller: new AbortController(), title: null };
+    state.titleRequest = request;
+    // This promise is deliberately never awaited by the creation flow.
+    getPhrasebookTitle({ seed, signal: request.controller.signal }).then(
+      (result) => {
+        if (dismissed || completed || state.titleRequest !== request || state.frozenTitle !== null) return;
+        if (typeof result?.title === "string" && result.title.trim()) {
+          request.title = result.title.trim();
+        }
+      },
+      () => { /* Naming is optional; the seed is the fallback. */ },
+    );
   }
 
   function invalidatePhrasebook() {
@@ -116,6 +143,7 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
     if (!topic || dismissed) return;
 
     state.topic = topic;
+    ensureTitleRequest(topic);
     state.resumeStep = "topic";
     state.error = null;
     if (topic === state.contextSeed) {
@@ -230,9 +258,11 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
 
     let deck = null;
     try {
-      const { title, groups } = request.result;
+      const { groups } = request.result;
       const cards = selectCards(groups, selectedIndexes);
-      const deckName = (title && title.trim()) || state.topic;
+      state.frozenTitle ??= state.titleRequest?.title || state.topic;
+      const deckName = state.frozenTitle;
+      abortTitleRequest();
       deck = await createDeck(deckName, lang, { ability });
       if (dismissed) {
         await deleteDeck(deck.id);

@@ -20,6 +20,9 @@ Endpoint code and accepted prompt artifacts live together:
 - `api/src/context/index.js` — request handling and response validation
 - `api/src/context/prompt.js` — trusted prompt construction
 - `api/src/context/prompt.txt` — canonical context prompt
+- `api/src/phrasebook-title/index.js` — independent title request handling and validation
+- `api/src/phrasebook-title/prompt.js` — trusted naming prompt construction
+- `api/src/phrasebook-title/prompt.txt` — canonical naming prompt
 - `api/src/phrasebook/index.js` — request handling and pipeline orchestration
 - `api/src/phrasebook/parse.js` — generated and translated output parsing
 - `api/src/phrasebook/prompt.js` — trusted generation and translation prompt construction
@@ -58,7 +61,7 @@ Endpoint tests remain in `api/src/test/`.
   that bound, not merely one model call. The active limits are documented per endpoint below.
 - Prompt requirements are not all runtime guarantees. Validators check structure and bounds, not
   translation accuracy, intent, register, language/script correctness, or phonetic correctness.
-- Both routes accept `POST` and return JSON. The router allows CORS origin `*`, methods
+- All routes accept `POST` and return JSON. The router allows CORS origin `*`, methods
   `POST, OPTIONS`, and header `Content-Type`. `OPTIONS` returns `204` before path dispatch;
   other non-POST methods return `405`, and an unknown POST path returns `404`.
 
@@ -156,7 +159,7 @@ The output ceiling is 2,000 tokens. The timeout is 15 seconds on the default bac
 
 The creation panel:
 
-1. Calls `/context` with `{ seed, language }`.
+1. Calls `/context` with `{ seed, language }` and `/phrasebook-title` with `{ seed }` in parallel.
 2. Initializes each question to its first option.
 3. On advancing from questions, calls `/phrasebook` with copied flat `answers`, all checklist labels
    in order, and explicit `ability: "basics"`.
@@ -166,6 +169,30 @@ The creation panel:
 
 Setup and speculative results remain client-side and ephemeral. A completed request does not save or
 navigate automatically. Dismissal aborts outstanding requests and discards uncommitted results.
+
+## `/phrasebook-title`
+
+Independently distills a seed into an English UI title. It does not feed context or card generation.
+
+- Request: `{ "seed": "Making small talk with other people at a dog park" }`.
+- Response: `{ "title": "Dog Park Chitchat 🐕", "usage": { ... } }`, using shared usage accounting.
+- `seed` is required, non-empty after trimming, and at most 200 characters before trimming,
+  matching `/context`. Client-supplied `llm` is rejected.
+- The prompt asks for generally 2–6 words, descriptive first, playful when appropriate, and at most
+  one relevant emoji. Titles must be English even for non-English seeds. Sensitive situations get
+  respectful, clear titles. These style requirements are prompt guidance, not semantic validation.
+- Validation requires a non-empty, trimmed, single-line title of at most 80 characters.
+- One model call uses a dedicated prompt, separate trusted instructions and JSON task data, and a
+  256-token output ceiling. Timeout is 15 seconds by default or the adapter's timeout (60 seconds
+  for alternate backends). There is no application-level retry or Markdown-fence stripping.
+- Invalid input returns `400`; model errors, timeout, and invalid output return `502`.
+
+The web client starts this request in parallel with `/context` and never awaits it to advance or save.
+Immediately before creating the local phrasebook, it freezes the available generated title or falls
+back to the original seed. Pending title work is aborted and late responses are ignored. Naming errors
+remain silent. The title is stored as the local phrasebook name and is not sent to `/phrasebook`.
+Answer changes and card-generation retries reuse the title; submitting a different seed replaces the
+naming request, and dismissal aborts it. A failed local save also retains the frozen title on retry.
 
 ## `/phrasebook`
 
@@ -247,8 +274,9 @@ situation-specific language.
 }
 ```
 
-The example shows the envelope and card shape, not required content counts. The title comes from the
-seed; no extra naming model call is made. Conversation groups follow request-topic order. Each group
+The example shows the envelope and card shape, not required content counts. This endpoint’s legacy `title` field comes from the
+seed; it makes no naming model call. The web client uses the independent `/phrasebook-title` result
+or the seed fallback for the saved name. Conversation groups follow request-topic order. Each group
 contains `cards` (phrase cards) and `vocab` (fully normalized word cards for that conversation).
 There is no pooled vocabulary group in the response. Each conversation card's `translation` is the
 English generation line; `text` is its translated target-language line with inline ruby markup removed.
@@ -344,7 +372,7 @@ Reading rules are inserted into `{{READING_RULES}}`; Spanish and Czech insert an
 - Back without input changes reuses work. Changing an answer or seed invalidates and aborts it;
   request-identity guards ignore stale responses.
 - Background failures leave the checklist usable. Final Continue surfaces the error; retry preserves
-  selections and starts fresh work. Dismissal aborts context and phrasebook requests.
+  selections and starts fresh work. Dismissal aborts context, title, and phrasebook requests.
 - No automatic save or navigation occurs when speculative generation finishes. Persistence begins
   only after final Continue and successful generation; incomplete saves are rolled back.
 - Clients do not choose the backend. This response contract requires deploying API and web together.

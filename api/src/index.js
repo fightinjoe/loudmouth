@@ -1,3 +1,4 @@
+const { handlePhrasebookTitle } = require('./phrasebook-title');
 const { handleContext } = require('./context');
 const { handlePhrasebook } = require('./phrasebook');
 const { getBackendName, LLM_REGISTRY } = require('./llm-config');
@@ -23,6 +24,10 @@ exports.translate = async (req, res) => {
   }
 
   const path = req.path || '/';
+
+  if (path === '/phrasebook-title') {
+    return handlePhrasebookTitle(req, res, LLM_REGISTRY);
+  }
 
   if (path === '/context') {
     return handleContext(req, res, LLM_REGISTRY);

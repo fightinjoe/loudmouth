@@ -95,6 +95,8 @@ phase, not part of initial generation.
   `/phrasebook` generates English conversations, translates each conversation in parallel, and returns
   conversation bundles with per-topic vocabulary. The web client starts generation after questions,
   while topics are being selected, then filters bundles and pools vocabulary locally on final Continue.
+  An independent `/phrasebook-title` call runs alongside context setup, generating a short English
+  name without delaying creation. The client freezes that name or the seed fallback when saving.
   Cards, usage accounting, and provider adapters are shared.
 - **LLMs:** server-selected with `LLM_BACKEND`, default `gemini-3.5-flash-lite`; clients cannot
   select a backend. Alternate server values are `g-flash`, `claude`, and `chatgpt`.

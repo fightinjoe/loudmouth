@@ -1,5 +1,5 @@
 /**
- * Clients for guided phrasebook creation. VITE_API_URL can point both
+ * Clients for guided phrasebook creation. VITE_API_URL can point all
  * requests at a local API during development.
  */
 
@@ -55,4 +55,9 @@ export async function generatePhrasebook({ seed, language, answers, checklist, s
     answers,
     checklist,
   }, { signal });
+}
+
+/** Fetches an English UI title independently of context and card generation. */
+export async function getPhrasebookTitle({ seed, signal }) {
+  return post("/phrasebook-title", { seed }, { signal });
 }

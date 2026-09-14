@@ -1,7 +1,7 @@
 # Catchphrase API
 
-Stateless Node.js Cloud Run service for guided phrasebook creation. The public API has two routes:
-**`/context` → `/phrasebook`**.
+Stateless Node.js Cloud Run service for guided phrasebook creation. The creation flow uses **`/context` → `/phrasebook`**, with independent UI naming via
+**`/phrasebook-title`**.
 
 [`docs/API_DESIGN.md`](../docs/API_DESIGN.md) is the endpoint contract; see
 [`docs/CARD_SCHEMA.md`](../docs/CARD_SCHEMA.md) for cards and reading tokens.
@@ -19,6 +19,18 @@ Stateless Node.js Cloud Run service for guided phrasebook creation. The public A
 
 Returns `{ questions, checklist, usage }`. Questions have `label` and `options`; the **first option**
 is the default. Checklist entries have `label` and `checked`. No server session is created.
+
+### `POST /phrasebook-title`
+
+```json
+{ "seed": "Making small talk with other people at a dog park" }
+```
+
+Returns `{ title, usage }`, for example `"Dog Park Chitchat 🐕"`. Seed validation matches `/context`.
+Uses its own prompt to produce a short English title, generally 2–6 words with an optional emoji.
+Titles are validated as non-empty, single-line strings of at most 80 characters.
+The client calls this in parallel with `/context` and freezes the available title or seed fallback
+when saving. It never waits for naming or sends the title to `/phrasebook`.
 
 ### `POST /phrasebook`
 
@@ -46,7 +58,7 @@ exact bounds and deadlines.
 
 ## Shared HTTP behavior
 
-Both routes accept `POST` JSON and reject a client-supplied `llm` selector. `OPTIONS` returns `204`
+All routes accept `POST` JSON and reject a client-supplied `llm` selector. `OPTIONS` returns `204`
 with CORS headers, unsupported methods return `405`, and unknown paths return `404`.
 
 - `400`: invalid request, missing required field, invalid enum, or client backend selection.
@@ -87,6 +99,10 @@ api/
     │   ├── index.js
     │   ├── prompt.js
     │   └── prompt.txt
+    ├── phrasebook-title/
+    │   ├── index.js
+    │   ├── prompt.js
+    │   └── prompt.txt
     ├── phrasebook/
     │   ├── index.js
     │   ├── parse.js
@@ -102,7 +118,7 @@ api/
     └── test/
 ```
 
-The text files under `src/context/` and `src/phrasebook/` are the authoritative runtime prompts.
+The text files under `src/context/`, `src/phrasebook-title/`, and `src/phrasebook/` are the authoritative runtime prompts.
 Edit them in place; there is no separate prompt-source tree or copy step.
 
 `src/index.js` exports the Cloud Function `translate` and owns CORS, method handling, and route

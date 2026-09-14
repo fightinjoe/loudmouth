@@ -13,11 +13,12 @@ const { createDeck, deleteDeck, importCards } = vi.hoisted(() => ({
 }));
 vi.mock("../js/db.js", () => ({ createDeck, deleteDeck, importCards }));
 
-const { getContext, generatePhrasebook } = vi.hoisted(() => ({
+const { getContext, generatePhrasebook, getPhrasebookTitle } = vi.hoisted(() => ({
   getContext: vi.fn(),
+  getPhrasebookTitle: vi.fn(),
   generatePhrasebook: vi.fn(),
 }));
-vi.mock("../js/phrasebook-api.js", () => ({ getContext, generatePhrasebook }));
+vi.mock("../js/phrasebook-api.js", () => ({ getContext, generatePhrasebook, getPhrasebookTitle }));
 
 import { openCreationPanel } from "../components/creation-panel.js";
 
@@ -75,6 +76,8 @@ beforeEach(() => {
   deleteDeck.mockClear();
   importCards.mockClear();
   getContext.mockReset();
+  getPhrasebookTitle.mockReset();
+  getPhrasebookTitle.mockReturnValue(new Promise(() => {}));
   generatePhrasebook.mockReset();
   generatePhrasebook.mockReturnValue(new Promise(() => {}));
 });
@@ -224,6 +227,7 @@ describe("openCreationPanel — generate + commit", () => {
 
 
   it("on success, creates the deck and imports every card in one shot, then calls onCreated", async () => {
+    getPhrasebookTitle.mockResolvedValueOnce({ title: "Salsa Social Dancing" });
     generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
     let createdDeck = null;
     openCreationPanel(appEl, { lang: "es", ability: "beginner" }, (deck) => { createdDeck = deck; }, () => {});
@@ -264,7 +268,7 @@ describe("openCreationPanel — generate + commit", () => {
     expect(importCards).not.toHaveBeenCalled();
   });
 
-  it("falls back to the raw topic as the deck name when the API omits a title", async () => {
+  it("falls back to the raw topic without waiting for a pending title", async () => {
     generatePhrasebook.mockResolvedValueOnce({ groups: sampleGenerateResponse.groups });
     await openReadyToGenerate();
     gotoChecklist(appEl);
@@ -369,7 +373,7 @@ describe("openCreationPanel — speculative generation lifecycle", () => {
     appEl.querySelector('[data-action="creation/submit-context"]').click();
     newRequest.resolve({ ...sampleGenerateResponse, title: "Current title" });
     await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(createDeck).toHaveBeenCalledWith("Current title", "es", { ability: "beginner" });
+    expect(createDeck).toHaveBeenCalledWith("salsa dancing", "es", { ability: "beginner" });
   });
 
   it("aborts speculative work when the seed changes and starts fresh for the new seed", async () => {
@@ -641,5 +645,81 @@ describe("openCreationPanel — selected-topic vocabulary", () => {
     const vocabulary = importCards.mock.calls[0][0].filter((card) => card.type === "word");
     expect(vocabulary).toHaveLength(24);
     expect(vocabulary.at(-1).translation).toBe("word 3-5");
+  });
+});
+
+
+describe("openCreationPanel — independent title lifecycle", () => {
+  async function openQuestions() {
+    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
+    const sheet = openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
+    typeAndSubmitTopic(appEl, "salsa dancing");
+    await vi.waitFor(() => expect(appEl.querySelector(".creation-select")).toBeTruthy());
+    return sheet;
+  }
+
+  it("starts naming and context together; dismissal aborts both", () => {
+    getContext.mockReturnValueOnce(new Promise(() => {}));
+    const sheet = openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
+    typeAndSubmitTopic(appEl, "salsa dancing");
+    expect(getContext).toHaveBeenCalledTimes(1);
+    expect(getPhrasebookTitle).toHaveBeenCalledTimes(1);
+    expect(getPhrasebookTitle.mock.calls[0][0]).toEqual({ seed: "salsa dancing", signal: expect.any(AbortSignal) });
+    sheet.close();
+    expect(getContext.mock.calls[0][0].signal.aborted).toBe(true);
+    expect(getPhrasebookTitle.mock.calls[0][0].signal.aborted).toBe(true);
+  });
+
+  it.each(["failure", "invalid", "late"])("saves the seed for a %s title and never renames it", async (mode) => {
+    const title = deferred();
+    getPhrasebookTitle.mockReturnValueOnce(title.promise);
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    await openQuestions();
+    if (mode === "failure") title.reject(new Error("Title unavailable"));
+    if (mode === "invalid") title.resolve({ title: 42 });
+    gotoChecklist(appEl);
+    appEl.querySelector('[data-action="creation/submit-context"]').click();
+    await vi.waitFor(() => expect(importCards).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect(createDeck).toHaveBeenCalledWith("salsa dancing", "es", { ability: "beginner" });
+    expect(getPhrasebookTitle.mock.calls[0][0].signal.aborted).toBe(true);
+    title.resolve({ title: "Too Late" });
+    await Promise.resolve();
+    expect(createDeck).toHaveBeenCalledTimes(1);
+    expect(appEl.querySelector(".creation-error")).toBeNull();
+  });
+
+  it("retains the title across answer changes and ignores titles in card responses", async () => {
+    getPhrasebookTitle.mockResolvedValueOnce({ title: "Salsa Nights 💃" });
+    generatePhrasebook.mockResolvedValue(sampleGenerateResponse);
+    await openQuestions();
+    gotoChecklist(appEl);
+    appEl.querySelector('[data-action="creation/back"]').click();
+    const select = appEl.querySelector(".creation-select");
+    select.value = "Cuban style";
+    select.dispatchEvent(new Event("change"));
+    gotoChecklist(appEl);
+    appEl.querySelector('[data-action="creation/submit-context"]').click();
+    await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect(createDeck).toHaveBeenCalledWith("Salsa Nights 💃", "es", { ability: "beginner" });
+    expect(getPhrasebookTitle).toHaveBeenCalledTimes(1);
+    expect(generatePhrasebook).toHaveBeenCalledTimes(2);
+    expect(generatePhrasebook.mock.calls[1][0]).not.toHaveProperty("title");
+  });
+
+  it("replaces naming on a new seed and ignores the old response", async () => {
+    const oldTitle = deferred();
+    getPhrasebookTitle.mockReturnValueOnce(oldTitle.promise).mockResolvedValueOnce({ title: "Bachata Nights" });
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    await openQuestions();
+    appEl.querySelector('[data-action="creation/back"]').click();
+    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
+    typeAndSubmitTopic(appEl, "bachata dancing");
+    await vi.waitFor(() => expect(appEl.querySelector(".creation-select")).toBeTruthy());
+    expect(getPhrasebookTitle.mock.calls[0][0].signal.aborted).toBe(true);
+    oldTitle.resolve({ title: "Stale Salsa" });
+    gotoChecklist(appEl);
+    appEl.querySelector('[data-action="creation/submit-context"]').click();
+    await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect(createDeck).toHaveBeenCalledWith("Bachata Nights", "es", { ability: "beginner" });
   });
 });

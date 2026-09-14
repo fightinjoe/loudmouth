@@ -17,6 +17,47 @@ x-google-backend:
   deadline: 270.0
 
 paths:
+  /phrasebook-title:
+    options:
+      summary: CORS preflight
+      operationId: phrasebookTitleOptions
+      responses:
+        204:
+          description: CORS preflight response
+    post:
+      summary: Distill a seed into a short English phrasebook title
+      operationId: phrasebookTitle
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [seed]
+            properties:
+              seed:
+                type: string
+                maxLength: 200
+      responses:
+        200:
+          description: English phrasebook title and model usage
+          schema:
+            type: object
+            required: [title, usage]
+            properties:
+              title:
+                type: string
+                maxLength: 80
+              usage:
+                type: object
+        400:
+          description: Bad request (missing/invalid field or client-selected llm)
+        502:
+          description: LLM request failed or returned an invalid response
   /context:
     options:
       summary: CORS preflight
