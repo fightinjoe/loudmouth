@@ -1,5 +1,3 @@
-const { handleLookup } = require('./lookup');
-const { handleTextbook } = require('./textbook');
 const { handleContext } = require('./context');
 const { handlePhrasebook } = require('./phrasebook');
 const { getBackendName, LLM_REGISTRY } = require('./llm-config');
@@ -25,14 +23,6 @@ exports.translate = async (req, res) => {
   }
 
   const path = req.path || '/';
-
-  if (path === '/lookup') {
-    return handleLookup(req, res, LLM_REGISTRY);
-  }
-
-  if (path === '/textbook') {
-    return handleTextbook(req, res, LLM_REGISTRY);
-  }
 
   if (path === '/context') {
     return handleContext(req, res, LLM_REGISTRY);

@@ -1,6 +1,6 @@
 /**
- * Clients for guided phrasebook creation. Both calls use the same API base as
- * /lookup, with VITE_API_URL available for local development.
+ * Clients for guided phrasebook creation. VITE_API_URL can point both
+ * requests at a local API during development.
  */
 
 const GATEWAY_URL = import.meta.env.VITE_API_URL || "https://translation-api-gateway-2qqw247r.uc.gateway.dev";

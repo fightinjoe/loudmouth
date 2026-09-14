@@ -16,17 +16,13 @@ import { escapeHTML } from "../js/utils.js";
 const SWIPE_THRESHOLD = 80;
 
 /**
- * Opens the Review content mode (Journey 4) — a standalone flashcard
- * reviewer over the phrasebook's terms. Not part of the Input/Translation/
- * Group look-up stack; a self-contained sibling content mode.
+ * Opens the Review content mode: a standalone flashcard reviewer over the
+ * supplied starred-card set.
  *
- * Implementation decisions made here for journeys.md open questions not yet
- * Figma-resolved (see docs/projects/phrasebook-lookup-ux/tasks.json PH-009):
  *   - Advance: swipe left/right. No on-screen next/prev control.
- *   - End-of-deck: no loop, no summary — swiping past the last/first card
- *     is a no-op (BRIEF.md Assumptions: "no loop, no end-of-deck summary").
- *   - Direction toggle: session-only, resets whenever Review is reopened.
- *   - Subset reviewed: the whole phrasebook, in the deck's own card order.
+ *   - End-of-deck: no loop or summary; swiping past either end is a no-op.
+ *   - Direction toggle: session-only, reset whenever Review is reopened.
+ *   - Ordering follows the deck's configured card order.
  *
  * @param {HTMLElement} appEl
  * @param {Object} deck

@@ -45,7 +45,7 @@ beforeEach(() => {
   dbState.allDecks = [];
 });
 
-describe("nav pane — Suggested phrasebooks (PH-008)", () => {
+describe("nav pane — Suggested phrasebooks", () => {
   it("renders every suggestion when none have been seeded yet", async () => {
     const { rootEl } = mountPane();
     await flush();

@@ -22,16 +22,14 @@
 const KIND_TO_PANEL_CLASS = {
   settings: "deck-settings-panel",
   review: "review-panel",
-  lookup: "lookup-panel",
   "new-phrasebook": "new-phrasebook-panel",
-  textbook: "textbook-panel",
+  creation: "creation-panel",
 };
 const KIND_TO_SCRIM_CLASS = {
   settings: "deck-settings-scrim",
   review: "review-scrim",
-  lookup: "lookup-scrim",
   "new-phrasebook": "new-phrasebook-scrim",
-  textbook: "textbook-scrim",
+  creation: "creation-scrim",
 };
 
 export function openBottomSheet(appEl, { kind, bodyHTML, onClose, onMount, size = "hug" }) {
@@ -43,9 +41,8 @@ export function openBottomSheet(appEl, { kind, bodyHTML, onClose, onMount, size 
   appEl.appendChild(scrim);
 
   const panel = document.createElement("div");
-  // Full-height panes (lookup, review) get their background from
-  // .bottom-sheet--full (Figma gray-100) instead — bg-primary is the beige
-  // default for content-hugging panes (settings, new-phrasebook).
+  // Full-height panes get their background from .bottom-sheet--full;
+  // content-hugging panes use the beige .bg-primary default.
   const bgClass = size === "full" ? "" : "bg-primary";
   panel.className = `${panelClass} bottom-sheet ${bgClass} transition-sheet${size === "full" ? " bottom-sheet--full" : ""}`.replace(/\s+/g, " ").trim();
   panel.innerHTML = `<div class="sheet-handle"></div>${bodyHTML}`;

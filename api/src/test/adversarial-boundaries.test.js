@@ -4,9 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { handleContext } = require('../context');
-const { handleLookup } = require('../lookup');
 const { handlePhrasebook } = require('../phrasebook');
-const { handleTextbook } = require('../textbook');
 
 const BACKEND = 'gemini-3.5-flash-lite';
 process.env.LLM_BACKEND = BACKEND;
@@ -44,16 +42,6 @@ const cases = [
     name: '/context rejects an over-limit adversarial seed',
     handler: handleContext,
     body: { seed: maliciousText(201), language: 'es' },
-  },
-  {
-    name: '/lookup rejects an over-limit adversarial term',
-    handler: handleLookup,
-    body: { term: maliciousText(201), language: 'ja' },
-  },
-  {
-    name: '/textbook rejects an over-limit adversarial topic',
-    handler: handleTextbook,
-    body: { topic: maliciousText(201), language: 'zh' },
   },
   {
     name: '/phrasebook rejects an over-limit adversarial seed',

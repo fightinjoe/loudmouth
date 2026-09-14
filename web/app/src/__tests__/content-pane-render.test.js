@@ -15,7 +15,7 @@ function card(overrides) {
   };
 }
 
-describe("renderCardsHTML — grouped sections (PH-006)", () => {
+describe("renderCardsHTML — grouped sections", () => {
   it("renders a single standalone term with no section header", () => {
     const cards = [card({ id: "c1", text: "晩ご飯", translation: "dinner", createdAt: "2026-01-01T00:00:00.000Z" })];
     const html = renderCardsHTML(deck, cards);
@@ -41,7 +41,7 @@ describe("renderCardsHTML — grouped sections (PH-006)", () => {
     expect(html).toContain("Ordering at a restaurant");
   });
 
-  it("labels the standalone term under 'Translations' once a group section exists (Journey 1's single-term-no-header state only holds when there are zero group sections yet)", () => {
+  it("labels a standalone term under 'Translations' once a group section exists", () => {
     const cards = [
       card({ id: "c1", text: "晩ご飯", translation: "dinner", createdAt: "2026-01-01T00:00:00.000Z" }),
       card({ id: "c2", text: "お会計", translation: "check please", createdAt: "2026-01-02T00:00:00.000Z", context: "Ordering at a restaurant" }),

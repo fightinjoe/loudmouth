@@ -46,17 +46,13 @@ async function callAnthropic(prompt, { maxOutputTokens = 1024, signal } = {}) {
     },
   };
 }
-// Claude Haiku 4.5 accepts at most 8,192 output tokens. The route handlers
-// read this capability to avoid sending the shared 30,000-token ceiling,
-// which Anthropic rejects before generation.
+// Claude Haiku 4.5 accepts at most 8,192 output tokens. Expose that
+// capability so route and evaluation callers never request more.
 callAnthropic.maxOutputTokens = 8192;
 
-// Haiku streams roughly 125 output tokens/sec, so a /textbook generate call
-// (~2.6k-3.1k output tokens) measures 20-26s wall — well past the shared
-// 15s default, which made every /textbook Claude request 502 on timeout
-// (see evals/budget-report.md: claude FAILED every scene count on latency
-// alone, with valid JSON). 60s matches the chatgpt and g-flash posture and
-// leaves >2x headroom over the observed worst case.
+// Large phrasebook translation responses can exceed the shared 15-second
+// request budget on Claude Haiku. Keep the provider timeout aligned with the
+// other slower adapters; the route-level deadline still bounds the pipeline.
 callAnthropic.timeoutMs = 60000;
 
 module.exports = { callAnthropic, ANTHROPIC_MODEL };

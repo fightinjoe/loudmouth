@@ -1,12 +1,5 @@
 /**
- * Static, hand-curated SUGGESTED PHRASEBOOKS seed list (docs/journeys.md
- * Journey 2). Real seed content is blocked on finalizing the generation API
- * (docs/BRIEF.md 'Suggested phrasebooks' Open Question, resolved as
- * "placeholder for now") — this list and its term content are a **placeholder**,
- * just enough to exercise the preview -> confirm -> save flow end to end.
- * Replace with real curated content once the generation API lands; do not
- * treat this data as production copy.
- *
+ * Static, hand-curated phrasebooks used by the suggested-preview flow.
  * Every suggestion's `terms` follow the CARD_SCHEMA.md term shape (minus
  * id/createdAt, assigned at import time like any other import).
  */

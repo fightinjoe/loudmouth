@@ -21,7 +21,7 @@
  *   content/select-deck { id }     — request a load; subscriber fetches and fires content/loaded; exits browse
  *   content/reload-deck            — re-fetch the current deck (deckId unchanged); picks up in-place field changes (e.g. mode)
  *   content/loaded { deck, cards } — replace deck + cards
- *   content/cards-changed { cards } — replace cards (after add/edit/delete)
+ *   content/cards-changed { cards } — replace cards after an in-place card change
  *   content/toggle-edit            — flip editMode
  *   content/exit-edit              — exit edit mode
  *   content/toggle-menu            — toggle the deck-title menu
@@ -34,7 +34,6 @@ import { setAttrSafe, setListHTMLSafe } from "../js/uiState.js";
 import { renderDeckBody, renderCardsHTML, renderBrowseBody, renderTabsBar } from "./content-pane-render.js";
 import { wireContentGestures } from "./content-pane-gestures.js";
 import { registerCardActions } from "./content-pane-actions.js";
-import { getLookupHistory } from "../js/preferences.js";
 import { loadDeckData } from "./content-pane-load.js";
 import { SUGGESTED_PHRASEBOOKS } from "../js/suggested-phrasebooks.js";
 
@@ -273,26 +272,12 @@ export default {
       ui.transition("action/open", { kind: "review", payload: { deck, cards: starred } });
     });
 
-    delegate.register("content/add", () => {
-      const { deck, cards } = ui.get("content");
-      // A phrasebook can have prior look-ups without saved cards. History is
-      // therefore the durable first-use signal for VIBE's initial state; cards
-      // retain compatibility with phrasebooks created before lookup history.
-      const hasTranslatedBefore = cards.length > 0 || getLookupHistory(deck.id).length > 0;
-      ui.transition("action/open", {
-        kind: "lookup",
-        payload: { deck, hasTranslatedBefore },
-      });
-    });
 
     delegate.register("content/save-preview", async () => {
       const { deck: preview, cards: previewCards } = ui.get("content");
       if (!preview?.preview) return;
-      // Commit the suggested phrasebook for real: create the deck, import
-      // its seed terms fresh (stripping the temp preview-only ids/createdAt
-      // so importCards assigns real ones — see suggested-phrasebooks.js),
-      // and access-stamp it so it lands at the top of RECENT (docs/journeys.md
-      // Journey 2 step 4: "moves out of Suggested and into Recent").
+      // Commit the preview with fresh IDs, then access-stamp the deck so it
+      // moves to the top of Recent.
       const realDeck = await createDeck(preview.name, preview.lang, {
         ability: preview.ability,
         seedId: preview.seedId,

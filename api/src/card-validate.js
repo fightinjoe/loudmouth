@@ -1,8 +1,8 @@
 /**
  * Shared card-shape validators.
  *
- * Single source of truth for the CARD_SCHEMA term shape (docs/CARD_SCHEMA.md).
- * Used by lookup-validate.js so the card rules stay in one place.
+ * Single source of truth for the CARD_SCHEMA term shape (docs/CARD_SCHEMA.md),
+ * shared by endpoint response assembly and validation.
  *
  * Each validator throws a descriptive Error on the first violation; callers map
  * a throw to a 502 "Invalid response from LLM".
@@ -36,45 +36,10 @@ function validateReadingTokens(value, prefix) {
   }
 }
 
-// Japanese ruby is only valid for kanji-only tokens. Models also sometimes
-// split a kana-only phrase into one token per character, so coalesce adjacent
-// unannotated tokens at the service boundary before returning a card.
-function normalizeJapaneseReadingTokens(value) {
-  const normalized = value.map(([base, annotation]) => [
-    base,
-    /^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+$/u.test(base) ? annotation : null,
-  ]);
-
-  const merged = [];
-  for (const token of normalized) {
-    const previous = merged[merged.length - 1];
-    if (previous && previous[1] === null && token[1] === null) {
-      previous[0] += token[0];
-    } else {
-      merged.push(token);
-    }
-  }
-  return merged;
-}
-
-// "Other scripts" (CARD_SCHEMA "Reading tokens") must always be ONE
-// unannotated token holding the whole word or phrase — space-delimited
-// scripts (Spanish, Czech, ...) have no per-character ruby concept. Models
-// sometimes mirror the zh/ja per-unit tokenization habit and split a
-// multi-word phrase into one token per word instead; since rendering joins
-// tokens with no separator (correct for zh/ja, wrong for spaced scripts),
-// an unnoticed split silently drops the spaces between words. Coalesce back
-// into a single space-joined token at the service boundary, same as
-// normalizeJapaneseReadingTokens does for kana runs.
-function coalesceSpacedReadingTokens(value) {
-  if (value.length <= 1) return value;
-  return [[value.map(([base]) => base).join(' '), null]];
-}
-
 /**
  * Validates a single Card object against CARD_SCHEMA (docs/CARD_SCHEMA.md).
  *
- * Required: lang ("zh"|"ja"), text, translation.
+ * Required: lang ("zh"|"ja"|"es"|"cs"), text, translation.
  * Optional: type, reading, romanization, definition, context, notes, example.
  * Omitted optional fields are fine; present ones must be well-formed.
  *
@@ -130,4 +95,4 @@ function validateCard(card, prefix) {
   }
 }
 
-module.exports = { validateCard, validateReadingTokens, normalizeJapaneseReadingTokens, coalesceSpacedReadingTokens };
+module.exports = { validateCard };

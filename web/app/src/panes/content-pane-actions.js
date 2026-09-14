@@ -54,13 +54,8 @@ export function registerCardActions({ host, isEdit, resetReveal }) {
       });
     }],
 
-    // Tapping the row body itself (card.js's .card-row) speaks the card —
-    // no dedicated play button in the new Figma row (docs/journeys.md-style
-    // decision, see components.css). If the row is currently swiped open
-    // (revealing star/edit/delete), the tap dismisses that reveal instead of
-    // also speaking — matches the other row actions' resetReveal() posture,
-    // but here it's an either/or since a tap while revealed reads as "close
-    // this," not "close this AND play."
+    // Tapping the row body speaks the card. If the row is swiped open, the
+    // tap dismisses the revealed actions instead.
     ["content/play-card", (_e, el) => {
       if (isEdit()) return;
       const wrapper = el.closest(".card-row-wrapper");

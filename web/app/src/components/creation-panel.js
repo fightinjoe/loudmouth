@@ -8,15 +8,10 @@ import { escapeHTML } from "../js/utils.js";
 
 
 /**
- * Opens the `textbook` action-pane content mode (docs/journeys.md Journey 5):
- * a linear, non-stack flow — topic entry → context questions + checklist →
- * generating → done — that replaces the manual look-up stack as the
- * phrasebook-CREATION path on this prototype branch (see action-pane.js's
- * `new-phrasebook` hand-off). Unlike lookup-panel.js's live per-term saves,
- * nothing is created until generation succeeds: the deck is created and
- * every card imported in one shot via `createDeck` + `importCards`
- * (db.js) — no staging, no undo, and the context Q&A/checklist state is
- * discarded once that succeeds (never persisted).
+ * Opens the `creation` action-pane: a linear flow from topic entry through
+ * context questions and a checklist to generation. Nothing is persisted
+ * until generation succeeds, when the deck and all cards are committed via
+ * `createDeck` and `importCards`. Context answers are transient.
  *
  * @param {HTMLElement} appEl
  * @param {{ lang: string, ability: string }} params - the phrasebook's fixed
@@ -25,7 +20,7 @@ import { escapeHTML } from "../js/utils.js";
  *   and import both succeed.
  * @param {Function} onDismiss - called once the pane is dismissed, at any step.
  */
-export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss) {
+export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss) {
   const state = {
     step: "topic", // 'topic' | 'questions' | 'checklist' | 'generating' | 'error'
     topic: "",
@@ -39,9 +34,9 @@ export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss
   };
 
   const sheet = openBottomSheet(appEl, {
-    kind: "textbook",
+    kind: "creation",
     size: "full",
-    bodyHTML: `<div class="textbook-panel-inner flex-col flex-1">${renderStep(state, lang)}</div>`,
+    bodyHTML: `<div class="creation-panel-inner flex-col flex-1">${renderStep(state, lang)}</div>`,
     onClose: onDismiss,
     onMount: (panel) => {
       bind(panel);
@@ -52,7 +47,7 @@ export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss
   return sheet;
 
   function rerender({ focusInput = false } = {}) {
-    const inner = sheet.panel.querySelector(".textbook-panel-inner");
+    const inner = sheet.panel.querySelector(".creation-panel-inner");
     if (!inner) return;
     inner.innerHTML = renderStep(state, lang);
     bind(sheet.panel);
@@ -60,7 +55,7 @@ export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss
   }
 
   function focusInputIfPresent(panel) {
-    panel.querySelector(".textbook-input-field")?.focus();
+    panel.querySelector(".creation-input-field")?.focus();
   }
 
   function autoGrowInput(el) {
@@ -132,7 +127,7 @@ export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss
   }
 
   function bind(panel) {
-    panel.querySelector('[data-action="textbook/back"]')?.addEventListener("click", goBack);
+    panel.querySelector('[data-action="creation/back"]')?.addEventListener("click", goBack);
 
     if (state.step === "topic") bindTopicStep(panel);
     if (state.step === "questions") bindQuestionsStep(panel);
@@ -141,45 +136,45 @@ export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss
   }
 
   function bindTopicStep(panel) {
-    const inputEl = panel.querySelector(".textbook-input-field");
+    const inputEl = panel.querySelector(".creation-input-field");
     if (inputEl) {
       inputEl.value = state.topic;
       autoGrowInput(inputEl);
       inputEl.addEventListener("input", (e) => {
         state.topic = e.target.value;
-        const wrap = panel.querySelector(".textbook-input-wrap");
+        const wrap = panel.querySelector(".creation-input-wrap");
         if (wrap) wrap.dataset.hasValue = state.topic.length > 0 ? "true" : "false";
-        const submitBtn = panel.querySelector('[data-action="textbook/submit-topic"]');
+        const submitBtn = panel.querySelector('[data-action="creation/submit-topic"]');
         if (submitBtn) submitBtn.disabled = state.topic.length === 0;
         autoGrowInput(inputEl);
       });
     }
 
-    panel.querySelector('[data-action="textbook/clear"]')?.addEventListener("click", () => {
+    panel.querySelector('[data-action="creation/clear"]')?.addEventListener("click", () => {
       state.topic = "";
       rerender({ focusInput: true });
     });
 
-    panel.querySelector('[data-action="textbook/submit-topic"]')?.addEventListener("click", () => {
-      submitTopic(panel.querySelector(".textbook-input-field")?.value);
+    panel.querySelector('[data-action="creation/submit-topic"]')?.addEventListener("click", () => {
+      submitTopic(panel.querySelector(".creation-input-field")?.value);
     });
   }
 
   function bindQuestionsStep(panel) {
-    panel.querySelectorAll('[data-action="textbook/answer"]').forEach((select) => {
+    panel.querySelectorAll('[data-action="creation/answer"]').forEach((select) => {
       select.addEventListener("change", () => {
         state.answers[select.dataset.label] = select.value;
       });
     });
 
-    panel.querySelector('[data-action="textbook/to-checklist"]')?.addEventListener("click", () => {
+    panel.querySelector('[data-action="creation/to-checklist"]')?.addEventListener("click", () => {
       state.step = "checklist";
       rerender();
     });
   }
 
   function bindChecklistStep(panel) {
-    panel.querySelectorAll('[data-action="textbook/toggle-checklist-item"]').forEach((row) => {
+    panel.querySelectorAll('[data-action="creation/toggle-checklist-item"]').forEach((row) => {
       row.addEventListener("click", () => {
         const idx = Number(row.dataset.index);
         const item = state.checklist[idx];
@@ -190,13 +185,13 @@ export function openTextbookPanel(appEl, { lang, ability }, onCreated, onDismiss
       });
     });
 
-    panel.querySelector('[data-action="textbook/submit-context"]')?.addEventListener("click", () => {
+    panel.querySelector('[data-action="creation/submit-context"]')?.addEventListener("click", () => {
       submitContext();
     });
   }
 
   function bindErrorStep(panel) {
-    panel.querySelector('[data-action="textbook/retry"]')?.addEventListener("click", () => {
+    panel.querySelector('[data-action="creation/retry"]')?.addEventListener("click", () => {
       state.step = state.questions.length > 0 ? state.resumeStep : "topic";
       state.error = null;
       rerender({ focusInput: state.step === "topic" });
@@ -215,11 +210,9 @@ function renderStep(state, lang) {
   return "";
 }
 
-// Every step is a white, top-rounded surface (Figma "Look-up" card) sitting
-// on the gray-100 pane (bug 3) — hugs its content so the pane color shows
-// below, shrinking + scrolling its body only when content overflows.
+// Every step is a white, top-rounded surface on the gray-100 pane.
 function renderSurface(inner) {
-  return `<div class="textbook-surface flex-col">${inner}</div>`;
+  return `<div class="creation-surface flex-col">${inner}</div>`;
 }
 
 // Header title is always the phrasebook's language (bug 4); the entered topic
@@ -228,31 +221,31 @@ function renderHeader(lang, { extra = "" } = {}) {
   const flag = LANG_FLAGS[lang] ?? "";
   const langName = LANG_NAMES[lang] ?? lang;
   return renderPaneHeader({
-    leading: headerIconButton("back", { action: "textbook/back", label: "Back", className: "textbook-back" }),
+    leading: headerIconButton("back", { action: "creation/back", label: "Back", className: "creation-back" }),
     title: headerTitle(`${flag} ${langName}`.trim()),
-    trailing: `<div class="textbook-header-right flex items-center gap-sm">${extra}</div>`,
+    trailing: `<div class="creation-header-right flex items-center gap-sm">${extra}</div>`,
   });
 }
 
 // The entered topic, pinned at the top of every post-topic step (bug 5) —
 // Figma "Term" line: one Roboto-Flex line under a hairline divider.
 function renderTermLine(topic) {
-  return `<div class="textbook-term flex items-end"><p class="textbook-term-text flex-1">${escapeHTML(topic)}</p></div>`;
+  return `<div class="creation-term flex items-end"><p class="creation-term-text flex-1">${escapeHTML(topic)}</p></div>`;
 }
 
 function renderTopicStep(state, lang) {
   const hasValue = state.topic.length > 0;
   const clearBtn = hasValue
-    ? `<button class="icon-button textbook-input-clear" data-action="textbook/clear" aria-label="Clear">${icon("close", { size: "sm" })}</button>`
+    ? `<button class="icon-button creation-input-clear" data-action="creation/clear" aria-label="Clear">${icon("close", { size: "sm" })}</button>`
     : "";
 
   return renderSurface(`
     ${renderHeader(lang, { extra: clearBtn })}
-    <div class="textbook-input-form flex-col">
-      <div class="textbook-input-wrap" data-has-value="${hasValue}">
-        <div class="textbook-input-field-row flex items-center">
+    <div class="creation-input-form flex-col">
+      <div class="creation-input-wrap" data-has-value="${hasValue}">
+        <div class="creation-input-field-row flex items-center">
           <textarea
-            class="textbook-input-field flex-1 text-entry"
+            class="creation-input-field flex-1 text-entry"
             rows="1"
             placeholder="Enter word, phrase, or topic"
             autocomplete="off"
@@ -261,7 +254,7 @@ function renderTopicStep(state, lang) {
           ></textarea>
         </div>
       </div>
-      <button class="icon-button textbook-submit" data-action="textbook/submit-topic" aria-label="Continue" ${hasValue ? "" : "disabled"}>${icon("next")}</button>
+      <button class="icon-button creation-submit" data-action="creation/submit-topic" aria-label="Continue" ${hasValue ? "" : "disabled"}>${icon("next")}</button>
     </div>
   `);
 }
@@ -272,11 +265,11 @@ function renderQuestionsStep(state, lang) {
   return renderSurface(`
     ${renderHeader(lang)}
     ${renderTermLine(state.topic)}
-    <div class="textbook-step-body flex-col">
-      <div class="textbook-questions flex-col">${questionsHTML}</div>
+    <div class="creation-step-body flex-col">
+      <div class="creation-questions flex-col">${questionsHTML}</div>
     </div>
-    <div class="textbook-context-footer flex items-center justify-end">
-      <button class="icon-button textbook-submit" data-action="textbook/to-checklist" aria-label="Continue">${icon("next")}</button>
+    <div class="creation-context-footer flex items-center justify-end">
+      <button class="icon-button creation-submit" data-action="creation/to-checklist" aria-label="Continue">${icon("next")}</button>
     </div>
   `);
 }
@@ -287,27 +280,27 @@ function renderChecklistStep(state, lang) {
   return renderSurface(`
     ${renderHeader(lang)}
     ${renderTermLine(state.topic)}
-    <div class="textbook-step-body flex-col">
-      <div class="textbook-checklist flex-col">
+    <div class="creation-step-body flex-col">
+      <div class="creation-checklist flex-col">
         <div class="section-label">What do you most want to ask someone to do?</div>
-        <div class="textbook-checklist-items flex-col">${checklistHTML}</div>
+        <div class="creation-checklist-items flex-col">${checklistHTML}</div>
       </div>
     </div>
-    <div class="textbook-context-footer flex items-center justify-end">
-      <button class="icon-button textbook-submit" data-action="textbook/submit-context" aria-label="Generate phrasebook">${icon("next")}</button>
+    <div class="creation-context-footer flex items-center justify-end">
+      <button class="icon-button creation-submit" data-action="creation/submit-context" aria-label="Generate phrasebook">${icon("next")}</button>
     </div>
   `);
 }
 
 function renderQuestionSelect(question, value) {
   return `
-    <label class="textbook-select-row flex-col">
-      <span class="textbook-select-label">${escapeHTML(question.label)}</span>
-      <span class="textbook-select-wrap flex items-center">
-        <select class="textbook-select" data-action="textbook/answer" data-label="${escapeHTML(question.label)}">
+    <label class="creation-select-row flex-col">
+      <span class="creation-select-label">${escapeHTML(question.label)}</span>
+      <span class="creation-select-wrap flex items-center">
+        <select class="creation-select" data-action="creation/answer" data-label="${escapeHTML(question.label)}">
           ${question.options.map((o) => `<option value="${escapeHTML(o)}" ${o === value ? "selected" : ""}>${escapeHTML(o)}</option>`).join("")}
         </select>
-        ${icon("unfold-more", { className: "textbook-select-chevron" })}
+        ${icon("unfold-more", { className: "creation-select-chevron" })}
       </span>
     </label>
   `;
@@ -315,8 +308,8 @@ function renderQuestionSelect(question, value) {
 
 function renderChecklistItem(item, index) {
   return `
-    <button class="textbook-checklist-item flex items-center tappable" data-action="textbook/toggle-checklist-item" data-index="${index}" data-checked="${item.checked}">
-      <span class="textbook-checklist-check flex items-center justify-center">${item.checked ? icon("check", { size: "sm" }) : ""}</span>
+    <button class="creation-checklist-item flex items-center tappable" data-action="creation/toggle-checklist-item" data-index="${index}" data-checked="${item.checked}">
+      <span class="creation-checklist-check flex items-center justify-center">${item.checked ? icon("check", { size: "sm" }) : ""}</span>
       <span class="text-body1 fg-body">${escapeHTML(item.label)}</span>
     </button>
   `;
@@ -326,7 +319,7 @@ function renderGeneratingStep(state, lang) {
   return renderSurface(`
     ${renderHeader(lang)}
     ${renderTermLine(state.topic)}
-    <div class="textbook-generating flex-col flex-1 items-center justify-center">
+    <div class="creation-generating flex-col flex-1 items-center justify-center">
       ${renderSkeleton()}
       <p class="text-body2 fg-secondary">Building your phrasebook…</p>
     </div>
@@ -335,21 +328,21 @@ function renderGeneratingStep(state, lang) {
 
 function renderSkeleton() {
   const one = `
-    <div class="textbook-skeleton-card bg-surface flex-col">
-      <div class="textbook-skeleton-line" style="width: 40%"></div>
-      <div class="textbook-skeleton-line" style="width: 70%; height: 20px;"></div>
+    <div class="creation-skeleton-card bg-surface flex-col">
+      <div class="creation-skeleton-line" style="width: 40%"></div>
+      <div class="creation-skeleton-line" style="width: 70%; height: 20px;"></div>
     </div>
   `;
-  return `<div class="textbook-skeleton-list flex-col">${one}${one}${one}</div>`;
+  return `<div class="creation-skeleton-list flex-col">${one}${one}${one}</div>`;
 }
 
 function renderErrorStep(state, lang) {
   return renderSurface(`
     ${renderHeader(lang)}
     ${state.topic ? renderTermLine(state.topic) : ""}
-    <div class="textbook-error text-center fg-secondary flex-1 flex-col items-center justify-center">
+    <div class="creation-error text-center fg-secondary flex-1 flex-col items-center justify-center">
       <p>${escapeHTML(state.error)}</p>
-      <button class="tappable textbook-retry" data-action="textbook/retry">Try again</button>
+      <button class="tappable creation-retry" data-action="creation/retry">Try again</button>
     </div>
   `);
 }

@@ -42,9 +42,10 @@ Initial product languages are Chinese and Japanese. The API also supports Spanis
 2. **Clarify:** answer dynamic, topic-specific questions and check which conversations to prepare.
 3. **Generate:** commit a complete phrasebook in one step — several short two-sided conversations plus
    a `vocab` group of the words drawn from them.
-4. **Prioritize:** star cards as bounded binary emphasis; generation is not a per-card save flow.
-5. **Review:** three tabs — **Conversations**, **Vocab**, and **Starred**. Reveal cards, switch
-   direction, play pronunciation, and swipe, without scoring. Review runs on the starred cards.
+4. **Prioritize:** star cards as bounded binary emphasis; the whole generated phrasebook arrives in one
+   commit.
+5. **Review:** browse **Conversations**, **Vocab**, and **Starred**, then review the starred cards.
+   Reveal answers, switch direction, play pronunciation, and swipe without scoring.
 
 Difficulty, explanation depth, and expansion (more cards, decomposition) are deferred to a later
 phase, not part of initial generation.
@@ -55,7 +56,7 @@ phase, not part of initial generation.
 - Generate immediately deployable, conversational language at any learner level.
 - Teach both anticipated speech and likely replies.
 - Make short, frequent review frictionless.
-- Let phrasebooks grow without turning the learner into a librarian.
+- Keep a growing library useful without turning the learner into a librarian.
 - Support mobile pronunciation, especially iOS Safari.
 
 ## Non-goals and deferred work
@@ -66,8 +67,6 @@ phase, not part of initial generation.
 - Whole-phrasebook regeneration, undo, or unrestricted editing.
 - Spaced repetition until a useful signal exists without introducing scoring.
 - Furigana ruby rendering until the mobile behavior is validated.
-- Per-card and per-group expansion (more cards, decomposition, grammar and similar-phrase depth) —
-  deferred to a later phase.
 
 ## Phases
 
@@ -76,8 +75,8 @@ phase, not part of initial generation.
 - Guided phrasebook creation through `/context` → `/phrasebook`.
 - Dynamic context questions and a checklist of the conversations to prepare.
 - Complete phrasebook generation: several short two-sided conversations plus a vocabulary group.
-- Three-tab review (Conversations / Vocab / Starred): flip review, direction toggle, swipe
-  navigation, audio, and browse/search; review runs on starred cards.
+- Three-tab browsing (Conversations / Vocab / Starred) plus starred-card review with answer reveal,
+  direction toggle, swipe navigation, and audio.
 
 ### Phase 2 — Library durability
 
@@ -92,14 +91,14 @@ phase, not part of initial generation.
 
 - **Clients:** mobile-first PWA and native iOS app in one monorepo.
 - **Storage:** client-side IndexedDB for the library; no accounts, sync, or server-held library.
-- **API:** Cloud Run service in `api/`. `/context` returns setup questions and topic choices;
-  `/phrasebook` generates English conversations, then translates each conversation in parallel.
-  `/lookup` remains the supporting translation primitive; `/textbook` is retained but not used by
-  the migrated creation client. Cards, usage accounting, and provider adapters are shared.
+- **API:** Cloud Run service in `api/`. `/context` returns setup questions and conversation choices;
+  `/phrasebook` generates English conversations, translates each conversation in parallel, and returns
+  the complete phrasebook. Cards, usage accounting, and provider adapters are shared.
 - **LLMs:** server-selected with `LLM_BACKEND`, default `gemini-3.5-flash-lite`; clients cannot
   select a backend. Alternate server values are `g-flash`, `claude`, and `chatgpt`.
 - **Creation ability:** the client sends `ability: "basics"` explicitly; the API requires
-  `none | basics | conversational`. No new ability UI is introduced by this migration.
+  `none | basics | conversational`. The ability selected during setup remains client-side phrasebook
+  metadata.
 - **Audio:** Web Speech API on mobile browsers. iOS Safari is the primary target; desktop audio is
   unsupported.
 
@@ -115,16 +114,11 @@ Internal card metadata is `id`, `createdAt`, and `deckIds[]`; phrasebook metadat
 
 ## Open decisions
 
-- How much content auto-commit plus repeated expansion should add before the phrasebook feels crowded.
-- Where promoted decomposition words should appear.
-- The structured shape of decomposition data stored in `notes`.
-- The bounded UI for per-card easier/more-advanced requests.
-- Whether and how declined creation goals persist as an expansion suppression set.
-- How a future in-the-moment mode relates to prep phrasebooks.
+- How a future in-the-moment capture mode relates to prep phrasebooks.
+- Which durability and retention features earn their place without introducing scores or bookkeeping.
 
 ## References
 
 - [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md) — card and reading-token contract.
 - [`docs/API_DESIGN.md`](./API_DESIGN.md) — API request, response, and model-behavior contracts.
 - [`docs/DESIGN.md`](./DESIGN.md) and [`docs/journeys.md`](./journeys.md) — interaction design.
-- [`docs/designs/prep-pivot-and-phrasebook-expansion.md`](./designs/prep-pivot-and-phrasebook-expansion.md) — design rationale and unresolved expansion questions.

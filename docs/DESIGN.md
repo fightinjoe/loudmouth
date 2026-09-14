@@ -1,94 +1,117 @@
 ---
 name: design
 description: >
-  High-level UX design for the web and iOS app (public name: Catchphrase; code name: Loudmouth).
-  Describes app structure, panes, and the core interaction model at the altitude needed to write an
-  engineering design. Both interfaces are the same except where explicitly noted. For the end-to-end
-  interaction nuance (step-by-step flows, states, copy) see `docs/journeys.md`; for pane vocabulary and
-  gestures see the Pane Protocol; for data shapes see `docs/CARD_SCHEMA.md`.
+  High-level UX design for the current Catchphrase web and iOS experience. Describes the pane
+  structure, guided phrasebook creation, phrasebook browsing, and starred-card review. For
+  step-by-step flows see docs/journeys.md; for pane mechanics see the Pane Protocol; for card data
+  shapes see docs/CARD_SCHEMA.md.
 ---
 
-> **Naming.** **Loudmouth** is the internal code name (repo, packages, identifiers). **Catchphrase** is
-> the public product name used in all user-facing copy. The collection noun is **phrasebook** (one word).
+# Catchphrase interaction design
 
-**Current creation integration:** the existing guided creation UI calls `/context` with
-`{ seed, language }`, defaults each question to its first option, then calls `/phrasebook` with
-`{ seed, language, ability: "basics", answers, checklist }`. Topic selections are user-controlled
-(1–8); no new ability control is introduced. Backend selection is server-only. Existing stored
-ability and lookup UI conventions below do not determine the new phrasebook request's ability.
+> **Naming.** **Loudmouth** is the internal code name used by the repository and packages.
+> **Catchphrase** is the public product name. The collection noun is **phrasebook** (one word).
 
-### Information Architecture
+The product is organized around one prep-first loop: create a complete phrasebook for a situation,
+star the cards worth emphasizing, and review those cards. Successful generation commits the complete
+phrasebook at once.
 
-This app organizes its UI according to the **Pane Protocol** (`web/docs/PANE_PROTOCOL.html`), the source of truth for pane vocabulary, the layer stack, state, transitions, and gestures; this doc describes the product-level design on top of it. Terms — *pane*, *layer*, *scrim*, *handle* — carry their protocol meanings. For how iOS maps this protocol onto SwiftUI, see `ios/ARCHITECTURE.md`.
+## Information architecture
 
-**High-level app structure (Phase 1):** No tab bar. The app is a stage with four fixed **layers**, bottom to top: **shell** < **content** < **details** < **action** (Pane Protocol, Rule 8). A **pane** lives in exactly one layer:
+The app follows the **Pane Protocol** (`web/docs/PANE_PROTOCOL.html`). The stage has four fixed layers,
+from bottom to top: **shell**, **content**, **details**, and **action**.
 
-- **Navigation pane** (shell layer) — fixed, always present, revealed by sliding the content pane sideways.
-- **Content pane** (content layer) — shown by default; slides right to reveal the navigation pane. Its content changes based on the phrasebook selected. Switching between content screens (a phrasebook, a browse view, the landing page) swaps what the content pane renders — it does not add a layer.
-- **Details pane** (details layer) — optional; bottom-anchored surface over a scrim showing one term's full detail. Not full-height. A horizontal swipe inside traverses to the previous/next sibling term without dismissing; a back affordance or scrim click closes it and returns to the content pane.
-- **Action pane** (action layer) — optional; a bottom-anchored, modal surface over a **scrim**, contextual to the pane beneath it. At most one is open at a time; it always wins z-order. It can be dismissed by swiping down, tapping the scrim, or an explicit close. The action pane is not a single screen but a **host for several content modes** and a small internal navigation stack (see *Action pane* below).
+- **Navigation pane** (shell) — always present. It contains the landing page, recent and suggested
+  phrasebooks, language-grouped library navigation, and the new-phrasebook entry point. Sliding the
+  content pane right reveals it.
+- **Content pane** (content) — shows the selected phrasebook or a browse list. Changing content swaps
+  this pane's screen rather than adding a layer.
+- **Details pane** (details) — an optional bottom-anchored card detail surface over a scrim. It can
+  traverse sibling cards and returns to the same content position when dismissed.
+- **Action pane** (action) — an optional modal bottom sheet over a scrim. It hosts new-phrasebook
+  setup, guided creation, and review. At most one action pane is open.
 
-### Pane naming — component vs. content
+A pane's component name identifies its fixed layer and behavior; its content name identifies what it
+currently renders. For example, **creation** and **review** are content modes hosted by the same action
+pane, not separate pane components.
 
-Every pane has a **component name** (its fixed identity, layer, and behavior) and a **content name** (which screen it is currently rendering). One component hosts many content modes — e.g. the action pane hosts *Input*, *Translation*, *Group*, *New-phrasebook*, and *Review* content. Don't conflate the two.
+## Navigation pane
 
-### Navigation pane
+The landing page shows the product identity, recent phrasebooks, suggested phrasebooks, and a prominent
+new-phrasebook action. Returning users can start the same flow from the navigation FAB. Once the user
+has phrasebooks, navigation groups them by language and offers browse views where needed. A dynamic
+Starred collection may appear for a language with starred cards.
 
-Navigation between phrasebooks (shell layer). It shows a **Recent** section (most-recently-viewed phrasebooks) and a **Suggested phrasebooks** section of curated, static seed collections the user can preview and add. A per-language organization applies once the user has phrasebooks: a section per language, up to a handful each, with an `All ${language} phrasebooks` link into a browse list in the content pane when there are more. If any term is starred for a language, a dynamic **Starred** phrasebook appears at the top of that language's section. The landing page (logo, tagline, Recent, Suggested) is the navigation pane's default content; its empty state swaps only the call-to-action copy.
+Selecting an existing phrasebook opens it in the content pane. Selecting a suggested phrasebook opens
+its language-and-ability confirmation and then a read-only preview; **Save** commits that preview to the
+local library.
 
-### Content pane — phrasebook view
+## Guided creation
 
-The primary content mode: all terms for one phrasebook. Header: a **menu** button (left; slides the content pane aside to reveal the navigation pane — swiping right from the left edge does the same), the phrasebook **title** (center; tapping it opens a menu with **Edit terms**), and no add button. **Edit terms** switches the term list into a drag-to-reorder mode.
+Creation uses two sequential action-pane modes:
 
-Terms are shown grouped. Each saved term carries an optional **group context** (e.g. "Ordering at a restaurant") that determines its section; terms with no context render in an **untitled group** at the top with no header. **Ordering differs by section:** the untitled top section (standalone look-up terms) is **newest-first** (a new look-up term prepends to the top); within every **named** group, order is **oldest-first** (newest on the bottom). (Reconciles DESIGN's group-order rule with journeys.md J3's "new term appears at the top.")
+1. **New phrasebook** — choose the target language and learner ability. Language is immutable for the
+   resulting phrasebook. The last selected ability for a language seeds that language's next setup.
+2. **Creation** — enter a situation, answer generated clarification questions, choose which suggested
+   conversations to prepare, and generate the complete phrasebook.
 
-Named groups are always fully expanded, with no collapse control or phrase-count footer. Conversation cards use the speaker metadata in `notes`: **YOU** cards are right-aligned blue-tinted bubbles, and **PARTNER** cards are left-aligned neutral bubbles. Speaker labels identify each side. Cards without speaker metadata retain their standard layout.
+The creation mode is a linear flow:
 
-A bottom **action bar** with two actions is the phrasebook's control surface:
+```text
+topic → questions → conversation checklist → generating → phrasebook
+```
 
-- **Add** — opens the action pane at **Input mode** (the look-up stack below) to translate and add terms.
-- **Review** — opens the action pane's **Review mode**.
+Topic submission calls `/context` with `{ seed, language }`. Each returned question initially uses its
+first option. The learner may change the answers and select 1–8 checklist topics. Final submission calls
+`/phrasebook` with `{ seed, language, ability: "basics", answers, checklist }`; model selection remains
+server-owned.
 
-There is no header "+" add button and no "Add terms" text input; the bottom bar is the sole term-adding entry point.
+Nothing is persisted while the learner is answering questions or selecting conversations. Once
+`/phrasebook` succeeds, the client creates the phrasebook and imports every returned card as one commit.
+Failure keeps the learner's current creation state available for retry. Leaving before success creates
+no partial phrasebook or draft.
 
-### Details pane
+The selected setup ability remains local phrasebook metadata. The current generation client explicitly
+uses the API's `basics` ability until product behavior connects those concepts.
 
-Tapping a term row opens the details pane (details layer) — a bottom-anchored surface over a scrim showing that term's full detail. Not full-height. Swiping left/right traverses sibling terms without dismissing; a back affordance or scrim click returns to the content pane at the same scroll position.
+## Phrasebook view
 
-### Action pane
+A phrasebook opens in the content pane with three tabs:
 
-The action pane is a **surface that hosts content modes** — bottom-anchored, modal over a scrim, dismissible by swipe-down or scrim tap. It is the single surface for capturing language and for reviewing it. Its content modes:
+- **Conversations** — generated conversation groups, in preparation order.
+- **Vocab** — the pooled vocabulary group.
+- **Starred** — all starred cards in the phrasebook.
 
-- The **look-up stack** — *Input → Translation → Group*, a sequential stack where "back" pops one step.
-- **New-phrasebook** — a standalone mode (not part of any stack).
-- **Review** — a standalone mode (not part of any stack).
+Conversation cards use the speaker metadata encoded in `notes`. **YOU** cards are right-aligned and
+blue-tinted; **PARTNER** cards are left-aligned and neutral. Alternative lines remain in their source
+conversation. Vocabulary cards use the standard card layout.
 
-There is no separate "translate" vs. "generate" pane — one look-up flow, augmented by AI-clustered related content.
+Cards can be starred for review. Tapping a card plays its target-language pronunciation; swipe actions
+expose card editing and deletion where the platform supports them. Phrasebook settings and card reorder
+remain available from the phrasebook title menu. Generated group context is preserved on cards so
+conversation membership survives local storage and display filtering.
 
-**Look-up stack modes:**
+The phrasebook action bar contains **Review**. Phrasebook content is not extended from this view; a new
+situation starts a new guided phrasebook from navigation.
 
-1. **Input** — a word/phrase field, the **VIBE** settings, and a **History** of recent look-ups. Submitting (keyboard **return** — there is no on-screen submit button) advances to Translation. Back here dismisses the pane.
-2. **Translation** — the primary translation for the input, plus **related groups**: AI-clustered sets of related words/phrases, biased by the phrasebook's context (the "find-related" mechanic). Back → Input.
-3. **Group** — the full contents of one related group. Back → Translation.
+## Review
 
-**New-phrasebook mode** — reached from the navigation pane (creating a new phrasebook) or from a suggested phrasebook (a confirm variant). Sets the phrasebook's **language** and the learner's **ability**.
+Review is a full-height action-pane mode opened from a phrasebook. Its study set is the phrasebook's
+starred cards in phrasebook order, regardless of which content tab was visible. With no starred cards,
+the action is unavailable.
 
-**Review mode** — see [Review mode](#review-mode) below.
+Each review card supports:
 
-**Saving.** Each result card has a bookmark that **commits the term to the phrasebook immediately** (no staging/approval). A header badge counts terms added since the pane opened and doubles as a one-tap return to the phrasebook. A card's **🔍** re-seeds a fresh look-up from that card (popping back to Input with the card's text prefilled, plus the source group name as parenthetical context).
+- English-to-target or target-to-English direction, toggled for the current review session;
+- hidden-answer reveal, including press-and-hold peek while the answer remains hidden;
+- target-language audio, independent of the current direction;
+- left/right swipe navigation.
 
-**Deferred creation.** Choosing language/ability and running look-ups does **not** create a phrasebook. It is persisted only when the **first term is saved**. Before that, dismissing returns to the navigation pane with nothing created — there are no drafts. (For suggested phrasebooks, the creation commit is the preview's **Save** action instead.)
-
-**Language & ability.** Both are set at creation and are **immutable** thereafter (cannot be changed once the phrasebook exists). Language is the phrasebook's fixed target language; the "🇯🇵 Japanese" header label elsewhere is display-only. **Ability** (None / Beginner / Intermediate / Advanced) is the learner's proficiency and **biases generation**; the last ability used for a language becomes that language's default. **VIBE** (Formality + Audience) is the *tone* of the translation — a separate, editable per-phrasebook default surfaced in Input mode.
-
-### Suggested phrasebooks
-
-Curated, static seed collections shown in the navigation pane. Tapping one opens a confirm sheet (language/ability), then a **read-only preview** of the fully-populated phrasebook with a **Save** action; Save is the creation commit, after which it moves from Suggested into the user's library. Suggested content is fully context-grouped, and there is a distinct pre-authored seed per `{language, ability}` pairing. (Seed content is a placeholder pending the generation API.)
-
-### Review mode
-
-A flashcard content mode of the **action pane**, entered from a phrasebook's **Review** action, covering the whole phrasebook at once. Cards flip between prompt and answer with a manual reveal; a direction toggle flips prompt↔answer (target ↔ English), and per-card audio plays the target pronunciation. **Swipe left/right** advances/reverses through the deck. The deck **does not loop** and has no end-of-deck summary — it hard-stops at the first and last card. Review settings (e.g. direction) persist per phrasebook.
+Changing direction hides the current answer again. Moving to another card also resets reveal state.
+Review does not loop and has no end-of-deck summary: navigation stops at the first and last card.
+Closing review returns to the same phrasebook.
 
 ---
 
-See `docs/journeys.md` for the detailed step-by-step flows, interaction states, exact copy, and open questions behind each of the above.
+See `docs/journeys.md` for the retained end-to-end journeys and `docs/CARD_SCHEMA.md` for persisted card
+and reading-token shapes.

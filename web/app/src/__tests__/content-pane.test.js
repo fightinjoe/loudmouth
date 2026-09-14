@@ -110,34 +110,7 @@ describe("content pane — deck mode (card template) reactivity", () => {
   });
 });
 
-describe("content pane — Add/Review entry points (PH-002/PH-007/PH-009)", () => {
-  it("content/add opens the lookup action pane for the selected deck, with hasTranslatedBefore=false for an empty phrasebook", async () => {
-    const { ui, rootEl } = mountPane();
-    ui.transition("content/select-deck", { id: "d1" });
-    await flush();
-
-    const opens = [];
-    const realTransition = ui.transition;
-    ui.transition = (verb, payload) => {
-      if (verb === "action/open") opens.push(payload);
-      return realTransition(verb, payload);
-    };
-
-    // Inject a real 'content/add' trigger the way renderDeckBody would —
-    // this suite mocks the render module, so we supply just the button the
-    // delegate needs, then click it for real to exercise the actual
-    // registered handler (not a re-implementation of its logic).
-    const btn = document.createElement("button");
-    btn.dataset.action = "content/add";
-    rootEl.appendChild(btn);
-    btn.click();
-
-    expect(opens).toHaveLength(1);
-    expect(opens[0]).toEqual({
-      kind: "lookup",
-      payload: { deck: expect.objectContaining({ id: "d1" }), hasTranslatedBefore: false },
-    });
-  });
+describe("content pane — Review entry point", () => {
 
   it("content/review opens the review action pane with the deck's starred cards", async () => {
     const { ui, rootEl } = mountPane();
@@ -186,7 +159,7 @@ describe("content pane — Add/Review entry points (PH-002/PH-007/PH-009)", () =
   });
 });
 
-describe("content pane — save-preview (PH-008)", () => {
+describe("content pane — save-preview", () => {
   beforeEach(() => {
     createDeck.mockClear();
     importCards.mockClear();

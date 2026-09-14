@@ -3,12 +3,10 @@ import { test, expect } from '@playwright/test'
 /**
  * Runtime smoke test for the action-pane sub-kinds.
  *
- * Every action pane (settings, card-edit, json) is opened in a real browser
- * and must mount, render, and close without emitting a single console error
- * or uncaught exception. This is the guard for the class of bug where a pane
- * throws only at runtime — e.g. a temporal-dead-zone ReferenceError when an
- * onMount closure evaluates a not-yet-initialized binding. Unit tests and the
- * build do not exercise that path; this does.
+ * Every action pane kind is opened in a real browser and must mount, render,
+ * and close without emitting a console error or uncaught exception. This
+ * catches runtime-only failures such as an onMount closure evaluating a
+ * not-yet-initialized binding.
  *
  * The test drives the app the way the app drives itself: it fires
  * `action/open` transitions through the exposed state machine and seeds a deck
@@ -22,8 +20,7 @@ const KINDS = [
   { kind: 'settings', needsDeck: true, needsCards: true, label: 'settings' },
   { kind: 'card-edit', needsCard: true, label: 'card-edit' },
   { kind: 'review', needsDeck: true, needsCards: true, label: 'review' },
-  { kind: 'lookup', needsDeck: true, label: 'lookup (input mode)' },
-  { kind: 'textbook', payload: { lang: 'ja', ability: 'beginner' }, label: 'textbook (topic entry)' },
+  { kind: 'creation', payload: { lang: 'ja', ability: 'beginner' }, label: 'creation (topic entry)' },
   { kind: 'new-phrasebook', payload: {}, label: 'new-phrasebook' },
   {
     kind: 'new-phrasebook',

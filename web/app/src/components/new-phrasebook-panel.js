@@ -8,42 +8,22 @@ const LANGS = ["zh", "ja", "es", "cs"];
 const ABILITIES = ["none", "beginner", "intermediate", "advanced"];
 const ABILITY_LABELS = { none: "None", beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" };
 
-// Retained for lookup-panel.js's `maybeAutoNameDeck` (Journey 3's "Add" on
-// an existing phrasebook) — that guard is now dead in practice on this
-// branch since nothing creates a deck with this name anymore (Journey 1's
-// creation hand-off no longer runs), but lookup-panel.js is intentionally
-// left untouched per docs/journeys.md Journey 5's "Journey 1 stays intact"
-// decision, so the constant it imports must keep existing.
-export const PLACEHOLDER_DECK_NAME = "New phrasebook";
 
 /**
- * Opens New-phrasebook mode (docs/journeys.md Journey 1 steps 1-2 +
- * 'Ability field'): Language + Your ability selects, immutable once the
- * phrasebook is created.
+ * Opens New-phrasebook mode: language and ability are chosen before guided
+ * creation starts. No deck is persisted until generation succeeds.
  *
- * ⚠️ Prototype-branch behavior (docs/journeys.md Journey 5): on create, this
- * hands `{ lang, ability }` back to `onCreated` WITHOUT creating a deck —
- * the caller (action-pane.js) opens the guided Textbook flow next, which
- * creates the deck itself once generation succeeds. No placeholder deck is
- * created here, unlike the shipped product's Journey 1 hand-off.
- *
- * Also serves Journey 2's Confirm mode (a suggested-phrasebook preview
- * gate) when `suggestion` is passed — "reuses the New-phrasebook
- * action-pane content, confirm-specific copy" per
- * docs/projects/phrasebook-lookup-ux/tasks.json PH-008. Confirm mode
- * doesn't call `createDeck` itself; it hands the chosen language/ability
- * back to `onConfirmed` so the caller can build the unsaved preview
- * (action-pane.js's 'new-phrasebook' -> content-pane preview hand-off).
+ * When `suggestion` is passed, the same surface acts as a confirmation gate
+ * and hands the chosen language and ability to the caller, which builds the
+ * unsaved preview.
  *
  * @param {HTMLElement} appEl
- * @param {{ createDeck: Function }} deps - retained for signature parity
- *   with the confirm-mode caller; unused in create mode on this branch.
  * @param {Function} onCreated - (create mode) called with (lang, ability)
  * @param {Function} onDismiss
  * @param {{ id: string, emoji: string, title: string, lang: string }} [suggestion]
  * @param {Function} [onConfirmed] - (confirm mode) called with { lang, ability }
  */
-export function openNewPhrasebookPanel(appEl, { createDeck }, onCreated, onDismiss, suggestion, onConfirmed) {
+export function openNewPhrasebookPanel(appEl, onCreated, onDismiss, suggestion, onConfirmed) {
   const state = {
     lang: suggestion?.lang || LANGS[0],
     ability: getLastAbility(suggestion?.lang || LANGS[0]) || "beginner",
@@ -76,8 +56,7 @@ export function openNewPhrasebookPanel(appEl, { createDeck }, onCreated, onDismi
 
     langSelect?.addEventListener("change", (e) => {
       state.lang = e.target.value;
-      // App-wide "last ability used" pre-fills for a language you've used
-      // before (docs/journeys.md 'Ability field').
+      // Reuse this language's last chosen ability when available.
       state.ability = getLastAbility(state.lang) || "beginner";
       rerender();
     });
@@ -86,8 +65,7 @@ export function openNewPhrasebookPanel(appEl, { createDeck }, onCreated, onDismi
       state.ability = e.target.value;
     });
 
-
-    panel.querySelector('[data-action="new-phrasebook/create"]')?.addEventListener("click", async (e) => {
+    panel.querySelector('[data-action="new-phrasebook/create"]')?.addEventListener("click", (e) => {
       const btn = e.currentTarget;
       if (btn.disabled) return;
       btn.disabled = true;

@@ -4,7 +4,7 @@ const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { parseContextRequest, validateContextResponse, handleContext } = require('../context');
-const { buildContextPrompt } = require('../context-prompt');
+const { buildContextPrompt } = require('../context/prompt');
 const { getBackendName, LLM_REGISTRY } = require('../llm-config');
 
 const BACKEND = 'gemini-3.5-flash-lite';

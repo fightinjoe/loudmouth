@@ -25,18 +25,8 @@ export function renderHeader(deck) {
 
 /**
  * Renders the phrasebook's saved cards, sectioned by their `context` field
- * (docs/CARD_SCHEMA.md 'Group context' — set by the service on save: a
- * group-sourced card carries its group's title, a standalone look-up term
- * carries none). docs/journeys.md Journey 1 step 10 + Journey 3 key detail 2:
- *
- *   - Standalone (context-less) terms accumulate under a generic
- *     "Translations" section, newest-first — but ONLY once there's another
- *     section to distinguish them from (a phrasebook holding only
- *     standalone terms shows them plain/ungrouped, matching Journey 1's
- *     freshly-created single-term screenshot, which has no header at all).
- *   - Group-sourced terms are sectioned under their group's title, in
- *     save order. Sections are ordered by each section's earliest card
- *     (oldest-first), with "Translations" always first when present.
+ * (docs/CARD_SCHEMA.md 'Group context'). Cards without a context render
+ * flat; cards with a context render in named conversation sections.
  */
 export function renderCardsHTML(deck, cards, tab = "conversations") {
   if (!deck) return "";
@@ -54,8 +44,7 @@ export function renderCardsHTML(deck, cards, tab = "conversations") {
     }
     return words.map((c) => renderCardRow(c, deck.readingDisplay)).join("");
   } else {
-    // Conversations tab: everything that isn't a standalone vocabulary word —
-    // the conversation groups (phrase cards) plus any ungrouped look-up terms.
+    // Conversations tab: phrase cards, grouped by their optional context.
     cards = cards.filter((c) => c.type !== "word");
   }
   if (cards.length === 0) {
@@ -99,7 +88,7 @@ export function renderCardsHTML(deck, cards, tab = "conversations") {
   return `${standaloneHTML}${groupsHTML}`;
 }
 
-// Standalone translations remain a flat list above the named groups.
+// Cards without a conversation context remain a flat list above named groups.
 function renderStandaloneSection(title, cards, readingDisplay) {
   return `
     <div class="deck-view-section-header section-label">${escapeHTML(title)}</div>
@@ -149,7 +138,6 @@ export function renderDeckBody(deck, cards, tab = "conversations") {
       ? ""
       : `<div class="deck-view-action-bar shrink-0 flex items-center justify-center">
            <div class="deck-view-action-pill flex items-center">
-             <button class="deck-view-action-btn flex-col items-center" data-action="content/add" aria-label="Add">${icon("add")}<span>Add</span></button>
              <button class="deck-view-action-btn flex-col items-center" data-action="content/review" aria-label="Review">${icon("review")}<span>Review</span></button>
            </div>
          </div>`}

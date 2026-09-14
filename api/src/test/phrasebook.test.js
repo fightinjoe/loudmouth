@@ -4,8 +4,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const { performPhrasebook, handlePhrasebook } = require('../phrasebook');
-const { parsePhrasebookRequest, assemblePhrasebook, parseInlineReading } = require('../phrasebook-parse');
-const { buildPhrasebookGenerationPrompt, buildPhrasebookTranslationPrompt } = require('../phrasebook-prompt');
+const { parsePhrasebookRequest, assemblePhrasebook, parseInlineReading } = require('../phrasebook/parse');
+const { buildPhrasebookGenerationPrompt, buildPhrasebookTranslationPrompt } = require('../phrasebook/prompt');
 
 const backendName = 'gemini-3.5-flash-lite';
 const first = {

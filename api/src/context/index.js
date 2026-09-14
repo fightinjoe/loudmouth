@@ -20,9 +20,9 @@
  *   200 { questions, checklist, usage }
  */
 
-const { buildContextPrompt } = require('./context-prompt');
-const { buildUsageReport } = require('./pricing');
-const { getBackendName } = require('./llm-config');
+const { buildContextPrompt } = require('./prompt');
+const { buildUsageReport } = require('../pricing');
+const { getBackendName } = require('../llm-config');
 
 const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
 const MAX_SEED_LENGTH = 200;

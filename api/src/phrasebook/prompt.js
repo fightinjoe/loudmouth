@@ -4,17 +4,17 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const GENERATION_TEMPLATE = fs.readFileSync(
-  path.join(__dirname, 'phrasebook-prompt.txt'),
+  path.join(__dirname, 'prompt.txt'),
   'utf8',
 );
 const TRANSLATION_TEMPLATE = fs.readFileSync(
-  path.join(__dirname, 'phrasebook-translate-prompt.txt'),
+  path.join(__dirname, 'translate-prompt.txt'),
   'utf8',
 );
 
 const READING_RULES = Object.freeze({
-  ja: fs.readFileSync(path.join(__dirname, 'phrasebook-reading-rules-ja.txt'), 'utf8'),
-  zh: fs.readFileSync(path.join(__dirname, 'phrasebook-reading-rules-zh.txt'), 'utf8'),
+  ja: fs.readFileSync(path.join(__dirname, 'reading-rules-ja.txt'), 'utf8'),
+  zh: fs.readFileSync(path.join(__dirname, 'reading-rules-zh.txt'), 'utf8'),
 });
 
 function withReadingRules(template, language) {

@@ -44,9 +44,8 @@ function renderHero() {
   `;
 }
 
-// Empty-state-only banner (docs/journeys.md Journey 1 step 1). The empty
-// state and populated landing share this component; once the user has any
-// phrasebook the banner steps aside for the FAB as the add entry point.
+// Empty-state banner. Once the user has a phrasebook, the banner gives way
+// to the persistent Add FAB.
 function renderCtaBanner(hasDecks) {
   if (hasDecks) return "";
   return `

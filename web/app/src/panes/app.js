@@ -43,9 +43,7 @@ const shellTransitions = {
 export function initApp(params) {
   const appEl = document.getElementById("app");
 
-  // Fresh installs / no last-loaded deck land on the nav pane's landing
-  // view (docs/journeys.md Journey 1 step 1) rather than an empty content
-  // pane — the shell only starts "foreground" once there's a deck to show.
+  // Fresh installs with no last-loaded deck land on the nav pane.
   const initialDeckId = params?.id || getLastDeckId();
   const initialShell = initialDeckId ? "foreground" : "background";
 

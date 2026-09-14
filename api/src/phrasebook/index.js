@@ -1,17 +1,17 @@
 'use strict';
 
-const { buildUsageReport } = require('./pricing');
-const { getBackendName } = require('./llm-config');
+const { buildUsageReport } = require('../pricing');
+const { getBackendName } = require('../llm-config');
 const {
   parsePhrasebookRequest,
   validateGenerationResponse,
   validateTranslationResponse,
   assemblePhrasebook,
-} = require('./phrasebook-parse');
+} = require('./parse');
 const {
   buildPhrasebookGenerationPrompt,
   buildPhrasebookTranslationPrompt,
-} = require('./phrasebook-prompt');
+} = require('./prompt');
 
 const PHRASEBOOK_GENERATION_MAX_TOKENS = 6000;
 const PHRASEBOOK_TRANSLATION_MAX_TOKENS = 4000;

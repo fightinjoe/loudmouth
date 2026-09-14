@@ -1,7 +1,7 @@
 'use strict';
 
 const { toRomaji } = require('wanakana');
-const { validateCard } = require('./card-validate');
+const { validateCard } = require('../card-validate');
 
 const LANGUAGES = Object.freeze(['zh', 'ja', 'es', 'cs']);
 const ABILITIES = Object.freeze(['none', 'basics', 'conversational']);

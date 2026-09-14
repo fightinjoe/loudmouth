@@ -7,8 +7,6 @@ const { createDeck, importCards } = vi.hoisted(() => ({
     name,
     lang,
     ability: opts?.ability || "beginner",
-    formality: "polite",
-    audience: "staff",
   })),
   importCards: vi.fn(async () => {}),
 }));
@@ -20,7 +18,7 @@ const { getContext, generatePhrasebook } = vi.hoisted(() => ({
 }));
 vi.mock("../js/phrasebook-api.js", () => ({ getContext, generatePhrasebook }));
 
-import { openTextbookPanel } from "../components/textbook-panel.js";
+import { openCreationPanel } from "../components/creation-panel.js";
 
 const sampleQuestionsResponse = {
   questions: [
@@ -57,38 +55,38 @@ beforeEach(() => {
 });
 
 function typeAndSubmitTopic(el, topic) {
-  const inputEl = el.querySelector(".textbook-input-field");
+  const inputEl = el.querySelector(".creation-input-field");
   inputEl.value = topic;
   inputEl.dispatchEvent(new Event("input"));
-  el.querySelector('[data-action="textbook/submit-topic"]').click();
+  el.querySelector('[data-action="creation/submit-topic"]').click();
 }
 
 // Advance from the questions page (page 1) to the checklist page (page 2).
 function gotoChecklist(el) {
-  el.querySelector('[data-action="textbook/to-checklist"]').click();
+  el.querySelector('[data-action="creation/to-checklist"]').click();
 }
 
-describe("openTextbookPanel — topic entry", () => {
+describe("openCreationPanel — topic entry", () => {
   it("renders the language flag/name and an empty field", () => {
-    openTextbookPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
+    openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
     expect(appEl.querySelector(".pane-header-title").textContent).toContain("Spanish");
-    expect(appEl.querySelector(".textbook-input-field").value).toBe("");
+    expect(appEl.querySelector(".creation-input-field").value).toBe("");
   });
 
   it("submit button is disabled until the topic has a value", () => {
-    openTextbookPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
-    expect(appEl.querySelector('[data-action="textbook/submit-topic"]').disabled).toBe(true);
-    const inputEl = appEl.querySelector(".textbook-input-field");
+    openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
+    expect(appEl.querySelector('[data-action="creation/submit-topic"]').disabled).toBe(true);
+    const inputEl = appEl.querySelector(".creation-input-field");
     inputEl.value = "salsa dancing";
     inputEl.dispatchEvent(new Event("input"));
-    expect(appEl.querySelector('[data-action="textbook/submit-topic"]').disabled).toBe(false);
+    expect(appEl.querySelector('[data-action="creation/submit-topic"]').disabled).toBe(false);
   });
 
   it("back/close dismisses the whole pane", () => {
     let dismissed = false;
-    openTextbookPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => { dismissed = true; });
-    const panel = appEl.querySelector(".textbook-panel");
-    appEl.querySelector('[data-action="textbook/back"]').click();
+    openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => { dismissed = true; });
+    const panel = appEl.querySelector(".creation-panel");
+    appEl.querySelector('[data-action="creation/back"]').click();
     panel.dispatchEvent(new Event("transitionend"));
     expect(dismissed).toBe(true);
   });
@@ -96,42 +94,42 @@ describe("openTextbookPanel — topic entry", () => {
   it("shows a loading skeleton while context questions are loading", async () => {
     let resolveContext;
     getContext.mockReturnValueOnce(new Promise((res) => { resolveContext = res; }));
-    openTextbookPanel(appEl, { lang: "es", ability: "advanced" }, () => {}, () => {});
+    openCreationPanel(appEl, { lang: "es", ability: "advanced" }, () => {}, () => {});
     typeAndSubmitTopic(appEl, "salsa dancing");
 
-    expect(appEl.querySelector(".textbook-skeleton-list")).toBeTruthy();
+    expect(appEl.querySelector(".creation-skeleton-list")).toBeTruthy();
 
     resolveContext(sampleQuestionsResponse);
-    await vi.waitFor(() => expect(appEl.querySelector(".textbook-select")).toBeTruthy());
+    await vi.waitFor(() => expect(appEl.querySelector(".creation-select")).toBeTruthy());
   });
 
   it("shows an error message when context loading rejects", async () => {
     getContext.mockRejectedValueOnce(new Error("LLM request failed"));
-    openTextbookPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
+    openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
     typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(".textbook-error")).toBeTruthy());
-    expect(appEl.querySelector(".textbook-error").textContent).toContain("LLM request failed");
+    await vi.waitFor(() => expect(appEl.querySelector(".creation-error")).toBeTruthy());
+    expect(appEl.querySelector(".creation-error").textContent).toContain("LLM request failed");
   });
 });
 
-describe("openTextbookPanel — context questions + checklist", () => {
+describe("openCreationPanel — context questions + checklist", () => {
   async function openWithQuestions(response = sampleQuestionsResponse) {
     getContext.mockResolvedValueOnce(response);
-    openTextbookPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
+    openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
     typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(".textbook-select")).toBeTruthy());
+    await vi.waitFor(() => expect(appEl.querySelector(".creation-select")).toBeTruthy());
   }
 
   it("renders one select per question, pre-filled with its first option", async () => {
     await openWithQuestions();
-    const select = appEl.querySelector(".textbook-select");
+    const select = appEl.querySelector(".creation-select");
     expect(select.value).toBe("Latin America (neutral)");
   });
 
   it("renders the checklist with pre-checked defaults", async () => {
     await openWithQuestions();
     gotoChecklist(appEl);
-    const items = appEl.querySelectorAll(".textbook-checklist-item");
+    const items = appEl.querySelectorAll(".creation-checklist-item");
     expect(items).toHaveLength(2);
     expect(items[0].dataset.checked).toBe("true");
     expect(items[1].dataset.checked).toBe("false");
@@ -140,16 +138,16 @@ describe("openTextbookPanel — context questions + checklist", () => {
   it("tapping a checklist item toggles its checked state", async () => {
     await openWithQuestions();
     gotoChecklist(appEl);
-    appEl.querySelectorAll('[data-action="textbook/toggle-checklist-item"]')[1].click();
-    const items = appEl.querySelectorAll(".textbook-checklist-item");
+    appEl.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[1].click();
+    const items = appEl.querySelectorAll(".creation-checklist-item");
     expect(items[1].dataset.checked).toBe("true");
   });
 
   it("keeps at least one checklist topic selected", async () => {
     await openWithQuestions();
     gotoChecklist(appEl);
-    appEl.querySelectorAll('[data-action="textbook/toggle-checklist-item"]')[0].click();
-    expect(appEl.querySelectorAll(".textbook-checklist-item")[0].dataset.checked).toBe("true");
+    appEl.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[0].click();
+    expect(appEl.querySelectorAll(".creation-checklist-item")[0].dataset.checked).toBe("true");
   });
 
   it("allows no more than eight checklist topics to be selected", async () => {
@@ -159,9 +157,9 @@ describe("openTextbookPanel — context questions + checklist", () => {
     }));
     await openWithQuestions({ ...sampleQuestionsResponse, checklist });
     gotoChecklist(appEl);
-    const items = appEl.querySelectorAll('[data-action="textbook/toggle-checklist-item"]');
+    const items = appEl.querySelectorAll('[data-action="creation/toggle-checklist-item"]');
     for (let index = 1; index < items.length; index += 1) items[index].click();
-    const selected = [...appEl.querySelectorAll(".textbook-checklist-item")]
+    const selected = [...appEl.querySelectorAll(".creation-checklist-item")]
       .filter((item) => item.dataset.checked === "true");
     expect(selected).toHaveLength(8);
   });
@@ -175,9 +173,9 @@ describe("openTextbookPanel — context questions + checklist", () => {
       checklist: [{ label: hostileLabel, checked: true }],
     });
 
-    const select = appEl.querySelector(".textbook-select");
+    const select = appEl.querySelector(".creation-select");
     expect(appEl.querySelector("img")).toBeNull();
-    expect(appEl.querySelector(".textbook-select-label").textContent).toBe(hostileLabel);
+    expect(appEl.querySelector(".creation-select-label").textContent).toBe(hostileLabel);
     expect(select.dataset.label).toBe(hostileLabel);
     const option = select.querySelector("option");
     expect(select.value).toBe(hostileOption);
@@ -186,30 +184,30 @@ describe("openTextbookPanel — context questions + checklist", () => {
     expect(option.hasAttribute("onfocus")).toBe(false);
 
     gotoChecklist(appEl);
-    expect(appEl.querySelector(".textbook-checklist-item").textContent).toContain(hostileLabel);
+    expect(appEl.querySelector(".creation-checklist-item").textContent).toContain(hostileLabel);
     expect(appEl.querySelector("img")).toBeNull();
   });
 });
 
-describe("openTextbookPanel — generate + commit", () => {
+describe("openCreationPanel — generate + commit", () => {
   async function openReadyToGenerate() {
     getContext.mockResolvedValueOnce(sampleQuestionsResponse);
-    openTextbookPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
+    openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
     typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(".textbook-select")).toBeTruthy());
+    await vi.waitFor(() => expect(appEl.querySelector(".creation-select")).toBeTruthy());
   }
 
 
   it("on success, creates the deck and imports every card in one shot, then calls onCreated", async () => {
     generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
     let createdDeck = null;
-    openTextbookPanel(appEl, { lang: "es", ability: "beginner" }, (deck) => { createdDeck = deck; }, () => {});
+    openCreationPanel(appEl, { lang: "es", ability: "beginner" }, (deck) => { createdDeck = deck; }, () => {});
     getContext.mockResolvedValueOnce(sampleQuestionsResponse);
     typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(".textbook-select")).toBeTruthy());
+    await vi.waitFor(() => expect(appEl.querySelector(".creation-select")).toBeTruthy());
 
     gotoChecklist(appEl);
-    appEl.querySelector('[data-action="textbook/submit-context"]').click();
+    appEl.querySelector('[data-action="creation/submit-context"]').click();
     await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1));
     expect(createDeck).toHaveBeenCalledWith("Salsa Social Dancing", "es", { ability: "beginner" });
 
@@ -228,9 +226,9 @@ describe("openTextbookPanel — generate + commit", () => {
     generatePhrasebook.mockRejectedValueOnce(new Error("LLM request failed"));
     await openReadyToGenerate();
     gotoChecklist(appEl);
-    appEl.querySelector('[data-action="textbook/submit-context"]').click();
-    await vi.waitFor(() => expect(appEl.querySelector(".textbook-error")).toBeTruthy());
-    expect(appEl.querySelector(".textbook-error").textContent).toContain("LLM request failed");
+    appEl.querySelector('[data-action="creation/submit-context"]').click();
+    await vi.waitFor(() => expect(appEl.querySelector(".creation-error")).toBeTruthy());
+    expect(appEl.querySelector(".creation-error").textContent).toContain("LLM request failed");
     expect(createDeck).not.toHaveBeenCalled();
     expect(importCards).not.toHaveBeenCalled();
   });
@@ -239,7 +237,7 @@ describe("openTextbookPanel — generate + commit", () => {
     generatePhrasebook.mockResolvedValueOnce({ groups: sampleGenerateResponse.groups });
     await openReadyToGenerate();
     gotoChecklist(appEl);
-    appEl.querySelector('[data-action="textbook/submit-context"]').click();
+    appEl.querySelector('[data-action="creation/submit-context"]').click();
     await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1));
     expect(createDeck).toHaveBeenCalledWith("salsa dancing", "es", { ability: "beginner" });
   });

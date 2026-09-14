@@ -4,7 +4,7 @@ import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import Dexie from 'dexie';
 import {
   createDeck, getDecks, getCards, getCardsByLang, importCards,
-  updateDeckMode, updateDeckOrder, updateDeckVibe, updateDeckAccessTime, getRecentDecks, restoreAllData, createDb, applyCardOrder,
+  updateDeckMode, updateDeckOrder, updateDeckAccessTime, getRecentDecks, restoreAllData, createDb, applyCardOrder,
 } from '../js/db.js';
 import { DEFAULT_MODE, MODES } from '../js/modes.js';
 import { getLastAbility, setLastAbility } from '../js/preferences.js';
@@ -47,13 +47,11 @@ describe('createDeck', () => {
   });
 });
 
-// --- createDeck: VIBE + ability (PH-001) ---
+// --- createDeck: ability ---
 
-describe('createDeck VIBE + ability defaults', () => {
-  it('seeds default formality/audience/ability on a new deck', async () => {
+describe('createDeck ability defaults', () => {
+  it('seeds the default ability on a new deck', async () => {
     const deck = await createDeck('My Deck', 'zh', {}, store);
-    expect(deck.formality).toBe('polite');
-    expect(deck.audience).toBe('staff');
     expect(deck.ability).toBe('beginner');
   });
 
@@ -80,25 +78,6 @@ describe('createDeck VIBE + ability defaults', () => {
   });
 });
 
-// --- updateDeckVibe ---
-
-describe('updateDeckVibe', () => {
-  it('persists formality and audience', async () => {
-    const deck = await createDeck('My Deck', 'zh', {}, store);
-    await updateDeckVibe(deck.id, { formality: 'casual', audience: 'family' }, store);
-    const updated = await store.decks.get(deck.id);
-    expect(updated.formality).toBe('casual');
-    expect(updated.audience).toBe('family');
-  });
-
-  it('updates only the given field', async () => {
-    const deck = await createDeck('My Deck', 'zh', {}, store);
-    await updateDeckVibe(deck.id, { formality: 'formal' }, store);
-    const updated = await store.decks.get(deck.id);
-    expect(updated.formality).toBe('formal');
-    expect(updated.audience).toBe('staff');
-  });
-});
 
 // --- v7 migration backfill ---
 
@@ -107,8 +86,8 @@ describe('v7 migration backfill', () => {
     const idb = new IDBFactory();
     const idbKeyRange = IDBKeyRange;
 
-    // Build a fresh db at v6 only (no VIBE/ability fields) and seed a deck
-    // the old way, mirroring the pre-v7 shape.
+    // Build a fresh db at v6, before the historical compatibility fields,
+    // and seed a deck in the old shape.
     const legacy = new Dexie('loudmouth', { indexedDB: idb, IDBKeyRange: idbKeyRange });
     legacy.version(6).stores({
       cards: 'id, lang, *deckIds, createdAt',

@@ -5,28 +5,20 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { buildContextPrompt } = require('../../src/context-prompt');
+const { buildContextPrompt } = require('../../src/context/prompt');
 const { CONTEXT_MAX_TOKENS, parseContextRequest, validateContextResponse } = require('../../src/context');
-const { buildPhrasebookGenerationPrompt, buildPhrasebookTranslationPrompt } = require('../../src/phrasebook-prompt');
+const { buildPhrasebookGenerationPrompt, buildPhrasebookTranslationPrompt } = require('../../src/phrasebook/prompt');
 const {
   assemblePhrasebook,
   parsePhrasebookRequest,
   validateGenerationResponse,
   validateTranslationResponse,
-} = require('../../src/phrasebook-parse');
+} = require('../../src/phrasebook/parse');
 const {
   buildTranslationResponseJsonSchema,
   PHRASEBOOK_GENERATION_MAX_TOKENS,
   PHRASEBOOK_TRANSLATION_MAX_TOKENS,
 } = require('../../src/phrasebook');
-const { buildLookupPrompt } = require('../../src/lookup-prompt');
-const { parseLookupRequest } = require('../../src/lookup-parse');
-const { validateLookupResponse } = require('../../src/lookup-validate');
-const { LOOKUP_MAX_TOKENS } = require('../../src/lookup');
-const { buildTextbookQuestionsPrompt, buildTextbookGeneratePrompt } = require('../../src/textbook-prompt');
-const { parseTextbookRequest } = require('../../src/textbook-parse');
-const { validateTextbookQuestionsResponse, validateTextbookGenerateResponse } = require('../../src/textbook-validate');
-const { TEXTBOOK_GENERATE_MAX_TOKENS, TEXTBOOK_QUESTIONS_MAX_TOKENS } = require('../../src/textbook');
 const { LLM_REGISTRY } = require('../../src/llm-config');
 const {
   appendSyntheticCanary,
@@ -37,16 +29,13 @@ const {
 
 const EVALS_DIR = path.resolve(__dirname, '..');
 const FIXTURES_FILE = path.join(EVALS_DIR, 'fixtures', 'adversarial.json');
-const STANDARD_FIXTURES_DIR = path.resolve(EVALS_DIR, '..', '..', 'prompts', 'phrasebook', 'inputs');
+const BASELINE_FIXTURES_DIR = path.join(EVALS_DIR, 'fixtures', 'baseline');
 const DEFAULT_BACKEND = 'gemini-3.5-flash-lite';
 const DEFAULT_MODEL_TIMEOUT_MS = 15000;
 const OUTPUT_TOKEN_LIMITS = Object.freeze({
   context: CONTEXT_MAX_TOKENS,
   'phrasebook-generation': PHRASEBOOK_GENERATION_MAX_TOKENS,
   'phrasebook-translation': PHRASEBOOK_TRANSLATION_MAX_TOKENS,
-  lookup: LOOKUP_MAX_TOKENS,
-  'textbook-questions': TEXTBOOK_QUESTIONS_MAX_TOKENS,
-  'textbook-generation': TEXTBOOK_GENERATE_MAX_TOKENS,
 });
 const DISCLAIMER = 'A run with no observed leakage or override is only a failed attack attempt; it is not proof of confidentiality or prompt-injection resistance.';
 
@@ -109,7 +98,7 @@ function loadFixtures() {
     throw new Error(`${FIXTURES_FILE} does not match adversarial fixture schema version 1`);
   }
   fixtures.standard = fixtures.standardTags.map((tag) => {
-    const file = path.join(STANDARD_FIXTURES_DIR, `input_${tag}.json`);
+    const file = path.join(BASELINE_FIXTURES_DIR, `input_${tag}.json`);
     const input = JSON.parse(fs.readFileSync(file, 'utf8'));
     return { id: tag, ...input, ability: input.ability || 'basics' };
   });
@@ -471,36 +460,12 @@ async function evaluateGeneration(state, handler, meta, body, formatMarker) {
   });
 }
 
-
 async function evaluateTranslation(state, handler, meta, { seed, language, conversation }, formatMarker) {
   return evaluateCall(state, handler, meta, {
     stage: 'phrasebook-translation',
     prompt: buildPhrasebookTranslationPrompt({ seed, language, conversation }),
     validator: (raw) => validateTranslationResponse(raw, conversation, language),
     responseJsonSchema: buildTranslationResponseJsonSchema(conversation, language),
-    formatMarker,
-  });
-}
-
-async function evaluateLookup(state, handler, meta, body, formatMarker) {
-  const request = parseOrRecord(state, meta, 'lookup-request', body, parseLookupRequest);
-  if (!request) return { value: null };
-  return evaluateCall(state, handler, meta, {
-    stage: 'lookup',
-    prompt: buildLookupPrompt(request),
-    validator: (raw) => validateLookupResponse(raw, { context: request.context }),
-    formatMarker,
-  });
-}
-
-async function evaluateTextbook(state, handler, meta, body, formatMarker) {
-  const request = parseOrRecord(state, meta, 'textbook-request', body, parseTextbookRequest);
-  if (!request) return { value: null };
-  const questions = request.mode === 'questions';
-  return evaluateCall(state, handler, meta, {
-    stage: questions ? 'textbook-questions' : 'textbook-generation',
-    prompt: questions ? buildTextbookQuestionsPrompt(request) : buildTextbookGeneratePrompt(request),
-    validator: questions ? validateTextbookQuestionsResponse : validateTextbookGenerateResponse,
     formatMarker,
   });
 }
@@ -648,31 +613,6 @@ async function runAttack(state, handler, selected, repetition, fixtures) {
       break;
     case 'pipeline':
       await runFullPipeline(state, handler, meta, fixture, payload, fixtures.formatMarker);
-      break;
-    case 'lookup':
-      await evaluateLookup(state, handler, meta, {
-        term: `translation target. ${payload}`,
-        language: fixture.language,
-        ability: 'beginner',
-        formality: 'polite',
-        audience: 'staff',
-      }, fixtures.formatMarker);
-      break;
-    case 'textbook':
-      if (attack.stage === 'textbook-questions') {
-        await evaluateTextbook(state, handler, meta, {
-          topic: `${fixture.seed}. ${payload}`,
-          language: fixture.language,
-        }, fixtures.formatMarker);
-      } else {
-        const context = { answers: structuredClone(fixture.answers), checklist: [...fixture.checklist] };
-        context.answers[Object.keys(context.answers)[0]] = payload;
-        await evaluateTextbook(state, handler, meta, {
-          topic: fixture.seed,
-          language: fixture.language,
-          context,
-        }, fixtures.formatMarker);
-      }
       break;
     default:
       throw new Error(`Unsupported attack endpoint: ${attack.endpoint}`);

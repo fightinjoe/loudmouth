@@ -5,7 +5,7 @@
  * scrim. Used for transient tasks: deck settings, card edit, JSON export.
  *
  * Slice shape:
- *   { kind: 'settings' | 'card-edit' | 'json' | 'review' | 'lookup' | 'new-phrasebook' | 'textbook', payload: object }
+ *   { kind: 'settings' | 'card-edit' | 'json' | 'review' | 'new-phrasebook' | 'creation', payload: object }
  *
  * Transitions:
  *   action/open  ({ kind, payload })  — open a kind; if one is already
@@ -23,18 +23,15 @@ import { openDeckSettings } from "../components/deck-settings.js";
 import { openJsonPanel, toImportJson } from "../components/json-panel.js";
 import { openCardEditPanel } from "../components/card-edit-panel.js";
 import { openReviewPanel } from "../components/review-panel.js";
-import { openLookupPanel } from "../components/lookup-panel.js";
 import { openNewPhrasebookPanel } from "../components/new-phrasebook-panel.js";
-import { openTextbookPanel } from "../components/textbook-panel.js";
+import { openCreationPanel } from "../components/creation-panel.js";
 import { DEFAULT_MODE } from "../js/modes.js";
 import {
-  createDeck,
   updateDeckMode,
   updateDeckName,
   updateDeckOrder,
   updateDeckReadingDisplay,
   deleteDeck,
-  getCards,
   updateCard,
   deleteCard,
 } from "../js/db.js";
@@ -73,60 +70,13 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
     return openReviewPanel(hostEl, deck, cards, onDismiss);
   }
 
-  if (kind === "lookup") {
-    const { deck, hasTranslatedBefore, deleteIfEmpty } = payload;
 
-    // If this lookup session opened straight out of "New phrasebook"
-    // creation (deleteIfEmpty), the deck exists solely as a home for
-    // whatever the user is about to save. Dismissing without saving
-    // anything should discard that placeholder deck rather than leave an
-    // empty phrasebook behind, and return the user to the nav pane instead
-    // of an empty content pane.
-    const handleDismiss = deleteIfEmpty
-      ? async () => {
-          const cards = await getCards(deck.id);
-          if (cards.length === 0) {
-            await deleteDeck(deck.id);
-            ui.transition("nav/reload");
-            ui.transition("content/select-deck", { id: null });
-            ui.transition("shell/open");
-          }
-          onDismiss();
-        }
-      : onDismiss;
-
-    return openLookupPanel(
-      hostEl,
-      deck,
-      { hasTranslatedBefore },
-      (savedCard) => {
-        const content = ui.get("content");
-        if (content?.deck?.id === deck.id) {
-          ui.transition("content/cards-changed", { cards: [...content.cards, savedCard] });
-        }
-      },
-      handleDismiss,
-      () => {
-        // Deck was auto-named from its first saved term (see
-        // lookup-panel.js maybeAutoNameDeck) — refresh nav + the content
-        // pane's header so the new name shows immediately.
-        ui.transition("nav/reload");
-        const content = ui.get("content");
-        if (content?.deck?.id === deck.id) ui.transition("content/reload-deck");
-      },
-    );
-  }
-
-  if (kind === "textbook") {
+  if (kind === "creation") {
     const { lang, ability } = payload;
-    return openTextbookPanel(
+    return openCreationPanel(
       hostEl,
       { lang, ability },
       (deck) => {
-        // Deck + cards were just committed in one shot (textbook-panel.js) —
-        // no placeholder deck existed before this, unlike the `lookup` kind's
-        // create-then-fill flow, so there is nothing to clean up if the user
-        // dismissed before this point.
         ui.transition("shell/close");
         ui.transition("nav/reload");
         ui.transition("content/select-deck", { id: deck.id });
@@ -140,15 +90,12 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
     let sheetHandle;
     sheetHandle = openNewPhrasebookPanel(
       hostEl,
-      { createDeck },
       (lang, ability) => {
-        // docs/journeys.md Journey 5 (prototype branch): creation now hands
-        // off to the guided Textbook flow instead of Journey 1's Input mode
-        // — no deck is created here at all (unlike the old `lookup`-kind
-        // hand-off), since Textbook creates the deck itself once generation
-        // succeeds. See textbook-panel.js.
+        // Hand off to guided creation without persisting an empty deck.
+        // creation-panel.js commits the deck and generated cards together
+        // after the /context and /phrasebook requests succeed.
         ui.transition("action/open", {
-          kind: "textbook",
+          kind: "creation",
           payload: { lang, ability },
         });
       },
@@ -156,18 +103,13 @@ function openKind(kind, payload, host, hostEl, onDismiss) {
       suggestion,
       suggestion
         ? ({ lang, ability }) => {
-            // Journey 2 Confirm mode: no deck is created yet — the content
-            // pane renders an unsaved preview (deck.preview: true) built
-            // straight from the suggestion's placeholder seed terms. The
-            // preview is only persisted when the user taps Save (see
-            // content-pane.js's 'content/save-preview' handler).
+            // Confirm mode builds an unsaved preview. It is persisted only
+            // when the user taps Save in the content pane.
             const previewDeck = {
               id: `preview:${suggestion.id}`,
               name: suggestion.title,
               lang,
               ability,
-              formality: "polite",
-              audience: "staff",
               mode: DEFAULT_MODE,
               order: "default",
               readingDisplay: "reading",

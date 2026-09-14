@@ -80,9 +80,6 @@
 #content-pane[data-edit-mode] .deck-header-done {
   visibility: visible;
 }
-#content-pane[data-edit-mode] #btn-deck-add {
-  display: none;
-}
 
 /* ── Deck mode (study / review / reverse) ── */
 
@@ -163,8 +160,8 @@ rt {
   font-family: var(--font-family);
   /* Relative, not fixed: a fixed size (formerly --text-size-body2) matched
      the 24px headword context it was authored for but rendered as tall as
-     its own base text in smaller contexts (e.g. 18px lookup-group preview
-     rows) — the reading no longer read as ruby, just a second full line. */
+     its own base text in smaller contexts — the reading no longer read as
+     ruby, just a second full line. */
   font-size: 0.55em;
   color: var(--fg-caption);
   font-weight: 400;
@@ -302,7 +299,7 @@ ruby {
   padding: 3rem 1.25rem;
 }
 
-/* ── Nav Pane: hero + CTA banner (Journey 1 step 1) ── */
+/* ── Nav Pane: hero + CTA banner ── */
 
 .nav-hero {
   padding: 1.75rem 1.25rem 1.25rem;
@@ -380,12 +377,10 @@ ruby {
   transform: translateY(0);
 }
 
-/* Full-height action pane (lookup, review): covers everything except the
-   service bar / status-bar gap at the top (Figma action panes at ~874−68).
-   Content-hugging panes (new-phrasebook, settings) omit this and keep the
-   beige .bg-primary default. Full panes instead get the Figma gray-100
-   "action-pane body" (#f1f4f9, node 485:13531) — shared here once rather
-   than duplicated per kind (review, lookup) since it's the same surface. */
+/* Full-height action panes (review and creation) cover everything except the
+   service bar / status-bar gap at the top. Content-hugging panes
+   (new-phrasebook and settings) keep the beige .bg-primary default.
+   Full panes use the gray-100 action-pane body. */
 .bottom-sheet--full {
   top: max(env(safe-area-inset-top, 0px), 44px);
   height: auto;
@@ -487,11 +482,10 @@ ruby {
 
 /* Nav pane sits behind the content pane, full-size — the same footprint
    as the content pane (per PANE_PROTOCOL.html's canonical layer diagram).
-   When there is no active phrasebook the content pane renders nothing on
-   top of it and the nav pane fills the whole screen (docs/journeys.md
-   Journey 1 step 1, the landing page). When a phrasebook is open, sliding
-   the content pane its own full width aside reveals the nav pane full-bleed
-   — the content pane no longer peeks in from the edge (see #app-shell's
+   When there is no active phrasebook, the nav pane fills the whole screen.
+   When a phrasebook is open, sliding the content pane its own full width
+   aside reveals the nav pane full-bleed, so the content pane no longer peeks
+   in from the edge (see #app-shell's
    overflow: hidden, which clips it fully off-screen). */
 #nav-pane {
   position: absolute;
@@ -521,10 +515,8 @@ ruby {
   transform: translateX(100%);
 }
 
-/* Landing page: with no phrasebook selected the content pane renders nothing
-   and must not paint over the nav pane beneath it (docs/journeys.md Journey 1
-   step 1 — the nav landing fills the screen). Make it fully transparent and
-   click-through so the nav owns the surface. */
+/* With no phrasebook selected, the empty content pane must not paint over
+   the nav landing beneath it. Make it transparent and click-through. */
 .content-pane[data-empty] {
   background: transparent;
   box-shadow: none;
@@ -575,7 +567,7 @@ ruby {
   width: 44px;
 }
 
-/* ── Deck view bottom action bar (Review; Add joins in PH-006) ── */
+/* ── Deck view bottom Review action ── */
 
 /* Floating pill over the scrolling card list (Figma Action bar, node
    606:6511: absolute, bottom 20px, centered). The bar is click-through so
@@ -599,8 +591,7 @@ ruby {
   padding: 8px 20px;
 }
 
-/* Figma "Action" (node 476:2663): icon stacked above a 20px accent label,
-   fixed 100px width, no divider between the two actions. */
+/* Icon stacked above its accent label in a fixed-width floating action. */
 .deck-view-action-btn {
   width: 100px;
   gap: 2px;
@@ -609,7 +600,7 @@ ruby {
   font-weight: 400;
 }
 
-/* ── Review Panel (Journey 4) ── */
+/* ── Review Panel ── */
 
 .review-panel {
   z-index: 151;
@@ -717,373 +708,11 @@ ruby {
   padding: 4rem 0;
 }
 
-/* ── Lookup Panel (Journeys 1/3 — Input/Translation/Group stack) ── */
-
-/* Top radius matches Figma's "Create Phrasebook pane" (40px) so the nested
-   white Look-up surface can nest flush into it below. Background comes
-   from the shared .bottom-sheet--full rule. */
-.bottom-sheet.lookup-panel {
-  z-index: 151;
-  border-radius: 40px 40px 0 0;
-  padding-bottom: env(safe-area-inset-bottom, 24px);
-}
-
-.lookup-panel-inner {
-  min-height: 0;
-}
-
-.lookup-header-right {
-  min-width: 44px;
-  justify-content: flex-end;
-}
-
-.lookup-badge {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 8px;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: hsl(var(--white));
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-/* Input mode is two deliberate surfaces from the Figma Look-up component:
-   white header/term/VIBE surface above a gray-100 history surface. */
-.lookup-input-body {
-  min-height: 0;
-  gap: 0;
-  overflow-y: auto;
-}
-
-/* Flush with the panel's top edge (no gap/color-seam above it) and rounded
-   on all corners per Figma's "Look-up" surface (node 573:19892) — the
-   panel's own 40px top radius (above) matches so they nest seamlessly. */
-.lookup-input-surface {
-  flex-shrink: 0;
-  gap: 20px;
-  padding-bottom: 20px;
-  border-radius: 40px;
-  background: var(--bg-surface);
-}
-
-/* The drag gripper overlays the white surface instead of taking its own
-   flex row above it — that flex space exposed the panel's background
-   between the gripper and the surface, breaking the "flush to the top"
-   look. Scoped to lookup only; other sheet kinds keep the default. */
-.lookup-panel .sheet-handle {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1;
-  margin: 0;
-}
-
-.lookup-input-surface .pane-header {
-  padding: 20px;
-}
-
-.lookup-input-form {
-  gap: 20px;
-}
-
-.lookup-input-wrap {
-  padding: 0 20px;
-}
-
-.lookup-input-field-row {
-  min-height: 82px;
-  border-bottom: 1px solid hsl(var(--gray-300));
-  padding-bottom: 10px;
-}
-
-.lookup-input-field {
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--fg-body);
-  font-weight: 300;
-  width: 100%;
-  resize: none;
-  overflow: hidden;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.lookup-input-field::placeholder {
-  color: hsl(220 20 80); /* Figma placeholder #cbd2e1 */
-  opacity: 1;
-}
-
-.lookup-input-wrap .lookup-input-clear {
-  display: none;
-  width: 32px;
-  height: 32px;
-}
-
-.lookup-input-wrap[data-has-value="true"] .lookup-input-clear {
-  display: flex;
-}
-
-/* Collapsed settings: VIBE label · summary · blue double-chevron. */
-.lookup-vibe-summary {
-  width: 100%;
-  min-height: 24px;
-  gap: 10px;
-  padding: 0 20px;
-  background: transparent;
-  text-align: left;
-}
-
-.lookup-vibe-label {
-  flex: 1;
-  font-family: var(--font-family-condensed);
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 18px;
-  color: var(--fg-caption);
-}
-
-.lookup-vibe-summary-label {
-  font-family: var(--font-family-manrope);
-  font-size: 0.875rem;
-  line-height: 1.1786;
-  color: var(--fg-caption);
-  text-align: center;
-  white-space: nowrap;
-}
-
-.lookup-vibe-chevron {
-  color: var(--accent);
-}
-
-.lookup-vibe-expanded {
-  display: none;
-  gap: 0;
-  padding: 0 20px;
-}
-
-/* Must outrank the .flex-col utility class carried by the render helper. */
-.lookup-vibe-group:not([data-expanded="true"]) .lookup-vibe-expanded {
-  display: none;
-}
-
-.lookup-vibe-group[data-expanded="true"] .lookup-vibe-summary {
-  display: none;
-}
-.lookup-vibe-group[data-expanded="true"] .lookup-vibe-expanded {
-  display: flex;
-}
-
-.lookup-vibe-expanded .section-label {
-  padding: 0 0 12px;
-}
-
-/* Figma "Select" row (node 581:4280): 52px tall, 16px vertical padding,
-   Manrope 18px/22px label + blue value, gray-100-tint divider. */
-.lookup-vibe-row {
-  min-height: 52px;
-  padding: 16px 0;
-  border-bottom: 1px solid hsl(var(--gray-100-tint) / 0.1);
-}
-
-.lookup-vibe-row-label {
-  flex: 1;
-  font-family: var(--font-family-manrope);
-  font-size: 1.125rem;
-  line-height: 1.375rem;
-  color: var(--fg-body);
-}
-
-.lookup-vibe-select-wrap {
-  gap: 2px;
-  color: var(--accent);
-}
-
-.lookup-vibe-select {
-  appearance: none;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--accent);
-  font-family: var(--font-family-manrope);
-  font-size: 1.125rem;
-  line-height: 1.375rem;
-  text-align: right;
-  text-align-last: right;
-}
-
-.lookup-vibe-select-wrap .lookup-vibe-chevron {
-  pointer-events: none;
-}
-
-.lookup-history {
-  display: none;
-  flex-shrink: 0;
-  gap: 16px;
-  padding: 20px;
-}
-/* Must outrank the .flex-col utility class carried by the render helper
-   (same collision as .lookup-vibe-expanded above) — otherwise the "HISTORY"
-   heading shows even with zero entries. */
-.lookup-history:not([data-visible="true"]) {
-  display: none;
-}
-.lookup-history[data-visible="true"] {
-  display: flex;
-}
-
-.lookup-history-item {
-  text-align: left;
-  padding: 0 0 8px;
-  border-bottom: 1px solid hsl(var(--gray-900) / 0.06);
-}
-
-.lookup-results {
-  padding: 0 20px 20px;
-  gap: 12px;
-}
-
-.lookup-skeleton-list {
-  padding: 0 20px 20px;
-  gap: 12px;
-}
-
-.lookup-skeleton-card {
-  height: 206px;
-  border-radius: var(--radius);
-  padding: 20px;
-  gap: 12px;
-}
-
-.lookup-skeleton-line {
-  height: 16px;
-  border-radius: 4px;
-  background: hsl(var(--gray-200-tint) / 0.6);
-  animation: skeleton-pulse 1.2s ease-in-out infinite;
-}
-
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
 
-.lookup-block {
-  gap: 12px;
-}
-
-.lookup-coach {
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  background: hsl(var(--gray-900) / 0.05);
-}
-
-.lookup-card {
-  border-radius: var(--radius);
-  padding: 16px;
-  gap: 8px;
-}
-
-.lookup-card[data-saved="true"] {
-  background: var(--bg-saved);
-}
-
-.lookup-card-divider {
-  height: 1px;
-  background: hsl(var(--gray-900) / 0.1);
-  margin: 4px 0;
-}
-
-.lookup-card[data-saved="true"] .lookup-card-save {
-  color: hsl(var(--red-500));
-}
-
-/* ── Phrase group summary (Figma "Phrase group", node 581:10511) ──
-   White card (not a gray tint — it sits on the gray-100 action-pane body,
-   so white is what gives it definition), uppercase condensed caption
-   header with a blue pill word/phrase count, and up to 3 stacked
-   translation/source previews. */
-.lookup-group-summary {
-  width: 100%;
-  /* Buttons default to align-items: flex-start (UA stylesheet), which
-     shrink-wraps flex-col children to content width instead of the usual
-     flexbox stretch — breaking justify-between on the header row below. */
-  align-items: stretch;
-  text-align: left;
-  border-radius: var(--radius-sm);
-  /* No bottom padding: the fade (below) supplies the visual bottom edge.
-     min-height (Figma's typical 3-preview card height) gives short previews
-     blank buffer for the fade to sit in; longer previews let it lightly
-     touch the last line, hinting more terms are cut off below. */
-  padding: 20px 10px 0 20px;
-  min-height: 220px;
-  background: var(--bg-surface);
-  gap: 16px;
-  position: relative;
-  overflow: hidden;
-}
-
-.lookup-group-fade {
-  position: absolute;
-  left: 20px;
-  right: 10px;
-  bottom: 0;
-  height: 58px;
-  background: linear-gradient(to bottom, hsl(var(--white) / 0), hsl(var(--white)));
-  pointer-events: none;
-}
-
-.lookup-group-summary-header {
-  gap: 6px;
-}
-
-.lookup-group-title {
-  flex: 1;
-  font-family: var(--font-family-condensed);
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 18px;
-  text-transform: uppercase;
-  color: var(--fg-caption);
-}
-
-.lookup-group-count {
-  flex-shrink: 0;
-  gap: 6px;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-blue-tint);
-  color: var(--accent);
-  font-size: 0.875rem;
-  line-height: 18.8px;
-  white-space: nowrap;
-}
-
-.lookup-group-preview {
-  gap: 16px;
-  width: 100%;
-}
-
-.lookup-group-preview-row {
-  gap: 10px;
-  padding-left: 20px;
-  font-family: var(--font-family-manrope);
-  font-size: 1.125rem;
-  line-height: 1.2222;
-}
-
-.lookup-group-preview-translation {
-  color: var(--fg-body);
-}
-
-.lookup-group-preview-source {
-  color: var(--fg-caption);
-}
-
-.lookup-error {
-  padding: 4rem 0;
-}
 
 /* ── Nav Pane ADD FAB ── */
 
@@ -1142,22 +771,20 @@ ruby {
   text-align: center;
 }
 
-/* ── Textbook Panel (docs/journeys.md Journey 5 — prototype-branch guided
-   phrasebook creation). Linear flow (topic → context+checklist →
-   generating), reusing the Lookup Panel's surfaces/tokens above rather than
-   inventing new ones. ── */
+/* ── Guided Creation Panel ──
+   Linear flow: topic → context questions → checklist → generation. */
 
-.bottom-sheet.textbook-panel {
+.bottom-sheet.creation-panel {
   z-index: 151;
   border-radius: 40px 40px 0 0;
   padding-bottom: env(safe-area-inset-bottom, 24px);
 }
 
-.textbook-panel-inner {
+.creation-panel-inner {
   min-height: 0;
 }
 
-.textbook-panel .sheet-handle {
+.creation-panel .sheet-handle {
   position: absolute;
   top: 8px;
   left: 50%;
@@ -1166,10 +793,10 @@ ruby {
   margin: 0;
 }
 
-/* White, top-rounded content card (Figma "Look-up" surface) on the gray-100
-   pane. Hugs its content (no flex-grow) so the pane shows below it; shrinks
-   and scrolls its body only when content would overflow the sheet. */
-.textbook-surface {
+/* White, top-rounded content surface on the gray-100 pane. It hugs content
+   so the pane shows below it, shrinking and scrolling its body only when
+   content would overflow the sheet. */
+.creation-surface {
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -1179,13 +806,13 @@ ruby {
 
 /* Persistent topic term line (Figma "Term"): the entered topic pinned under
    the header on every post-topic step, above a hairline divider. */
-.textbook-term {
+.creation-term {
   flex-shrink: 0;
   padding: 4px 20px 10px;
   border-bottom: 1px solid hsl(var(--gray-300));
 }
 
-.textbook-term-text {
+.creation-term-text {
   font-size: 1.625rem;   /* Figma 26px */
   line-height: 1.875rem; /* Figma 30px */
   font-weight: 300;
@@ -1195,28 +822,28 @@ ruby {
 
 /* Scrollable body shared by the questions (page 1) and checklist (page 2)
    steps; the header, term, and footer around it stay fixed. */
-.textbook-step-body {
+.creation-step-body {
   min-height: 0;
   padding: 20px;
   overflow-y: auto;
 }
 
-.textbook-input-form {
+.creation-input-form {
   gap: 20px;
   padding-bottom: 20px;
 }
 
-.textbook-input-wrap {
+.creation-input-wrap {
   padding: 0 20px;
 }
 
-.textbook-input-field-row {
+.creation-input-field-row {
   min-height: 82px;
   border-bottom: 1px solid hsl(var(--gray-300));
   padding-bottom: 10px;
 }
 
-.textbook-input-field {
+.creation-input-field {
   border: none;
   outline: none;
   background: transparent;
@@ -1229,14 +856,13 @@ ruby {
   word-break: break-word;
 }
 
-.textbook-input-field::placeholder {
+.creation-input-field::placeholder {
   color: hsl(220 20 80); /* Figma placeholder #cbd2e1 */
   opacity: 1;
 }
 
-/* Forward-chevron submit — deliberate deviation from lookup's return-key-
-   only submit (docs/journeys.md Journey 5 "Submit affordance"). */
-.textbook-submit {
+/* Forward-chevron submit for advancing through the creation flow. */
+.creation-submit {
   align-self: flex-end;
   margin-right: 20px;
   width: 32px;
@@ -1244,29 +870,29 @@ ruby {
   color: var(--accent);
 }
 
-.textbook-submit:disabled {
+.creation-submit:disabled {
   opacity: 0.35;
   pointer-events: none;
 }
 
 /* Question label above its select pill (Figma caption, inset to align with
    the pill's inner text). */
-.textbook-select-label {
+.creation-select-label {
   padding: 0 20px;
   color: var(--fg-caption);
   font-size: 1rem;        /* Figma 16px */
   line-height: 1.125rem;  /* Figma 18px */
 }
 
-.textbook-questions {
+.creation-questions {
   gap: 16px;
 }
 
-.textbook-select-row {
+.creation-select-row {
   gap: 8px;
 }
 
-.textbook-select-wrap {
+.creation-select-wrap {
   gap: 2px;
   align-items: center;
   padding: 12px 20px;              /* Figma Select/Default */
@@ -1274,7 +900,7 @@ ruby {
   background: hsl(var(--gray-50)); /* Figma gray-50 #f9fafb */
 }
 
-.textbook-select {
+.creation-select {
   flex: 1;
   appearance: none;
   border: 0;
@@ -1286,22 +912,22 @@ ruby {
   line-height: 1.375rem;
 }
 
-.textbook-select-chevron {
+.creation-select-chevron {
   color: var(--accent);
   pointer-events: none;
 }
 
-.textbook-checklist {
+.creation-checklist {
   gap: 12px;
 }
 
-.textbook-checklist-items {
+.creation-checklist-items {
   border-radius: var(--radius);
   background: hsl(var(--gray-100));
   overflow: hidden;
 }
 
-.textbook-checklist-item {
+.creation-checklist-item {
   width: 100%;
   gap: 12px;
   padding: 16px;
@@ -1310,52 +936,52 @@ ruby {
   border-bottom: 1px solid hsl(var(--gray-900) / 0.06);
 }
 
-.textbook-checklist-item:last-child {
+.creation-checklist-item:last-child {
   border-bottom: none;
 }
 
-.textbook-checklist-check {
+.creation-checklist-check {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
   color: var(--accent);
 }
 
-.textbook-context-footer {
+.creation-context-footer {
   flex-shrink: 0;
   padding: 12px 20px;
 }
 
-.textbook-generating {
+.creation-generating {
   gap: 20px;
   padding: 20px;
 }
 
-.textbook-skeleton-list {
+.creation-skeleton-list {
   width: 100%;
   gap: 12px;
 }
 
-.textbook-skeleton-card {
+.creation-skeleton-card {
   height: 206px;
   border-radius: var(--radius);
   padding: 20px;
   gap: 12px;
 }
 
-.textbook-skeleton-line {
+.creation-skeleton-line {
   height: 16px;
   border-radius: 4px;
   background: hsl(var(--gray-200-tint) / 0.6);
   animation: skeleton-pulse 1.2s ease-in-out infinite;
 }
 
-.textbook-error {
+.creation-error {
   padding: 20px;
   gap: 12px;
 }
 
-.textbook-retry {
+.creation-retry {
   padding: 0.75rem 1.5rem;
   border-radius: var(--radius-pill);
   background: var(--accent);
@@ -1363,7 +989,7 @@ ruby {
   font-weight: 600;
 }
 
-/* ── Phrasebook view: grouped sections (PH-006) ── */
+/* ── Phrasebook view: grouped sections ── */
 
 .deck-view-section-header {
   padding: 1rem 1.25rem 0.375rem;
@@ -1425,7 +1051,7 @@ ruby {
   color: var(--fg-caption);
 }
 
-/* ── Suggested phrasebooks + unsaved preview (PH-008) ── */
+/* ── Suggested phrasebooks + unsaved preview ── */
 
 .deck-header-save-pill {
   padding: 0.5rem 1.25rem;

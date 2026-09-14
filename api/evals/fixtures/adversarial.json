@@ -91,30 +91,6 @@
       "target": "seed",
       "fixture": "surf",
       "payload": "literal"
-    },
-    {
-      "id": "lookup-term-extraction",
-      "endpoint": "lookup",
-      "stage": "lookup",
-      "target": "term",
-      "fixture": "salsa",
-      "payload": "literal"
-    },
-    {
-      "id": "textbook-topic-extraction",
-      "endpoint": "textbook",
-      "stage": "textbook-questions",
-      "target": "topic",
-      "fixture": "salsa",
-      "payload": "base64"
-    },
-    {
-      "id": "textbook-context-extraction",
-      "endpoint": "textbook",
-      "stage": "textbook-generation",
-      "target": "answer-value",
-      "fixture": "directions",
-      "payload": "literal"
     }
   ]
 }

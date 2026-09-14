@@ -49,7 +49,7 @@ async function callOpenAI(prompt, { maxOutputTokens = 1024, signal } = {}) {
 }
 
 // GPT-5.6 Luna can exceed the shared 15-second service budget while producing
-// large JSON responses, especially for the /textbook generation call.
+// large phrasebook JSON responses.
 callOpenAI.timeoutMs = 60000;
 callOpenAI.maxOutputTokens = 16384;
 

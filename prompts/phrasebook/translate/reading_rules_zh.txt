@@ -1,4 +1,0 @@
-- Annotate readings inline in every translation, lines and vocab alike:
-  write each character as 字[zì] — the hanzi followed immediately by its
-  tone-marked pinyin in square brackets. Only hanzi get brackets — never
-  punctuation or any non-hanzi character. Example: 菜[cài]单[dān]

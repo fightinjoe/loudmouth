@@ -5,9 +5,8 @@ import { escapeHTML } from "../js/utils.js";
 /**
  * Pane header row — the Figma "Header" component: a left control, a centered
  * title, and a right control, used by every action/content pane
- * (content, lookup, review, card-edit, json). Slots take pre-built HTML so
- * each pane keeps its own controls (menu vs back vs close, done vs save vs
- * badge) while sharing one structure.
+ * (content, creation, review, card-edit, json). Slots take pre-built HTML so
+ * each pane keeps its own controls while sharing one structure.
  *
  * @param {{ leading?: string, title?: string, trailing?: string }} slots
  * @returns {string} HTML string
