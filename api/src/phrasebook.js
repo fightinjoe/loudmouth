@@ -228,22 +228,11 @@ async function generateConversations({
   }
 }
 
-async function translateConversation({
-  parsedRequest,
-  conversation,
-  conversationIndex,
-  handler,
-  backendName,
-  callTimeoutMs,
-  signal,
-  usageAccumulator,
-  retryDelaysMs,
-}) {
-  const prompt = buildPhrasebookTranslationPrompt({
-    seed: parsedRequest.seed,
-    language: parsedRequest.language,
-    conversation,
-  });
+/**
+ * Native JSON schema for one translation call. Array counts are pinned to the
+ * generated English source so providers cannot omit or add translated items.
+ */
+function buildTranslationResponseJsonSchema(conversation, language) {
   const responseJsonSchema = {
     type: 'object',
     properties: {
@@ -263,11 +252,34 @@ async function translateConversation({
     required: ['lines', 'vocab'],
     additionalProperties: false,
   };
-  if (parsedRequest.language === 'ja') {
+  if (language === 'ja') {
     responseJsonSchema.properties.lineRomanizations = responseJsonSchema.properties.lines;
     responseJsonSchema.properties.vocabRomanizations = responseJsonSchema.properties.vocab;
     responseJsonSchema.required.push('lineRomanizations', 'vocabRomanizations');
   }
+  return responseJsonSchema;
+}
+
+async function translateConversation({
+  parsedRequest,
+  conversation,
+  conversationIndex,
+  handler,
+  backendName,
+  callTimeoutMs,
+  signal,
+  usageAccumulator,
+  retryDelaysMs,
+}) {
+  const prompt = buildPhrasebookTranslationPrompt({
+    seed: parsedRequest.seed,
+    language: parsedRequest.language,
+    conversation,
+  });
+  const responseJsonSchema = buildTranslationResponseJsonSchema(
+    conversation,
+    parsedRequest.language,
+  );
 
   for (let attempt = 0; ; attempt++) {
     const reply = await callLlmWithRateLimitRetry({
@@ -476,6 +488,7 @@ module.exports = {
   handlePhrasebook,
   performPhrasebook,
   callLlmWithRateLimitRetry,
+  buildTranslationResponseJsonSchema,
   isRateLimitError,
   PHRASEBOOK_GENERATION_MAX_TOKENS,
   PHRASEBOOK_TRANSLATION_MAX_TOKENS,

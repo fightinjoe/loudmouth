@@ -1,4 +1,6 @@
 import { icon } from "./icon.js";
+import { escapeHTML } from "../js/utils.js";
+
 
 /**
  * Renders a card as a list row. The star is an inline toggle at the row's
@@ -14,6 +16,7 @@ import { icon } from "./icon.js";
  * @returns {string} HTML string
  */
 export function renderCardRow(card, readingDisplay = "reading") {
+  const cardId = escapeHTML(card.id);
   const isStarred = !!card.state?.starredAt;
   let speaker;
   try {
@@ -23,29 +26,29 @@ export function renderCardRow(card, readingDisplay = "reading") {
     // Older cards can have plain-text notes rather than conversation metadata.
   }
   return `
-    <div class="card-row-wrapper shrink-0 overflow-hidden"${speaker ? ` data-speaker="${speaker}"` : ""} data-card-id="${card.id}">
+    <div class="card-row-wrapper shrink-0 overflow-hidden"${speaker ? ` data-speaker="${speaker}"` : ""} data-card-id="${cardId}">
       <div class="inset flex-row reverse items-center gap-md">
         <button
           class="icon-button bg-blue fg-white tappable"
           data-action="content/edit-card"
-          data-card-id="${card.id}"
+          data-card-id="${cardId}"
           aria-label="Edit"
         >${icon("edit")}</button>
 
         <button
           class="icon-button bg-danger fg-white tappable"
           data-action="content/delete-card"
-          data-card-id="${card.id}"
+          data-card-id="${cardId}"
           aria-label="Delete"
         >${icon("delete")}</button>
       </div>
 
-      <div class="card-row flex-row items-start justify-between tappable" data-action="content/play-card" data-card-id="${card.id}" data-starred="${isStarred}">
+      <div class="card-row flex-row items-start justify-between tappable" data-action="content/play-card" data-card-id="${cardId}" data-starred="${isStarred}">
         ${renderCardContent(card, readingDisplay, speaker)}
         <button
           class="card-star tappable shrink-0"
           data-action="content/star-card"
-          data-card-id="${card.id}"
+          data-card-id="${cardId}"
           aria-label="${isStarred ? "Unstar" : "Star"}"
           data-selected="${isStarred}"
         >${icon(isStarred ? "star-fill" : "star")}</button>
@@ -67,15 +70,15 @@ function renderCardContent(card, readingDisplay = "reading", speaker) {
   // Furigana ruby only when displaying 'reading' and structured tokens exist;
   // otherwise the reading renders as a plain line below the term.
   const hasRuby = readingDisplay === "reading" && Array.isArray(card.reading);
-  const cjk = hasRuby ? renderRuby(card.reading) : card.text;
-  const reading = card[readingDisplay] || "";
+  const cjk = hasRuby ? renderRuby(card.reading) : escapeHTML(card.text);
+  const reading = escapeHTML(card[readingDisplay]);
 
   return `
     <div class="card-term flex-col flex-1 min-w-0" ${hasRuby ? "data-has-ruby" : ""}>
       ${speaker ? `<div class="card-term-speaker section-label">${speaker === "you" ? "You" : "Partner"}</div>` : ""}
       <div class="card-term-target fg-body">${cjk}</div>
       ${hasRuby ? "" : `<div class="card-term-reading text-body2">${reading}</div>`}
-      <div class="card-term-english fg-secondary">${card.translation || ""}</div>
+      <div class="card-term-english fg-secondary">${escapeHTML(card.translation)}</div>
     </div>
   `;
 }
@@ -87,13 +90,14 @@ function renderCardContent(card, readingDisplay = "reading", speaker) {
  * @returns {string} HTML string
  */
 export function renderRuby(tokens) {
-  if (!Array.isArray(tokens)) return tokens || "";
+  if (!Array.isArray(tokens)) return escapeHTML(tokens);
   return tokens
     .map(([base, annotation]) => {
+      const escapedBase = escapeHTML(base);
       if (annotation) {
-        return `<ruby>${base}<rt>${annotation}</rt></ruby>`;
+        return `<ruby>${escapedBase}<rt>${escapeHTML(annotation)}</rt></ruby>`;
       }
-      return base;
+      return escapedBase;
     })
     .join("");
 }

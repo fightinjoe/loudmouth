@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 ROOT = "/Users/awheeler/src/2026/loudmouth_API_02_claude/prompts/phrasebook"
 OUT = f"{ROOT}/comparisons/luna/responses"
-GEN_V, TR_V, SOURCE = "v09", "v05", "v09"
+GEN_V, TR_V, SOURCE = ".", ".", "."
 TAGS = ["salsa", "surf", "vegan", "directions", "sick"]
 LANG_NAMES = {"es": "Spanish", "ja": "Japanese", "zh": "Chinese", "cs": "Czech"}
 
@@ -18,7 +18,10 @@ PAIR = re.compile(r'(' + CJK + r'+)\[([^\[\]]+)\]')
 
 def call(prompt, outfile):
     payload = json.dumps({"model": "gpt-5.6-luna",
-                          "messages": [{"role": "user", "content": prompt}],
+                          "messages": [
+                              {"role": "developer", "content": prompt["instructions"]},
+                              {"role": "user", "content": prompt["input"]},
+                          ],
                           "response_format": {"type": "json_object"}})
     for attempt in range(3):
         t0 = time.time()
@@ -39,9 +42,6 @@ def call(prompt, outfile):
             continue
     raise RuntimeError(f"failed after retries: {outfile}")
 
-def fmt_lines(lines):
-    return "\n".join(f"{i+1}. {l['speaker']}{' (or)' if l.get('or') else ''}: {l['text']}"
-                     for i, l in enumerate(lines))
 
 def ruby_orphans(strings):
     n = 0
@@ -54,13 +54,12 @@ summary = []
 for tag in TAGS:
     fixture = json.load(open(f"{ROOT}/inputs/input_{tag}.json"))
     lang, seed = LANG_NAMES[fixture["language"]], fixture["seed"]
-    answers = "\n".join(f"- {q}: {a}" for q, a in fixture["answers"].items())
-    topics = "\n".join(f"- {t}" for t in fixture["checklist"])
 
     # 1) generation
-    gp = (gen_tmpl.replace("{{SEED}}", seed).replace("{{LANGUAGE}}", lang)
-          .replace("{{ANSWERS}}", answers).replace("{{TOPICS}}", topics)
-          .replace("{{ABILITY}}", "basics"))
+    gp = {
+        "instructions": gen_tmpl,
+        "input": json.dumps({**fixture, "ability": fixture.get("ability", "basics")}),
+    }
     gdata, gdt, gu = call(gp, f"{OUT}/gen_{tag}.json")
     print(f"\n===== {tag} ({lang}) GEN — {gdt:.2f}s, in {gu['prompt_tokens']} out {gu['completion_tokens']} =====")
     for c in gdata["conversations"]:
@@ -69,17 +68,17 @@ for tag in TAGS:
             print(f"  {l['speaker']}{' (or)' if l.get('or') else ''}: {l['text']}")
         print(f"  vocab ({len(c.get('vocab', []))}): {', '.join(c.get('vocab', []))}")
 
-    # 2) translation of the ACCEPTED gemini v09 source (identical input both models)
+    # 2) translation of the frozen accepted Gemini source (identical input both models)
     src = json.loads(json.load(open(f"{ROOT}/{SOURCE}/responses/response_{tag}.json"))
                      ["candidates"][0]["content"]["parts"][0]["text"])
     rr_path = f"{ROOT}/translate/{TR_V}/reading_rules_{fixture['language']}.txt"
     rr = open(rr_path).read() if os.path.exists(rr_path) else ""
     jobs = []
     for ci, conv in enumerate(src["conversations"]):
-        p = (tr_tmpl.replace("{{READING_RULES}}", rr)
-             .replace("{{SEED}}", seed).replace("{{LANGUAGE}}", lang)
-             .replace("{{TITLE}}", conv["title"]).replace("{{LINES}}", fmt_lines(conv["lines"]))
-             .replace("{{WORDS}}", "\n".join(f"{i+1}. {w}" for i, w in enumerate(conv.get("vocab", [])))))
+        p = {
+            "instructions": tr_tmpl.replace("{{READING_RULES}}", rr),
+            "input": json.dumps({"seed": seed, "language": fixture["language"], "conversation": conv}),
+        }
         jobs.append((p, f"{OUT}/tr_{tag}_conv{ci}.json"))
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=3) as ex:

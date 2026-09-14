@@ -1,4 +1,6 @@
 import { icon } from "./icon.js";
+import { escapeHTML } from "../js/utils.js";
+
 
 /**
  * Pane header row — the Figma "Header" component: a left control, a centered
@@ -31,9 +33,9 @@ export function headerSpacer() {
  * @param {{ action?: string, label?: string, className?: string }} [opts]
  */
 export function headerIconButton(name, { action, label, className = "" } = {}) {
-  const cls = ["icon-button", className].filter(Boolean).join(" ");
-  const actionAttr = action ? `data-action="${action}"` : "";
-  return `<button class="${cls}" ${actionAttr} aria-label="${label || name}">${icon(name)}</button>`;
+  const cls = escapeHTML(["icon-button", className].filter(Boolean).join(" "));
+  const actionAttr = action ? `data-action="${escapeHTML(action)}"` : "";
+  return `<button class="${cls}" ${actionAttr} aria-label="${escapeHTML(label || name)}">${icon(name)}</button>`;
 }
 
 /**
@@ -43,10 +45,11 @@ export function headerIconButton(name, { action, label, className = "" } = {}) {
  * @param {{ action?: string, className?: string }} [opts]
  */
 export function headerTitle(text, { action, className = "" } = {}) {
-  const cls = ["pane-header-title", "flex-1", "text-center", "fg-body", className]
+  const cls = escapeHTML(["pane-header-title", "flex-1", "text-center", "fg-body", className]
     .filter(Boolean)
-    .join(" ");
+    .join(" "));
+  const escapedText = escapeHTML(text);
   return action
-    ? `<button class="${cls} tappable" data-action="${action}">${text}</button>`
-    : `<span class="${cls}">${text}</span>`;
+    ? `<button class="${cls} tappable" data-action="${escapeHTML(action)}">${escapedText}</button>`
+    : `<span class="${cls}">${escapedText}</span>`;
 }

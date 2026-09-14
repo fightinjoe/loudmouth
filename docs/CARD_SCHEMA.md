@@ -49,6 +49,12 @@ The term batch format is the interchange format between external generators (AI 
 
 The app renders `reading` as ruby text (e.g. `<ruby>菜<rt>cài</rt></ruby>`). `romanization` is a separate optional field for Latin-alphabet transcription and is independent of `reading`.
 
+All string fields, including both parts of a reading token, are untrusted plain text, not HTML.
+Keep stored/imported values unescaped; encode them when interpolating into web HTML text or quoted
+attributes, or assign them through DOM text/value properties. Only the renderer creates ruby markup;
+it must escape each base and annotation independently. Shape validation does not make text safe to
+interpret as markup, a URL, or an executable action.
+
 For Japanese `/phrasebook` cards, `romanization` uses modified Hepburn with word spaces,
 contextual particle readings (`wa`, `e`, `o`), and long-vowel macrons. Example:
 `私はビーガンです。` → `Watashi wa bīgan desu.`. The translation model supplies romanization

@@ -1,4 +1,26 @@
-# /context prompt — v03 (ACCEPTED — current)
+# /context prompt — v04 (current)
+
+## v04: instruction/data separation (2026-09-13)
+
+Applied the approved security hardening without changing the teaching goals or public request limits.
+`prompt.txt` is now trusted instructions; `{ seed, language }` is separate JSON user content.
+A concise boundary rule permits legitimate imperative learning subjects while directing the model
+not to obey override, extraction, or output-format instructions embedded in values.
+
+Five-seed live baseline: all setup responses validated on `gemini-3.5-flash-lite`, 1.18–2.58 seconds.
+The initial directions call received provider 429; the explicit rerun passed. The complete
+context-to-phrasebook attack produced no detected canary or instruction leakage. These observations
+are not a confidentiality guarantee.
+
+Full raw responses, usage, inputs, and per-stage scores:
+- [`security-v10-v06.json`](../phrasebook/responses/security-v10-v06.json)
+- [`security-v10-v06-baseline-retry.json`](../phrasebook/responses/security-v10-v06-baseline-retry.json)
+
+An actual HTTP `/context` → `/phrasebook` smoke with the Japanese seed
+"telling someone not to share my password" returned 200 for both stages (2.23s setup, 3.64s generation
+pipeline). No keyword blacklist or prompt-secret guarantee was added.
+
+## v03 baseline history
 
 - Model: `gemini-3.5-flash-lite` (generateContent, `responseMimeType` not set in the
   hand-test; the service sets `application/json`)

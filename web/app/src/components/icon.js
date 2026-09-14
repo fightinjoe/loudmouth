@@ -1,3 +1,5 @@
+import { escapeHTML } from "../js/utils.js";
+
 // Inline-SVG icon registry.
 //
 // Icons are authored as individual SVG files under `src/icons/` (exported from
@@ -39,7 +41,7 @@ export function icon(name, { className = "", size } = {}) {
     return "";
   }
   const cls = ["icon", size && `icon--${size}`, className].filter(Boolean).join(" ");
-  return raw.replace("<svg", `<svg class="${cls}" aria-hidden="true" focusable="false"`);
+  return raw.replace("<svg", `<svg class="${escapeHTML(cls)}" aria-hidden="true" focusable="false"`);
 }
 
 /** All registered icon names — handy for tests and tooling. */

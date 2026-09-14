@@ -284,4 +284,48 @@ describe("openLookupPanel — auto-name a freshly created phrasebook", () => {
     await vi.waitFor(() => expect(saveTermCard).toHaveBeenCalledTimes(1));
     expect(updateDeckName).not.toHaveBeenCalled();
   });
+
+});
+
+describe("openLookupPanel — untrusted boundary rendering", () => {
+  it("renders model and history strings literally while containing quoted attributes", async () => {
+    const injectedElement = '<img src=x onerror="window.__injected=true">';
+    const hostileTerm = 'term"><img src=x onerror=alert(1)>';
+    const hostileGroupTitle = 'group" onmouseover="window.__injected=true';
+    lookup.mockResolvedValueOnce({
+      blocks: [{
+        card: {
+          lang: "ja",
+          text: injectedElement,
+          translation: injectedElement,
+          reading: [[injectedElement, 'reading"><img src=x onerror=alert(1)>']],
+        },
+        groups: [{
+          title: hostileGroupTitle,
+          cards: [{ lang: "ja", text: injectedElement, translation: injectedElement }],
+        }],
+      }],
+    });
+    openLookupPanel(appEl, deck, {}, () => {}, () => {});
+    typeAndSubmit(appEl, hostileTerm);
+    await vi.waitFor(() => expect(appEl.querySelector(".lookup-card")).toBeTruthy());
+
+    expect(appEl.querySelector("img")).toBeNull();
+    expect(appEl.querySelector(".pane-header-title").textContent).toBe(`"${hostileTerm}"`);
+    expect(appEl.querySelector(".lookup-card-headword").textContent).toBe(injectedElement);
+    expect(appEl.querySelector(".lookup-card-text ruby")).not.toBeNull();
+    expect(appEl.querySelector(".lookup-card-text rt").textContent).toBe('reading"><img src=x onerror=alert(1)>');
+    expect(appEl.querySelector(".lookup-group-title").textContent).toBe(hostileGroupTitle);
+
+    appEl.querySelector('[data-action="lookup/open-group"]').click();
+    const reseed = appEl.querySelector('[data-action="lookup/reseed"]');
+    expect(reseed.dataset.groupTitle).toBe(hostileGroupTitle);
+    expect(reseed.hasAttribute("onmouseover")).toBe(false);
+    appEl.querySelector('[data-action="lookup/back"]').click();
+    appEl.querySelector('[data-action="lookup/back"]').click();
+    const history = appEl.querySelector('[data-action="lookup/history-item"]');
+    expect(history.dataset.term).toBe(hostileTerm);
+    expect(history.textContent).toBe(hostileTerm);
+    expect(appEl.querySelector("img")).toBeNull();
+  });
 });

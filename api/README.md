@@ -81,7 +81,7 @@ retries, with wall-clock duration rather than summed parallel-call durations. Ra
 - `src/llms/`: provider adapters and their timeout/output capabilities.
 - `src/card-validate.js`, `pricing.js`: shared card and cost rules.
 - `src/test/`: Node regression tests.
-- `config/api-gateway.yaml`: routes, gateway deadlines, and rate quota.
+- `config/api-gateway.yaml`: routes and gateway deadlines; no caller admission quota is configured.
 
 Accepted prompt sources are under `prompts/context/` and `prompts/phrasebook/`. Service copies must
 stay byte-identical, including Japanese/Chinese reading rules. Edit and accept source prompts first;
@@ -139,6 +139,35 @@ topics, all four languages, invalid/missing ability, client-supplied `llm`, tran
 retry exhaustion, and out-of-order parallel completion. Historical evaluation outputs are evidence
 of their recorded prompts/models, not current configuration documentation.
 
+Security regression coverage includes native provider instruction/user boundaries, request rejection
+before model calls, and DOM escaping of user/model/persisted content. The browser regression in
+`web/app/e2e/safe-rendering.spec.js` checks persistence, hostile IDs, card actions, reload, and ruby review.
+
+Model evals are separate from deterministic tests and make paid provider calls:
+
+```bash
+# api/src; reads local server credentials from ../.env without including them in prompts
+npm run eval:adversarial -- --mode=all --backend=gemini-3.5-flash-lite --repetitions=1
+```
+
+Use synthetic canaries only. Successful extraction is evidence of a failure; no observed extraction
+is not a confidentiality guarantee. Review raw outputs alongside automated scoring and normal
+language-learning baselines. Other backends can be selected explicitly for comparison.
+
+The default mode is `adversarial` (a benign imperative control plus attack cases).
+`--mode=baseline` runs all five canonical fixtures through setup, generation, and every translation
+chunk using uninstrumented production instructions. `--mode=all` combines both. Useful options:
+`--case='GLOB[,GLOB...]'`, `--repetitions=N`, `--out=PATH`, and `--list-cases`.
+Artifacts default to ignored `api/evals/artifacts/`; choose an explicit retained path for accepted
+prompt evidence. `--fail-on-findings` also returns failure for model-output findings. Provider,
+infrastructure, and invalid-fixture errors always return a failing exit status.
+
+Attack coverage includes schema-preserving extraction, encoded disclosure, instruction overrides
+in seed/answer/question/topic fields, generated translation source, all public routes, and the
+setup-to-generation chain. Baselines use the existing `prompts/phrasebook/inputs` fixtures.
+The runner does not retry invalid output or provider errors itself; it preserves first responses
+and distinguishes those outcomes. Provider SDK retries still apply.
+
 ## Deployment reference
 
 Production deployment is a separate operator action:
@@ -155,9 +184,11 @@ the Cloud Run function, and updates API Gateway. It prints instructions for miss
 Set server `LLM_BACKEND` for the intended provider. Gateway and Cloud Run deadlines must exceed the
 complete phrasebook request budget, including generation and chunk retries plus backoff.
 
-API Gateway rate quota is configured under `x-google-management.quota.limits` in
-`config/api-gateway.yaml`. Provider quotas are separate: one phrasebook request produces multiple
-model calls, so gateway request limiting alone does not prevent provider 429 responses.
+The checked-in gateway configuration does not define caller authentication or rate quotas.
+`deploy.sh` configures authenticated gateway-to-Cloud-Run invocation; that is not caller admission
+control. Verify the actual deployed access boundary before public release. Anonymous quotas,
+concurrency/spend controls, and app attestation are deferred pending a separate policy decision.
+Provider quotas are separate: one phrasebook request produces multiple model calls.
 
 ## Errors and trust boundary
 
@@ -165,12 +196,17 @@ model calls, so gateway request limiting alone does not prevent provider 429 res
 - `502`: model failure, deadline, or invalid output after applicable retries.
 - `OPTIONS` returns `204`; unsupported methods `405`; unknown paths `404`.
 
-Request text is untrusted. Structural validation and output validation are not a prompt-injection
-security guarantee. The current API does not verify that submitted question/topic labels came from
-a prior `/context` response. See API_DESIGN's trust-boundary section before changing public inputs.
+The stateless free-text contract is retained: question/topic labels need not originate from a
+prior `/context` response. All task data is serialized as JSON separately from trusted provider
+instructions, including generated English passed into translation. This is defense in depth, not
+a prompt-injection security guarantee. Prompts may be extractable; never include actual secrets.
+Render returned strings as text, including data previously persisted on the client.
+See API_DESIGN's trust-boundary section for accepted controls and deferred abuse policy.
 
 ## Adding a provider
 
-Implement the existing adapter contract `{ text, model, usage }`, register its server configuration
-key in `src/llm-config.js`, and declare appropriate timeout/token capabilities. Add pricing if known.
+Implement `handler({ instructions, input }, options)` returning `{ text, model, usage }`.
+Map instructions and JSON input to separate native instruction/user fields; never concatenate them.
+Register the server configuration key in `src/llm-config.js`, declare timeout/token capabilities,
+and add pricing if known. Provider-boundary tests must cover the native request envelope.
 Update operator documentation and exercise the pipeline before deployment. Do not add a client enum.

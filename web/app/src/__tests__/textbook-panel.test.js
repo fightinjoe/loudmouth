@@ -166,6 +166,29 @@ describe("openTextbookPanel — context questions + checklist", () => {
     expect(selected).toHaveLength(8);
   });
 
+
+  it("renders hostile model-provided labels and option values literally", async () => {
+    const hostileLabel = 'label"><img src=x onerror="window.__injected=true">';
+    const hostileOption = 'option" autofocus onfocus="window.__injected=true';
+    await openWithQuestions({
+      questions: [{ label: hostileLabel, options: [hostileOption] }],
+      checklist: [{ label: hostileLabel, checked: true }],
+    });
+
+    const select = appEl.querySelector(".textbook-select");
+    expect(appEl.querySelector("img")).toBeNull();
+    expect(appEl.querySelector(".textbook-select-label").textContent).toBe(hostileLabel);
+    expect(select.dataset.label).toBe(hostileLabel);
+    const option = select.querySelector("option");
+    expect(select.value).toBe(hostileOption);
+    expect(option.textContent).toBe(hostileOption);
+    expect(option.hasAttribute("autofocus")).toBe(false);
+    expect(option.hasAttribute("onfocus")).toBe(false);
+
+    gotoChecklist(appEl);
+    expect(appEl.querySelector(".textbook-checklist-item").textContent).toContain(hostileLabel);
+    expect(appEl.querySelector("img")).toBeNull();
+  });
 });
 
 describe("openTextbookPanel — generate + commit", () => {

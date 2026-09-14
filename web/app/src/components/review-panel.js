@@ -5,6 +5,8 @@ import { renderRuby } from "./card.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { icon } from "./icon.js";
 import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header.js";
+import { escapeHTML } from "../js/utils.js";
+
 
 // Swipe-to-advance threshold — same value as the reveal-swipe gesture
 // elsewhere in the app (content-pane-gestures.js REVEAL_THRESHOLD), kept
@@ -218,17 +220,17 @@ function renderBody(ordered, state, deckLang) {
   const promptFlag = state.reversed ? flag : "🇬🇧";
   const answerLang = state.reversed ? "English" : (LANG_NAMES[deckLang] ?? deckLang);
 
-  const sourceHTML = Array.isArray(card.reading) ? renderRuby(card.reading) : (card.text || "");
-  const promptHTML = state.reversed ? sourceHTML : esc(card.translation || "");
-  const answerHTML = state.reversed ? esc(card.translation || "") : sourceHTML;
+  const sourceHTML = Array.isArray(card.reading) ? renderRuby(card.reading) : escapeHTML(card.text);
+  const promptHTML = state.reversed ? sourceHTML : escapeHTML(card.translation);
+  const answerHTML = state.reversed ? escapeHTML(card.translation) : sourceHTML;
 
   return `
     ${renderPaneHeader({
       leading: headerIconButton("close", { action: "review/close", label: "Close" }),
       title: `<span class="pane-header-title flex-1"></span>`,
       trailing: `<button class="review-direction-toggle flex items-center tappable" data-action="review/toggle-direction" aria-label="Toggle direction">
-        <span class="review-direction-flag">${promptFlag}</span>
-        <span class="review-direction-lang text-body2 fg-secondary">${promptLang}</span>
+        <span class="review-direction-flag">${escapeHTML(promptFlag)}</span>
+        <span class="review-direction-lang text-body2 fg-secondary">${escapeHTML(promptLang)}</span>
         ${icon("swap-vert", { size: "sm", className: "review-direction-icon" })}
       </button>`,
     })}
@@ -247,16 +249,10 @@ function renderBody(ordered, state, deckLang) {
     <div class="review-controls flex items-center justify-between">
       <button class="review-reveal-toggle flex items-center tappable" data-action="review/toggle-reveal" aria-label="Reveal answer">
         <span class="review-reveal-icon">${state.revealed ? icon("visibility-off", { size: "sm" }) : icon("visibility", { size: "sm" })}</span>
-        <span class="review-reveal-label text-body2 fg-secondary">${answerLang}</span>
+        <span class="review-reveal-label text-body2 fg-secondary">${escapeHTML(answerLang)}</span>
       </button>
       <button class="icon-button review-play" data-action="review/play" aria-label="Play audio">${icon("sound")}</button>
     </div>
   `;
 }
 
-function esc(str) {
-  return String(str || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}

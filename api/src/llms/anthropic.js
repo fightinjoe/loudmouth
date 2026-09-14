@@ -15,6 +15,10 @@ function getClient() {
   return client;
 }
 
+/**
+ * @param {{ instructions: string, input: string }} prompt
+ * @param {{ maxOutputTokens?: number, signal?: AbortSignal }} options
+ */
 async function callAnthropic(prompt, { maxOutputTokens = 1024, signal } = {}) {
   const anthropic = getClient();
 
@@ -22,7 +26,8 @@ async function callAnthropic(prompt, { maxOutputTokens = 1024, signal } = {}) {
     model: ANTHROPIC_MODEL,
     temperature: 0.2,
     max_tokens: maxOutputTokens,
-    messages: [{ role: 'user', content: prompt }],
+    system: prompt.instructions,
+    messages: [{ role: 'user', content: prompt.input }],
   }, { signal });
 
   const text = message?.content?.[0]?.text;

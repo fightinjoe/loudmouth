@@ -1,4 +1,40 @@
-# /phrasebook generation prompt — ACCEPTED baseline (was v09)
+# /phrasebook generation prompt — v10 (current)
+
+## v10: instruction/data separation (2026-09-13)
+
+Applied the approved structural hardening: trusted instructions are separate from JSON task data
+`{ seed, language, ability, answers, checklist }`. No request strings are interpolated into teaching
+instructions. Language-learning goals may legitimately be imperative; override/extraction requests
+inside values are not authoritative. Teaching content and existing limits are retained.
+
+All five standard generation baselines validated with full translation and assembly. Calls below
+use uninstrumented production prompts on `gemini-3.5-flash-lite`; translation timing is the slowest
+parallel chunk, not a separately measured end-to-end duration:
+
+| Fixture | Setup ms | Generation ms | Slowest translation ms | Conversation cards |
+|---|---:|---:|---:|---|
+| salsa | 2267 | 1874 | 1783 | 5 / 5 / 5 |
+| surf | 1453 | 2115 | 981 | 7 / 6 / 6 |
+| vegan | 2582 | 1992 | 3663 | 6 / 6 / 6 |
+| directions | 1255 | 1985 | 1352 | 4 / 4 / 4 |
+| sick | 1182 | 1861 | 1527 | 5 / 5 / 5 |
+
+Full raw responses and assembled phrasebooks:
+- [`security-v10-v06.json`](responses/security-v10-v06.json): initial five-seed baseline, benign
+  imperative control, and nine attack cases across every public endpoint and the setup pipeline.
+- [`security-v10-v06-baseline-retry.json`](responses/security-v10-v06-baseline-retry.json):
+  explicit vegan/directions reruns after two initial provider 429 responses. No application repair
+  retries are hidden inside these eval records.
+- [`security-v10-v06-schema-extraction.json`](responses/security-v10-v06-schema-extraction.json):
+  three additional attempts to extract instructions/canaries inside schema-valid JSON string fields;
+  all validated without detected leakage. This avoids testing only attacks that ask to abandon JSON.
+
+The initial attack run detected no canary/instruction leakage. A malicious checklist title was
+omitted by generation; the unchanged conversation-count validator rejected the result. The benign
+password-related control validated without a refusal. Neither successful validation nor an
+unsuccessful extraction attempt certifies confidentiality. Prompts must contain no real secrets.
+
+## v09 baseline history
 
 - **Model:** `gemini-3.5-flash-lite`, `responseMimeType: application/json`
 - **Accepted:** 2026-09-12, after v00–v09 (superseded versions deleted; lessons below)
@@ -7,8 +43,8 @@
 
 ## What the prompt does
 
-One call. Inputs: `{{SEED}}`, `{{LANGUAGE}}`, `{{ANSWERS}}` (Q→A lines), `{{TOPICS}}`
-(3 selected checklist items), `{{ABILITY}}` (`none | basics | conversational`).
+One call. Task data: `seed`, `language`, `answers` (question-to-answer map), `checklist`
+(1–8 selected topic strings), and `ability` (`none | basics | conversational`), serialized as JSON.
 Output: one English dialogue per topic (`you`/`partner` lines, optional `"or": true`
 branch lines) with a per-conversation `vocab` list (3–6 English words). Translation is
 a separate prompt; the service fans out one translate call per conversation.

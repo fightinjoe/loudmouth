@@ -1,9 +1,9 @@
 import json, subprocess, time, os, sys
 
 ROOT = "/Users/awheeler/src/2026/loudmouth_API_02_claude/prompts/phrasebook"
-VERSION = sys.argv[1] if len(sys.argv) > 1 else "v03"
+VERSION = sys.argv[1] if len(sys.argv) > 1 else "."
 TAG = sys.argv[3] if len(sys.argv) > 3 else "salsa"
-ABILITIES = sys.argv[2].split(",") if len(sys.argv) > 2 else ["none", "basics", "conversational", "comfortable"]
+ABILITIES = sys.argv[2].split(",") if len(sys.argv) > 2 else ["none", "basics", "conversational"]
 LANG_NAMES = {"es": "Spanish", "ja": "Japanese", "zh": "Chinese", "cs": "Czech"}
 
 tmpl = open(f"{ROOT}/{VERSION}/prompt.txt").read()
@@ -12,19 +12,16 @@ url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-
 os.makedirs(f"{ROOT}/{VERSION}/responses", exist_ok=True)
 
 fixture = json.load(open(f"{ROOT}/inputs/input_{TAG}.json"))
-answers = "\n".join(f"- {q}: {a}" for q, a in fixture["answers"].items())
-topics = "\n".join(f"- {t}" for t in fixture["checklist"])
 lang = LANG_NAMES[fixture["language"]]
 
 results = {}
 for ability in ABILITIES:
-    prompt = (tmpl.replace("{{SEED}}", fixture["seed"])
-                  .replace("{{LANGUAGE}}", lang)
-                  .replace("{{ANSWERS}}", answers)
-                  .replace("{{TOPICS}}", topics)
-                  .replace("{{ABILITY}}", ability))
-    payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}],
-                          "generationConfig": {"responseMimeType": "application/json"}})
+    request = {**fixture, "ability": ability}
+    payload = json.dumps({
+        "systemInstruction": {"parts": [{"text": tmpl}]},
+        "contents": [{"role": "user", "parts": [{"text": json.dumps(request)}]}],
+        "generationConfig": {"responseMimeType": "application/json"},
+    })
     t0 = time.time()
     r = subprocess.run(["curl", "-sS", "-H", f"x-goog-api-key: {key}",
                         "-H", "Content-Type: application/json", "-d", payload, url],

@@ -27,22 +27,32 @@ function usageFromMetadata(meta = {}) {
     outputTokens: (meta.candidatesTokenCount ?? 0) + (meta.thoughtsTokenCount ?? 0),
   };
 }
-function buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema) {
+function buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema, systemInstruction) {
   return {
     maxOutputTokens,
     responseMimeType: 'application/json',
+    systemInstruction,
     ...(responseJsonSchema ? { responseJsonSchema } : {}),
     ...(signal ? { abortSignal: signal } : {}),
   };
 }
 
-
+/**
+ * @param {string} model
+ * @param {{ instructions: string, input: string }} prompt
+ * @param {{ maxOutputTokens?: number, signal?: AbortSignal, responseJsonSchema?: object }} options
+ */
 async function callGenAIModel(model, prompt, { maxOutputTokens = 1024, signal, responseJsonSchema } = {}) {
   const ai = getClient();
   const result = await ai.models.generateContent({
     model,
-    contents: prompt,
-    config: buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema),
+    contents: prompt.input,
+    config: buildGenerationConfig(
+      maxOutputTokens,
+      signal,
+      responseJsonSchema,
+      prompt.instructions,
+    ),
   });
 
   const text = result.text;

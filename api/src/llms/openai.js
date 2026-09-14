@@ -15,13 +15,20 @@ function getClient() {
   return client;
 }
 
+/**
+ * @param {{ instructions: string, input: string }} prompt
+ * @param {{ maxOutputTokens?: number, signal?: AbortSignal }} options
+ */
 async function callOpenAI(prompt, { maxOutputTokens = 1024, signal } = {}) {
   const openai = getClient();
 
   const completion = await openai.chat.completions.create({
     model: OPENAI_MODEL,
     max_completion_tokens: maxOutputTokens,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [
+      { role: 'developer', content: prompt.instructions },
+      { role: 'user', content: prompt.input },
+    ],
   }, { signal });
 
   const text = completion?.choices?.[0]?.message?.content;

@@ -22,6 +22,9 @@ Guided creation calls `/context`, collects answers and selected topics, then cal
 - Invalid input returns `400` before a model call.
 - Model failure, timeout, malformed JSON, or invalid output returns `502`.
 - The service validates and limits model output; callers receive no partial model response.
+- Every model call separates trusted instructions from `JSON.stringify`-serialized task data.
+  Gemini uses `systemInstruction`, Anthropic uses `system`, and OpenAI uses a `developer` message;
+  request data is user content. This reduces instruction ambiguity, not the possibility of extraction.
 - Cards follow [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md). The service supplies `context`;
   the client assigns storage IDs and import timestamps.
 - Japanese reading tokens are normalized by the service: kana and katakana are not ruby-annotated,
@@ -159,7 +162,7 @@ seeds.
 | `seed` | yes | — | Situation, activity, or topic; at most 200 characters |
 | `language` | yes | — | Target language; the prompt is language-aware |
 
-The prompt is language-aware: the target language is injected into the prompt so the model
+The prompt is language-aware: the target language code is supplied in the task JSON so the model
 may spend a question on a register or cultural axis when the language makes one matter for
 the seed (e.g. dashi/hidden-ingredient strictness for vegan food in Japanese). No cultural
 axis is required; most seeds get none.
@@ -374,15 +377,41 @@ The creation UI and persistence flow are unchanged:
 
 ### Trust boundary and deferred work
 
-All client text, including answers and selected topic labels, is untrusted. Request validation,
-bounded fan-out, and strict output validation constrain structure and resource consumption; they do
-**not** establish that the model ignored prompt injection. This stateless contract does not authenticate
-labels as originating in an earlier `/context` response. Server-issued selection identifiers or
-signed setup state require a separate API design decision.
+The public contract remains stateless free text. Answers and selected topic labels are bounded
+user-authored context, not evidence of completing `/context`. Existing request limits remain unchanged.
+Server-issued selections, signed setup state, and server-side sessions are not required.
 
-The accepted `/context` prompt remains unchanged. Ability-aware setup, static preset phrase packs,
-and removal of repair-style checklist topics are deferred. Explicit repair topics continue to work;
-they must not be removed before replacement packs exist.
+All request text and model-generated intermediate content are untrusted. Builders return
+`{ instructions, input }`: server-owned teaching rules go in `instructions`; task fields go in
+`input` via `JSON.stringify`. User strings are never substituted into trusted instructions. Only
+server-owned language rules/examples are composed there. Translation receives source lines and
+vocabulary as structured data and is instructed to translate their meaning, not obey them.
+Legitimate imperative language-learning content remains supported; there is no keyword blacklist.
+
+Prompt wording and role separation are defense in depth, not confidentiality boundaries. Treat
+prompts as potentially extractable. Credentials stay in provider authentication, never model
+messages. The model has no configured tools for reading server files, secrets, or other users' data.
+Structurally valid output can still contain instructions or inaccurate content.
+
+Clients must render all user/model/persisted strings as text. Web HTML templates encode text and
+quoted attributes at the sink; ruby elements are trusted markup with independently escaped base
+and annotation strings. Stored data is not pre-escaped. Native text views do not interpret HTML;
+future web views, rich text, links, or action integrations need their own explicit trust boundaries.
+
+Adversarial model evals exercise extraction and instruction override, including the full
+`/context` → `/phrasebook` chain. They use synthetic test-only canaries, preserve raw responses,
+and distinguish detected leakage, invalid output, and provider failures. A run with no detected
+leakage is not proof of confidentiality. Deterministic tests separately cover provider message
+boundaries, input rejection, and literal UI rendering, including persistence and review.
+
+Gateway admission policy, anonymous-client quotas, global concurrency/spend controls, and app
+attestation remain deferred. Verify intended gateway/backend exposure before public release;
+an iOS-only launch does not make the API private. No abuse-control policy is implemented by this
+prompt/rendering change.
+
+Ability-aware setup, static preset phrase packs, and removal of repair-style checklist topics
+remain deferred. Explicit repair topics continue to work; they must not be removed before
+replacement packs exist.
 
 ## Retained `/textbook` endpoint
 

@@ -7,6 +7,8 @@
 import { renderCardRow } from "../components/card.js";
 import { icon } from "../components/icon.js";
 import { renderPaneHeader, headerIconButton, headerTitle, headerSpacer } from "../components/pane-header.js";
+import { escapeHTML } from "../js/utils.js";
+
 
 export function renderHeader(deck) {
   if (!deck) return "";
@@ -100,7 +102,7 @@ export function renderCardsHTML(deck, cards, tab = "conversations") {
 // Standalone translations remain a flat list above the named groups.
 function renderStandaloneSection(title, cards, readingDisplay) {
   return `
-    <div class="deck-view-section-header section-label">${escSection(title)}</div>
+    <div class="deck-view-section-header section-label">${escapeHTML(title)}</div>
     ${cards.map((c) => renderCardRow(c, readingDisplay)).join("")}
   `;
 }
@@ -108,7 +110,7 @@ function renderStandaloneSection(title, cards, readingDisplay) {
 // Named groups always show their complete conversation.
 function renderGroupSection(title, cards, readingDisplay) {
   return `
-    <div class="deck-view-section-header section-label">${escSection(title)}</div>
+    <div class="deck-view-section-header section-label">${escapeHTML(title)}</div>
     <div class="card-group">
       <div class="card-group-rows">
         ${cards.map((c) => renderCardRow(c, readingDisplay)).join("")}
@@ -117,12 +119,6 @@ function renderGroupSection(title, cards, readingDisplay) {
   `;
 }
 
-function escSection(str) {
-  return String(str || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
 
 // Phrasebook tabs: "Conversations" shows the conversation groups (phrase
 // cards), "Vocab (N)" the vocabulary words, "Starred (N)" the starred terms.

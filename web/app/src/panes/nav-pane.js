@@ -30,6 +30,8 @@ import { setListHTMLSafe } from "../js/uiState.js";
 import { SUGGESTED_PHRASEBOOKS, pendingSuggestions } from "../js/suggested-phrasebooks.js";
 import { icon } from "../components/icon.js";
 import { renderPhrasebookRow } from "../components/phrasebook-row.js";
+import { escapeHTML } from "../js/utils.js";
+
 
 // ── Pure renderers ───────────────────────────────────────────────────────────
 
@@ -61,8 +63,8 @@ function renderCtaBanner(hasDecks) {
 function renderHeader(title, { viewAllAction } = {}) {
   return `
     <div class="deck-picker-section-header section-label flex items-center justify-between">
-      <span>${title}</span>
-      ${viewAllAction ? `<button class="deck-picker-view-all text-body1 fg-accent tappable" data-action="${viewAllAction}">View all</button>` : ""}
+      <span>${escapeHTML(title)}</span>
+      ${viewAllAction ? `<button class="deck-picker-view-all text-body1 fg-accent tappable" data-action="${escapeHTML(viewAllAction)}">View all</button>` : ""}
     </div>
   `;
 }
@@ -73,7 +75,7 @@ function renderDeckRow(deck, count, subtitle, rowAction = "nav/open-deck") {
     subtitle: subtitle ?? `${count} card${count !== 1 ? "s" : ""}`,
     chevron: true,
     rowAction,
-    rowAttrs: `data-deck-id="${deck.id}"`,
+    rowData: { deckId: deck.id },
   });
 }
 
@@ -83,7 +85,7 @@ function renderSuggestedRow(suggestion, action = "nav/view-suggested") {
   return renderPhrasebookRow({
     title: `${suggestion.emoji} ${suggestion.title}`,
     subtitle: `${count} ${noun}`,
-    pill: { label: "View", action, attrs: `data-suggestion-id="${suggestion.id}"` },
+    pill: { label: "View", action, data: { suggestionId: suggestion.id } },
   });
 }
 

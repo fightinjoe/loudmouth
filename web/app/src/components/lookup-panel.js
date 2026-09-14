@@ -13,6 +13,8 @@ import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { PLACEHOLDER_DECK_NAME } from "./new-phrasebook-panel.js";
 import { icon } from "./icon.js";
 import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header.js";
+import { escapeHTML } from "../js/utils.js";
+
 
 const AUDIENCE_LABELS = {
   stranger: "strangers",
@@ -373,7 +375,7 @@ function renderInputFrame(state, deck, badge) {
           <div class="lookup-vibe-group" data-expanded="${state.vibeExpanded}">
             <button class="lookup-vibe-summary flex items-center tappable" data-action="lookup/vibe-toggle" aria-label="Edit VIBE settings">
               <span class="lookup-vibe-label">VIBE</span>
-              <span class="lookup-vibe-summary-label">${esc(vibeSummary)}</span>
+              <span class="lookup-vibe-summary-label">${escapeHTML(vibeSummary)}</span>
               ${icon("unfold-more", { className: "lookup-vibe-chevron" })}
             </button>
             <div class="lookup-vibe-expanded flex-col">
@@ -404,7 +406,7 @@ function renderInputFrame(state, deck, badge) {
       <div class="lookup-history flex-col" data-visible="${!hasValue && history.length > 0}">
         <div class="section-label">HISTORY</div>
         ${history.map((term) => `
-          <button class="lookup-history-item tappable text-body1 fg-body" data-action="lookup/history-item" data-term="${esc(term)}">${esc(term)}</button>
+          <button class="lookup-history-item tappable text-body1 fg-body" data-action="lookup/history-item" data-term="${escapeHTML(term)}">${escapeHTML(term)}</button>
         `).join("")}
       </div>
     </div>
@@ -412,13 +414,13 @@ function renderInputFrame(state, deck, badge) {
 }
 
 function renderTranslationFrame(state, frame, deck, badge) {
-  const header = renderHeader({ backLabel: "Back to input", title: `"${esc(frame.term)}"`, badge });
+  const header = renderHeader({ backLabel: "Back to input", title: `"${frame.term}"`, badge });
 
   if (frame.loading) {
     return `${header}${renderSkeleton()}`;
   }
   if (frame.error) {
-    return `${header}<div class="lookup-error text-center fg-secondary flex-1 flex-col items-center justify-center"><p>${esc(frame.error)}</p></div>`;
+    return `${header}<div class="lookup-error text-center fg-secondary flex-1 flex-col items-center justify-center"><p>${escapeHTML(frame.error)}</p></div>`;
   }
 
   const saveHintDismissed = isCoachDismissed("lookup-save");
@@ -439,7 +441,7 @@ function renderTranslationFrame(state, frame, deck, badge) {
 }
 
 function renderGroupFrame(state, frame, badge) {
-  const header = renderHeader({ backLabel: "Back to results", title: esc(frame.title), badge });
+  const header = renderHeader({ backLabel: "Back to results", title: frame.title, badge });
   const cardsHTML = frame.cards
     .map((card, cardIndex) => renderCard(card, {
       cardIndex,
@@ -467,7 +469,7 @@ function renderCoachMark(key, text, dismissed) {
   if (dismissed) return "";
   return `
     <div class="lookup-coach flex items-center justify-between" data-coach="${key}">
-      <span class="text-body2 fg-secondary">${esc(text)}</span>
+      <span class="text-body2 fg-secondary">${escapeHTML(text)}</span>
       <button class="lookup-coach-dismiss icon-button" data-action="lookup/dismiss-coach" data-coach-key="${key}" aria-label="Dismiss">${icon("close", { size: "sm" })}</button>
     </div>
   `;
@@ -488,8 +490,8 @@ function renderGroupSummary(group, blockIndex, groupIndex) {
   // text here (never ruby), even when the underlying card has a `reading`.
   const preview = group.cards.slice(0, 3).map((c) => `
     <div class="lookup-group-preview-row flex-col">
-      <span class="lookup-group-preview-translation">${esc(c.translation)}</span>
-      <span class="lookup-group-preview-source">${esc(c.text)}</span>
+      <span class="lookup-group-preview-translation">${escapeHTML(c.translation)}</span>
+      <span class="lookup-group-preview-source">${escapeHTML(c.text)}</span>
     </div>
   `).join("");
 
@@ -501,7 +503,7 @@ function renderGroupSummary(group, blockIndex, groupIndex) {
       data-group-index="${groupIndex}"
     >
       <div class="lookup-group-summary-header flex items-center justify-between">
-        <span class="lookup-group-title">${esc(group.title)}</span>
+        <span class="lookup-group-title">${escapeHTML(group.title)}</span>
         <span class="lookup-group-count flex items-center">${icon("web-stories", { size: "sm" })}${countLabel}</span>
       </div>
       <div class="lookup-group-preview flex-col">${preview}</div>
@@ -518,14 +520,14 @@ function renderCard(card, { blockIndex, groupIndex, cardIndex, groupTitle, saved
   ].join(" ");
   // Re-seed prefill rule (see openLookupPanel's `reseed` doc comment):
   // group cards carry their group's title, primary/block cards carry none.
-  const reseedGroupTitleAttr = groupTitle ? `data-group-title="${esc(groupTitle)}"` : "";
+  const reseedGroupTitleAttr = groupTitle ? `data-group-title="${escapeHTML(groupTitle)}"` : "";
   const savedAttr = saved ? "disabled" : "";
 
   return `
     <div class="lookup-card bg-surface flex-col" data-saved="${saved}" ${dataAttrs}>
       <div class="lookup-card-primary flex-col">
-        <span class="lookup-card-headword text-h2 fg-body">${esc(card.translation)}</span>
-        ${card.definition ? `<span class="lookup-card-definition text-body2 fg-secondary">${esc(card.definition)}</span>` : ""}
+        <span class="lookup-card-headword text-h2 fg-body">${escapeHTML(card.translation)}</span>
+        ${card.definition ? `<span class="lookup-card-definition text-body2 fg-secondary">${escapeHTML(card.definition)}</span>` : ""}
       </div>
       <div class="lookup-card-divider"></div>
       <div class="lookup-card-source flex-col">
@@ -541,14 +543,7 @@ function renderCard(card, { blockIndex, groupIndex, cardIndex, groupTitle, saved
 }
 
 function sourceHTML(card) {
-  return Array.isArray(card.reading) ? renderRuby(card.reading) : esc(card.text || "");
-}
-
-function esc(str) {
-  return String(str || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return Array.isArray(card.reading) ? renderRuby(card.reading) : escapeHTML(card.text);
 }
 
 function cap(str) {

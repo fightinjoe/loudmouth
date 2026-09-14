@@ -81,4 +81,21 @@ describe("openNewPhrasebookPanel — Confirm mode (suggestion)", () => {
     expect(createDeck).not.toHaveBeenCalled();
     expect(confirmed).toEqual({ lang: "ja", ability: "intermediate" });
   });
+
+  it("renders a hostile suggested title literally without creating elements", () => {
+    const hostileTitle = '<img src=x onerror="window.__injected=true">';
+    openNewPhrasebookPanel(
+      appEl,
+      { createDeck },
+      () => {},
+      () => {},
+      { ...suggestion, title: hostileTitle },
+      () => {},
+    );
+
+    expect(appEl.querySelector("img")).toBeNull();
+    expect(appEl.querySelector(".new-phrasebook-header span").textContent).toBe(`"${hostileTitle}" phrasebook`);
+    expect(appEl.querySelector('[data-action="new-phrasebook/create"]').textContent.trim())
+      .toBe(`View "${hostileTitle}" phrasebook`);
+  });
 });

@@ -4,6 +4,8 @@ import { createDeck, importCards } from "../js/db.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { icon } from "./icon.js";
 import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header.js";
+import { escapeHTML } from "../js/utils.js";
+
 
 /**
  * Opens the `textbook` action-pane content mode (docs/journeys.md Journey 5):
@@ -235,7 +237,7 @@ function renderHeader(lang, { extra = "" } = {}) {
 // The entered topic, pinned at the top of every post-topic step (bug 5) —
 // Figma "Term" line: one Roboto-Flex line under a hairline divider.
 function renderTermLine(topic) {
-  return `<div class="textbook-term flex items-end"><p class="textbook-term-text flex-1">${esc(topic)}</p></div>`;
+  return `<div class="textbook-term flex items-end"><p class="textbook-term-text flex-1">${escapeHTML(topic)}</p></div>`;
 }
 
 function renderTopicStep(state, lang) {
@@ -300,10 +302,10 @@ function renderChecklistStep(state, lang) {
 function renderQuestionSelect(question, value) {
   return `
     <label class="textbook-select-row flex-col">
-      <span class="textbook-select-label">${esc(question.label)}</span>
+      <span class="textbook-select-label">${escapeHTML(question.label)}</span>
       <span class="textbook-select-wrap flex items-center">
-        <select class="textbook-select" data-action="textbook/answer" data-label="${esc(question.label)}">
-          ${question.options.map((o) => `<option value="${esc(o)}" ${o === value ? "selected" : ""}>${esc(o)}</option>`).join("")}
+        <select class="textbook-select" data-action="textbook/answer" data-label="${escapeHTML(question.label)}">
+          ${question.options.map((o) => `<option value="${escapeHTML(o)}" ${o === value ? "selected" : ""}>${escapeHTML(o)}</option>`).join("")}
         </select>
         ${icon("unfold-more", { className: "textbook-select-chevron" })}
       </span>
@@ -315,7 +317,7 @@ function renderChecklistItem(item, index) {
   return `
     <button class="textbook-checklist-item flex items-center tappable" data-action="textbook/toggle-checklist-item" data-index="${index}" data-checked="${item.checked}">
       <span class="textbook-checklist-check flex items-center justify-center">${item.checked ? icon("check", { size: "sm" }) : ""}</span>
-      <span class="text-body1 fg-body">${esc(item.label)}</span>
+      <span class="text-body1 fg-body">${escapeHTML(item.label)}</span>
     </button>
   `;
 }
@@ -346,7 +348,7 @@ function renderErrorStep(state, lang) {
     ${renderHeader(lang)}
     ${state.topic ? renderTermLine(state.topic) : ""}
     <div class="textbook-error text-center fg-secondary flex-1 flex-col items-center justify-center">
-      <p>${esc(state.error)}</p>
+      <p>${escapeHTML(state.error)}</p>
       <button class="tappable textbook-retry" data-action="textbook/retry">Try again</button>
     </div>
   `);
@@ -363,9 +365,3 @@ function normalizeChecklist(checklist) {
   return normalized;
 }
 
-function esc(str) {
-  return String(str || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}

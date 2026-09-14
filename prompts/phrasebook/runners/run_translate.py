@@ -14,8 +14,11 @@ url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-
 os.makedirs(f"{TDIR}/responses", exist_ok=True)
 
 def call(prompt, outfile):
-    payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}],
-                          "generationConfig": {"responseMimeType": "application/json"}})
+    payload = json.dumps({
+        "systemInstruction": {"parts": [{"text": prompt["instructions"]}]},
+        "contents": [{"role": "user", "parts": [{"text": prompt["input"]}]}],
+        "generationConfig": {"responseMimeType": "application/json"},
+    })
     for attempt in range(4):
         t0 = time.time()
         r = subprocess.run(["curl", "-sS", "-H", f"x-goog-api-key: {key}",
@@ -35,9 +38,6 @@ def call(prompt, outfile):
             continue
     raise RuntimeError(f"chunk failed after retries: {outfile}")
 
-def fmt_lines(lines):
-    return "\n".join(f"{i+1}. {l['speaker']}{' (or)' if l.get('or') else ''}: {l['text']}"
-                     for i, l in enumerate(lines))
 
 import re
 CJK = r'[々一-鿿々]'
@@ -77,10 +77,10 @@ for tag in TAGS:
 
     jobs = []
     for ci, conv in enumerate(src["conversations"]):
-        p = (tmpl.replace("{{READING_RULES}}", reading_rules)
-             .replace("{{SEED}}", seed).replace("{{LANGUAGE}}", lang)
-             .replace("{{TITLE}}", conv["title"]).replace("{{LINES}}", fmt_lines(conv["lines"]))
-             .replace("{{WORDS}}", "\n".join(f"{i+1}. {w}" for i, w in enumerate(conv.get("vocab", [])))))
+        p = {
+            "instructions": tmpl.replace("{{READING_RULES}}", reading_rules),
+            "input": json.dumps({"seed": seed, "language": fixture["language"], "conversation": conv}),
+        }
         jobs.append((f"conv{ci}", p, f"{TDIR}/responses/response_{tag}_conv{ci}.json"))
 
     t0 = time.time()

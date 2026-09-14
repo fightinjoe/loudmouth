@@ -14,16 +14,10 @@ os.makedirs(f"{ROOT}/{VERSION}/responses", exist_ok=True)
 
 for tag in TAGS:
     fixture = json.load(open(f"{ROOT}/inputs/input_{tag}.json"))
-    answers = "\n".join(f"- {q}: {a}" for q, a in fixture["answers"].items())
-    topics = "\n".join(f"- {t}" for t in fixture["checklist"])
-    prompt = (tmpl
-              .replace("{{SEED}}", fixture["seed"])
-              .replace("{{LANGUAGE}}", LANG_NAMES[fixture["language"]])
-              .replace("{{ANSWERS}}", answers)
-              .replace("{{TOPICS}}", topics)
-              .replace("{{ABILITY}}", fixture.get("ability", os.environ.get("ABILITY", "basics"))))
+    request = {**fixture, "ability": fixture.get("ability", os.environ.get("ABILITY", "basics"))}
     payload = json.dumps({
-        "contents": [{"parts": [{"text": prompt}]}],
+        "systemInstruction": {"parts": [{"text": tmpl}]},
+        "contents": [{"role": "user", "parts": [{"text": json.dumps(request)}]}],
         "generationConfig": {"responseMimeType": "application/json"},
     })
     t0 = time.time()

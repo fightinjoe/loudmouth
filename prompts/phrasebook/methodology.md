@@ -16,10 +16,10 @@ is accepted.
    that change the prompt's shape: inputs (is it language-aware?), output schema, size
    bounds, carryover of old rules (default: start minimal, re-add a rule only when a test
    seed shows the failure it guarded against).
-2. **Draft the prompt** as a plain-text template with `{{PLACEHOLDER}}` substitution
-   (`{{SEED}}`, `{{LANGUAGE}}`, …). Short, concrete instructions; one compact few-shot
-   example for shape fidelity (input tokens are near-free for latency — output tokens
-   dominate). End with: "No prose, no code fences, JSON only."
+2. **Draft trusted instructions** as plain text, with request data supplied separately
+   as JSON user content. Only server-owned language-rule blocks may use template slots.
+   Keep instructions short and concrete with one compact shape example. Include the
+   untrusted-data boundary without rejecting legitimate imperative learning content.
 3. **Run the standard eval seeds** (all 5, every iteration — reruns are ~1.5s each and
    full coverage catches regressions that spot-checks miss).
 4. **Print every result in full for the user.** Never summarize away the outputs — the
@@ -64,21 +64,29 @@ the baseline survives without re-parsing the raw JSON.
 
 ## Runner
 
-Hand-testing bypasses the service: direct `generateContent` calls with `GEMINI_API_KEY`
-(from `~/.zshrc`) against `gemini-3.5-flash-lite`. Python builds payloads (safe JSON
-escaping) and shells out to curl; every raw response is saved before parsing:
+The production-path baseline/adversarial runner is `api/evals/scripts/eval-adversarial.js`.
+It uses the actual builders, provider adapters, validators, and five standard fixtures.
+Run with `--mode=baseline` for quality/latency and `--mode=adversarial` for synthetic-canary
+attacks; `--mode=all` does both. Full raw model text and per-stage metadata are saved.
+Extraction scoring is observational, not a confidentiality guarantee.
+
+Historical direct-provider Python runners remain useful for candidate templates and
+frozen-source comparisons. Their native system/user boundaries mirror the service:
 
 ```python
 import json, subprocess, time, os
 
 tmpl = open("prompts/<endpoint>/vNN/prompt.txt").read()
-seeds = [("salsa dancing in Austin, TX", "Spanish", "salsa"), ...]
+seeds = [("salsa dancing in Austin, TX", "es", "salsa"), ...]
 key = os.environ["GEMINI_API_KEY"]
 url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
 
 for seed, lang, tag in seeds:
-    prompt = tmpl.replace("{{LANGUAGE}}", lang).replace("{{SEED}}", seed)
-    payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]})
+    task = json.dumps({"seed": seed, "language": lang})
+    payload = json.dumps({
+        "systemInstruction": {"parts": [{"text": tmpl}]},
+        "contents": [{"role": "user", "parts": [{"text": task}]}],
+    })
     t0 = time.time()
     r = subprocess.run(["curl", "-sS", "-H", f"x-goog-api-key: {key}",
                         "-H", "Content-Type: application/json", "-d", payload, url],
@@ -158,9 +166,16 @@ Practices added while developing `/phrasebook` (Steps A–C, v00–v09 + transla
   chunks in parallel via ThreadPoolExecutor + service-style vocab pool/dedup + ruby
   orphan check), `run_ability.py` (ability sweep), `run_luna.py` (cross-model
   comparison harness).
-- **Retry policy is part of the eval harness** because it's part of the service spec:
-  429 → backoff and retry; per-chunk count mismatch or inner-JSON parse failure →
-  retry that chunk once. Both failure modes were observed live and recovered clean.
+- **Retry policy is part of historical pipeline evals** because it affects latency and
+  resource use: 429 backoff and one invalid-chunk retry were observed live. The adversarial
+  runner records each direct model result without application-level repair retries so an
+  invalid or leaking first response stays visible. Provider SDK retries still apply.
+- **Security boundaries have separate evidence.** Adversarial evals use test-only canaries,
+  extraction/encoding attempts, output-format overrides, and a benign imperative control.
+  Keep infrastructure failures and invalid output distinct from detected leakage. Review
+  raw outputs for false positives and attacks the automated scorer cannot recognize.
+  Deterministic API/provider and DOM/browser tests protect serialization, validation,
+  literal rendering, persistence, and ruby behavior; model evaluations cannot prove those.
 - **Rerun before legislating.** Output varies ±25% (line counts, branch frequency) at a
   fixed prompt. A defect seen once is variance until a rerun confirms it; two prompt
   rules were nearly added against noise.

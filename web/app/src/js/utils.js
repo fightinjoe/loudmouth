@@ -1,3 +1,19 @@
+const HTML_ESCAPES = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+}
+
+/**
+ * Encodes an untrusted value for interpolation into HTML text or a quoted
+ * attribute. Callers must not pass pre-escaped content.
+ */
+export function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => HTML_ESCAPES[character])
+}
+
 export function relativeTime(isoStr) {
   if (!isoStr) return ''
   const diff = Date.now() - new Date(isoStr).getTime()

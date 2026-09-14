@@ -119,4 +119,23 @@ describe("openReviewPanel", () => {
     panel.dispatchEvent(new Event("transitionend"));
     expect(dismissed).toBe(true);
   });
+
+  it("renders hostile translation and ruby tokens literally without losing ruby markup", () => {
+    const injectedElement = '<img src=x onerror="window.__injected=true">';
+    const hostileCards = [{
+      id: "hostile",
+      lang: "ja",
+      translation: injectedElement,
+      reading: [[injectedElement, 'reading"><img src=x onerror=alert(1)>']],
+    }];
+    openReviewPanel(appEl, deck, hostileCards, () => {});
+
+    expect(appEl.querySelector("img")).toBeNull();
+    expect(appEl.querySelector(".review-prompt").textContent).toBe(injectedElement);
+    appEl.querySelector('[data-action="review/toggle-direction"]').click();
+    expect(appEl.querySelector(".review-prompt ruby")).not.toBeNull();
+    expect(appEl.querySelector(".review-prompt ruby").childNodes[0].textContent).toBe(injectedElement);
+    expect(appEl.querySelector(".review-prompt rt").textContent).toBe('reading"><img src=x onerror=alert(1)>');
+    expect(appEl.querySelector("img")).toBeNull();
+  });
 });

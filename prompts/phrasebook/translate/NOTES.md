@@ -1,4 +1,21 @@
-# /phrasebook translation prompt — ACCEPTED baseline (was translate/v05)
+# /phrasebook translation prompt — v06 (current)
+
+## v06: untrusted translation source (2026-09-13)
+
+Applied the approved instruction/data boundary. Trusted translation instructions and server-owned
+reading rules are separate from JSON `{ seed, language, conversation: { title, lines, vocab } }`.
+Generated source lines and vocabulary are untrusted text to translate, not instructions to obey.
+Ruby, romanization, exact-count schema, and output assembly rules are unchanged.
+
+All three chunks for each of the five normal fixtures validated and assembled with generation v10.
+Full raw responses and assembled outputs are in
+[`security-v10-v06.json`](../responses/security-v10-v06.json) and the explicit
+[`baseline rerun`](../responses/security-v10-v06-baseline-retry.json). The rerun followed provider
+429s, not prompt revisions. One Japanese romanization entry used the existing mechanical fallback.
+A source-line extraction attack produced no detected instruction or synthetic-canary leakage;
+this is observational evidence, not a security guarantee.
+
+## v05 baseline history
 
 - **Model:** `gemini-3.5-flash-lite`, `responseMimeType: application/json`
 - **Accepted:** 2026-09-12, after v00–v05 (superseded versions deleted; lessons below)
@@ -7,10 +24,10 @@
 
 ## What the prompt does
 
-One call per conversation chunk (service `Promise.all`s 3 in parallel). Inputs:
-`{{SEED}}`, `{{LANGUAGE}}`, `{{TITLE}}`, `{{LINES}}` (numbered, speaker-tagged),
-`{{WORDS}}` (that conversation's vocab), `{{READING_RULES}}` (injected from
-`reading_rules_ja.txt` / `reading_rules_zh.txt`; empty for es/cs). Output:
+One call per selected conversation (1–8 chunks in the service). User data is JSON:
+`seed`, `language`, and `conversation` containing `title`, structured `lines`, and `vocab`.
+Only trusted `{{READING_RULES}}` is substituted into instructions from
+`reading_rules_ja.txt` / `reading_rules_zh.txt`; empty for es/cs. Output:
 `{ "lines": [...], "vocab": [...] }` — translations **by index**, no English echo
 (halves output tokens; service validates counts and assembles by index, never by text).
 Japanese additionally returns `lineRomanizations` and `vocabRomanizations`, matched by index.

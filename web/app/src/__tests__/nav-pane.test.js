@@ -90,3 +90,20 @@ describe("nav pane — Suggested phrasebooks (PH-008)", () => {
     expect(opens[0].payload.suggestion.id).toBe(firstRow.dataset.suggestionId);
   });
 });
+
+describe("nav pane — untrusted persisted metadata", () => {
+  it("renders deck names literally and keeps hostile IDs inside one data attribute", async () => {
+    const injectedElement = '<img src=x onerror="window.__injected=true">';
+    const hostileId = 'deck" onmouseover="window.__injected=true';
+    dbState.recentDecks = [{ id: hostileId, name: injectedElement, lang: "ja" }];
+
+    const { rootEl } = mountPane();
+    await flush();
+
+    const row = rootEl.querySelector('[data-action="nav/open-deck"]');
+    expect(rootEl.querySelector("img")).toBeNull();
+    expect(row.querySelector(".text-body-lg").textContent).toBe(injectedElement);
+    expect(row.dataset.deckId).toBe(hostileId);
+    expect(row.hasAttribute("onmouseover")).toBe(false);
+  });
+});

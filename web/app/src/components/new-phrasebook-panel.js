@@ -1,6 +1,8 @@
 import { openBottomSheet } from "./bottom-sheet.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { getLastAbility } from "../js/preferences.js";
+import { escapeHTML } from "../js/utils.js";
+
 
 const LANGS = ["zh", "ja", "es", "cs"];
 const ABILITIES = ["none", "beginner", "intermediate", "advanced"];
@@ -107,7 +109,7 @@ function renderBody(state, suggestion) {
 
   return `
     <div class="pane-header new-phrasebook-header flex-col">
-      <span class="text-header fg-body font-semibold">${esc(heading)}</span>
+      <span class="text-header fg-body font-semibold">${escapeHTML(heading)}</span>
       <span class="text-body2 fg-secondary">${subtitle}</span>
     </div>
     <div class="new-phrasebook-body flex-col">
@@ -125,14 +127,8 @@ function renderBody(state, suggestion) {
       </label>
     </div>
     <button class="new-phrasebook-create-btn tappable" data-action="new-phrasebook/create">
-      ${esc(buttonLabel)}
+      ${escapeHTML(buttonLabel)}
     </button>
   `;
 }
 
-function esc(str) {
-  return String(str || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}

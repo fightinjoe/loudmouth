@@ -1,5 +1,6 @@
+// @vitest-environment happy-dom
 import { describe, it, expect } from "vitest";
-import { renderCardsHTML } from "../panes/content-pane-render.js";
+import { renderCardsHTML, renderDeckBody } from "../panes/content-pane-render.js";
 
 const deck = { id: "d1", name: "Dinner phrasebook", lang: "ja", readingDisplay: "reading" };
 
@@ -92,5 +93,36 @@ describe("renderCardsHTML — vocabulary filtering", () => {
     expect(vocabHtml).not.toContain("card-group");
     const convHtml = renderCardsHTML(deck, cards, "conversations");
     expect(convHtml).toContain("No cards in this deck");
+  });
+});
+
+describe("content rendering — untrusted persisted data", () => {
+  it("renders card, section, and deck strings literally while preserving safe ruby markup", () => {
+    const injectedElement = '<img src=x onerror="window.__injected=true">';
+    const hostileId = 'card" onmouseover="window.__injected=true';
+    const root = document.createElement("div");
+    root.innerHTML = renderDeckBody(
+      { ...deck, name: injectedElement },
+      [{
+        ...card({
+          id: hostileId,
+          text: injectedElement,
+          translation: injectedElement,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          context: injectedElement,
+        }),
+        reading: [[injectedElement, 'reading"><img src=x onerror=alert(1)>']],
+      }],
+    );
+
+    expect(root.querySelector("img")).toBeNull();
+    expect(root.querySelector(".pane-header-title").textContent).toBe(injectedElement);
+    expect(root.querySelector(".deck-view-section-header").textContent).toBe(injectedElement);
+    expect(root.querySelector(".card-term-english").textContent).toBe(injectedElement);
+    expect(root.querySelector(".card-row-wrapper").dataset.cardId).toBe(hostileId);
+    expect(root.querySelector(".card-row-wrapper").hasAttribute("onmouseover")).toBe(false);
+    expect(root.querySelector(".card-term-target ruby")).not.toBeNull();
+    expect(root.querySelector(".card-term-target ruby").childNodes[0].textContent).toBe(injectedElement);
+    expect(root.querySelector(".card-term-target rt").textContent).toBe('reading"><img src=x onerror=alert(1)>');
   });
 });

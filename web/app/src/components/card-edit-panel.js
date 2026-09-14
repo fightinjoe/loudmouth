@@ -1,13 +1,8 @@
 import { renderPaneHeader, headerIconButton, headerTitle } from './pane-header.js'
 import { openJsonPanel, toImportJson } from './json-panel.js'
+import { escapeHTML } from '../js/utils.js'
 
-function esc(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
+
 
 function getPlainReading(reading) {
   if (typeof reading === 'string') return reading;
@@ -42,32 +37,32 @@ export function openCardEditPanel(appEl, card, { updateCard, deleteCard }, onSav
       <div class="card-edit-field flex-col">
         <label class="section-label card-edit-label" for="edit-text">Text</label>
         <input class="card-edit-input surface-field text-body1 font-inherit" id="edit-text" type="text"
-          value="${esc(card.text)}" autocorrect="off" autocapitalize="none" spellcheck="false" />
+          value="${escapeHTML(card.text)}" autocorrect="off" autocapitalize="none" spellcheck="false" />
       </div>
       <div class="card-edit-field flex-col">
         <label class="section-label card-edit-label" for="edit-translation">Translation</label>
         <input class="card-edit-input surface-field text-body1 font-inherit" id="edit-translation" type="text"
-          value="${esc(card.translation)}" />
+          value="${escapeHTML(card.translation)}" />
       </div>
       <div class="card-edit-field flex-col">
         <label class="section-label card-edit-label" for="edit-reading">Reading</label>
         <input class="card-edit-input surface-field text-body1 font-inherit" id="edit-reading" type="text"
-          value="${esc(getPlainReading(card.reading))}" autocorrect="off" autocapitalize="none" spellcheck="false" />
+          value="${escapeHTML(getPlainReading(card.reading))}" autocorrect="off" autocapitalize="none" spellcheck="false" />
       </div>
       <div class="card-edit-field flex-col">
         <label class="section-label card-edit-label" for="edit-romanization">Romanization</label>
         <input class="card-edit-input surface-field text-body1 font-inherit" id="edit-romanization" type="text"
-          value="${esc(card.romanization)}" autocorrect="off" autocapitalize="none" spellcheck="false" />
+          value="${escapeHTML(card.romanization)}" autocorrect="off" autocapitalize="none" spellcheck="false" />
       </div>
       <div class="card-edit-field flex-col">
         <label class="section-label card-edit-label" for="edit-notes">Notes</label>
         <textarea class="card-edit-input card-edit-textarea surface-field text-area text-body1 font-inherit" id="edit-notes"
-          autocorrect="off">${esc(card.notes)}</textarea>
+          autocorrect="off">${escapeHTML(card.notes)}</textarea>
       </div>
       <div class="card-edit-field flex-col">
         <label class="section-label card-edit-label" for="edit-example">Example</label>
         <textarea class="card-edit-input card-edit-textarea surface-field text-area text-body1 font-inherit" id="edit-example"
-          autocorrect="off">${esc(card.example?.text ?? card.example)}</textarea>
+          autocorrect="off">${escapeHTML(card.example?.text ?? card.example)}</textarea>
       </div>
       <div class="card-edit-export">
         <button class="btn btn-secondary" id="btn-view-json">View JSON</button>
