@@ -144,6 +144,15 @@ application-default credentials. `GCP_VERTEX_LOCATION` defaults to `global`; use
 `eu`, not a regional model endpoint such as `us-central1`. `GCP_LOCATION` remains the separate Cloud
 Run and API Gateway deployment region.
 
+For parallel worktrees, `/add_worktree` copies only the main checkout's ignored
+`api/.env` when present and writes an ignored `api/.env.local` with `PORT=XYZ1`.
+`npm run dev` loads the base environment file and then the local override; an
+explicit process environment variable takes precedence. Credentials are never
+printed or committed. Keep Google application-default credentials in their
+normal machine-level location rather than copying them into worktrees.
+The web app uses `XYZ0` and its Playwright preview uses `XYZ2`; see
+[`web/app/README.md`](../web/app/README.md#parallel-worktrees) for both worktree skills.
+
 For alternate providers, configure `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` and restart with
 `LLM_BACKEND=claude` or `LLM_BACKEND=chatgpt`.
 

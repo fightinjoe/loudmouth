@@ -1,0 +1,5 @@
+interface:
+  display_name: "Merge Loudmouth worktree"
+  short_description: "Merge Loudmouth worktree with isolated local development."
+policy:
+  allow_implicit_invocation: false

@@ -3,7 +3,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "set -a && source ../.env && set +a && FUNCTION_TARGET=translate npx @google-cloud/functions-framework",
+    "dev": "node dev.js",
     "test": "node --test test/",
     "eval:adversarial": "node --env-file=../.env ../evals/scripts/eval-adversarial.js"
   },
@@ -15,6 +15,6 @@
     "wanakana": "^5.3.1"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.12"
   }
 }
