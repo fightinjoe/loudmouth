@@ -50,8 +50,7 @@ local library.
 
 Creation uses two sequential action-pane modes:
 
-1. **New phrasebook** — choose the target language and learner ability. Language is immutable for the
-   resulting phrasebook. The last selected ability for a language seeds that language's next setup.
+1. **New phrasebook** — choose the target language. Language is immutable for the resulting phrasebook.
 2. **Creation** — enter a situation, answer generated clarification questions, choose which suggested
    conversations to prepare, and generate the complete phrasebook.
 
@@ -61,14 +60,14 @@ The creation mode is a linear flow:
 topic → questions → conversation checklist (generation runs) → wait if needed → phrasebook
 ```
 
-Topic submission calls `/context` with `{ seed, language }` and independently starts
-`/phrasebook-title` with `{ seed }`. Naming never blocks any step. When saving, the client freezes the
-available short English title or uses the seed if naming has not succeeded; late responses cannot
-rename the phrasebook. Each returned question initially uses its
-first option. Advancing from questions starts `/phrasebook` with
-`{ seed, language, ability: "basics", answers, checklist }`, where `checklist` contains all suggested
-topics. The learner selects 1–8 topics locally while generation runs; model selection remains
-server-owned.
+Topic submission calls `/context` with `{ seed, language, ability? }` (using the remembered ability
+for this language when available) and independently starts `/phrasebook-title` with `{ seed }`. 
+Otherwise the client prepends "What is your language ability?" to the returned questions, with 
+options None, Basics, Conversational. Each question initially uses its first option. Advancing 
+starts `/phrasebook` with `{ seed, language, ability, answers, checklist }`, using the selected or 
+remembered enum value and excluding the ability question from `answers`. `checklist` contains all 
+suggested topics. The learner selects 1–8 topics locally while generation runs; model selection 
+remains server-owned.
 
 Nothing is persisted while answering questions or selecting conversations, even if generation has
 finished. Final Continue reuses the pending or ready response, keeps selected conversation bundles by
@@ -80,8 +79,10 @@ This minimum overlaps any remaining generation time rather than adding a delay a
 Background failure leaves the checklist usable until Continue surfaces it; retry preserves choices.
 Dismissal aborts outstanding requests and discards uncommitted results. Incomplete saves are rolled back.
 
-The selected setup ability remains local phrasebook metadata. The current generation client explicitly
-uses the API's `basics` ability until product behavior connects those concepts.
+Ability is saved as phrasebook metadata and remembered per language only after generation and import
+succeed on final Continue. Failed saves and abandoned speculative results do not remember it. Future
+creation skips this question and sends the remembered value to both endpoints. Updating it is deferred.
+Historical setup preferences are not inferred or migrated to the new scale.
 
 ## Phrasebook view
 

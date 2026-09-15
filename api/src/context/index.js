@@ -24,6 +24,8 @@ const { buildContextPrompt } = require('./prompt');
 const { buildUsageReport } = require('../pricing');
 const { getBackendName } = require('../llm-config');
 
+const { sanitizeAbility } = require('../ability');
+
 const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
 const MAX_SEED_LENGTH = 200;
 
@@ -82,7 +84,8 @@ function parseContextRequest(body) {
     return { error: `"language" must be one of: ${LANGUAGES.join(', ')}`, supported: LANGUAGES };
   }
 
-  return { value: { seed: seed.trim(), language } };
+  const ability = sanitizeAbility(body.ability);
+  return { value: { seed: seed.trim(), language, ...(ability ? { ability } : {}) } };
 }
 
 function isNonEmptyString(v) {
@@ -162,7 +165,7 @@ async function performContext(
   registry,
   { timeoutMs = CONTEXT_TIMEOUT_MS } = {},
 ) {
-  const { seed, language } = parsedRequest;
+  const { seed, language, ability } = parsedRequest;
   const backendName = getBackendName();
   const handler = registry[backendName];
   if (!handler) {
@@ -170,7 +173,7 @@ async function performContext(
   }
   const effectiveTimeoutMs = handler.timeoutMs || timeoutMs;
 
-  const prompt = buildContextPrompt({ seed, language });
+  const prompt = buildContextPrompt({ seed, language, ability });
 
   const startedAt = performance.now();
   let reply;

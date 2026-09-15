@@ -4,7 +4,7 @@ const { toRomaji } = require('wanakana');
 const { validateCard } = require('../card-validate');
 
 const LANGUAGES = Object.freeze(['zh', 'ja', 'es', 'cs']);
-const ABILITIES = Object.freeze(['none', 'basics', 'conversational']);
+const { ABILITIES, DEFAULT_ABILITY, sanitizeAbility } = require('../ability');
 
 const MAX_SEED_LENGTH = 200;
 const MAX_ANSWERS = 5;
@@ -89,9 +89,6 @@ function parsePhrasebookRequest(body) {
   if (!LANGUAGES.includes(language)) {
     return { error: `"language" must be one of: ${LANGUAGES.join(', ')}`, supported: LANGUAGES };
   }
-  if (!ABILITIES.includes(ability)) {
-    return { error: `"ability" is required and must be one of: ${ABILITIES.join(', ')}`, supported: ABILITIES };
-  }
   if (!isObject(answers)) {
     return { error: '"answers" is required and must be a JSON object' };
   }
@@ -144,7 +141,7 @@ function parsePhrasebookRequest(body) {
     value: {
       seed: normalizedSeed,
       language,
-      ability,
+      ability: sanitizeAbility(ability) || DEFAULT_ABILITY,
       answers: normalizedAnswers,
       checklist: normalizedChecklist,
     },

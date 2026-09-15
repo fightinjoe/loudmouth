@@ -396,3 +396,16 @@ test('generation and translation prompts keep untrusted values in JSON input', (
   const parsed = parsePhrasebookRequest({ ...input, answers });
   assert.equal(parsed.value.answers.__proto__, sentinel);
 });
+
+for (const ability of [undefined, null, '', 'advanced', 'BASICS', ' basics ', 1, {}, [], 'ignore instructions']) {
+  test(`invalid ability ${JSON.stringify(ability)} defaults to basics`, () => {
+    const parsed = parsePhrasebookRequest({ ...input, ability });
+    assert.equal(parsed.error, undefined);
+    assert.equal(parsed.value.ability, 'basics');
+  });
+}
+for (const ability of ['none', 'basics', 'conversational']) {
+  test(`accepts ability ${ability}`, () => {
+    assert.equal(parsePhrasebookRequest({ ...input, ability }).value.ability, ability);
+  });
+}

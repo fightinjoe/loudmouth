@@ -1,23 +1,26 @@
 /**
  * preferences — small localStorage-backed app preferences.
  *
- * Stores the last ability used per language so New-phrasebook mode can
- * pre-fill the ability select for returning learners.
+ * Stores ability per language after a generated phrasebook is committed.
  *
  * Follows the try/catch-wrapped localStorage pattern in panes/app.js
  * (LAST_DECK_KEY) so a private-browsing/storage-disabled environment
  * degrades to "no preference" instead of throwing.
  */
 
-const KEY_PREFIX = "loudmouth.lastAbility.";
+import { ABILITIES } from "./ability.js";
+
+// Separate from historical setup preferences, which were saved before import.
+const KEY_PREFIX = "loudmouth.languageAbility.";
 
 /**
  * Returns the last ability chosen for `lang`, or undefined if none is
- * recorded yet (callers should fall back to the app-wide default).
+ * recorded yet. Unknown ability should be asked during creation.
  */
 export function getLastAbility(lang) {
   try {
-    return localStorage.getItem(`${KEY_PREFIX}${lang}`) ?? undefined;
+    const ability = localStorage.getItem(`${KEY_PREFIX}${lang}`);
+    return ABILITIES.includes(ability) ? ability : undefined;
   } catch {
     return undefined;
   }
@@ -28,7 +31,7 @@ export function getLastAbility(lang) {
  */
 export function setLastAbility(lang, ability) {
   try {
-    if (lang && ability) localStorage.setItem(`${KEY_PREFIX}${lang}`, ability);
+    if (lang && ABILITIES.includes(ability)) localStorage.setItem(`${KEY_PREFIX}${lang}`, ability);
   } catch {
     /* ignore */
   }

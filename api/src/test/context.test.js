@@ -222,3 +222,17 @@ describe('handleContext', () => {
     assert.equal(observedSignal.aborted, true);
   });
 });
+
+for (const ability of ['none', 'basics', 'conversational', undefined, null, 'advanced', {}, []]) {
+  test(`context sanitizes ability ${JSON.stringify(ability)} before the model call`, async () => {
+    let received;
+    const registry = { [BACKEND]: async (prompt) => {
+      received = JSON.parse(prompt.input);
+      return { text: validModelOutput(), model: BACKEND, usage: {} };
+    } };
+    const res = makeRes();
+    await handleContext({ body: { seed: 'dancing', language: 'es', ability } }, res, registry);
+    assert.equal(res.statusCode, 200);
+    assert.equal(received.ability, ['none', 'basics', 'conversational'].includes(ability) ? ability : undefined);
+  });
+}

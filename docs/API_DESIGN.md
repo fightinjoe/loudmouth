@@ -93,6 +93,7 @@ a target, not a guarantee across providers and request conditions.
 |---|---:|---|---|
 | `seed` | yes | — | Situation, activity, or topic; at most 200 characters |
 | `language` | yes | — | Target language; the prompt is language-aware |
+| `ability` | no | omitted | `none`, `basics`, or `conversational`; other values are ignored |
 
 The prompt is language-aware: the target language code is supplied in the task JSON so the model
 may spend a question on a register or cultural axis when the language makes one matter for
@@ -159,12 +160,16 @@ The output ceiling is 2,000 tokens. The timeout is 15 seconds on the default bac
 
 The creation panel:
 
-1. Calls `/context` with `{ seed, language }` and `/phrasebook-title` with `{ seed }` in parallel.
-2. Initializes each question to its first option.
-3. On advancing from questions, calls `/phrasebook` with copied flat `answers`, all checklist labels
-   in order, and explicit `ability: "basics"`.
-4. Preserves checklist defaults and allows local topic selection while generation runs.
-5. On final Continue, reuses the pending or ready response and commits only selected conversations
+1. Calls `/context` with `{ seed, language, ability? }`, supplying remembered ability for that language.
+2. Calls `/phrasebook-title` with `{seed}` in parallel
+3. If ability is unknown, prepends the client-owned question "What is your language ability?" with
+   options None, Basics, Conversational. Initializes each question to its first option. The model
+   is instructed not to ask language proficiency questions. This extra question is outside the
+   model's five-question cap.
+4. On advancing, calls `/phrasebook` with the selected or remembered ability enum, copied flat
+   `answers` excluding the ability question, and all checklist labels in order.
+5. Preserves checklist defaults and allows local topic selection while generation runs.
+6. On final Continue, reuses the pending or ready response and commits only selected conversations
    plus their locally pooled vocabulary.
 
 Setup and speculative results remain client-side and ephemeral. A completed request does not save or
@@ -224,9 +229,9 @@ providers, retries, and larger topic selections can take longer.
 
 - `seed` is required, non-empty, and at most 200 characters.
 - `language` is required: `zh`, `ja`, `es`, or `cs`.
-- `ability` is required: `none`, `basics`, or `conversational`. **There is no API default.**
-  The client explicitly sends the literal `basics` until the selected setup ability is connected to
-  generation behavior.
+- `ability` accepts exactly `none`, `basics`, or `conversational`. Missing or invalid values
+  (including wrong types, casing, or whitespace) are ignored and default to `basics`. Only the
+  sanitized enum reaches the generation prompt.
 - `answers` is a required question-to-answer string map; an empty map is allowed. At most five entries
   are accepted, with question labels at most 200 characters and answers at most 500 characters.
 - `checklist` is a required ordered list of 1–8 selected topic strings, at most 120 characters each.
@@ -363,10 +368,11 @@ Reading rules are inserted into `{{READING_RULES}}`; Spanish and Czech insert an
 
 ### Client integration
 
-- Topic entry calls `/context` with `{ seed, language }`.
+- Topic entry calls `/context` with `{ seed, language, ability? }`, using remembered ability.
 - Question selection uses the first option as its default, without a response `default` field.
 - Advancing from questions starts one `/phrasebook` request with all checklist topics, copied flat
-  `answers`, and explicit `ability: "basics"`. Toggling topics never sends another request.
+  `answers` excluding the client ability question, and the selected or remembered `ability`.
+  Toggling topics never sends another request.
 - Final Continue uses the existing pending or ready result, selects groups by index (titles may
   duplicate), and commits selected phrases and locally pooled vocabulary.
 - Back without input changes reuses work. Changing an answer or seed invalidates and aborts it;
@@ -374,7 +380,9 @@ Reading rules are inserted into `{{READING_RULES}}`; Spanish and Czech insert an
 - Background failures leave the checklist usable. Final Continue surfaces the error; retry preserves
   selections and starts fresh work. Dismissal aborts context, title, and phrasebook requests.
 - No automatic save or navigation occurs when speculative generation finishes. Persistence begins
-  only after final Continue and successful generation; incomplete saves are rolled back.
+  only after final Continue and successful generation; incomplete saves are rolled back. Ability is
+  remembered per language only after import succeeds, never by speculative completion or deck creation.
+  Historical setup preferences are not migrated. Updating remembered ability is deferred.
 - Clients do not choose the backend. This response contract requires deploying API and web together.
 
 Speculation hides generation behind checklist interaction but does not guarantee lower latency:
@@ -416,8 +424,7 @@ attestation remain deferred. Verify intended gateway and backend exposure before
 iOS-only launch does not make the API private. No abuse-control policy is implemented by this prompt
 and rendering boundary.
 
-Ability-aware context setup, static preset phrase packs, and removal of repair-style checklist topics
-remain deferred. Explicit repair topics continue to work; they must not be removed before replacement
+Static preset phrase packs and removal of repair-style checklist topics remain deferred. Explicit repair topics continue to work; they must not be removed before replacement
 packs exist.
 
 ## Shared implementation

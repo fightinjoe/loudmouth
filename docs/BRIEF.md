@@ -100,9 +100,10 @@ phase, not part of initial generation.
   Cards, usage accounting, and provider adapters are shared.
 - **LLMs:** server-selected with `LLM_BACKEND`, default `gemini-3.5-flash-lite`; clients cannot
   select a backend. Alternate server values are `g-flash`, `claude`, and `chatgpt`.
-- **Creation ability:** the client sends `ability: "basics"` explicitly; the API requires
-  `none | basics | conversational`. The ability selected during setup remains client-side phrasebook
-  metadata.
+- **Creation ability:** `none | basics | conversational`, remembered per language in this browser
+  only after successful generation and library import. Unknown ability is asked during clarification.
+  Remembered ability is sent to both endpoints; `/phrasebook` defaults invalid or missing values to
+  `basics`. Updating a remembered ability is deferred.
 - **Audio:** Web Speech API on mobile browsers. iOS Safari is the primary target; desktop audio is
   unsupported.
 

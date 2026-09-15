@@ -1079,3 +1079,7 @@ ruby {
 .deck-picker-chevron {
   flex-shrink: 0;
 }
+
+.new-phrasebook-body[data-suggestion="false"] .new-phrasebook-ability {
+  display: none;
+}

@@ -12,22 +12,22 @@ beforeEach(() => {
 });
 
 describe("openNewPhrasebookPanel", () => {
-  it("defaults to the first language with beginner ability", () => {
+  it("defaults to the first language and hides ability during setup", () => {
     openNewPhrasebookPanel(appEl, () => {}, () => {});
     expect(appEl.querySelector('[data-action="new-phrasebook/lang"]').value).toBe("zh");
-    expect(appEl.querySelector('[data-action="new-phrasebook/ability"]').value).toBe("beginner");
+    expect(appEl.querySelector(".new-phrasebook-body").dataset.suggestion).toBe("false");
   });
 
   it("pre-fills ability from the last-used-per-language preference when switching language", () => {
-    setLastAbility("ja", "advanced");
+    setLastAbility("ja", "conversational");
     openNewPhrasebookPanel(appEl, () => {}, () => {});
     const langSelect = appEl.querySelector('[data-action="new-phrasebook/lang"]');
     langSelect.value = "ja";
     langSelect.dispatchEvent(new Event("change"));
-    expect(appEl.querySelector('[data-action="new-phrasebook/ability"]').value).toBe("advanced");
+    expect(appEl.querySelector('[data-action="new-phrasebook/ability"]').value).toBe("conversational");
   });
 
-  it("hands language and ability to guided creation without persisting a deck", async () => {
+  it("hands only language to guided creation without persisting ability", async () => {
     let createdLang = null;
     let createdAbility = null;
     openNewPhrasebookPanel(appEl, (lang, ability) => { createdLang = lang; createdAbility = ability; }, () => {});
@@ -35,13 +35,13 @@ describe("openNewPhrasebookPanel", () => {
     langSelect.value = "es";
     langSelect.dispatchEvent(new Event("change"));
     const abilitySelect = appEl.querySelector('[data-action="new-phrasebook/ability"]');
-    abilitySelect.value = "advanced";
+    abilitySelect.value = "conversational";
     abilitySelect.dispatchEvent(new Event("change"));
 
     appEl.querySelector('[data-action="new-phrasebook/create"]').click();
     await vi.waitFor(() => expect(createdLang).toBeTruthy());
     expect(createdLang).toBe("es");
-    expect(createdAbility).toBe("advanced");
+    expect(createdAbility).toBeUndefined();
   });
 });
 
@@ -63,12 +63,12 @@ describe("openNewPhrasebookPanel — Confirm mode (suggestion)", () => {
     let confirmed = null;
     openNewPhrasebookPanel(appEl, () => {}, () => {}, suggestion, (args) => { confirmed = args; });
     const abilitySelect = appEl.querySelector('[data-action="new-phrasebook/ability"]');
-    abilitySelect.value = "intermediate";
+    abilitySelect.value = "basics";
     abilitySelect.dispatchEvent(new Event("change"));
 
     appEl.querySelector('[data-action="new-phrasebook/create"]').click();
     await vi.waitFor(() => expect(confirmed).toBeTruthy());
-    expect(confirmed).toEqual({ lang: "ja", ability: "intermediate" });
+    expect(confirmed).toEqual({ lang: "ja", ability: "basics" });
   });
 
   it("renders a hostile suggested title literally without creating elements", () => {

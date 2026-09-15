@@ -56,25 +56,25 @@ describe('createDeck ability defaults', () => {
   });
 
   it('respects an explicit ability override', async () => {
-    const deck = await createDeck('My Deck', 'zh', { ability: 'advanced' }, store);
-    expect(deck.ability).toBe('advanced');
+    const deck = await createDeck('My Deck', 'zh', { ability: 'conversational' }, store);
+    expect(deck.ability).toBe('conversational');
   });
 
   it('falls back to the last-used ability for that language when none is given', async () => {
-    setLastAbility('zh', 'intermediate');
+    setLastAbility('zh', 'basics');
     const deck = await createDeck('My Deck', 'zh', {}, store);
-    expect(deck.ability).toBe('intermediate');
+    expect(deck.ability).toBe('basics');
   });
 
   it('does not fall back across languages', async () => {
-    setLastAbility('zh', 'intermediate');
+    setLastAbility('zh', 'basics');
     const deck = await createDeck('My Deck', 'ja', {}, store);
     expect(deck.ability).toBe('beginner');
   });
 
-  it('updates the last-used-ability preference after creating', async () => {
-    await createDeck('My Deck', 'zh', { ability: 'advanced' }, store);
-    expect(getLastAbility('zh')).toBe('advanced');
+  it('does not remember ability merely by creating a deck', async () => {
+    await createDeck('My Deck', 'zh', { ability: 'conversational' }, store);
+    expect(getLastAbility('zh')).toBeUndefined();
   });
 });
 
@@ -121,8 +121,8 @@ describe('v7 migration backfill', () => {
 
 describe('getLastAbility / setLastAbility', () => {
   it('round-trips per language', () => {
-    setLastAbility('ja', 'advanced');
-    expect(getLastAbility('ja')).toBe('advanced');
+    setLastAbility('ja', 'conversational');
+    expect(getLastAbility('ja')).toBe('conversational');
   });
 
   it('returns undefined for a language with no recorded preference', () => {
@@ -130,10 +130,10 @@ describe('getLastAbility / setLastAbility', () => {
   });
 
   it('keeps preferences independent per language', () => {
-    setLastAbility('zh', 'beginner');
-    setLastAbility('ja', 'advanced');
-    expect(getLastAbility('zh')).toBe('beginner');
-    expect(getLastAbility('ja')).toBe('advanced');
+    setLastAbility('zh', 'none');
+    setLastAbility('ja', 'conversational');
+    expect(getLastAbility('zh')).toBe('none');
+    expect(getLastAbility('ja')).toBe('conversational');
   });
 });
 
@@ -386,3 +386,12 @@ describe('restoreAllData', () => {
     expect(allDecks).toHaveLength(1)
   })
 })
+
+it('ignores legacy and invalid saved ability values', () => {
+  localStorage.setItem('loudmouth.lastAbility.es', 'none');
+  expect(getLastAbility('es')).toBeUndefined();
+  localStorage.setItem('loudmouth.languageAbility.es', 'advanced');
+  expect(getLastAbility('es')).toBeUndefined();
+  setLastAbility('es', 'invalid');
+  expect(getLastAbility('es')).toBeUndefined();
+});

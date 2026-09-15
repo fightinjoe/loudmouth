@@ -2,23 +2,21 @@ import { openBottomSheet } from "./bottom-sheet.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
 import { getLastAbility } from "../js/preferences.js";
 import { escapeHTML } from "../js/utils.js";
-
+import { ABILITIES, ABILITY_LABELS } from "../js/ability.js";
 
 const LANGS = ["zh", "ja", "es", "cs"];
-const ABILITIES = ["none", "beginner", "intermediate", "advanced"];
-const ABILITY_LABELS = { none: "None", beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced" };
 
 
 /**
- * Opens New-phrasebook mode: language and ability are chosen before guided
- * creation starts. No deck is persisted until generation succeeds.
+ * Opens New-phrasebook mode: language is chosen before guided creation.
+ * Unknown ability is asked with the context questions. No deck is persisted until generation succeeds.
  *
  * When `suggestion` is passed, the same surface acts as a confirmation gate
  * and hands the chosen language and ability to the caller, which builds the
  * unsaved preview.
  *
  * @param {HTMLElement} appEl
- * @param {Function} onCreated - (create mode) called with (lang, ability)
+ * @param {Function} onCreated - (create mode) called with (lang)
  * @param {Function} onDismiss
  * @param {{ id: string, emoji: string, title: string, lang: string }} [suggestion]
  * @param {Function} [onConfirmed] - (confirm mode) called with { lang, ability }
@@ -26,7 +24,7 @@ const ABILITY_LABELS = { none: "None", beginner: "Beginner", intermediate: "Inte
 export function openNewPhrasebookPanel(appEl, onCreated, onDismiss, suggestion, onConfirmed) {
   const state = {
     lang: suggestion?.lang || LANGS[0],
-    ability: getLastAbility(suggestion?.lang || LANGS[0]) || "beginner",
+    ability: getLastAbility(suggestion?.lang || LANGS[0]) || "basics",
   };
 
   const sheet = openBottomSheet(appEl, {
@@ -57,7 +55,7 @@ export function openNewPhrasebookPanel(appEl, onCreated, onDismiss, suggestion, 
     langSelect?.addEventListener("change", (e) => {
       state.lang = e.target.value;
       // Reuse this language's last chosen ability when available.
-      state.ability = getLastAbility(state.lang) || "beginner";
+      state.ability = getLastAbility(state.lang) || "basics";
       rerender();
     });
 
@@ -73,7 +71,7 @@ export function openNewPhrasebookPanel(appEl, onCreated, onDismiss, suggestion, 
         onConfirmed({ lang: state.lang, ability: state.ability });
         return;
       }
-      onCreated(state.lang, state.ability);
+      onCreated(state.lang);
     });
   }
 }
@@ -90,14 +88,14 @@ function renderBody(state, suggestion) {
       <span class="text-header fg-body font-semibold">${escapeHTML(heading)}</span>
       <span class="text-body2 fg-secondary">${subtitle}</span>
     </div>
-    <div class="new-phrasebook-body flex-col">
+    <div class="new-phrasebook-body flex-col" data-suggestion="${Boolean(suggestion)}">
       <label class="new-phrasebook-row flex items-center justify-between">
         <span class="text-body1 fg-body">Language</span>
         <select class="new-phrasebook-select" data-action="new-phrasebook/lang">
           ${LANGS.map((l) => `<option value="${l}" ${state.lang === l ? "selected" : ""}>${LANG_FLAGS[l]} ${LANG_NAMES[l]}</option>`).join("")}
         </select>
       </label>
-      <label class="new-phrasebook-row flex items-center justify-between">
+      <label class="new-phrasebook-row new-phrasebook-ability flex items-center justify-between">
         <span class="text-body1 fg-body">Your ability</span>
         <select class="new-phrasebook-select" data-action="new-phrasebook/ability">
           ${ABILITIES.map((a) => `<option value="${a}" ${state.ability === a ? "selected" : ""}>${ABILITY_LABELS[a]}</option>`).join("")}

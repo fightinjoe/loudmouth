@@ -15,7 +15,8 @@ Stateless Node.js Cloud Run service for guided phrasebook creation. The creation
 ```
 
 `seed` is required, trimmed, and limited to 200 characters. `language` must be one of `zh`, `ja`,
-`es`, or `cs`.
+`es`, or `cs`. Optional `ability` accepts `none`, `basics`, or `conversational`; invalid
+values are ignored. The prompt uses known ability and leaves proficiency questions to the client.
 
 Returns `{ questions, checklist, usage }`. Questions have `label` and `options`; the **first option**
 is the default. Checklist entries have `label` and `checked`. No server session is created.
@@ -44,7 +45,7 @@ when saving. It never waits for naming or sends the title to `/phrasebook`.
 }
 ```
 
-`ability` is required and must be `none`, `basics`, or `conversational`. The learner chooses 1–8
+`ability` accepts `none`, `basics`, or `conversational`; omitted or invalid values default to `basics`. The learner chooses 1–8
 checklist topics. `answers` and `checklist` are top-level fields, not nested under a context object.
 
 Returns `{ title, groups, usage }`: one `{ title, cards, vocab }` conversation bundle per request topic,

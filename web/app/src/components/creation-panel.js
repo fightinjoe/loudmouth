@@ -6,6 +6,9 @@ import { icon } from "./icon.js";
 import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header.js";
 import { escapeHTML } from "../js/utils.js";
 
+import { getLastAbility, setLastAbility } from "../js/preferences.js";
+import { ABILITIES, ABILITY_LABELS, ABILITY_QUESTION } from "../js/ability.js";
+
 const PHRASEBOOK_MIN_LOADING_MS = 1000;
 /**
  * Opens the `creation` action-pane: a linear flow from topic entry through
@@ -14,13 +17,13 @@ const PHRASEBOOK_MIN_LOADING_MS = 1000;
  * when the selected phrase and vocabulary cards are committed together.
  *
  * @param {HTMLElement} appEl
- * @param {{ lang: string, ability: string }} params - the phrasebook's fixed
- *   language + ability, chosen in New-phrasebook mode (no deck exists yet).
+ * @param {{ lang: string }} params - the phrasebook's fixed language.
  * @param {Function} onCreated - called with the created deck once generation
  *   and import both succeed.
  * @param {Function} onDismiss - called once the pane is dismissed, at any step.
  */
-export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss) {
+export function openCreationPanel(appEl, { lang }, onCreated, onDismiss) {
+  const rememberedAbility = getLastAbility(lang);
   const state = {
     step: "topic", // 'topic' | 'questions' | 'checklist' | 'generating' | 'error'
     topic: "",
@@ -168,14 +171,19 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
       const { questions, checklist } = await getContext({
         seed: topic,
         language: lang,
+        ability: rememberedAbility,
         signal: controller.signal,
       });
       if (dismissed || state.contextRequest !== request) return;
       state.contextRequest = null;
       state.contextSeed = topic;
-      state.questions = questions;
+      // Reserve this question for the client; never trust model-provided options.
+      state.questions = questions.filter((q) => q.label !== ABILITY_QUESTION);
+      if (!rememberedAbility) {
+        state.questions.unshift({ label: ABILITY_QUESTION, options: ABILITIES.map((a) => ABILITY_LABELS[a]) });
+      }
       state.checklist = normalizeChecklist(checklist);
-      state.answers = Object.fromEntries(questions.map((q) => [q.label, q.options[0]]));
+      state.answers = Object.fromEntries(state.questions.map((q) => [q.label, q.options[0]]));
       state.step = "questions";
     } catch (err) {
       if (dismissed || state.contextRequest !== request) return;
@@ -198,11 +206,14 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
       promise: null,
     };
     const answers = { ...state.answers };
+    request.ability = rememberedAbility || ABILITIES.find((a) => ABILITY_LABELS[a] === answers[ABILITY_QUESTION]);
+    delete answers[ABILITY_QUESTION];
     const checklist = state.checklist.map((item) => item.label);
     state.phrasebookRequest = request;
     request.promise = generatePhrasebook({
       seed: state.topic,
       language: lang,
+      ability: request.ability,
       answers,
       checklist,
       signal: controller.signal,
@@ -263,7 +274,7 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
       state.frozenTitle ??= state.titleRequest?.title || state.topic;
       const deckName = state.frozenTitle;
       abortTitleRequest();
-      deck = await createDeck(deckName, lang, { ability });
+      deck = await createDeck(deckName, lang, { ability: request.ability });
       if (dismissed) {
         await deleteDeck(deck.id);
         return;
@@ -273,6 +284,7 @@ export function openCreationPanel(appEl, { lang, ability }, onCreated, onDismiss
         await deleteDeck(deck.id);
         return;
       }
+      setLastAbility(lang, request.ability);
       completed = true;
       closeObserver?.disconnect();
       closeSheet();

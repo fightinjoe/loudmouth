@@ -1,6 +1,6 @@
 import Dexie from "dexie";
 import { DEFAULT_MODE, MODES } from "./modes.js";
-import { getLastAbility, setLastAbility } from "./preferences.js";
+import { getLastAbility } from "./preferences.js";
 
 // Defaults retained for the v7 compatibility migration. Existing decks keep
 // these historical fields even though current creation does not use them.
@@ -190,7 +190,6 @@ export async function createDeck(name, lang, { ability, seedId } = {}, store = d
     ...(seedId ? { seedId } : {}),
   };
   await store.decks.add(deck);
-  setLastAbility(lang, resolvedAbility);
   return deck;
 }
 

@@ -11,10 +11,10 @@ const TEMPLATE = fs.readFileSync(path.join(__dirname, 'prompt.txt'), 'utf8');
  * @param {{ seed: string, language: 'zh'|'ja'|'es'|'cs' }} params
  * @returns {{ instructions: string, input: string }}
  */
-function buildContextPrompt({ seed, language }) {
+function buildContextPrompt({ seed, language, ability }) {
   return {
     instructions: TEMPLATE,
-    input: JSON.stringify({ seed, language }),
+    input: JSON.stringify({ seed, language, ability }),
   };
 }
 
