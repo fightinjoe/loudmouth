@@ -46,7 +46,9 @@ automatically. Remove or edit the file to switch back to the deployed API.
 npm run build
 ```
 
-Output goes to `dist/`. Includes a service worker for offline use.
+Output goes to `dist/`. Includes a service worker for offline use. Fonts load
+from Google Fonts via `index.html`, not from bundled files or the service-worker
+precache. Without network access or a browser-cached font, system fallbacks render.
 
 ## Preview production build
 

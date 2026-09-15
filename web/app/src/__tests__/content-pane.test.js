@@ -23,11 +23,15 @@ const { deckStore, loadDeckData } = vi.hoisted(() => {
 
 vi.mock("../panes/content-pane-load.js", () => ({ loadDeckData }));
 vi.mock("../panes/content-pane-render.js", () => ({
-  renderDeckBody: () => "<div data-region=\"card-list\"></div>",
-  renderCardsHTML: () => "",
+  getDeckPages: () => [{ key: "vocab" }],
+  normalizePageKey: () => "vocab",
+  renderBrowseBody: () => "",
+  renderBrowseCardsHTML: () => "",
+  renderDeckBody: () => "<div data-region=\"card-list\" class=\"deck-view-list\"></div>",
+  renderDeckPager: () => "<div data-region=\"deck-pager\"></div>",
 }));
 vi.mock("../panes/content-pane-gestures.js", () => ({
-  wireContentGestures: () => ({ resetReveal: () => {} }),
+  wireContentGestures: () => ({ resetReveal: () => {}, syncPager: () => {} }),
 }));
 vi.mock("../panes/content-pane-actions.js", () => ({
   registerCardActions: () => () => {},

@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compact cards — Catchphrase exploration</title>
+<style>
+:root { color-scheme: light; --ink:#202823; --muted:#59665e; --rule:#d9ded5; --paper:#f7f7f1; --accent:#285c45; --preview-width:390px; --scale:1; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.55 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif; }
+main { max-width:1440px; margin:auto; padding:48px 28px 80px; }
+a { color:var(--accent); text-underline-offset:3px; }
+h1,h2,h3,p { margin:0; }
+h1 { font-size:clamp(32px,5vw,56px); line-height:1.1; letter-spacing:-.045em; margin:12px 0 20px; }
+h2 { font-size:24px; letter-spacing:-.025em; margin-bottom:12px; }
+h3 { font-size:18px; }
+p + p { margin-top:12px; }
+.eyebrow { font-size:11px; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--accent); }
+.intro { max-width:740px; }
+.intro > p { color:var(--muted); }
+nav { display:flex; gap:24px; flex-wrap:wrap; margin:24px 0 32px; font-size:14px; }
+.controls { display:flex; flex-wrap:wrap; align-items:end; gap:16px 24px; padding:20px; background:#fff; border:1px solid var(--rule); border-radius:12px; }
+label { display:flex; flex-direction:column; gap:6px; font-size:12px; font-weight:600; }
+select,button,input { font:inherit; }
+select, .reset { min-height:44px; border:1px solid #aeb9ae; border-radius:6px; padding:8px 12px; background:white; color:var(--ink); }
+.check { flex-direction:row; align-items:center; min-height:44px; gap:8px; }
+input[type=checkbox] { width:18px; height:18px; accent-color:var(--accent); }
+button { cursor:pointer; }
+:focus-visible { outline:3px solid #2672a6; outline-offset:3px; }
+#status { color:var(--muted); font-size:13px; margin:12px 0 24px; }
+.comparison { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; align-items:start; }
+.direction-heading { min-height:112px; }
+.direction-heading p { font-size:13px; color:var(--muted); margin-top:6px; max-width:390px; }
+.preview-wrap { overflow:auto; padding:2px 2px 12px; }
+.preview { width:var(--preview-width); max-width:none; border:1px solid #cbd3c9; border-radius:14px; overflow:hidden; background:#fff; }
+.book-header { padding:20px; border-bottom:1px solid var(--rule); }
+.book-header strong { display:block; font-size:18px; margin:6px 0; }
+.book-header p { font-size:12px; color:var(--muted); }
+.conversation { padding:20px 12px; display:flex; flex-direction:column; gap:10px; }
+.card { position:relative; padding:18px 48px 18px 16px; min-width:0; }
+.target { font-size:calc(20px * var(--scale)); line-height:1.5; font-weight:500; overflow-wrap:anywhere; }
+.target:lang(zh-Hans),.target:lang(ja) { font-size:calc(23px * var(--scale)); line-height:1.65; }
+.reading { font-size:calc(13px * var(--scale)); color:#506071; line-height:1.6; margin-top:4px; overflow-wrap:anywhere; }
+.meaning { font-size:calc(14px * var(--scale)); color:#535c55; line-height:1.5; margin-top:8px; overflow-wrap:anywhere; }
+ruby { ruby-align:center; } rt { font-size:.48em; font-weight:400; color:#506071; }
+.hide-readings .reading,.hide-readings rt,.hide-meanings .meaning { display:none; }
+.star { position:absolute; top:4px; right:4px; width:44px; height:44px; border:0; background:transparent; color:#626d64; border-radius:50%; font-size:23px; line-height:1; }
+.star[aria-pressed=true] { color:#79530a; }
+.star:hover { background:#00000008; }
+.bubbles .card { width:88%; background:#edf2f7; border-radius:14px 14px 4px 14px; align-self:flex-end; }
+.bubbles [data-side=left] { align-self:flex-start; background:#f1f2ed; border-radius:14px 14px 14px 4px; }
+.bubbles .card { text-align:left; }
+.or { width:88%; align-self:flex-end; text-align:center; color:var(--muted); font-size:calc(12px * var(--scale)); font-style:italic; margin:-5px 0; }
+.bubbles .or[data-side=left] { align-self:flex-start; background:none; }
+.vocab .preview { background:#292344; color:#fff; }
+.vocab .book-header { border:0; background:#d9ff64; color:#292344; }
+.vocab .book-header .eyebrow,.vocab .book-header p { color:#40364f; }
+.vocab .conversation { gap:0; padding:28px 20px; }
+.vocab .card { margin:0 0 14px; border:0; border-radius:30px 6px 30px 6px; background:#d9ff64; transform:rotate(-2deg); padding-top:26px; padding-bottom:26px; }
+.vocab .card:nth-child(2n) { background:#ffb5d5; transform:rotate(2deg); border-radius:6px 30px 6px 30px; }
+.vocab .card:nth-child(3n) { background:#b8cbff; transform:rotate(-1deg); border-radius:30px; }
+.vocab .target { color:#292344; font-weight:750; }
+.vocab .meaning,.vocab .reading,.vocab rt { color:#443651; }
+.vocab .star { color:#443651; }
+.vocab .star[aria-pressed=true] { color:#292344; }
+.transcript .conversation { gap:0; padding:8px 0; }
+.transcript .card { padding:22px 64px 22px 20px; border-bottom:1px solid var(--rule); }
+.transcript .card:last-child { border-bottom:0; }
+.transcript .star { right:24px; }
+.transcript .empty { padding-inline:20px; }
+.source { margin-top:10px; color:var(--muted); font-size:calc(11px * var(--scale)); }
+.empty { padding:24px 0; color:var(--muted); font-size:14px; }
+.caption { font-size:12px; color:var(--muted); margin:8px 0; }
+section.notes { margin-top:56px; max-width:900px; border-top:1px solid var(--rule); padding-top:24px; }
+ul,ol { padding-left:22px; margin:12px 0; }
+li { margin:8px 0; }
+.grid-notes { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.callout { border-left:3px solid var(--accent); padding:12px 16px; background:#edf1e9; margin:20px 0; }
+code { font-size:13px; background:#e9ece4; padding:2px 4px; }
+@media(max-width:1000px) { .comparison { grid-template-columns:1fr; } .direction-heading { min-height:0; margin-bottom:14px; } .preview { max-width:100%; } }
+@media(max-width:540px) { main { padding:28px 16px 60px; } .controls { padding:14px; gap:12px; } .grid-notes { grid-template-columns:1fr; } }
+@media print { .controls,nav,.star { display:none; } main { padding:0; } .comparison { display:block; } .direction { break-inside:avoid; margin:24px 0; } }
+</style>
+</head>
+<body>
+<main>
+<header class="intro">
+<div class="eyebrow">Catchphrase / interface studies / 001</div>
+<h1>One phrasebook.<br>Three ways to gather.</h1>
+<p>Conversation topics, vocabulary, and starred cards serve different reading rhythms. Explore each in context, with shared language and typography controls—not three competing skins for the same list.</p>
+<p><strong>Exploration, not a production specification.</strong> Standalone, offline, no build step. Open this file directly in a browser.</p>
+</header>
+<nav aria-label="Document"><a href="#lab">Live comparison</a><a href="#criteria">What to evaluate</a><a href="#method">Exploration method</a><a href="#handoff">iOS reference</a><a href="../../web/docs/PANE_PROTOCOL.html">Pane protocol</a><a href="../methodology.md">Shared methodology</a></nav>
+<section id="lab" aria-label="Live card comparison">
+<form class="controls" id="controls">
+<label>Language & reading<select id="language"><option value="es">Spanish</option><option value="zh">Chinese · pinyin</option><option value="ja-ruby">Japanese · furigana</option><option value="ja-romaji">Japanese · romanization</option></select></label>
+<label>Content<select id="content"><option value="everyday">Everyday exchange</option><option value="stress">Long phrases & short replies</option></select></label>
+<label>Preview width<select id="width"><option value="320">320 px · narrow</option><option value="390" selected>390 px · phone</option><option value="430">430 px · wide phone</option></select></label>
+<label>Text size<select id="scale"><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label>
+<label class="check"><input type="checkbox" id="readings" checked>Readings</label>
+<label class="check"><input type="checkbox" id="meanings" checked>English</label>
+<label class="check"><input type="checkbox" id="swap">Swap conversation sides</label>
+<button type="button" class="reset" id="reset">Reset</button>
+</form>
+<p id="status" role="status"></p>
+<div class="comparison" id="comparison"></div>
+<p class="caption">Star any conversation or vocabulary card to add it to C; unstar it to remove it. Two cards start starred in each content set. State is local to this page and resets on reload. No audio or card-opening interaction is simulated. On small screens, previews shrink to fit; on desktop, an oversized preview scrolls inside its column.</p>
+</section>
+<section class="notes" id="criteria">
+<div class="eyebrow">Evaluation</div><h2>Three groupings, three reading rhythms.</h2>
+<div class="grid-notes"><div><h3>Questions to answer</h3><ul><li>A: does side alone make turn-taking clear, without assigning either role to the learner?</li><li>Does “or” connect two choices for the same speaker rather than look like another turn?</li><li>B: does the loud, borderless vocabulary collage make words memorable, or distract from reading?</li><li>C: can phrases and vocabulary sit together naturally without implying a conversation?</li><li>Do pinyin and furigana remain attached to their characters when wrapping?</li></ul></div><div><h3>Stress pass</h3><ol><li>View each language at 390 px, then long content at 320 px and 150% text.</li><li>Swap conversation sides. Both options must move together; neither gets a role label.</li><li>Hide readings and English. Check spacing with and without ruby.</li><li>Star items in A and B, then remove every item from C. Check the empty state.</li><li>Use Tab and Space to toggle stars. Reset restores the initial selection.</li></ol></div></div>
+<div class="callout"><strong>Decisions from the first pass:</strong> keep offset bubbles for conversation; remove role labels. Reject the bordered full-width treatment—it interrupts flow. Reserve the ruled list for starred cards, not dialogue. The new vocabulary collage is deliberately extreme and remains an experiment.</div>
+</section>
+<section class="notes" id="method">
+<div class="eyebrow">Reusable format</div><h2>One question. A runnable reference.</h2>
+<p>Follow the <a href="../../web/docs/PANE_PROTOCOL.html">Pane Protocol</a> model: a live example next to the reasoning. Unlike that settled protocol, this study presents alternatives; it does not establish application rules.</p>
+<ol><li><strong>Frame:</strong> name the surface, its grouping semantics, and non-goals.</li><li><strong>Explore:</strong> keep language and typography controls shared; use identical fixtures when comparing alternatives for the same purpose. Do not confuse conversation, vocabulary, and starred collections.</li><li><strong>Stress:</strong> include long and short content, alternatives, empty collections, narrow widths, and larger type.</li><li><strong>Observe:</strong> record device/browser, settings, and the specific failure or advantage.</li><li><strong>Decide:</strong> record accepted, rejected, and unresolved ideas before porting. Keep the runnable specimens as a visual reference.</li></ol>
+<p><strong>Current scope:</strong> conversational topic groups, vocabulary, and starred cards in Spanish, simplified Chinese with ruby pinyin, and Japanese with furigana or romaji. Out of scope: details panes, swipe actions, audio, backend/schema changes, and production integration.</p>
+<p><strong>Future studies:</strong> follow the <a href="../methodology.md">shared exploration methodology</a>. Create a separate directory under <code>explorations/</code> for each concept, keeping its standalone HTML, fixtures, and assets local so studies can evolve independently.</p>
+</section>
+<section class="notes" id="handoff">
+<div class="eyebrow">Porting reference</div><h2>Preserve hierarchy, not CSS.</h2>
+<ul><li><strong>Anatomy:</strong> target with optional ruby above → optional romaji below → English. No speaker heading; Spanish has no empty reading line. Chinese pinyin and Japanese furigana use the same ruby layout.</li><li><strong>Typography baseline:</strong> Latin target 20 px; CJK target 23 px; romaji 13 px; English 14 px; ruby 0.48 em. The size control scales all text. These are exploration values, not approved native tokens.</li><li><strong>Conversation:</strong> side and tint distinguish two interchangeable voices. The swap control exchanges sides, not content or order. Star emphasis changes the icon, never speaker identity.</li><li><strong>Alternatives:</strong> the fixture uses API-shaped JSON-encoded <code>notes</code>, such as <code>{"speaker":"you","or":true}</code>. A literal “or” precedes that option on the same side as the preceding option. This study exercises adjacent alternatives; the API also allows interleaved alternatives, which need a separate grouping decision before production adoption. See <a href="../../docs/CARD_SCHEMA.md">card schema</a>.</li><li><strong>Starred collection:</strong> C combines selected phrases and words from the active fixture, retaining a small source-context caption but no speaker or “or” marker. Removing a star removes that entry; empty selection is an intentional state.</li><li><strong>Interaction:</strong> stars have 44 × 44 CSS-pixel targets and pressed state. Production plays audio on card-body taps; this artifact limits interaction to controls and stars.</li><li><strong>Reading data:</strong> hand-authored base/annotation pairs, not automatic syllable alignment. Kana and punctuation without annotations remain ordinary text. Chinese syllables are individually paired with characters so long phrases can wrap without detaching readings.</li><li><strong>Native checks still required:</strong> actual iOS Safari ruby wrapping, VoiceOver reading order, Dynamic Type, and native font metrics. Browser scaling is not Dynamic Type. Have a fluent reviewer check fixtures before using them as teaching content.</li></ul>
+<p>Production references: <code>web/app/src/components/card.js</code> and conversation styles in <code>web/app/src/styles/components.css</code>. A borrows the current 88% sided bubbles but removes role labels. Production files are unchanged.</p>
+</section>
+</main>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Fixture shorthand only: whitespace separates explicit base|annotation pairs.
+// Unannotated kana and punctuation are preserved as plain text.
+const tokens = text => text.split(' ').map(pair => pair.split('|'));
+const plain = pairs => pairs.map(([base]) => base).join('');
+const ruby = pairs => pairs.map(([base,reading]) => reading ? `<ruby>${escape(base)}<rt>${escape(reading)}</rt></ruby>` : escape(base)).join('');
+function card(id, meaning, es, zh, ja, romaji, speaker, alternative = false) {
+ return { id, meaning, es, zh:tokens(zh), ja:tokens(ja), romaji,
+  notes:JSON.stringify(speaker ? {speaker, ...(alternative ? {or:true} : {})} : {}) };
+}
+const fixtures = {
+ everyday: {
+  topic:'Getting a table',
+  conversation:[
+   card('table','A table for two, please.','Una mesa para dos, por favor.','请|qǐng 给|gěi 我|wǒ 们|men 安|ān 排|pái 两|liǎng 个|ge 人|rén 的|de 座|zuò 位|wèi 。','二人|ふたり です。','Futari desu.','you'),
+   card('reservation','Do you have a reservation?','¿Tienen una reserva?','你|nǐ 们|men 有|yǒu 预|yù 订|dìng 吗|ma ？','予約|よやく はありますか。','Yoyaku wa arimasu ka.','partner'),
+   card('no','No. Is there room?','No. ¿Hay sitio?','没|méi 有|yǒu 。 还|hái 有|yǒu 位|wèi 子|zi 吗|ma ？','いいえ。 席|せき はありますか。','Iie. Seki wa arimasu ka.','you'),
+   card('yes','Yes, we have a reservation.','Sí, tenemos una reserva.','有|yǒu ， 我|wǒ 们|men 有|yǒu 预|yù 订|dìng 。','はい、 予約|よやく しています。','Hai, yoyaku shite imasu.','you',true),
+   card('this-way','This way, please.','Por aquí, por favor.','请|qǐng 这|zhè 边|biān 走|zǒu 。','こちらへどうぞ。','Kochira e dōzo.','partner'),
+   card('thanks','Thank you.','Gracias.','谢|xiè 谢|xie 。','ありがとうございます。','Arigatō gozaimasu.','you')
+  ],
+  vocab:[
+   card('seat','seat','asiento','座|zuò 位|wèi','席|せき','seki'),
+   card('booking','reservation','reserva','预|yù 订|dìng','予約|よやく','yoyaku'),
+   card('two','two people','dos personas','两|liǎng 个|ge 人|rén','二人|ふたり','futari'),
+   card('menu','menu','carta','菜|cài 单|dān','メニュー','menyū')
+  ]
+ },
+ stress:{
+  topic:'Checking ingredients',
+  conversation:[
+   card('allergy','I have a peanut allergy. Could you check whether this dish contains peanuts?','Tengo alergia a los cacahuetes. ¿Podría comprobar si este plato lleva cacahuetes?','我|wǒ 对|duì 花|huā 生|shēng 过|guò 敏|mǐn 。 可|kě 以|yǐ 帮|bāng 我|wǒ 确|què 认|rèn 一|yí 下|xià 这|zhè 道|dào 菜|cài 里|lǐ 有|yǒu 没|méi 有|yǒu 花|huā 生|shēng 吗|ma ？','ピーナッツアレルギーがあります。この 料理|りょうり にピーナッツが 入|はい っているか 確認|かくにん していただけますか。','Pīnattsu arerugī ga arimasu. Kono ryōri ni pīnattsu ga haitte iru ka kakunin shite itadakemasu ka.','you'),
+   card('check','I will check with the kitchen. Please wait a moment.','Voy a consultarlo con la cocina. Espere un momento, por favor.','我|wǒ 去|qù 跟|gēn 厨|chú 房|fáng 确|què 认|rèn 一|yí 下|xià ， 请|qǐng 稍|shāo 等|děng 。','厨房|ちゅうぼう に 確認|かくにん しますので、 少々|しょうしょう お 待|ま ちください。','Chūbō ni kakunin shimasu node, shōshō omachi kudasai.','partner'),
+   card('okay','Okay.','De acuerdo.','好|hǎo 的|de 。','はい。','Hai.','you'),
+   card('contains','This dish contains peanuts.','Este plato lleva cacahuetes.','这|zhè 道|dào 菜|cài 有|yǒu 花|huā 生|shēng 。','この 料理|りょうり にはピーナッツが 入|はい っています。','Kono ryōri ni wa pīnattsu ga haitte imasu.','partner'),
+   card('without','This dish does not contain peanuts.','Este plato no lleva cacahuetes.','这|zhè 道|dào 菜|cài 没|méi 有|yǒu 花|huā 生|shēng 。','この 料理|りょうり にはピーナッツは 入|はい っていません。','Kono ryōri ni wa pīnattsu wa haitte imasen.','partner',true),
+   card('thanks','Thank you for checking.','Gracias por comprobarlo.','谢|xiè 谢|xie 您|nín 帮|bāng 我|wǒ 确|què 认|rèn 。','確認|かくにん してくださってありがとうございます。','Kakunin shite kudasatte arigatō gozaimasu.','you')
+  ],
+  vocab:[
+   card('peanut','peanut','cacahuete','花|huā 生|shēng','ピーナッツ','pīnattsu'),
+   card('allergy-word','allergy','alergia','过|guò 敏|mǐn','アレルギー','arerugī'),
+   card('kitchen','kitchen','cocina','厨|chú 房|fáng','厨房|ちゅうぼう','chūbō'),
+   card('reaction','allergic reaction','reacción alérgica','过|guò 敏|mǐn 反|fǎn 应|yìng','アレルギー 反応|はんのう','arerugī hannō')
+  ]
+ }
+};
+const directions = [
+ ['bubbles','A / Conversation topics','An exchange, with options','Soft sided bubbles, no role labels. “Or” joins two possible lines from the same voice. Swap sides to rehearse either part.'],
+ ['vocab','B / Vocabulary','Electric word collage','Acid lime, candy pink, lilac, asymmetric shapes, and tilted cards. No borders, no chat rhythm—a deliberately wild word collection.'],
+ ['transcript','C / Starred cards','Only what you picked','A quiet ruled list of phrases and words. Source captions preserve context without pretending that selected items form a dialogue.']
+];
+const starred = new Set();
+function seedStars() {
+ starred.clear();
+ for (const [group,fixture] of Object.entries(fixtures)) {
+  starred.add(`${group}:${fixture.conversation[0].id}`);
+  starred.add(`${group}:${fixture.vocab[0].id}`);
+ }
+}
+function renderCard(item, type, group) {
+ const language = $('language').value, key = `${group}:${item.id}`;
+ const metadata = JSON.parse(item.notes);
+ const right = (metadata.speaker === 'you') !== $('swap').checked;
+ const side = right ? 'right' : 'left';
+ const lang = language === 'es' ? 'es' : language === 'zh' ? 'zh-Hans' : 'ja';
+ const target = language === 'zh' ? ruby(item.zh) : language === 'ja-ruby' ? ruby(item.ja) : escape(language === 'es' ? item.es : plain(item.ja));
+ const selected = starred.has(key);
+ const source = metadata.speaker ? fixtures[group].topic : 'Vocabulary';
+ return `${type === 'bubbles' && metadata.or === true ? `<div class="or" data-side="${side}" aria-label="Alternative for the same speaker">or</div>` : ''}
+  <article class="card"${type === 'bubbles' ? ` data-side="${side}"` : ''} data-id="${escape(item.id)}">
+   <div class="target" lang="${lang}">${target}</div>
+   ${language === 'ja-romaji' ? `<div class="reading" lang="ja-Latn">${escape(item.romaji)}</div>` : ''}
+   <div class="meaning">${escape(item.meaning)}</div>
+   ${type === 'transcript' ? `<div class="source">${escape(source)}</div>` : ''}
+   <button class="star" type="button" data-key="${key}" aria-pressed="${selected}" aria-label="${selected ? 'Unstar' : 'Star'}: ${escape(item.meaning)}">${selected ? '★' : '☆'}</button>
+  </article>`;
+}
+function render() {
+ const group = $('content').value, fixture = fixtures[group];
+ document.documentElement.style.setProperty('--preview-width', $('width').value + 'px');
+ document.documentElement.style.setProperty('--scale', $('scale').value);
+ $('comparison').classList.toggle('hide-readings', !$('readings').checked);
+ $('comparison').classList.toggle('hide-meanings', !$('meanings').checked);
+ const languageLabel = $('language').selectedOptions[0].textContent;
+ $('comparison').innerHTML = directions.map(([type,title,subtitle,description]) => {
+  const items = type === 'bubbles' ? fixture.conversation : type === 'vocab' ? fixture.vocab :
+   [...fixture.conversation,...fixture.vocab].filter(item => starred.has(`${group}:${item.id}`));
+  const heading = type === 'bubbles' ? fixture.topic : type === 'vocab' ? 'Words to keep handy' : 'Starred';
+  const count = type === 'bubbles' ? '5 turns · 1 alternative' : `${items.length} ${type === 'vocab' ? 'words' : 'selected'}`;
+  const cards = items.map(item => renderCard(item,type,group)).join('');
+  return `<section class="direction ${type}" aria-label="${title}"><header class="direction-heading"><div class="eyebrow">${title}</div><h3>${subtitle}</h3><p>${description}</p></header><div class="preview-wrap"><div class="preview"><header class="book-header"><div class="eyebrow">${escape(languageLabel)}</div><strong>${heading}</strong><p>At the restaurant · ${count}</p></header><div class="conversation">${cards || '<p class="empty">Nothing starred yet. Pick a phrase or word using its star.</p>'}</div></div></div></section>`;
+ }).join('');
+ $('status').textContent = `${languageLabel} · ${$('width').value} px requested width · ${Math.round(Number($('scale').value)*100)}% text · ${$('readings').checked ? 'readings on' : 'readings off'}${$('language').value === 'es' ? ' (not applicable to Spanish)' : ''} · ${$('meanings').checked ? 'English on' : 'English off'} · ${[...fixture.conversation,...fixture.vocab].filter(item => starred.has(`${group}:${item.id}`)).length} starred`;
+}
+$('controls').addEventListener('submit', event => event.preventDefault());
+$('controls').addEventListener('change', render);
+$('reset').addEventListener('click', () => { HTMLFormElement.prototype.reset.call($('controls')); seedStars(); render(); });
+$('comparison').addEventListener('click', event => {
+ const button = event.target.closest('button[data-key]');
+ if (!button) return;
+ const key = button.dataset.key, section = button.closest('.direction');
+ const type = directions.find(([type]) => section.classList.contains(type))[0];
+ const buttons = [...section.querySelectorAll('.star')], index = buttons.indexOf(button);
+ if (starred.has(key)) starred.delete(key); else starred.add(key);
+ render();
+ // Retain keyboard position when the starred entry itself disappears.
+ const remaining = [...document.querySelectorAll(`.${type} .star`)];
+ const next = remaining.find(el => el.dataset.key === key) || remaining[Math.min(index,remaining.length-1)] || document.querySelector('.bubbles .star');
+ next.focus({preventScroll:true});
+});
+seedStars();
+render();
+})();
+</script>
+</body>
+</html>

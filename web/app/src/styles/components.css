@@ -84,17 +84,15 @@
 /* ── Deck mode (study / review / reverse) ── */
 
 /* ── Edit mode reorder handle ── */
-/* Static element that overlays the list region. Always rendered (Rule 6
-   requires gestures wire to a static handle, never to dynamic list items).
-   pointer-events is disabled in normal mode so taps reach the cards; in
-   edit mode it captures touches and uses elementFromPoint to identify the
-   row underneath. */
+/* A static right-side lane stays above the active page. It is wide enough
+   to reach the grip on either offset speaker side, while leaving most of the
+   card tappable to open the existing editor. */
 #reorder-handle {
   position: absolute;
-  top: 64px; /* below the title bar */
-  left: 0;
+  top: 102px; /* 44px production header + 58px topic strip */
   right: 0;
-  bottom: 84px; /* above the add-cards footer */
+  bottom: 84px;
+  width: 32%;
   z-index: 50;
   pointer-events: none;
   touch-action: none;
@@ -103,17 +101,16 @@
   pointer-events: auto;
 }
 
-/* ── Per-row reorder grip icon (visual only; gesture lives on the
-   static #reorder-handle above) ── */
-
 .card-row-reorder-handle {
   display: none;
   position: absolute;
-  right: 8px;
+  right: 0;
   top: 50%;
   transform: translateY(-50%);
   align-items: center;
-  padding: 0.5rem;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   color: var(--fg-tertiary);
 }
 
@@ -121,22 +118,19 @@
   display: flex;
 }
 
-/* Dragged placeholder — shows target slot position, dimmed */
 .card-row-reorder-placeholder {
   opacity: 0.25;
   transition: none;
 }
 
-/* Siblings animate position as placeholder moves between slots */
-.deck-view-list--reordering
+.deck-page-list--reordering
   .card-row-wrapper:not(.card-row-reorder-placeholder) {
   transition: transform 150ms ease;
 }
 
-/* Ghost (floating clone) — subtle lift shadow */
 .card-row-reorder-ghost {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  border-radius: var(--radius);
+  border-radius: 16px;
   opacity: 0.95;
 }
 
@@ -146,15 +140,95 @@
   padding: 0;
   max-width: none;
   margin: 0;
+  background: var(--bg-surface);
+  font-family: var(--font-family-manrope);
+  font-weight: 400;
+  font-synthesis: none;
 }
 
+#content-pane :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Single-list treatment retained by virtual decks and suggested previews. */
 .deck-view-list {
-  /* extra bottom padding so the final card scrolls clear of the floating
-     action pill (pill ~50px + 20px bottom gap + breathing room) */
-  padding: 0 1.25rem 96px;
+  padding: 0 20px 96px;
 }
 
-/*-- Cards --*/
+/* ── Conversation tabs and pages ── */
+
+.deck-pager {
+  overflow: hidden;
+}
+
+.deck-tabs {
+  display: flex;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.deck-tabs::-webkit-scrollbar,
+.deck-page::-webkit-scrollbar {
+  display: none;
+}
+
+.deck-tab {
+  flex: 0 0 50%;
+  min-width: 0;
+  padding: 30px 20px 10px;
+  background: var(--bg-surface);
+  border: 0;
+  color: var(--fg-caption);
+  font-family: var(--font-family-condensed);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.deck-tab span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deck-tab[aria-selected="true"] {
+  color: var(--accent);
+}
+
+.deck-pages {
+  display: flex;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  touch-action: pan-y pinch-zoom;
+}
+
+.deck-page {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+  touch-action: pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
+}
+
+.deck-page-list {
+  gap: 8px;
+  padding: 20px 20px 96px;
+}
+
+/* ── Phrase cards ── */
 
 rt {
   font-family: var(--font-family);
@@ -168,21 +242,31 @@ rt {
   line-height: 1.2;
 }
 
+#content-pane rt {
+  font-family: var(--font-family-manrope);
+  font-size: 11px;
+  line-height: 14px;
+}
+
 ruby {
   ruby-align: center;
   ruby-position: over;
 }
 
-/* Hide the plain reading line when furigana ruby is shown inline */
 .card-term[data-has-ruby] .card-term-reading {
   display: none;
 }
 
-/* Phrasebook cards retain their swipe actions inside each bubble. */
-
 .card-row-wrapper {
   position: relative;
 }
+
+.card-row-wrapper[data-alternative] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .deck-view-list > .card-row-wrapper + .card-row-wrapper {
   margin-top: 8px;
 }
@@ -190,7 +274,10 @@ ruby {
 .card-row {
   position: relative;
   z-index: 1;
-  padding: 20px;
+  padding: 20px 20px 10px;
+  border: 0;
+  border-radius: 16px;
+  background: hsl(var(--gray-50));
   transition: transform 250ms ease;
 }
 
@@ -202,101 +289,110 @@ ruby {
   transform: translateX(calc(-1 * var(--swipe-reveal-width)));
 }
 
-/* Reserve space for the absolutely-positioned reorder grip (below) so it
-   doesn't overlap the right-aligned target-language text in edit mode. */
 #content-pane[data-edit-mode] .card-row {
-  padding-right: 44px;
-}
-
-.deck-view-list > .card-row-wrapper .card-row {
-  border-radius: 16px;
-  background: var(--bg-blue-tint);
-}
-
-/* Starred term card (Figma "Term" selected variant, node 856:31525): a
-   light-blue fill. Overrides both the standalone blue-tint and the grouped
-   gray-50 row backgrounds. */
-.deck-view-list .card-row[data-starred="true"] {
-  background: var(--bg-starred);
+  padding-right: 54px;
 }
 
 .card-term {
-  gap: 6px;                /* Figma Term stack gap */
+  min-width: 0;
+  gap: 6px;
 }
 
 .card-term-target {
   min-width: 0;
-  font-size: 1.375rem;     /* Figma 22px */
-  line-height: 1.625rem;   /* Figma 26px */
-  word-break: break-word;
+  padding-right: 32px;
+  color: var(--fg-body);
+  font-family: var(--font-family-manrope);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 26px;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .card-term-english {
   min-width: 0;
-  font-size: 1.125rem;     /* Figma 18px */
-  line-height: 1.375rem;   /* Figma 22px */
-  word-break: break-word;
+  color: var(--fg-caption);
+  font-family: var(--font-family-manrope);
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 22px;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .card-term-reading {
   color: var(--fg-caption);
+  font-family: var(--font-family-manrope);
+  font-size: 16px;
+  line-height: 18px;
 }
 
-/* Inline star toggle (Figma "Term", node 754:7053): a 24px star pinned to the
-   row's top-right. Unstarred renders the outline glyph in gray-200; starred
-   renders the filled glyph in the accent blue. Tapping it fires
-   content/star-card; the surrounding row plays audio. */
+.card-alternative {
+  color: var(--fg-caption);
+  font-family: var(--font-family-manrope);
+  font-size: 14px;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* The exact Figma star paths live in src/icons. The 24px glyph is centered
+   inside a 44px target pinned ten pixels from the card's visible edges. */
 .card-star {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   background: none;
   border: 0;
-  padding: 0;
-  margin-left: 12px;
   color: hsl(var(--gray-200));
-  align-self: flex-start;
 }
+
 .card-star .icon {
+  display: block;
   width: 24px;
   height: 24px;
-  display: block;
 }
+
 .card-star[data-selected="true"] {
   color: var(--accent);
 }
-/* Edit mode owns the row (drag-to-reorder) — the reorder grip takes the
-   right edge, so the inline star is suppressed to avoid overlap. */
+
 #content-pane[data-edit-mode] .card-star {
   display: none;
 }
 
-/* Phrasebook tabs (Figma node 862:31590): two equal-width tabs under the
-   header — the active one in accent blue, the inactive in caption gray, with
-   a hairline divider beneath. */
-.deck-tabs {
-  border-bottom: 1px solid hsl(var(--gray-200));
-  padding: 20px 20px 10px;
-  flex-shrink: 0;
+/* Conversation bubbles retain speaker offset. Partner/left is neutral,
+   learner/right is blue; the star state never participates in backgrounds. */
+.deck-page[data-page-kind="conversation"] .card-row-wrapper[data-speaker] {
+  width: 89%;
 }
-.deck-tab {
-  background: none;
-  border: 0;
-  padding: 0;
-  font-family: var(--font-family-condensed);
-  font-weight: 500;
-  font-size: 0.875rem;      /* Figma 14px */
-  line-height: 1.125rem;    /* Figma 18px */
-  text-transform: uppercase;
-  color: var(--fg-caption);
+
+.deck-page[data-page-kind="conversation"] .card-row-wrapper[data-speaker="you"] {
+  align-self: flex-end;
+  margin-left: auto;
 }
-.deck-tab[data-active="true"] {
-  color: var(--accent);
+
+.deck-page[data-page-kind="conversation"] .card-row-wrapper[data-speaker="partner"] {
+  align-self: flex-start;
+  margin-right: auto;
 }
-.deck-tab .icon {
-  width: 16px;
-  height: 16px;
+
+.deck-page[data-page-kind="conversation"] [data-speaker="you"] .card-row {
+  background: var(--bg-speaker);
+}
+
+.deck-page[data-page-kind="conversation"] [data-speaker="partner"] .card-row,
+.deck-page[data-page-kind="vocab"] .card-row {
+  background: hsl(var(--gray-50));
 }
 
 .deck-view-empty {
-  padding: 3rem 1.25rem;
+  padding: 20px;
 }
 
 /* ── Nav Pane: hero + CTA banner ── */
@@ -542,6 +638,11 @@ ruby {
 .pane-header {
   padding: 1rem 1.25rem 0.75rem;
 }
+#content-pane .pane-header {
+  min-height: 44px;
+  padding: 0 20px;
+}
+
 
 .icon-button {
   display: flex;
@@ -558,9 +659,10 @@ ruby {
    .tappable is added to title buttons in JS. */
 .pane-header-title {
   font-family: var(--font-family-condensed);
-  font-size: 1.375rem;
+  font-size: 22px;
   font-weight: 400;
-  line-height: 1.2;
+  line-height: 28px;
+  letter-spacing: 0;
 }
 
 .pane-header-spacer {
@@ -989,13 +1091,12 @@ ruby {
   font-weight: 600;
 }
 
-/* ── Phrasebook view: grouped sections ── */
+/* ── Legacy grouped list for browse/system/preview modes ── */
 
 .deck-view-section-header {
-  padding: 1rem 1.25rem 0.375rem;
+  padding: 16px 20px 6px;
 }
 
-/* Named groups are always fully visible, with space between messages. */
 .card-group {
   flex-shrink: 0;
 }
@@ -1006,49 +1107,26 @@ ruby {
   gap: 8px;
 }
 
-.card-group .card-row {
-  padding: 20px;
-  border-radius: 16px;
-  background: hsl(var(--gray-50));
-}
-
 .deck-view-list .card-row-wrapper[data-speaker] {
-  width: 88%;
-  border-radius: 16px;
+  width: 89%;
 }
 
 .deck-view-list .card-row-wrapper[data-speaker="you"] {
   align-self: flex-end;
   margin-left: auto;
-  border-bottom-right-radius: 4px;
 }
 
 .deck-view-list .card-row-wrapper[data-speaker="partner"] {
   align-self: flex-start;
   margin-right: auto;
-  border-bottom-left-radius: 4px;
 }
 
 .deck-view-list [data-speaker="you"] .card-row {
-  background: var(--bg-blue-tint);
-  border-radius: 16px 16px 4px 16px;
+  background: var(--bg-speaker);
 }
 
 .deck-view-list [data-speaker="partner"] .card-row {
   background: hsl(var(--gray-50));
-  border-radius: 16px 16px 16px 4px;
-}
-
-.deck-view-list [data-speaker="you"] .card-term {
-  text-align: right;
-}
-
-.deck-view-list [data-speaker] .card-row[data-starred="true"] {
-  background: var(--bg-starred);
-}
-
-.card-term-speaker {
-  color: var(--fg-caption);
 }
 
 /* ── Suggested phrasebooks + unsaved preview ── */

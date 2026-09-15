@@ -12,8 +12,8 @@ description: >
 Catchphrase creates bespoke, situation-specific phrasebooks through a short guided conversation. A
 learner describes an upcoming situation, answers a few context questions, chooses which conversations
 to prepare, and receives a phrasebook of several short two-sided conversations plus the key vocabulary
-drawn from them. The learner reviews it in short sessions across conversation, vocabulary, and starred
-tabs.
+drawn from them. The learner reviews it in short sessions. On web, each conversation has its own
+swipeable tab/page, followed by vocabulary; starred cards form the review study set.
 
 ## User and problem
 
@@ -43,9 +43,9 @@ Initial product languages are Chinese and Japanese. The API also supports Spanis
 3. **Generate:** commit a complete phrasebook in one step — several short two-sided conversations plus
    a `vocab` group of the words drawn from them.
 4. **Prioritize:** star cards as bounded binary emphasis; the whole generated phrasebook arrives in one
-   commit.
-5. **Review:** browse **Conversations**, **Vocab**, and **Starred**, then review the starred cards.
-   Reveal answers, switch direction, play pronunciation, and swipe without scoring.
+   commit rather than through a per-card save flow.
+5. **Review:** on web, browse conversation-specific tabs followed by **Vocab**. Star priority cards,
+   then review that starred set with reveal, direction switching, pronunciation, and swiping.
 
 Difficulty, explanation depth, and expansion (more cards, decomposition) are deferred to a later
 phase, not part of initial generation.
@@ -75,8 +75,8 @@ phase, not part of initial generation.
 - Guided phrasebook creation through `/context` → `/phrasebook`.
 - Dynamic context questions and a checklist of the conversations to prepare.
 - Complete phrasebook generation: several short two-sided conversations plus a vocabulary group.
-- Three-tab browsing (Conversations / Vocab / Starred) plus starred-card review with answer reveal,
-  direction toggle, swipe navigation, and audio.
+- Web conversation-tab browsing followed by Vocab; starred-card review with reveal, direction toggle,
+  swipe navigation, and audio. The web navigation adoption does not change iOS.
 
 ### Phase 2 — Library durability
 

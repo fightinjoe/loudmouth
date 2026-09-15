@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conversation tabs · Catchphrase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400&amp;family=Roboto+Condensed:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;--ink:#263b35;--muted:#63736c;--line:#d8dfd8;--accent:#285c45;--width:390px;--scale:1}
+*{box-sizing:border-box}
+body{margin:0;background:#f2f3ed;color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
+main{max-width:820px;margin:auto;padding:36px 24px 64px}
+h1,h2,h3,p{margin:0}
+h1{font:500 clamp(36px,5vw,56px)/1.05 Georgia,serif;letter-spacing:-.04em;margin:10px 0 16px}
+h2{font-size:25px;letter-spacing:-.03em}
+a{color:var(--accent)}
+.eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:750;color:var(--accent)}
+.intro{max-width:730px}
+.intro p,.caption{color:var(--muted)}
+.controls{display:flex;gap:12px 18px;flex-wrap:wrap;align-items:end;background:white;border:1px solid var(--line);border-radius:10px;padding:16px;margin:24px 0 12px}
+label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button,select{min-height:44px}
+select,.reset{padding:8px 12px;background:#fff;border:1px solid #aab8ac;border-radius:6px}
+select{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:linear-gradient(45deg,transparent 50%,#63736c 50%),linear-gradient(135deg,#63736c 50%,transparent 50%);background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+.check{flex-direction:row;align-items:center;min-height:44px}
+.check input{height:18px;width:18px;accent-color:var(--accent)}
+:focus-visible{outline:3px solid #b5582d;outline-offset:-3px}
+.caption{font-size:13px;margin:12px 0 22px}
+.study{display:flex;flex-direction:column;align-items:center}
+.direction{width:100%}
+.direction>header{max-width:520px;margin:0 auto 16px}
+.direction>header p{color:var(--muted);font-size:13px;margin-top:8px}
+.phone{width:var(--width);max-width:100%;height:780px;margin:auto;background:#fcfdf9;border:1px solid #bac7bd;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;font-size:calc(14px * var(--scale))}
+.book{padding:18px 16px 16px;flex-shrink:0;border-bottom:1px solid var(--line)}
+.book h3{font-size:1.5em;line-height:1.2;margin-top:5px;letter-spacing:-.035em}
+.dialogue{padding:16px 12px 24px;display:flex;flex-direction:column;gap:10px}
+.phrase{position:relative;width:89%;padding:12px 44px 12px 13px;background:#eef0e9;border-radius:10px 10px 10px 3px;align-self:flex-start;overflow-wrap:anywhere}
+.phrase[data-side=right]{align-self:flex-end;background:#eaf0f2;border-radius:10px 10px 3px 10px}
+.target{font-size:1.18em;line-height:1.7}
+.target:lang(zh),.target:lang(ja){font-size:1.4em}
+.translation,.romaji{font-size:.86em;color:#58665e;margin-top:4px}
+rt{font-size:.5em;color:#58665e}
+.star{position:absolute;right:0;top:2px;width:44px;height:44px;background:transparent;border:0;font-size:22px;color:#68745d}
+.star[aria-pressed=true]{color:#855713}
+.alternative{font-size:.75em;color:var(--muted);text-align:center;width:89%;align-self:flex-start;margin:-6px 0}
+.alternative[data-side=right]{align-self:flex-end}
+.empty{padding:24px 16px;color:var(--muted)}
+.topic-tabs{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;flex-shrink:0;border-bottom:1px solid var(--line);background:#f3f5ef}
+.topic-tab{flex:0 0 62%;min-width:0;padding:14px 16px 12px;text-align:left;border:0;border-right:1px solid var(--line);border-bottom:3px solid transparent;background:none}
+.topic-tab span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:1.07em;font-weight:650}
+.topic-tab[aria-selected=true]{border-bottom-color:var(--accent);background:#e5ecdf}
+.pages{display:flex;flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}
+.page{flex:0 0 100%;min-width:0;height:100%;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always}
+.notes{margin-top:40px;border-top:1px solid var(--line);padding-top:24px}
+.notes table{border-collapse:collapse;width:100%;font-size:14px}
+.notes td,.notes th{padding:12px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.notes th{width:145px}
+code{font-size:12px}
+@media(max-width:480px){main{padding:24px 12px 48px}.phone{height:780px;border-radius:14px}.controls{padding:12px}.notes th{width:100px}}
+/* No end spacers: edge tabs anchor to the strip boundaries. */
+.topic-tab{flex-basis:50%;padding:14px 12px;text-align:center}
+.pages{overflow-x:hidden;scroll-snap-type:none;touch-action:pan-y pinch-zoom}
+.page{scroll-snap-align:none;scroll-snap-stop:normal;touch-action:pan-y pinch-zoom}
+/* Exact values from Figma MCP: 892:31621 (header), 892:31622 (tabs),
+   892:31629 (terms); palette from get_variable_defs on 892:31617. */
+:root{--ink:#0f182a;--muted:#64718b;--line:#e2e7f0;--accent:#1e9aff}
+body{background:#f9fafb}
+#tab-phone{--fg-body:#0f182a;--fg-caption:#64718b;--bg-surface:#fff;--bg-term:#f9fafb;--bg-speaker:#dbefff;--border-default:#e2e7f0;--accent:#1e9aff;background:var(--bg-surface);color:var(--fg-body);border-color:var(--border-default);font-family:"Manrope","Noto Sans JP",sans-serif;font-weight:400;font-synthesis:none}
+#tab-phone .book{display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border:0}
+#tab-phone .book h3{margin:0;font-family:"Roboto Condensed",sans-serif;font-size:calc(22px * var(--scale));font-weight:400;line-height:calc(28px * var(--scale));letter-spacing:0;text-align:center}
+#tab-phone .topic-tabs{background:var(--bg-surface);border-bottom:1px solid var(--border-default)}
+#tab-phone .topic-tab{padding:30px 20px 10px;border:0;background:var(--bg-surface);color:var(--fg-caption);font-family:"Roboto Condensed",sans-serif;font-size:calc(14px * var(--scale));font-weight:500;line-height:calc(18px * var(--scale));letter-spacing:0;text-transform:uppercase}
+#tab-phone .topic-tab span{font:inherit;letter-spacing:inherit}
+#tab-phone .topic-tab[aria-selected=true]{background:var(--bg-surface);color:var(--accent)}
+#tab-phone .pages,#tab-phone .page{background:var(--bg-surface)}
+#tab-phone .dialogue{padding:20px;gap:8px}
+#tab-phone .phrase{padding:20px 20px 10px;border:0;border-radius:16px;background:var(--bg-term)}
+#tab-phone .dialogue:not(.flat) .phrase[data-side=right]{background:var(--bg-speaker)}
+#tab-phone .target{padding-right:32px;color:var(--fg-body);font-family:"Manrope","Noto Sans JP",sans-serif;font-size:calc(22px * var(--scale));font-weight:400;line-height:calc(26px * var(--scale));letter-spacing:0}
+#tab-phone .translation{margin-top:6px;color:var(--fg-caption);font-size:calc(18px * var(--scale));font-weight:400;line-height:calc(22px * var(--scale));letter-spacing:0}
+#tab-phone .romaji{margin-top:6px;color:var(--fg-caption);font-size:calc(16px * var(--scale));line-height:calc(18px * var(--scale))}
+#tab-phone rt{color:var(--fg-caption);font-size:calc(11px * var(--scale));line-height:calc(14px * var(--scale))}
+#tab-phone .alternative{color:var(--fg-caption);margin:0;font-size:calc(14px * var(--scale));line-height:calc(16px * var(--scale))}
+#tab-phone .star{top:10px;right:10px;display:grid;place-items:center;color:var(--border-default);font-size:0}
+#tab-phone .star::before{content:"";width:24px;height:24px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.85 16.825L12 14.925L15.15 16.85L14.325 13.25L17.1 10.85L13.45 10.525L12 7.125L10.55 10.5L6.9 10.825L9.675 13.25L8.85 16.825ZM5.825 21L7.45 13.975L2 9.25L9.2 8.625L12 2L14.8 8.625L22 9.25L16.55 13.975L18.175 21L12 17.275L5.825 21Z' fill='%23E2E7F0'/%3E%3C/svg%3E") center/24px 24px no-repeat}
+#tab-phone .star[aria-pressed=true]::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7.45 13.975L5.825 21L12 17.275L18.175 21L16.55 13.975L22 9.25L14.8 8.625L12 2L9.2 8.625L2 9.25L7.45 13.975Z' fill='%231E9AFF'/%3E%3C/svg%3E")}
+#tab-phone :focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#tab-phone .empty{padding:20px;color:var(--fg-caption)}
+</style>
+<main><header class="intro"><div class="eyebrow">Catchphrase / adopted navigation study</div><h1>Keep the conversations<br>within reach.</h1><p>Conversation context tabs are the approved navigation direction adopted into the web app. Interior tabs center while the first and final selections anchor to the strip edges.</p><p style="margin-top:12px"><a href="../methodology.md">Methodology</a> · <a href="#decisions">Behavior & observations</a></p></header>
+<form class="controls" id="controls">
+<label>Language<select id="language"><option value="zh">Chinese · pinyin</option><option value="ja">Japanese · furigana</option><option value="ja-romaji">Japanese · romaji</option><option value="es">Spanish</option></select></label>
+<label>Phone width<select id="width"><option>320</option><option selected>390</option><option>430</option></select></label>
+<label>Text size<select id="scale"><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label>
+<label>Content<select id="stress"><option value="normal">Six dinner topics</option><option value="long">Eight topics · long titles</option><option value="empty">Empty phrasebook</option></select></label>
+<label class="check"><input id="readings" type="checkbox" checked>Readings</label><label class="check"><input id="english" type="checkbox" checked>English</label><label class="check"><input id="swap" type="checkbox">Swap sides</label><button class="reset" type="reset">Reset study</button>
+</form><p class="caption">Scroll the tab strip, select a conversation, or swipe phrases left and right; desktop mouse dragging also works. Interior selections center, the first tab stays left, and the final Vocab tab stays right. Full titles remain in accessible names and hover tooltips. Stars update independently of speaker backgrounds; this specimen does not include audio, review, details-pane, or persistence behavior.</p>
+<div class="study"><section class="direction"><header><div class="eyebrow">Selected direction · Figma styles</div><h2>Swipeable conversation tabs</h2><p>White surfaces, cool-gray phrases, blue emphasis, and Figma typography support one conversation page at a time in a single-phone study.</p></header><div class="phone" id="tab-phone"></div></section></div>
+<section class="notes" id="decisions"><div class="eyebrow">Approved · adopted into web</div><h2>Less metadata. Continuous movement.</h2>
+<table>
+<tr><th>Interaction</th><td>One tab and one page per conversation, followed by Vocab. No repeated headings, counts, or Conversation N labels. Tabs occupy 50% of the viewport with no end spacers. First selection aligns its tab’s left edge with the strip; final selection aligns its right edge. Interior selections center, exposing half of a neighbor on each side. A single empty-state Vocab tab anchors left. Clicking or keyboard-selecting animates the strip and card pages for 280 ms with cubic ease-out. A horizontal drag follows the pointer; release beyond 45 px advances one page, otherwise it eases back. Vertical gestures retain native scrolling. Interrupted motion continues from the current position. Resize aligns without animation; reduced motion skips animations. Vertical position survives tab changes; offscreen pages are inert. Keyboard arrows and Home/End work without looping.</td></tr>
+<tr><th>Figma source</th><td>Values were read through the Figma MCP server, not estimated from pixels: <a href="https://www.figma.com/design/sn5VMavDDp38gSwsRVRhcS/CatchPhrase?node-id=892-31617">frame 892:31617</a>, header <code>892:31621</code>, tabs <code>892:31622</code>, group/terms <code>892:31629</code>, plus <code>get_variable_defs</code> for the full frame. The frame screenshot was used only for visual comparison.</td></tr>
+<tr><th>Exact tokens</th><td>White <code>#ffffff</code>; gray-50 <code>#f9fafb</code>; text/body <code>#0f182a</code>; text/caption <code>#64718b</code>; emphasis <code>#1e9aff</code>; speaker blue-100 <code>#dbefff</code>; gray-200 <code>#e2e7f0</code>. Header: Roboto Condensed 400, 22/28 px. Tabs: Roboto Condensed 500, 14/18 px, uppercase. Phrases: Manrope 400, 22/26 px. English: Manrope 400, 18/22 px. Zero letter spacing. Header and outer card gutters: 20 px. Tab padding: 30 px top / 20 px sides / 10 px bottom. Borderless cards: 20 px top/sides / 10 px bottom padding; translation gap: 6 px; radius: 16 px. Exact Figma star SVGs are 24 px within 44 px touch targets.</td></tr>
+<tr><th>Adaptation boundary</th><td>The referenced frame is a grouped list, not the tabbed conversation treatment. The study retains offset speaker sides and 8 px gaps. Cards are borderless: left-side speech is gray-50, right-side speech is blue-100. Consecutive lines and alternatives from the same speaker share a color; swapping sides swaps the color assignment. Stars change only the icon, never the speaker background. Vocab remains neutral gray. Additional space beside the target text protects the star from long phrases. Readings use 11/14 px ruby and 16/18 px romaji; CJK glyphs use available system fallback because the referenced frame defines Latin text. OS status bars, menu/settings actions, group headers/counts, and the floating action bar are outside this study. Manrope and Roboto Condensed load from Google Fonts with <code>display=swap</code>; loading the web fonts requires a network connection, with sans-serif fallback while unavailable. The original Figma star SVG geometry is embedded in this HTML and needs no external assets.</td></tr>
+<tr><th>Controls</th><td>Language, width, text size, six/eight/empty fixtures, readings, translation, and speaker-side swap. Changing a control restarts navigation; stars retain stable card IDs. Reset restores all controls and clears stars. An empty phrasebook has only Vocab. The 1.5-tab requirement applies when at least two tabs exist.</td></tr>
+<tr><th>Contracts</th><td>Same hand-authored fixtures as iteration 1. Titles map to card <code>context</code>; vocabulary is separate by <code>type</code>. Speaker and alternative flags use JSON-encoded <code>notes</code>, including <code>or: true</code>. See <a href="../../docs/CARD_SCHEMA.md">card schema</a>, <a href="../../docs/BRIEF.md">product brief</a>, <a href="../../docs/DESIGN.md">UX design</a>, and <a href="../../web/docs/PANE_PROTOCOL.html">Pane Protocol</a>. No backend or schema changes. The conversation-tab navigation is adopted into the web app.</td></tr>
+<tr><th>Observed</th><td id="verification">Latest card refinement verified in desktop WebKit and headless Chromium: the selected specimen has 0 px card borders, gray left-side speech, and light-blue right-side speech. Chromium interaction checks confirmed that consecutive same-speaker alternatives keep their color, starring does not change backgrounds, swapping sides exchanges the colors, and vocabulary stays borderless neutral gray. The conversation screenshot was visually inspected. Earlier offline font/token, edge-tab alignment, animated navigation, multilingual narrow-width, hidden-reading, empty-state, reset, and reduced-motion checks remain recorded by the preceding iteration. Physical-device typography, motion, and accessibility remain open checks.</td></tr>
+<tr><th>Open checks</th><td>Physical iPhone Safari, touch/vertical-scroll arbitration on device, VoiceOver, and native Dynamic Type remain unverified. The phone frame is a preview, not physical-device proof.</td></tr>
+</table></section></main><script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tokens=s=>s.split(' ').map(t=>{const [base,reading]=t.split('|');return [base,reading||null]});
+const line=(translation,es,zh,ja,romanization,speaker='you',alternative=false)=>({translation,es,zh:tokens(zh),ja:tokens(ja),romanization,notes:JSON.stringify({speaker,...(alternative?{or:true}:{})})});
+const topics=[
+['Arriving & saying hello',[
+line('Hello! Thank you for inviting me.','¡Hola! Gracias por invitarme.','你|nǐ 好|hǎo ！ 谢|xiè 谢|xie 你|nǐ 们|men 邀|yāo 请|qǐng 我|wǒ 。','こんにちは。 招|まね いてくれてありがとうございます。','Konnichiwa. Maneite kurete arigatō gozaimasu.'),
+line('Welcome! Come in.','¡Bienvenido! Pasa.','欢|huān 迎|yíng ！ 请|qǐng 进|jìn 。','ようこそ！どうぞ。','Yōkoso! Dōzo.','partner'),
+line('These are for you.','Esto es para ustedes.','这|zhè 是|shì 送|sòng 给|gěi 你|nǐ 们|men 的|de 。','これ、どうぞ。','Kore, dōzo.')]],
+['Offering to help',[
+line('Can I help?','¿Puedo ayudar?','我|wǒ 可|kě 以|yǐ 帮|bāng 忙|máng 吗|ma ？','手伝|てつだ いましょうか。','Tetsudaimashō ka.'),
+line('Please put these here.','Pon esto aquí, por favor.','请|qǐng 把|bǎ 这|zhè 些|xiē 放|fàng 在|zài 这|zhè 里|lǐ 。','これをここに 置|お いてください。','Kore o koko ni oite kudasai.','partner'),
+line('Of course.','Claro.','当|dāng 然|rán 。','もちろん。','Mochiron.')]],
+['Dietary needs',[
+line('Does this contain meat?','¿Esto lleva carne?','这|zhè 个|ge 有|yǒu 肉|ròu 吗|ma ？','これには 肉|にく が 入|はい っていますか。','Kore ni wa niku ga haitte imasu ka.'),
+line('Yes, a little.','Sí, un poco.','有|yǒu 一|yì 点|diǎn 。','はい、 少|すこ し。','Hai, sukoshi.','partner'),
+line('I don’t eat meat.','No como carne.','我|wǒ 不|bù 吃|chī 肉|ròu 。','肉|にく は 食|た べません。','Niku wa tabemasen.'),
+line('I eat fish.','Como pescado.','我|wǒ 吃|chī 鱼|yú 。','魚|さかな は 食|た べます。','Sakana wa tabemasu.','you',true)]],
+['Complimenting the food',[
+line('This is delicious!','¡Está delicioso!','这|zhè 个|ge 很|hěn 好|hǎo 吃|chī ！','とてもおいしいです！','Totemo oishii desu!'),
+line('Have some more.','Toma un poco más.','再|zài 吃|chī 一|yì 点|diǎn 。','もっとどうぞ。','Motto dōzo.','partner'),
+line('Thank you. Just a little.','Gracias. Solo un poco.','谢|xiè 谢|xie ， 一|yì 点|diǎn 就|jiù 好|hǎo 。','ありがとうございます。 少|すこ しだけ。','Arigatō gozaimasu. Sukoshi dake.')]],
+['Talking about your trip',[
+line('This is my first visit.','Es mi primera visita.','这|zhè 是|shì 我|wǒ 第|dì 一|yī 次|cì 来|lái 。','初|はじ めて 来|き ました。','Hajimete kimashita.'),
+line('How long are you staying?','¿Cuánto tiempo te quedas?','你|nǐ 待|dāi 多|duō 久|jiǔ ？','どのくらい 滞在|たいざい しますか。','Dono kurai taizai shimasu ka.','partner'),
+line('One week.','Una semana.','一|yì 个|ge 星|xīng 期|qī 。','一週間|いっしゅうかん です。','Isshūkan desu.')]],
+['Saying goodbye',[
+line('Thank you for a lovely evening.','Gracias por una noche tan agradable.','谢|xiè 谢|xie ， 今|jīn 晚|wǎn 很|hěn 开|kāi 心|xīn 。','今夜|こんや はありがとうございました。','Konya wa arigatō gozaimashita.'),
+line('Come again!','¡Vuelve pronto!','下|xià 次|cì 再|zài 来|lái ！','また 来|き てください！','Mata kite kudasai!','partner'),
+line('I’d love to.','Me encantaría.','好|hǎo 啊|a 。','ぜひ。','Zehi.')]],
+['Asking someone to repeat a question when everyone is speaking at once',[
+line('I’m still learning. Could you say that again a little more slowly, please?','Todavía estoy aprendiendo. ¿Podría repetirlo un poco más despacio, por favor?','我|wǒ 还|hái 在|zài 学|xué 。 可|kě 以|yǐ 说|shuō 慢|màn 一|yì 点|diǎn ， 再|zài 说|shuō 一|yí 遍|biàn 吗|ma ？','まだ 勉強中|べんきょうちゅう です。もう 少|すこ しゆっくり、もう 一度|いちど 言|い ってもらえますか。','Mada benkyōchū desu. Mō sukoshi yukkuri, mō ichido itte moraemasu ka.'),
+line('Of course.','Claro.','当|dāng 然|rán 。','もちろん。','Mochiron.','partner')]],
+['Making plans to meet again before you leave',[
+line('Are you free tomorrow?','¿Tienes tiempo mañana?','你|nǐ 明|míng 天|tiān 有|yǒu 空|kòng 吗|ma ？','明日|あした は 空|あ いていますか。','Ashita wa aite imasu ka.'),
+line('Yes!','¡Sí!','有|yǒu ！','はい！','Hai!','partner')]]
+].map(([title,cards],i)=>({title,cards:cards.map((c,j)=>({...c,id:`${i}-${j}`,context:title,type:'phrase'}))}));
+const vocab=[line('meat','carne','肉|ròu','肉|にく','niku'),line('fish','pescado','鱼|yú','魚|さかな','sakana'),line('tomorrow','mañana','明|míng 天|tiān','明日|あした','ashita')].map((c,i)=>({...c,id:`v-${i}`,context:i===2?topics[7].title:topics[2].title,type:'word'}));
+function phrase(c){const lang=$('language').value,meta=JSON.parse(c.notes),side=(meta.speaker==='you')!==$('swap').checked?'right':'left';let text;if(lang==='es')text=esc(c.es);else text=c[lang==='zh'?'zh':'ja'].map(([base,reading])=>reading&&$('readings').checked&&lang!=='ja-romaji'?`<ruby>${esc(base)}<rt>${esc(reading)}</rt></ruby>`:esc(base)).join('');return `${meta.or?`<div class="alternative" data-side="${side}">or</div>`:''}<article class="phrase" data-side="${side}"><button class="star" data-star="${c.id}" aria-label="${stars.has(c.id)?'Unstar':'Star'}: ${esc(c.translation)}" aria-pressed="${stars.has(c.id)}">${stars.has(c.id)?'★':'☆'}</button><div class="target" lang="${lang==='zh'?'zh':lang.startsWith('ja')?'ja':'es'}">${text}</div>${lang==='ja-romaji'&&$('readings').checked?`<div class="romaji">${esc(c.romanization)}</div>`:''}${$('english').checked?`<div class="translation">${esc(c.translation)}</div>`:''}</article>`;}
+const dialogue=cards=>`<div class="dialogue">${cards.map(c=>phrase(c)).join('')}</div>`;
+
+let stars=new Set(),selected=0;
+const activeTopics=()=>topics.slice(0,$('stress').value==='empty'?0:$('stress').value==='long'?8:6);
+const allCards=()=>activeTopics().flatMap(t=>t.cards).concat(activeTopics().length?vocab:[]);
+const scrollAnimations=new WeakMap();
+let pageSizeObserver;
+function stopScrollAnimation(element){
+ const frame=scrollAnimations.get(element);
+ if(frame!==undefined)cancelAnimationFrame(frame);
+ scrollAnimations.delete(element);
+}
+function animateScroll(element,left,animate=true){
+ stopScrollAnimation(element);
+ const from=element.scrollLeft,to=Math.max(0,Math.min(left,element.scrollWidth-element.clientWidth));
+ if(!animate||matchMedia('(prefers-reduced-motion: reduce)').matches||Math.abs(to-from)<1){element.scrollLeft=to;return;}
+ const start=performance.now(),duration=280;
+ function step(now){
+  if(!element.isConnected){scrollAnimations.delete(element);return;}
+  const progress=Math.min(1,(now-start)/duration),eased=1-Math.pow(1-progress,3);
+  element.scrollLeft=from+(to-from)*eased;
+  if(progress<1)scrollAnimations.set(element,requestAnimationFrame(step));
+  else scrollAnimations.delete(element);
+ }
+ scrollAnimations.set(element,requestAnimationFrame(step));
+}
+function revealTab(i,animate=true){
+ const strip=$('tab-phone').querySelector('.topic-tabs'),tab=strip.children[i];
+ const stripRect=strip.getBoundingClientRect(),tabRect=tab.getBoundingClientRect();
+ const centered=strip.scrollLeft+tabRect.left-stripRect.left+(tabRect.width-strip.clientWidth)/2;
+ const destination=i===0?0:i===strip.children.length-1?strip.scrollWidth-strip.clientWidth:centered;
+ animateScroll(strip,destination,animate);
+}
+function markSelected(i,animate=true){
+ selected=i;
+ $('tab-phone').querySelectorAll('.topic-tab').forEach((t,n)=>{t.setAttribute('aria-selected',String(i===n));t.tabIndex=i===n?0:-1;});
+ $('tab-phone').querySelectorAll('.page').forEach((p,n)=>{p.inert=i!==n;});
+ revealTab(i,animate);
+}
+function goPage(i,focus=false,animate=true){
+ const pages=$('tab-phone').querySelector('.pages'),tabs=$('tab-phone').querySelectorAll('.topic-tab');
+ i=Math.max(0,Math.min(i,tabs.length-1));
+ markSelected(i,animate);
+ animateScroll(pages,i*pages.clientWidth,animate);
+ if(focus)tabs[i].focus({preventScroll:true});
+}
+function renderTabbed(){
+ pageSizeObserver?.disconnect();
+ const ts=activeTopics(),groups=ts.concat([{title:'Vocab',cards:ts.length?vocab:[]}]);
+ $('tab-phone').innerHTML='<header class="book"><h3>Dinner with the family</h3></header>'+`<div class="topic-tabs" role="tablist" aria-label="Conversation topics and vocabulary">${groups.map((t,i)=>`<button id="topic-tab-${i}" class="topic-tab" role="tab" data-page="${i}" aria-controls="topic-page-${i}" aria-selected="${i===0}" tabindex="${i===0?0:-1}" title="${esc(t.title)}" aria-label="${esc(t.title)}"><span>${esc(t.title)}</span></button>`).join('')}</div><div class="pages" aria-label="Swipe between conversation pages">${groups.map((t,i)=>`<section class="page" id="topic-page-${i}" role="tabpanel" aria-labelledby="topic-tab-${i}" tabindex="0">${i===ts.length?(t.cards.length?`<div class="dialogue flat">${t.cards.map(c=>phrase(c)).join('')}</div>`:'<p class="empty">No vocabulary in this phrasebook.</p>'):dialogue(t.cards)}</section>`).join('')}</div>`;
+ const pages=$('tab-phone').querySelector('.pages'),strip=$('tab-phone').querySelector('.topic-tabs');
+ strip.addEventListener('click',e=>{const t=e.target.closest('[data-page]');if(t)goPage(Number(t.dataset.page));});
+ strip.addEventListener('keydown',e=>{const keys=['ArrowLeft','ArrowRight','Home','End'];if(!keys.includes(e.key))return;e.preventDefault();goPage(e.key==='Home'?0:e.key==='End'?groups.length-1:selected+(e.key==='ArrowRight'?1:-1),true);});
+ strip.addEventListener('pointerdown',()=>stopScrollAnimation(strip),{passive:true});
+ strip.addEventListener('wheel',()=>stopScrollAnimation(strip),{passive:true});
+ let drag=null,suppressClick=false;
+ pages.addEventListener('pointerdown',e=>{
+  if(!e.isPrimary||e.button!==0)return;
+  stopScrollAnimation(pages);
+  drag={x:e.clientX,y:e.clientY,start:pages.scrollLeft,index:selected,id:e.pointerId,active:false};
+ });
+ pages.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.id)return;
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  if(!drag.active&&Math.abs(dx)>8&&Math.abs(dx)>Math.abs(dy)){
+   drag.active=true;pages.setPointerCapture(e.pointerId);pages.style.userSelect='none';
+  }
+  if(drag.active){e.preventDefault();pages.scrollLeft=drag.start-dx;}
+ });
+ function endDrag(e){
+  if(!drag||e.pointerId!==drag.id)return;
+  const d=drag;drag=null;pages.style.userSelect='';
+  if(d.active){
+   const dx=e.clientX-d.x;
+   suppressClick=true;setTimeout(()=>{suppressClick=false;},0);
+   goPage(d.index+(Math.abs(dx)>45?(dx<0?1:-1):0));
+  }else goPage(d.index);
+ }
+ pages.addEventListener('pointerup',endDrag);
+ pages.addEventListener('pointercancel',()=>{
+  if(!drag)return;const index=drag.index;drag=null;pages.style.userSelect='';goPage(index);
+ });
+ pages.addEventListener('click',e=>{if(suppressClick){e.preventDefault();e.stopPropagation();suppressClick=false;}},true);
+ selected=0;markSelected(0,false);
+ let lastWidth=pages.clientWidth;
+ pageSizeObserver=new ResizeObserver(()=>{
+  if(!pages.isConnected||lastWidth===pages.clientWidth)return;
+  lastWidth=pages.clientWidth;goPage(selected,false,false);
+ });
+ pageSizeObserver.observe(pages);
+}
+function render(){selected=0;document.documentElement.style.setProperty('--width',$('width').value+'px');document.documentElement.style.setProperty('--scale',$('scale').value);renderTabbed();}
+document.querySelector('.study').addEventListener('click',e=>{const b=e.target.closest('[data-star]');if(!b)return;const id=b.dataset.star;stars.has(id)?stars.delete(id):stars.add(id);document.querySelectorAll(`[data-star="${id}"]`).forEach(el=>{el.setAttribute('aria-pressed',String(stars.has(id)));el.textContent=stars.has(id)?'★':'☆';const card=allCards().find(c=>c.id===id);el.setAttribute('aria-label',`${stars.has(id)?'Unstar':'Star'}: ${card.translation}`);});});
+$('controls').addEventListener('change',render);$('controls').addEventListener('reset',()=>setTimeout(()=>{stars.clear();render()},0));render();
+})();
+</script></html>

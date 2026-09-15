@@ -1,14 +1,19 @@
 /**
  * Content pane — pure render helpers.
  *
- * No DOM access, no side effects, no closures over mutable state. Each
- * function returns an HTML string. See web/docs/PANE_PROTOCOL.html Rule 4.
+ * Real phrasebooks render as a stable horizontal pager: one page for
+ * ungrouped translations (when present), one per conversation context, and
+ * a final vocabulary page. Suggested previews and virtual language decks
+ * retain their existing single-list browse treatment.
  */
 import { renderCardRow } from "../components/card.js";
 import { icon } from "../components/icon.js";
 import { renderPaneHeader, headerIconButton, headerTitle, headerSpacer } from "../components/pane-header.js";
 import { escapeHTML } from "../js/utils.js";
 
+
+const TRANSLATIONS_PAGE_KEY = "translations";
+const VOCAB_PAGE_KEY = "vocab";
 
 export function renderHeader(deck) {
   if (!deck) return "";
@@ -24,116 +29,176 @@ export function renderHeader(deck) {
 }
 
 /**
- * Renders the phrasebook's saved cards, sectioned by their `context` field
- * (docs/CARD_SCHEMA.md 'Group context'). Cards without a context render
- * flat; cards with a context render in named conversation sections.
+ * Builds the ordered navigation model used by both the tab strip and pages.
+ * Context-less phrases live in a dedicated Translations page. Named
+ * conversations retain the order in which their first card appears in the
+ * phrasebook, and Vocab is always the final page, even when it is empty.
  */
-export function renderCardsHTML(deck, cards, tab = "conversations") {
-  if (!deck) return "";
-  if (tab === "starred") {
-    cards = cards.filter((c) => c.state?.starredAt);
-    if (cards.length === 0) {
-      return `<div class="deck-view-empty text-center fg-secondary"><p>No starred terms yet. Tap the star on a card to save it here.</p></div>`;
+export function getDeckPages(cards = []) {
+  const translations = [];
+  const conversations = new Map();
+  const vocabulary = [];
+
+  for (const card of cards) {
+    if (card.type === "word") {
+      vocabulary.push(card);
+    } else if (!card.context) {
+      translations.push(card);
+    } else {
+      if (!conversations.has(card.context)) conversations.set(card.context, []);
+      conversations.get(card.context).push(card);
     }
-  } else if (tab === "vocab") {
-    // Vocab is determined only by card type; provenance in `context` remains
-    // intact and does not affect which tab owns the card.
-    const words = cards.filter((c) => c.type === "word");
-    if (words.length === 0) {
-      return `<div class="deck-view-empty text-center fg-secondary"><p>No vocabulary yet.</p></div>`;
-    }
-    return words.map((c) => renderCardRow(c, deck.readingDisplay)).join("");
-  } else {
-    // Conversations tab: phrase cards, grouped by their optional context.
-    cards = cards.filter((c) => c.type !== "word");
+
   }
-  if (cards.length === 0) {
+
+  const pages = [];
+  if (translations.length) {
+    pages.push({
+      key: TRANSLATIONS_PAGE_KEY,
+      title: "Translations",
+      kind: "conversation",
+      cards: [...translations].sort(
+        (a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""),
+      ),
+    });
+  }
+  for (const [title, conversationCards] of conversations) {
+    pages.push({
+      key: `context:${title}`,
+      title,
+      kind: "conversation",
+      cards: conversationCards,
+    });
+  }
+  pages.push({
+    key: VOCAB_PAGE_KEY,
+    title: "Vocab",
+    kind: "vocab",
+    cards: vocabulary,
+  });
+  return pages;
+}
+
+export function normalizePageKey(cards, requestedKey) {
+  const pages = getDeckPages(cards);
+  return pages.some((page) => page.key === requestedKey) ? requestedKey : pages[0].key;
+}
+
+function renderPageCards(page, readingDisplay) {
+  if (!page.cards.length) {
+    return `<p class="deck-view-empty fg-secondary">${
+      page.kind === "vocab"
+        ? "No vocabulary in this phrasebook."
+        : "No phrases in this conversation."
+    }</p>`;
+  }
+  return page.cards.map((card) => renderCardRow(card, readingDisplay)).join("");
+}
+
+export function renderDeckPager(deck, cards, requestedPageKey) {
+  const pages = getDeckPages(cards);
+  const activePageKey = normalizePageKey(cards, requestedPageKey);
+
+  return `
+    <div class="deck-pager flex-1 min-h-0 flex-col" data-region="deck-pager">
+      <div class="deck-tabs" data-region="deck-tabs" role="tablist" aria-label="Conversation topics and vocabulary">
+        ${pages.map((page, index) => {
+          const selected = page.key === activePageKey;
+          return `
+            <button
+              id="deck-page-tab-${index}"
+              class="deck-tab tappable"
+              type="button"
+              role="tab"
+              data-action="content/set-page"
+              data-page-key="${escapeHTML(page.key)}"
+              aria-controls="deck-page-${index}"
+              aria-selected="${selected}"
+              tabindex="${selected ? "0" : "-1"}"
+              title="${escapeHTML(page.title)}"
+              aria-label="${escapeHTML(page.title)}"
+            ><span>${escapeHTML(page.title)}</span></button>
+          `;
+        }).join("")}
+      </div>
+      <div class="deck-pages flex-1 min-h-0" data-region="deck-pages" aria-label="Swipe between conversation pages">
+        ${pages.map((page, index) => {
+          const selected = page.key === activePageKey;
+          return `
+            <section
+              id="deck-page-${index}"
+              class="deck-page"
+              role="tabpanel"
+              aria-labelledby="deck-page-tab-${index}"
+              data-page-key="${escapeHTML(page.key)}"
+              data-page-kind="${page.kind}"
+              tabindex="0"
+              ${selected ? "" : "inert"}
+            >
+              <div class="deck-page-list flex-col" data-region="card-list">
+                ${renderPageCards(page, deck.readingDisplay)}
+              </div>
+            </section>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Virtual language decks and suggested previews are deliberately not paged.
+ * They retain the established grouped list so those browse/read-only modes
+ * do not acquire production phrasebook navigation controls.
+ */
+export function renderBrowseCardsHTML(deck, cards) {
+  if (!deck) return "";
+  cards = cards.filter((card) => card.type !== "word");
+  if (!cards.length) {
     return `<div class="deck-view-empty text-center fg-secondary"><p>No cards in this deck.</p></div>`;
   }
 
-  const sections = new Map(); // title|null -> Card[]
+  const sections = new Map();
   for (const card of cards) {
     const key = card.context || null;
     if (!sections.has(key)) sections.set(key, []);
     sections.get(key).push(card);
   }
 
-  const hasGroupSections = [...sections.keys()].some((k) => k !== null);
-  if (!hasGroupSections) {
-    // Only standalone terms exist yet — render flat, no header.
-    return cards.map((c) => renderCardRow(c, deck.readingDisplay)).join("");
-  }
-
   const standalone = sections.get(null) || [];
   sections.delete(null);
-
-  // Order group sections by their earliest card (oldest first) — matches
-  // the order groups would naturally have been explored/saved in.
-  const groupSections = [...sections.entries()].sort(
-    ([, a], [, b]) => (a[0]?.createdAt || "").localeCompare(b[0]?.createdAt || ""),
-  );
-
+  const hasGroups = sections.size > 0;
   const standaloneHTML = standalone.length
-    ? renderStandaloneSection(
-        "Translations",
-        [...standalone].sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || "")),
-        deck.readingDisplay,
-      )
+    ? `${hasGroups ? `<div class="deck-view-section-header section-label">Translations</div>` : ""}
+       ${[...standalone]
+         .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+         .map((card) => renderCardRow(card, deck.readingDisplay))
+         .join("")}`
     : "";
-
-  const groupsHTML = groupSections
-    .map(([title, groupCards]) => renderGroupSection(title, groupCards, deck.readingDisplay))
+  const groupsHTML = [...sections]
+    .map(([title, groupCards]) => `
+      <div class="deck-view-section-header section-label">${escapeHTML(title)}</div>
+      <div class="card-group">
+        <div class="card-group-rows">
+          ${groupCards.map((card) => renderCardRow(card, deck.readingDisplay)).join("")}
+        </div>
+      </div>
+    `)
     .join("");
-
   return `${standaloneHTML}${groupsHTML}`;
 }
 
-// Cards without a conversation context remain a flat list above named groups.
-function renderStandaloneSection(title, cards, readingDisplay) {
-  return `
-    <div class="deck-view-section-header section-label">${escapeHTML(title)}</div>
-    ${cards.map((c) => renderCardRow(c, readingDisplay)).join("")}
-  `;
-}
-
-// Named groups always show their complete conversation.
-function renderGroupSection(title, cards, readingDisplay) {
-  return `
-    <div class="deck-view-section-header section-label">${escapeHTML(title)}</div>
-    <div class="card-group">
-      <div class="card-group-rows">
-        ${cards.map((c) => renderCardRow(c, readingDisplay)).join("")}
-      </div>
-    </div>
-  `;
-}
-
-
-// Phrasebook tabs: "Conversations" shows the conversation groups (phrase
-// cards), "Vocab (N)" the vocabulary words, "Starred (N)" the starred terms.
-// Only real phrasebooks get tabs — the lang: browse virtual deck and
-// suggested-phrasebook previews render their list without them.
-export function renderTabsBar(deck, cards, tab = "conversations") {
-  if (!deck || deck.system || deck.preview) return "";
-  const vocabCount = cards.filter((c) => c.type === "word").length;
-  const starredCount = cards.filter((c) => c.state?.starredAt).length;
-  return `
-    <div class="deck-tabs flex items-center" data-region="deck-tabs">
-      <button class="deck-tab tappable flex-1 text-center" data-action="content/set-tab" data-tab="conversations" data-active="${tab === "conversations"}">Conversations</button>
-      <button class="deck-tab tappable flex-1 text-center" data-action="content/set-tab" data-tab="vocab" data-active="${tab === "vocab"}">Vocab (${vocabCount})</button>
-      <button class="deck-tab tappable flex-1 flex items-center justify-center gap-sm" data-action="content/set-tab" data-tab="starred" data-active="${tab === "starred"}">${icon("star-fill", { size: "sm" })}<span>Starred (${starredCount})</span></button>
-    </div>
-  `;
-}
-
-export function renderDeckBody(deck, cards, tab = "conversations") {
+export function renderDeckBody(deck, cards, pageKey) {
   if (!deck) return "";
+  const pager = deck.system || deck.preview
+    ? `<div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto" data-region="card-list">
+         ${renderBrowseCardsHTML(deck, cards)}
+       </div>`
+    : renderDeckPager(deck, cards, pageKey);
+
   return `
     ${renderHeader(deck)}
-    ${renderTabsBar(deck, cards, tab)}
-    <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto" data-region="card-list">
-      ${renderCardsHTML(deck, cards, tab)}
-    </div>
+    ${pager}
     ${deck.system || deck.preview
       ? ""
       : `<div class="deck-view-action-bar shrink-0 flex items-center justify-center">
@@ -146,8 +211,7 @@ export function renderDeckBody(deck, cards, tab = "conversations") {
 
 /**
  * Browse-view header — a back button (returns to the current deck/empty
- * state) and a centered title. Reached from the nav pane's "View all"
- * links (Figma node 602:5562, "All phrasebooks").
+ * state) and a centered title.
  */
 function renderBrowseHeader(title) {
   return renderPaneHeader({
@@ -157,13 +221,6 @@ function renderBrowseHeader(title) {
   });
 }
 
-/**
- * Browse-view body — the header plus caller-supplied, pre-rendered group
- * HTML (grouped-by-language phrasebook rows, or a flat suggested-phrasebook
- * list). The groups themselves are built by whichever pane requested the
- * browse (currently the nav pane), since the row shape — deck chevron rows
- * vs. suggestion pill rows — and their click actions differ by kind.
- */
 export function renderBrowseBody(browse) {
   if (!browse) return "";
   return `

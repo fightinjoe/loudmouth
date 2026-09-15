@@ -3,13 +3,11 @@ import { escapeHTML } from "../js/utils.js";
 
 
 /**
- * Renders a card as a list row. The star is an inline toggle at the row's
- * top-right (Figma "Term", node 754:7053: outline star when unstarred, filled
- * accent star when starred) — tapping it fires `content/star-card`; tapping
- * anywhere else on the row body speaks the card via `content/play-card` (the
- * delegate resolves to the nearest [data-action], so the star wins over the
- * row). Edit/delete remain behind a left swipe-to-reveal (see
- * content-pane-gestures.js).
+ * Renders a card as a tappable phrase row. Conversation metadata remains
+ * JSON-encoded in `notes`; the wrapper exposes only the layout flags the
+ * phrasebook pager needs. Speaker identity is communicated by side and color
+ * rather than repeated labels. `notes.or` adds a small alternative marker
+ * immediately before the phrase.
  *
  * @param {Object} card
  * @param {string} readingDisplay - 'reading' | 'romanization'
@@ -18,15 +16,17 @@ import { escapeHTML } from "../js/utils.js";
 export function renderCardRow(card, readingDisplay = "reading") {
   const cardId = escapeHTML(card.id);
   const isStarred = !!card.state?.starredAt;
-  let speaker;
-  try {
-    const notes = JSON.parse(card.notes);
-    if (notes?.speaker === "you" || notes?.speaker === "partner") speaker = notes.speaker;
-  } catch {
-    // Older cards can have plain-text notes rather than conversation metadata.
-  }
+  const { speaker, alternative } = readConversationMeta(card.notes);
   return `
-    <div class="card-row-wrapper shrink-0 overflow-hidden"${speaker ? ` data-speaker="${speaker}"` : ""} data-card-id="${cardId}">
+    <div
+      class="card-row-wrapper shrink-0 overflow-hidden"
+      ${speaker ? `data-speaker="${speaker}"` : ""}
+      ${alternative ? "data-alternative" : ""}
+      data-card-id="${cardId}"
+    >
+      ${alternative
+        ? `<div class="card-alternative" ${speaker ? `data-speaker="${speaker}"` : ""}>or</div>`
+        : ""}
       <div class="inset flex-row reverse items-center gap-md">
         <button
           class="icon-button bg-blue fg-white tappable"
@@ -43,13 +43,14 @@ export function renderCardRow(card, readingDisplay = "reading") {
         >${icon("delete")}</button>
       </div>
 
-      <div class="card-row flex-row items-start justify-between tappable" data-action="content/play-card" data-card-id="${cardId}" data-starred="${isStarred}">
-        ${renderCardContent(card, readingDisplay, speaker)}
+      <div class="card-row flex-row items-start tappable" data-action="content/play-card" data-card-id="${cardId}">
+        ${renderCardContent(card, readingDisplay)}
         <button
           class="card-star tappable shrink-0"
           data-action="content/star-card"
           data-card-id="${cardId}"
-          aria-label="${isStarred ? "Unstar" : "Star"}"
+          aria-label="${isStarred ? "Unstar" : "Star"}: ${escapeHTML(card.translation)}"
+          aria-pressed="${isStarred}"
           data-selected="${isStarred}"
         >${icon(isStarred ? "star-fill" : "star")}</button>
         <div class="card-row-reorder-handle shrink-0" aria-hidden="true">
@@ -60,24 +61,33 @@ export function renderCardRow(card, readingDisplay = "reading") {
   `;
 }
 
-// Phrasebook term card — matches the Figma "Term" component (node 754:7053):
-// the target-language term (large, body color) with inline per-character ruby
-// readings on top, its English translation (smaller, muted) stacked beneath —
-// a left-aligned vertical stack, no divider, no visible play control (tapping
-// the row itself plays audio; see renderCardRow). Starred state is shown by
-// the inline star toggle in renderCardRow, not a text prefix.
-function renderCardContent(card, readingDisplay = "reading", speaker) {
-  // Furigana ruby only when displaying 'reading' and structured tokens exist;
-  // otherwise the reading renders as a plain line below the term.
+function readConversationMeta(notes) {
+  try {
+    const metadata = JSON.parse(notes);
+    return {
+      speaker: metadata?.speaker === "you" || metadata?.speaker === "partner"
+        ? metadata.speaker
+        : null,
+      alternative: metadata?.or === true,
+    };
+  } catch {
+    // Older cards can have plain-text notes rather than conversation metadata.
+    return { speaker: null, alternative: false };
+  }
+}
+
+// Phrasebook term card — target-language text with optional ruby/romanization
+// and its English translation. The star is absolutely positioned by CSS so
+// this content remains one stable, full-width text stack.
+function renderCardContent(card, readingDisplay = "reading") {
   const hasRuby = readingDisplay === "reading" && Array.isArray(card.reading);
   const cjk = hasRuby ? renderRuby(card.reading) : escapeHTML(card.text);
   const reading = escapeHTML(card[readingDisplay]);
 
   return `
     <div class="card-term flex-col flex-1 min-w-0" ${hasRuby ? "data-has-ruby" : ""}>
-      ${speaker ? `<div class="card-term-speaker section-label">${speaker === "you" ? "You" : "Partner"}</div>` : ""}
       <div class="card-term-target fg-body">${cjk}</div>
-      ${hasRuby ? "" : `<div class="card-term-reading text-body2">${reading}</div>`}
+      ${hasRuby ? "" : `<div class="card-term-reading">${reading}</div>`}
       <div class="card-term-english fg-secondary">${escapeHTML(card.translation)}</div>
     </div>
   `;
