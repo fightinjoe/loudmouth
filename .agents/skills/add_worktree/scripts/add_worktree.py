@@ -427,7 +427,7 @@ def setup(short_name: str, requested_id: int | None) -> dict[str, object]:
 
                 web_env = (
                     f"VITE_DEV_PORT={number}0\n"
-                    f"VITE_API_URL=http://localhost:{number}1\n"
+                    f"VITE_API_URL=http://100.113.73.51:{number}1\n"
                     f"PLAYWRIGHT_PORT={number}2\n"
                 ).encode()
                 api_env = f"PORT={number}1\n".encode()
