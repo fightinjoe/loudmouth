@@ -178,9 +178,9 @@
 }
 
 .deck-tab {
-  flex: 0 0 50%;
-  min-width: 0;
-  padding: 30px 20px 10px;
+  flex: 0 0 auto;
+  min-width: max-content;
+  padding: 30px 16px 10px;
   background: var(--bg-surface);
   border: 0;
   color: var(--fg-caption);
@@ -202,6 +202,7 @@
 
 .deck-tab[aria-selected="true"] {
   color: var(--accent);
+  box-shadow: inset 0 -3px 0 var(--accent);
 }
 
 .deck-pages {
@@ -300,7 +301,6 @@ ruby {
 
 .card-term-target {
   min-width: 0;
-  padding-right: 32px;
   color: var(--fg-body);
   font-family: var(--font-family-manrope);
   font-size: 22px;
@@ -312,6 +312,7 @@ ruby {
 
 .card-term-english {
   min-width: 0;
+  padding-right: 32px;
   color: var(--fg-caption);
   font-family: var(--font-family-manrope);
   font-size: 18px;

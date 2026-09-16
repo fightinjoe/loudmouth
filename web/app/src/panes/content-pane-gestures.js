@@ -1,10 +1,10 @@
 /**
  * Content pane gestures.
  *
- * The shell keeps its edge handle. Real phrasebooks give horizontal drags
- * in the list interior to page navigation; legacy browse/preview lists keep
- * row reveal. Edit mode disables both and gives the right-side static reorder
- * handle to vertical dragging.
+ * Real phrasebooks share edge gutters between page navigation and the shell.
+ * Legacy browse/preview lists keep the shell handle and row reveal. Edit mode
+ * disables paging and gives the right-side static reorder handle to vertical
+ * dragging.
  */
 
 const OPEN_THRESHOLD = 100;
@@ -12,6 +12,7 @@ const REVEAL_WIDTH = 104;
 const REVEAL_THRESHOLD = 80;
 const PAGE_THRESHOLD = 45;
 const PAGE_AXIS_LOCK = 8;
+const PAGE_GUTTER = 50;
 const PAGE_DURATION = 280;
 const CARD_WRAPPER_SEL = ".card-row-wrapper";
 const ROW_SEL = ".card-row";
@@ -149,6 +150,7 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
   function syncPager(pageKey, { animate = true, focus = false } = {}) {
     const pages = rootEl.querySelector('[data-region="deck-pages"]');
     const strip = rootEl.querySelector('[data-region="deck-tabs"]');
+    handleEl.toggleAttribute("data-paging", Boolean(pages) && !isEdit());
     if (!pages || !strip) {
       watchPagerSize(null);
       return;
@@ -204,6 +206,10 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
   rootEl.addEventListener("pointerdown", (event) => {
     const pages = event.target.closest?.('[data-region="deck-pages"]');
     if (!pages || isEdit() || !event.isPrimary || event.button !== 0) return;
+    const bounds = pages.getBoundingClientRect();
+    const fromLeft = event.clientX - bounds.left <= PAGE_GUTTER;
+    const fromRight = bounds.right - event.clientX <= PAGE_GUTTER;
+    if (!fromLeft && !fromRight) return;
     stopScrollAnimation(pages);
     const selectedTab = rootEl.querySelector('.deck-tab[aria-selected="true"]');
     const tabs = [...rootEl.querySelectorAll(".deck-tab")];
@@ -215,6 +221,8 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
       startLeft: pages.scrollLeft,
       index: Math.max(0, tabs.indexOf(selectedTab)),
       active: false,
+      fromLeft,
+      shell: false,
     };
   });
 
@@ -228,13 +236,34 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
         pageDrag = null;
         return;
       }
+      // Each gutter only accepts an inward swipe.
+      if ((pageDrag.fromLeft && dx < 0) || (!pageDrag.fromLeft && dx > 0)) {
+        pageDrag = null;
+        return;
+      }
+      pageDrag.shell = pageDrag.fromLeft && pageDrag.index === 0;
       pageDrag.active = true;
       pageDrag.pages.dataset.dragging = "";
-      pageDrag.pages.setPointerCapture?.(event.pointerId);
+      rootEl.setPointerCapture?.(event.pointerId);
       pageDrag.pages.style.userSelect = "none";
     }
     event.preventDefault();
-    pageDrag.pages.scrollLeft = pageDrag.startLeft - dx;
+    if (pageDrag.shell) {
+      rootEl.dataset.dragging = "";
+      rootEl.style.transform = `translateX(${Math.max(0, Math.min(pageDrag.pages.clientWidth, dx))}px)`;
+    } else {
+      const width = pageDrag.pages.clientWidth;
+      pageDrag.pages.scrollLeft = pageDrag.startLeft - Math.max(-width, Math.min(width, dx));
+    }
+  }, { passive: false });
+
+  rootEl.addEventListener("touchmove", (event) => {
+    // Pointer capture and pointermove.preventDefault() do not claim native
+    // touch scrolling. Once horizontal intent is locked, prevent the browser
+    // from taking over on vertical drift and cancelling our pointer stream.
+    if (pageDrag?.active && event.touches.length === 1 && event.cancelable) {
+      event.preventDefault();
+    }
   }, { passive: false });
 
   function endPageDrag(event, cancelled = false) {
@@ -243,12 +272,20 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
     pageDrag = null;
     delete drag.pages.dataset.dragging;
     drag.pages.style.userSelect = "";
+    if (rootEl.hasPointerCapture?.(event.pointerId)) rootEl.releasePointerCapture(event.pointerId);
+    if (drag.shell) {
+      delete rootEl.dataset.dragging;
+      rootEl.style.transform = "";
+    }
     const tabs = [...rootEl.querySelectorAll(".deck-tab")];
     if (!tabs.length) return;
     let nextIndex = drag.index;
     if (drag.active && !cancelled) {
       const dx = event.clientX - drag.x;
-      if (Math.abs(dx) > PAGE_THRESHOLD) nextIndex += dx < 0 ? 1 : -1;
+      if (Math.abs(dx) > PAGE_THRESHOLD) {
+        if (drag.shell) ui.transition("shell/toggle");
+        else nextIndex += dx < 0 ? 1 : -1;
+      }
       suppressPageClick = true;
       setTimeout(() => {
         suppressPageClick = false;
@@ -260,6 +297,11 @@ export function wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isE
 
   rootEl.addEventListener("pointerup", (event) => endPageDrag(event));
   rootEl.addEventListener("pointercancel", (event) => endPageDrag(event, true));
+  rootEl.addEventListener("lostpointercapture", (event) => {
+    // Touch starts with implicit capture on the card; transferring it to the
+    // pane must not cancel the drag when that child's lost event bubbles.
+    if (event.target === rootEl) endPageDrag(event, true);
+  });
   rootEl.addEventListener("click", (event) => {
     if (!suppressPageClick) return;
     event.preventDefault();

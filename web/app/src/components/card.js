@@ -76,19 +76,25 @@ function readConversationMeta(notes) {
   }
 }
 
-// Phrasebook term card — target-language text with optional ruby/romanization
-// and its English translation. The star is absolutely positioned by CSS so
-// this content remains one stable, full-width text stack.
+// Phrasebook term card — English above the target-language text. Japanese
+// uses either its original script (with available furigana) or romanization.
+// The star is absolutely positioned beside the first line.
 function renderCardContent(card, readingDisplay = "reading") {
-  const hasRuby = readingDisplay === "reading" && Array.isArray(card.reading);
-  const cjk = hasRuby ? renderRuby(card.reading) : escapeHTML(card.text);
-  const reading = escapeHTML(card[readingDisplay]);
+  const japanese = card.lang === "ja";
+  const showRomaji = japanese && readingDisplay === "romanization"
+    && typeof card.romanization === "string" && card.romanization.trim() !== "";
+  const hasRuby = !showRomaji && (japanese || readingDisplay === "reading")
+    && Array.isArray(card.reading) && card.reading.length > 0;
+  const target = showRomaji
+    ? escapeHTML(card.romanization)
+    : hasRuby ? renderRuby(card.reading) : escapeHTML(card.text);
+  const reading = !japanese && !hasRuby ? escapeHTML(card[readingDisplay]) : "";
 
   return `
     <div class="card-term flex-col flex-1 min-w-0" ${hasRuby ? "data-has-ruby" : ""}>
-      <div class="card-term-target fg-body">${cjk}</div>
-      ${hasRuby ? "" : `<div class="card-term-reading">${reading}</div>`}
       <div class="card-term-english fg-secondary">${escapeHTML(card.translation)}</div>
+      <div class="card-term-target fg-body">${target}</div>
+      ${reading ? `<div class="card-term-reading">${reading}</div>` : ""}
     </div>
   `;
 }

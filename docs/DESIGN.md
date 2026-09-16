@@ -92,13 +92,16 @@ by **Vocab** (`type: "word"`, regardless of provenance). Context-less phrases oc
 separate Starred tab: stars remain persistent card controls and **Review** uses the starred study set.
 This web navigation does not change iOS.
 
-Tabs occupy half the viewport. The first selection anchors left, the last anchors right, and interior
-selections center. Clicking or keyboard-selecting with arrows or Home/End, without looping, animates
-tabs and pages for 280 ms with cubic ease-out. Horizontal pointer drags beyond 45 px advance one page;
-shorter or cancelled drags snap back. Vertical scrolling stays native, and each page retains its own
-position. Offscreen pages are inert; resizing realigns immediately, and reduced motion disables
-animation. The shell's left-edge gesture remains separate. Edit mode disables paging drags and retains
-active-page reorder and card editing.
+Tabs fit their title text with 16 px horizontal padding on each side; the strip clips partially
+visible tabs at the viewport edges. The first selection anchors left, the last anchors right, and
+interior selections center. Clicking or keyboard-selecting with arrows or Home/End, without looping,
+animates tabs and pages for 280 ms with cubic ease-out. Inward horizontal pointer drags starting in
+the card list's 50 px left/right gutters advance one page beyond 45 px, for both flicks and long
+drags. The left gutter selects the previous page, or reveals navigation on the first page; the right
+gutter selects the next page. Shorter or cancelled drags snap back. Interior drags do not page.
+Vertical scrolling stays native, and each page retains its own position. Offscreen pages are inert;
+resizing realigns immediately, and reduced motion disables animation. Edit mode disables paging
+drags and retains active-page reorder and card editing.
 
 The visual reference is `explorations/phrasebook-navigation/PHRASEBOOK_EXPLORATION.html`: white
 surfaces, Roboto Condensed headings and tabs, and Manrope card text. Borderless cards have 16 px
@@ -107,6 +110,12 @@ is right-aligned blue (`#dbefff`), partner speech is left-aligned neutral (`#f9f
 left-aligned on both sides. Alternatives from `notes.or` display an “or” separator and retain their
 speaker's color. Conversation pages omit repeated headings, counts, and speaker labels. Stars change
 only their icon, not card backgrounds; vocabulary remains neutral.
+
+Card text places English above the target language without changing either line's typography.
+Japanese displays one target form according to the phrasebook's reading setting: original Japanese
+script with available furigana, or romaji using the same target-text styling. If a card has no romaji,
+it retains Japanese script and available furigana. Chinese ruby pinyin is unchanged. The standalone
+`explorations/card-styling/CARD_EXPLORATION.html` also demonstrates this order and Japanese selection.
 
 Cards can be starred for review. Tapping a card plays its target-language pronunciation; swipe actions
 expose card editing and deletion where the platform supports them. Phrasebook settings and card reorder

@@ -20,7 +20,11 @@
   top: 70px;
   left: 0;
   bottom: 70px;
-  width: 15%;
+  width: 50px;
+}
+
+[data-shell="foreground"] .shell-swipe-handle[data-paging] {
+  pointer-events: none;
 }
 
 [data-shell="background"] .shell-swipe-handle {

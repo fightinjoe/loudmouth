@@ -40,10 +40,9 @@ button { cursor:pointer; }
 .card { position:relative; padding:18px 48px 18px 16px; min-width:0; }
 .target { font-size:calc(20px * var(--scale)); line-height:1.5; font-weight:500; overflow-wrap:anywhere; }
 .target:lang(zh-Hans),.target:lang(ja) { font-size:calc(23px * var(--scale)); line-height:1.65; }
-.reading { font-size:calc(13px * var(--scale)); color:#506071; line-height:1.6; margin-top:4px; overflow-wrap:anywhere; }
-.meaning { font-size:calc(14px * var(--scale)); color:#535c55; line-height:1.5; margin-top:8px; overflow-wrap:anywhere; }
+.meaning { font-size:calc(14px * var(--scale)); color:#535c55; line-height:1.5; margin-bottom:8px; overflow-wrap:anywhere; }
 ruby { ruby-align:center; } rt { font-size:.48em; font-weight:400; color:#506071; }
-.hide-readings .reading,.hide-readings rt,.hide-meanings .meaning { display:none; }
+.hide-readings rt,.hide-meanings .meaning { display:none; }
 .star { position:absolute; top:4px; right:4px; width:44px; height:44px; border:0; background:transparent; color:#626d64; border-radius:50%; font-size:23px; line-height:1; }
 .star[aria-pressed=true] { color:#79530a; }
 .star:hover { background:#00000008; }
@@ -60,7 +59,7 @@ ruby { ruby-align:center; } rt { font-size:.48em; font-weight:400; color:#506071
 .vocab .card:nth-child(2n) { background:#ffb5d5; transform:rotate(2deg); border-radius:6px 30px 6px 30px; }
 .vocab .card:nth-child(3n) { background:#b8cbff; transform:rotate(-1deg); border-radius:30px; }
 .vocab .target { color:#292344; font-weight:750; }
-.vocab .meaning,.vocab .reading,.vocab rt { color:#443651; }
+.vocab .meaning,.vocab rt { color:#443651; }
 .vocab .star { color:#443651; }
 .vocab .star[aria-pressed=true] { color:#292344; }
 .transcript .conversation { gap:0; padding:8px 0; }
@@ -120,8 +119,8 @@ code { font-size:13px; background:#e9ece4; padding:2px 4px; }
 </section>
 <section class="notes" id="handoff">
 <div class="eyebrow">Porting reference</div><h2>Preserve hierarchy, not CSS.</h2>
-<ul><li><strong>Anatomy:</strong> target with optional ruby above → optional romaji below → English. No speaker heading; Spanish has no empty reading line. Chinese pinyin and Japanese furigana use the same ruby layout.</li><li><strong>Typography baseline:</strong> Latin target 20 px; CJK target 23 px; romaji 13 px; English 14 px; ruby 0.48 em. The size control scales all text. These are exploration values, not approved native tokens.</li><li><strong>Conversation:</strong> side and tint distinguish two interchangeable voices. The swap control exchanges sides, not content or order. Star emphasis changes the icon, never speaker identity.</li><li><strong>Alternatives:</strong> the fixture uses API-shaped JSON-encoded <code>notes</code>, such as <code>{"speaker":"you","or":true}</code>. A literal “or” precedes that option on the same side as the preceding option. This study exercises adjacent alternatives; the API also allows interleaved alternatives, which need a separate grouping decision before production adoption. See <a href="../../docs/CARD_SCHEMA.md">card schema</a>.</li><li><strong>Starred collection:</strong> C combines selected phrases and words from the active fixture, retaining a small source-context caption but no speaker or “or” marker. Removing a star removes that entry; empty selection is an intentional state.</li><li><strong>Interaction:</strong> stars have 44 × 44 CSS-pixel targets and pressed state. Production plays audio on card-body taps; this artifact limits interaction to controls and stars.</li><li><strong>Reading data:</strong> hand-authored base/annotation pairs, not automatic syllable alignment. Kana and punctuation without annotations remain ordinary text. Chinese syllables are individually paired with characters so long phrases can wrap without detaching readings.</li><li><strong>Native checks still required:</strong> actual iOS Safari ruby wrapping, VoiceOver reading order, Dynamic Type, and native font metrics. Browser scaling is not Dynamic Type. Have a fluent reviewer check fixtures before using them as teaching content.</li></ul>
-<p>Production references: <code>web/app/src/components/card.js</code> and conversation styles in <code>web/app/src/styles/components.css</code>. A borrows the current 88% sided bubbles but removes role labels. Production files are unchanged.</p>
+<ul><li><strong>Anatomy:</strong> English above the target. Japanese shows either its original script with available furigana or romaji, never both. No speaker heading or empty reading line. Chinese pinyin and Japanese furigana use the same ruby layout; the Readings control toggles ruby annotations, not the selected script.</li><li><strong>Typography baseline:</strong> Latin target 20 px; CJK target and Japanese romaji 23 px with the same weight, color, and line height; English 14 px; ruby 0.48 em. The size control scales all text. These are exploration values, not approved native tokens.</li><li><strong>Conversation:</strong> side and tint distinguish two interchangeable voices. The swap control exchanges sides, not content or order. Star emphasis changes the icon, never speaker identity.</li><li><strong>Alternatives:</strong> the fixture uses API-shaped JSON-encoded <code>notes</code>, such as <code>{"speaker":"you","or":true}</code>. A literal “or” precedes that option on the same side as the preceding option. This study exercises adjacent alternatives; the API also allows interleaved alternatives, which need a separate grouping decision before production adoption. See <a href="../../docs/CARD_SCHEMA.md">card schema</a>.</li><li><strong>Starred collection:</strong> C combines selected phrases and words from the active fixture, retaining a small source-context caption but no speaker or “or” marker. Removing a star removes that entry; empty selection is an intentional state.</li><li><strong>Interaction:</strong> stars have 44 × 44 CSS-pixel targets and pressed state. Production plays audio on card-body taps; this artifact limits interaction to controls and stars.</li><li><strong>Reading data:</strong> hand-authored base/annotation pairs, not automatic syllable alignment. Kana and punctuation without annotations remain ordinary text. Chinese syllables are individually paired with characters so long phrases can wrap without detaching readings.</li><li><strong>Native checks still required:</strong> actual iOS Safari ruby wrapping, VoiceOver reading order, Dynamic Type, and native font metrics. Browser scaling is not Dynamic Type. Have a fluent reviewer check fixtures before using them as teaching content.</li></ul>
+<p>Production references: <code>web/app/src/components/card.js</code> and conversation styles in <code>web/app/src/styles/components.css</code>. The English-first order and exclusive Japanese script selection match production; the three visual treatments remain explorations.</p>
 </section>
 </main>
 <script>
@@ -132,7 +131,6 @@ const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 // Fixture shorthand only: whitespace separates explicit base|annotation pairs.
 // Unannotated kana and punctuation are preserved as plain text.
 const tokens = text => text.split(' ').map(pair => pair.split('|'));
-const plain = pairs => pairs.map(([base]) => base).join('');
 const ruby = pairs => pairs.map(([base,reading]) => reading ? `<ruby>${escape(base)}<rt>${escape(reading)}</rt></ruby>` : escape(base)).join('');
 function card(id, meaning, es, zh, ja, romaji, speaker, alternative = false) {
  return { id, meaning, es, zh:tokens(zh), ja:tokens(ja), romaji,
@@ -192,15 +190,14 @@ function renderCard(item, type, group) {
  const metadata = JSON.parse(item.notes);
  const right = (metadata.speaker === 'you') !== $('swap').checked;
  const side = right ? 'right' : 'left';
- const lang = language === 'es' ? 'es' : language === 'zh' ? 'zh-Hans' : 'ja';
- const target = language === 'zh' ? ruby(item.zh) : language === 'ja-ruby' ? ruby(item.ja) : escape(language === 'es' ? item.es : plain(item.ja));
+ const lang = language === 'es' ? 'es' : language === 'zh' ? 'zh-Hans' : language === 'ja-romaji' ? 'ja-Latn' : 'ja';
+ const target = language === 'zh' ? ruby(item.zh) : language === 'ja-ruby' ? ruby(item.ja) : escape(language === 'es' ? item.es : item.romaji);
  const selected = starred.has(key);
  const source = metadata.speaker ? fixtures[group].topic : 'Vocabulary';
  return `${type === 'bubbles' && metadata.or === true ? `<div class="or" data-side="${side}" aria-label="Alternative for the same speaker">or</div>` : ''}
   <article class="card"${type === 'bubbles' ? ` data-side="${side}"` : ''} data-id="${escape(item.id)}">
-   <div class="target" lang="${lang}">${target}</div>
-   ${language === 'ja-romaji' ? `<div class="reading" lang="ja-Latn">${escape(item.romaji)}</div>` : ''}
    <div class="meaning">${escape(item.meaning)}</div>
+   <div class="target" lang="${lang}">${target}</div>
    ${type === 'transcript' ? `<div class="source">${escape(source)}</div>` : ''}
    <button class="star" type="button" data-key="${key}" aria-pressed="${selected}" aria-label="${selected ? 'Unstar' : 'Star'}: ${escape(item.meaning)}">${selected ? '★' : '☆'}</button>
   </article>`;
@@ -220,7 +217,7 @@ function render() {
   const cards = items.map(item => renderCard(item,type,group)).join('');
   return `<section class="direction ${type}" aria-label="${title}"><header class="direction-heading"><div class="eyebrow">${title}</div><h3>${subtitle}</h3><p>${description}</p></header><div class="preview-wrap"><div class="preview"><header class="book-header"><div class="eyebrow">${escape(languageLabel)}</div><strong>${heading}</strong><p>At the restaurant · ${count}</p></header><div class="conversation">${cards || '<p class="empty">Nothing starred yet. Pick a phrase or word using its star.</p>'}</div></div></div></section>`;
  }).join('');
- $('status').textContent = `${languageLabel} · ${$('width').value} px requested width · ${Math.round(Number($('scale').value)*100)}% text · ${$('readings').checked ? 'readings on' : 'readings off'}${$('language').value === 'es' ? ' (not applicable to Spanish)' : ''} · ${$('meanings').checked ? 'English on' : 'English off'} · ${[...fixture.conversation,...fixture.vocab].filter(item => starred.has(`${group}:${item.id}`)).length} starred`;
+ $('status').textContent = `${languageLabel} · ${$('width').value} px requested width · ${Math.round(Number($('scale').value)*100)}% text · ${$('readings').checked ? 'ruby readings on' : 'ruby readings off'}${['es','ja-romaji'].includes($('language').value) ? ' (not applicable to this script)' : ''} · ${$('meanings').checked ? 'English on' : 'English off'} · ${[...fixture.conversation,...fixture.vocab].filter(item => starred.has(`${group}:${item.id}`)).length} starred`;
 }
 $('controls').addEventListener('submit', event => event.preventDefault());
 $('controls').addEventListener('change', render);
