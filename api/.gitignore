@@ -1,3 +1,4 @@
 .env
 .env.local
 src/node_modules
+/tmp/

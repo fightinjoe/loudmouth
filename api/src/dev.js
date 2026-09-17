@@ -1,8 +1,46 @@
 const { spawn } = require('node:child_process');
-const { existsSync } = require('node:fs');
+const { existsSync, mkdirSync, writeFileSync } = require('node:fs');
 const { dirname, join, resolve } = require('node:path');
 
 const ENV_LOADED_FLAG = '--loudmouth-env-loaded';
+const RESPONSE_DIRECTORY = join(__dirname, '..', 'tmp');
+let lastCaptureTime = 0;
+
+function captureResponse(req, res) {
+  let captured = false;
+  // Express json() delegates to send(); capture the original body only once.
+  for (const method of ['json', 'send']) {
+    const original = res[method];
+    res[method] = function (body) {
+      if (!captured) {
+        captured = true;
+        try {
+          const timestamp = new Date().toISOString();
+          // Keep filenames distinct even when concurrent responses share a millisecond.
+          lastCaptureTime = Math.max(Date.now(), lastCaptureTime + 1);
+          const filenameTime = new Date(lastCaptureTime).toISOString().replace(/:/g, '-');
+          const endpoint = (req.path || '/').replace(/^\/+|\/+$/g, '')
+            .replace(/[^a-zA-Z0-9_-]/g, '-') || 'root';
+          mkdirSync(RESPONSE_DIRECTORY, { recursive: true, mode: 0o700 });
+          writeFileSync(
+            join(RESPONSE_DIRECTORY, `${filenameTime}-${endpoint}.json`),
+            JSON.stringify({
+              timestamp,
+              method: req.method,
+              path: req.path || '/',
+              status: res.statusCode,
+              body,
+            }, null, 2) + '\n',
+            { flag: 'wx', mode: 0o600 },
+          );
+        } catch (error) {
+          console.error('Unable to save API response:', error.message);
+        }
+      }
+      return original.call(this, body);
+    };
+  }
+}
 
 function readCliPort(args) {
   let value;
@@ -46,6 +84,12 @@ if (process.argv[2] === ENV_LOADED_FLAG) {
   }
 
   process.env.FUNCTION_TARGET ??= 'translate';
+  const api = require('./index');
+  const translate = api.translate;
+  api.translate = (req, res) => {
+    captureResponse(req, res);
+    return translate(req, res);
+  };
   const frameworkMain = join(
     dirname(require.resolve('@google-cloud/functions-framework')),
     'main.js',

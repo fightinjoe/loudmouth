@@ -158,6 +158,24 @@ For alternate providers, configure `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` and r
 
 Point the web client at the local service with `VITE_API_URL=http://localhost:8080`.
 
+When started with `npm run dev`, every response sent by the API router is saved as a
+pretty-printed JSON file in `api/tmp/` (git-ignored and created on demand, independent of the
+working directory). Capture exists only in the development launcher; the production entrypoint
+and direct Functions Framework launches do not capture responses.
+Filenames contain a UTC timestamp followed by the endpoint name, for example
+`2026-09-17T14-32-08.123Z-phrasebook-title.json`. Same-millisecond responses use incrementing
+filename timestamps to avoid collisions within the process; the recorded timestamp remains
+the actual capture time. Each file records `timestamp`, `method`, `path`, `status`, and `body`,
+including successful responses, errors, and empty CORS preflight responses.
+These are final HTTP response bodies, not raw intermediate model outputs. Requests and headers
+are not saved. Responses rejected by the Functions Framework before reaching the router are
+not captured.
+
+Capture writes synchronously before sending the response; a filesystem failure is logged without
+failing the API call.
+Files may contain sensitive generated content and accumulate until manually deleted; clear
+`api/tmp/` when no longer needed.
+
 ```bash
 curl -sS http://localhost:8080/context \
   -H 'Content-Type: application/json' \
