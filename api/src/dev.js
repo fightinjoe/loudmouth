@@ -7,6 +7,8 @@ const RESPONSE_DIRECTORY = join(__dirname, '..', 'tmp');
 let lastCaptureTime = 0;
 
 function captureResponse(req, res) {
+  if (req.method !== 'POST') return;
+
   let captured = false;
   // Express json() delegates to send(); capture the original body only once.
   for (const method of ['json', 'send']) {
