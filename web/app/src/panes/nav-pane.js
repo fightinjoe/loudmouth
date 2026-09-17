@@ -1,13 +1,19 @@
 /**
  * Nav pane — Pane Protocol contract for the `nav` namespace.
  *
- * Layer: shell. Lists decks; sits underneath the content pane.
+ * Layer: shell. The landing surface; sits underneath the content pane.
+ *
+ * Geometry follows the converged navigation-pane study
+ * (explorations/navigation-pane/NAV_EXPLORATION.html): a brand header, up to
+ * three "Jump back in" cards, one "Library" card per language, and a
+ * bottom-anchored create action. The pane is a fixed height regardless of how
+ * many phrasebooks exist — language cards open that language's browse view in
+ * the content pane rather than expanding rows in place.
  *
  * Slice shape:
  *   { items: NavItem[], reloadAt: number }
- *   NavItem = { kind: 'header', title } |
- *             { kind: 'deck',   deck, count } |
- *             { kind: 'lang-group', title, rows: { deck, count }[] }
+ *   NavItem = { kind: 'recent',  deck, subtitle, newest } |
+ *             { kind: 'lang',    lang, flag, name, subtitle }
  *
  * Transitions:
  *   nav/reload  — bumps `reloadAt`; the subscriber sees the change and
@@ -16,19 +22,18 @@
  *
  * Actions registered on the shell delegate:
  *   nav/open-deck             — payload from element data-deck-id
+ *   nav/browse-lang           — opens one language's phrasebook list in the
+ *                               content pane (payload from data-lang)
  *   nav/open-new-phrasebook   — opens the New-phrasebook action pane
  */
 import {
   getCards,
   getDecks,
   getRecentDecks,
-  getSeededDeckIds,
   updateDeckAccessTime,
 } from "../js/db.js";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang.js";
-import { setListHTMLSafe } from "../js/uiState.js";
-import { SUGGESTED_PHRASEBOOKS, pendingSuggestions } from "../js/suggested-phrasebooks.js";
-import { icon } from "../components/icon.js";
+import { setAttrSafe, setListHTMLSafe } from "../js/uiState.js";
 import { renderPhrasebookRow } from "../components/phrasebook-row.js";
 import { escapeHTML } from "../js/utils.js";
 
@@ -38,94 +43,75 @@ import { escapeHTML } from "../js/utils.js";
 function renderHero() {
   return `
     <div class="nav-hero flex-col">
-      <span class="nav-hero-logo text-h1 font-bold fg-accent">CatchPhrase</span>
-      <span class="nav-hero-tagline text-body1 fg-secondary font-light">Collect the language you need, avoid the rest!</span>
+      <span class="nav-hero-logo text-h2 font-semibold fg-accent">CatchPhrase</span>
+      <span class="nav-hero-tagline text-body2 fg-secondary font-light">Say what you need, avoid the rest</span>
     </div>
   `;
 }
 
-// Empty-state banner. Once the user has a phrasebook, the banner gives way
-// to the persistent Add FAB.
-function renderCtaBanner(hasDecks) {
-  if (hasDecks) return "";
-  return `
-    <div class="nav-cta-banner flex items-center justify-between">
-      <div class="nav-cta-banner-text flex-col">
-        <span class="text-body1 font-semibold fg-surface">No phrasebooks</span>
-        <span class="text-body2 fg-surface">Create your first!</span>
-      </div>
-      <button class="nav-cta-banner-btn tappable" data-action="nav/open-new-phrasebook">New phrasebook</button>
-    </div>
-  `;
+function renderSectionLabel(title) {
+  return `<span class="nav-section-label section-label">${escapeHTML(title)}</span>`;
 }
 
-function renderHeader(title, { viewAllAction } = {}) {
-  return `
-    <div class="deck-picker-section-header section-label flex items-center justify-between">
-      <span>${escapeHTML(title)}</span>
-      ${viewAllAction ? `<button class="deck-picker-view-all text-body1 fg-accent tappable" data-action="${escapeHTML(viewAllAction)}">View all</button>` : ""}
-    </div>
-  `;
-}
-
-function renderDeckRow(deck, count, subtitle, rowAction = "nav/open-deck") {
+function renderRecentCard(item) {
   return renderPhrasebookRow({
-    title: deck.name,
-    subtitle: subtitle ?? `${count} card${count !== 1 ? "s" : ""}`,
+    title: item.deck.name,
+    subtitle: item.subtitle,
     chevron: true,
-    rowAction,
-    rowData: { deckId: deck.id },
+    card: true,
+    highlighted: item.newest,
+    rowAction: "nav/open-deck",
+    rowData: { deckId: item.deck.id },
   });
 }
 
-function renderSuggestedRow(suggestion, action = "nav/view-suggested") {
-  const count = suggestion.terms.length;
-  const noun = suggestion.terms.every((t) => t.type === "word") ? "words" : "words & phrases";
+function renderLangCard(item) {
   return renderPhrasebookRow({
-    title: `${suggestion.emoji} ${suggestion.title}`,
-    subtitle: `${count} ${noun}`,
-    pill: { label: "View", action, data: { suggestionId: suggestion.id } },
+    title: item.name,
+    subtitle: item.subtitle,
+    leading: item.flag,
+    chevron: true,
+    card: true,
+    rowAction: "nav/browse-lang",
+    rowData: { lang: item.lang },
   });
-}
-
-function renderItemsHTML(items) {
-  return items.map((item) => {
-    if (item.kind === "header") return renderHeader(item.title, { viewAllAction: item.viewAllAction });
-    if (item.kind === "deck") return renderDeckRow(item.deck, item.count, item.subtitle);
-    if (item.kind === "suggested") {
-      return `
-        ${renderHeader(item.title, { viewAllAction: "nav/view-all-suggested" })}
-        <div class="deck-picker-lang-group">
-          ${item.suggestions.map((s) => renderSuggestedRow(s)).join("")}
-        </div>
-      `;
-    }
-    if (item.kind === "lang-group") {
-      return `
-        ${renderHeader(item.title)}
-        <div class="deck-picker-lang-group">
-          ${item.rows.map((r) => renderDeckRow(r.deck, r.count, r.subtitle)).join("")}
-        </div>
-      `;
-    }
-    return "";
-  }).join("");
 }
 
 function renderListHTML(items) {
-  const isEmpty = !items.some(
-    (i) => i.kind === "deck" || (i.kind === "lang-group" && i.rows.length),
-  );
-  return (
-    renderItemsHTML(items) +
-    (isEmpty
-      ? '<p class="deck-picker-empty text-center fg-secondary">No decks yet.</p>'
-      : "")
-  );
+  const recent = items.filter((i) => i.kind === "recent");
+  const langs = items.filter((i) => i.kind === "lang");
+
+  // Both sections hide themselves when empty; first run is header + callout.
+  const recentHTML = recent.length
+    ? `<div class="nav-section">${renderSectionLabel("Jump back in")}<div class="nav-cards">${recent.map(renderRecentCard).join("")}</div></div>`
+    : "";
+  const langHTML = langs.length
+    ? `<div class="nav-section">${renderSectionLabel("Library")}<div class="nav-cards">${langs.map(renderLangCard).join("")}</div></div>`
+    : "";
+
+  return recentHTML + langHTML;
+}
+
+// Bottom-anchored create action. With no phrasebooks it becomes the
+// "Make your first phrasebook" callout; both live in the same pinned bar.
+function renderCreateBar(hasDecks) {
+  return hasDecks
+    ? `<button class="nav-create-btn tappable" data-action="nav/open-new-phrasebook">New phrasebook</button>`
+    : `
+      <div class="nav-callout flex-col">
+        <span class="nav-callout-title text-h2 font-semibold fg-surface">Make your first phrasebook</span>
+        <span class="nav-callout-body text-body1 fg-surface">Tell us the situation. You get the phrases you’d actually say, and none you wouldn’t.</span>
+        <button class="nav-callout-btn tappable" data-action="nav/open-new-phrasebook">New phrasebook</button>
+      </div>
+    `;
 }
 
 function nounFor(cards) {
   return cards.every((c) => c.type === "word") ? "words" : "words & phrases";
+}
+
+function plural(n, word) {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
 
 // ── Data loader ──────────────────────────────────────────────────────────────
@@ -134,101 +120,65 @@ async function loadNavItems() {
   const items = [];
 
   const recent = await getRecentDecks(3);
-  if (recent.length) {
-    items.push({ kind: "header", title: "Recent", viewAllAction: "nav/view-all-recent" });
-    for (const deck of recent) {
-      const cards = await getCards(deck.id);
-      const langName = LANG_NAMES[deck.lang] ?? deck.lang;
-      items.push({
-        kind: "deck",
-        deck,
-        count: cards.length,
-        subtitle: `${langName} · ${cards.length} ${nounFor(cards)}`,
-      });
-    }
-  }
+  recent.forEach((deck, index) => {
+    items.push({ kind: "recent", deck, subtitle: "", newest: index === 0 });
+  });
 
-  const seededDeckIds = await getSeededDeckIds();
-  const suggestions = pendingSuggestions(seededDeckIds);
-  if (suggestions.length) {
-    items.push({ kind: "suggested", title: "Suggested phrasebooks", suggestions });
+  // Subtitles need card counts; fetch them alongside the rows above.
+  for (const item of items) {
+    const cards = await getCards(item.deck.id);
+    const langName = LANG_NAMES[item.deck.lang] ?? item.deck.lang;
+    item.subtitle = `${langName} · ${cards.length} ${nounFor(cards)}`;
   }
 
   const allDecks = await getDecks(null, { includeSystem: false });
   const byLang = {};
   for (const deck of allDecks) (byLang[deck.lang] ??= []).push(deck);
-  for (const lang of Object.keys(byLang)) {
-    byLang[lang].sort((a, b) => a.name.localeCompare(b.name));
-  }
 
-  for (const [lang, decks] of Object.entries(byLang).sort(([a], [b]) =>
-    a.localeCompare(b),
-  )) {
-    const flag = LANG_FLAGS[lang] ?? "";
-    const name = LANG_NAMES[lang] ?? lang.toUpperCase();
-    const rows = [];
-
-    for (const deck of decks) {
-      const cards = await getCards(deck.id);
-      rows.push({ deck, count: cards.length, subtitle: `${cards.length} ${nounFor(cards)}` });
-    }
-
+  for (const lang of Object.keys(byLang).sort()) {
     items.push({
-      kind: "lang-group",
-      title: `${flag} ${name}`,
-      rows,
+      kind: "lang",
+      lang,
+      flag: LANG_FLAGS[lang] ?? "",
+      name: LANG_NAMES[lang] ?? lang.toUpperCase(),
+      subtitle: plural(byLang[lang].length, "phrasebook"),
     });
   }
 
   return items;
 }
 
-// ── Browse views ("View all") ─────────────────────────────────────────────
+// ── Browse view ──────────────────────────────────────────────────────────────
 // The content pane hosts a generic browse mode (content-pane-render.js
-// renderBrowseBody); this pane builds the group HTML since the row shape
-// (deck chevron rows vs. suggestion pill rows) and click actions differ.
+// renderBrowseBody); this pane builds the group HTML since the row shape and
+// click action are the nav pane's, not the content pane's.
 
 /**
- * "View all" under Recent → every real phrasebook, grouped by language
- * (Figma node 602:5562, "All phrasebooks"). Rows dispatch through the
- * content delegate (`content/browse-select`), not the shell delegate.
+ * A Library card's destination: every phrasebook in one language, as rows.
+ * Rows dispatch through the content delegate (`content/browse-select`), not
+ * the shell delegate, because by then the content pane owns the surface.
  */
-export async function loadAllPhrasebooksBrowse() {
-  const allDecks = await getDecks(null, { includeSystem: false });
-  const byLang = {};
-  for (const deck of allDecks) (byLang[deck.lang] ??= []).push(deck);
-  for (const lang of Object.keys(byLang)) {
-    byLang[lang].sort((a, b) => a.name.localeCompare(b.name));
+export async function loadLangBrowse(lang) {
+  const decks = (await getDecks(lang, { includeSystem: false }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const rowsHtml = [];
+  for (const deck of decks) {
+    const cards = await getCards(deck.id);
+    rowsHtml.push(renderPhrasebookRow({
+      title: deck.name,
+      subtitle: `${cards.length} ${nounFor(cards)}`,
+      chevron: true,
+      rowAction: "content/browse-select",
+      rowData: { deckId: deck.id },
+    }));
   }
 
-  const groups = [];
-  for (const [lang, decks] of Object.entries(byLang).sort(([a], [b]) => a.localeCompare(b))) {
-    const flag = LANG_FLAGS[lang] ?? "";
-    const name = LANG_NAMES[lang] ?? lang.toUpperCase();
-    const rowsHtml = [];
-    for (const deck of decks) {
-      const cards = await getCards(deck.id);
-      rowsHtml.push(renderDeckRow(deck, cards.length, `${cards.length} ${nounFor(cards)}`, "content/browse-select"));
-    }
-    groups.push(`
-      ${renderHeader(`${flag} ${name}`)}
-      <div class="deck-picker-lang-group">${rowsHtml.join("")}</div>
-    `);
-  }
-
-  return { title: "All phrasebooks", groupsHtml: groups.join("") };
-}
-
-/** "View all" under Suggested phrasebooks → every pending suggestion, flat. */
-export async function loadSuggestedBrowse() {
-  const seededDeckIds = await getSeededDeckIds();
-  const suggestions = pendingSuggestions(seededDeckIds);
-  const rowsHtml = suggestions
-    .map((s) => renderSuggestedRow(s, "content/browse-view-suggested"))
-    .join("");
+  const flag = LANG_FLAGS[lang] ?? "";
+  const name = LANG_NAMES[lang] ?? lang.toUpperCase();
   return {
-    title: "Suggested phrasebooks",
-    groupsHtml: `<div class="deck-picker-lang-group">${rowsHtml}</div>`,
+    title: `${flag} ${name}`.trim(),
+    groupsHtml: `<div class="deck-picker-lang-group">${rowsHtml.join("")}</div>`,
   };
 }
 
@@ -245,28 +195,36 @@ export default {
   },
 
   render(initial) {
-    const hasDecks = initial.items.some((i) => i.kind === "deck");
+    const hasDecks = initial.items.some((i) => i.kind === "recent");
     return `
-      <div id="nav-pane" class="nav-pane flex-col bg-primary overflow-y-auto">
-        ${renderHero()}
-        <div data-region="nav-banner">${renderCtaBanner(hasDecks)}</div>
-        <div class="deck-list flex-1 overflow-y-auto" data-region="nav-list">${renderListHTML(initial.items)}</div>
-        <button class="nav-pane-add-fab flex items-center justify-center bg-accent fg-surface shrink-0 tappable" data-action="nav/open-new-phrasebook" aria-label="New phrasebook">${icon("add", { size: "lg" })}</button>
+      <div id="nav-pane" class="nav-pane flex-col bg-surface" data-state="${hasDecks ? "populated" : "empty"}">
+        <div class="nav-scroll flex-1 overflow-y-auto" data-region="nav-list">
+          ${renderHero()}
+          <div data-region="nav-sections">${renderListHTML(initial.items)}</div>
+        </div>
+        <div class="nav-bar" data-region="nav-bar">${renderCreateBar(hasDecks)}</div>
       </div>
     `;
   },
 
   bindEvents(rootEl, host) {
     const { ui, delegate } = host;
-    const listRegion = rootEl.querySelector('[data-region="nav-list"]');
-    const bannerRegion = rootEl.querySelector('[data-region="nav-banner"]');
+    // app.js binds this pane with `navEl` = #nav-pane itself, while the unit
+    // tests mount it inside a wrapper — so match self first, then descendants.
+    const paneEl = rootEl.matches?.("#nav-pane") ? rootEl : rootEl.querySelector("#nav-pane");
+    const sectionsRegion = rootEl.querySelector('[data-region="nav-sections"]');
+    const barRegion = rootEl.querySelector('[data-region="nav-bar"]');
 
-    // Re-render the list + banner when items change.
+    // Re-render the sections + create bar when items change.
     const unsubItems = ui.subscribe("nav", (next, prev) => {
       if (next?.items === prev?.items) return;
       const items = next?.items ?? [];
-      if (listRegion) setListHTMLSafe(listRegion, renderListHTML(items));
-      if (bannerRegion) bannerRegion.innerHTML = renderCtaBanner(items.some((i) => i.kind === "deck"));
+      const hasDecks = items.some((i) => i.kind === "recent");
+      if (sectionsRegion) setListHTMLSafe(sectionsRegion, renderListHTML(items));
+      if (barRegion) barRegion.innerHTML = renderCreateBar(hasDecks);
+      // The empty state's taller callout needs more scroll padding; CSS keys
+      // off this attribute rather than the pane toggling styles directly.
+      if (paneEl) setAttrSafe(paneEl, "state", hasDecks ? "populated" : "empty");
     });
 
     // Effect subscriber: when reloadAt bumps, re-read from db and refresh.
@@ -284,10 +242,15 @@ export default {
 
     delegate.register("nav/open-deck", (_e, el) => {
       const id = el.dataset.deckId;
-      if (id && !id.startsWith("lang:")) {
-        updateDeckAccessTime(id);
-      }
+      if (id) updateDeckAccessTime(id);
       ui.transition("content/select-deck", { id });
+      ui.transition("shell/close");
+    });
+
+    delegate.register("nav/browse-lang", async (_e, el) => {
+      const lang = el.dataset.lang;
+      if (!lang) return;
+      ui.transition("content/browse", await loadLangBrowse(lang));
       ui.transition("shell/close");
     });
 
@@ -300,33 +263,12 @@ export default {
       ui.transition("action/open", { kind: "new-phrasebook", payload: {} });
     });
 
-    delegate.register("nav/view-suggested", (_e, el) => {
-      const suggestion = SUGGESTED_PHRASEBOOKS.find((s) => s.id === el.dataset.suggestionId);
-      if (!suggestion) return;
-      // Same reasoning as nav/open-new-phrasebook above — no shell/close here.
-      ui.transition("action/open", { kind: "new-phrasebook", payload: { suggestion } });
-    });
-
-    delegate.register("nav/view-all-recent", async () => {
-      const browse = await loadAllPhrasebooksBrowse();
-      ui.transition("content/browse", browse);
-      ui.transition("shell/close");
-    });
-
-    delegate.register("nav/view-all-suggested", async () => {
-      const browse = await loadSuggestedBrowse();
-      ui.transition("content/browse", browse);
-      ui.transition("shell/close");
-    });
-
     return () => {
       unsubItems();
       unsubReload();
       delegate.unregister("nav/open-deck");
+      delegate.unregister("nav/browse-lang");
       delegate.unregister("nav/open-new-phrasebook");
-      delegate.unregister("nav/view-suggested");
-      delegate.unregister("nav/view-all-recent");
-      delegate.unregister("nav/view-all-suggested");
     };
   },
 };

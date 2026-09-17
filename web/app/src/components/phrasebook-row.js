@@ -4,17 +4,25 @@ import { escapeHTML } from "../js/utils.js";
 
 /**
  * Phrasebook list row — the Figma "Phrasebook" component (node 542:3753),
- * used in the navigation pane for Recent/Library rows (tappable, trailing
- * chevron) and Suggested rows (non-tappable, trailing "View" pill).
+ * used in the navigation pane for Jump back in / Library cards (tappable,
+ * trailing chevron) and Suggested rows (non-tappable, trailing "View" pill).
  *
  * Mirrors the Figma component's variant props: `chevron` ⇢ showIconButton,
  * `pill` ⇢ showPill, `subtitle` ⇢ showSubtitle, `selected` ⇢ selected.
+ *
+ * The navigation-pane study adds a card treatment: `card` gives the row a
+ * gray-50 filled surface with its own padding and radius, `highlighted`
+ * swaps that fill for yellow-100 (the newest phrasebook), and `leading`
+ * renders a decorative glyph — a flag — before the text.
  *
  * @param {Object} opts
  * @param {string} opts.title           - primary line (may include a leading emoji)
  * @param {string} [opts.subtitle]      - caption line
  * @param {boolean} [opts.selected]     - highlighted (e.g. a just-added phrasebook)
  * @param {boolean} [opts.chevron]      - show the trailing disclosure chevron
+ * @param {boolean} [opts.card]         - render as a filled card rather than a bare row
+ * @param {boolean} [opts.highlighted]  - card variant only: yellow-100 fill
+ * @param {string} [opts.leading]       - decorative leading glyph (e.g. a flag)
  * @param {string} [opts.rowAction]     - data-action for tapping the whole row
  * @param {Record<string, unknown>} [opts.rowData] - data attributes on the row
  * @param {{ label: string, action: string, data?: Record<string, unknown> }} [opts.pill]
@@ -26,12 +34,22 @@ export function renderPhrasebookRow({
   subtitle = "",
   selected = false,
   chevron = false,
+  card = false,
+  highlighted = false,
+  leading = "",
   rowAction = "",
   rowData = {},
   pill = null,
 } = {}) {
   const actionAttr = rowAction ? `data-action="${escapeHTML(rowAction)}"` : "";
-  const tappable = rowAction ? "tappable" : "";
+  const classes = [
+    "deck-picker-row",
+    "flex",
+    "items-center",
+    "justify-between",
+    card && "deck-picker-card",
+    rowAction && "tappable",
+  ].filter(Boolean).join(" ");
   const trailing = chevron
     ? icon("next", { className: "deck-picker-chevron fg-accent" })
     : pill
@@ -39,8 +57,9 @@ export function renderPhrasebookRow({
     : "";
 
   return `
-    <div class="deck-picker-row flex items-center justify-between ${tappable}"${selected ? " data-selected" : ""} ${actionAttr} ${renderDataAttributes(rowData)}>
-      <div class="flex-col gap-sm">
+    <div class="${classes}"${selected ? " data-selected" : ""}${highlighted ? ' data-highlighted="true"' : ""} ${actionAttr} ${renderDataAttributes(rowData)}>
+      ${leading ? `<span class="deck-picker-leading" aria-hidden="true">${escapeHTML(leading)}</span>` : ""}
+      <div class="deck-picker-row-text flex-col gap-sm">
         <span class="text-body-lg fg-body">${escapeHTML(title)}</span>
         ${subtitle ? `<span class="text-body2 fg-caption">${escapeHTML(subtitle)}</span>` : ""}
       </div>

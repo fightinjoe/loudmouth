@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New-phrasebook pane · two approaches · Catchphrase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300;8..144,400;8..144,500;8..144,600;8..144,700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Study page chrome (not part of any approach) ─────────────────────── */
+:root{color-scheme:light;--ink:#0f182a;--muted:#64718b;--line:#e2e7f0;--accent:#1e9aff;--width:390px;--scale:1}
+*{box-sizing:border-box}
+body{margin:0;background:#f9fafb;color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
+main{max-width:1100px;margin:auto;padding:36px 24px 64px}
+h1,h2,h3,h4,p{margin:0}
+h1{font:500 clamp(36px,5vw,56px)/1.05 Georgia,serif;letter-spacing:-.04em;margin:10px 0 16px}
+h2{font-size:25px;letter-spacing:-.03em}
+a{color:var(--accent)}
+.eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:750;color:var(--accent)}
+.intro{max-width:760px}
+.intro p,.caption{color:var(--muted)}
+.intro p+p{margin-top:10px}
+.controls{position:sticky;top:0;z-index:5;display:flex;gap:12px 18px;flex-wrap:wrap;align-items:end;background:white;border:1px solid var(--line);border-radius:10px;padding:16px;margin:24px 0 12px;box-shadow:0 4px 16px rgba(15,24,42,.06)}
+label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.controls button,.controls select{min-height:44px}
+select,.reset{padding:8px 12px;background:#fff;border:1px solid #aab8ac;border-radius:6px}
+select{appearance:none;-webkit-appearance:none;padding-right:28px;background-image:linear-gradient(45deg,transparent 50%,#64718b 50%),linear-gradient(135deg,#64718b 50%,transparent 50%);background-position:calc(100% - 15px) 50%,calc(100% - 10px) 50%;background-size:5px 5px;background-repeat:no-repeat}
+:focus-visible{outline:3px solid #b5582d;outline-offset:-3px}
+.caption{font-size:13px;margin:12px 0 22px}
+.study{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--width)),1fr));gap:36px 24px;justify-items:center;align-items:start}
+.direction{width:100%;display:flex;flex-direction:column;align-items:center}
+.direction>header{width:var(--width);max-width:100%;margin:0 0 14px}
+.direction>header h2{font-size:21px}
+.direction>header p{color:var(--muted);font-size:13px;margin-top:6px}
+.direction>header dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px;margin:10px 0 0;color:var(--muted)}
+.direction>header dt{font-weight:650;color:var(--ink)}
+.direction>header dd{margin:0}
+.phone{position:relative;width:var(--width);max-width:100%;height:780px;border:1px solid #bac7bd;border-radius:24px;overflow:hidden;font-size:calc(16px * var(--scale));font-family:"Roboto Flex","Noto Sans JP",sans-serif;font-synthesis:none;color:var(--fg-body);background:var(--bg-surface)}
+.notes{margin-top:48px;border-top:1px solid var(--line);padding-top:24px}
+.notes table{border-collapse:collapse;width:100%;font-size:14px}
+.notes td,.notes th{padding:12px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.notes th{width:145px}
+.notes ul{margin:6px 0 0;padding-left:18px}
+.notes li+li{margin-top:4px}
+code{font-size:12px}
+@media(max-width:480px){main{padding:24px 12px 48px}.phone{border-radius:14px}.controls{padding:12px}.notes th{width:100px}}
+
+/* ── Tokens (copied from web/app/src/styles/variables.css) ────────────── */
+.phone{
+  --gray-50:#f9fafb;--gray-100:#f1f4f9;--gray-200:#e2e7f0;--gray-400:#bfbfbf;--gray-500:#64718b;--gray-900:#0f182a;
+  --blue-500:#1e9aff;--blue-100:#ebf6ff;--beige-100:hsl(60 20% 95%);--beige-400:hsl(60 10% 75%);--yellow-500:hsl(53 100% 56%);
+  --fg-body:var(--gray-900);--fg-caption:var(--gray-500);--fg-secondary:var(--gray-500);
+  --bg-surface:#fff;--bg-primary:var(--beige-100);--accent:var(--blue-500);--border-default:var(--gray-200);
+  --radius:24px;--radius-sm:12px;--radius-pill:999px;--shadow-float:0 8px 24px rgba(15,24,42,.14);
+}
+:where(.phone) *{margin:0}
+:where(.phone) button{border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.phone :focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.toast{position:absolute;left:12px;right:12px;top:12px;z-index:9;padding:.625em .875em;border-radius:12px;background:#fff;color:var(--gray-900);border:1px solid var(--border-default);box-shadow:var(--shadow-float);font-size:.8125em;line-height:1.35;opacity:0;transform:translateY(-6px);transition:opacity .18s,transform .18s;pointer-events:none}
+.toast[data-show]{opacity:1;transform:none}
+.section-label{display:block;font-size:.875em;font-weight:600;line-height:1;text-transform:uppercase;color:var(--fg-secondary);letter-spacing:.04em}
+
+/* Navigation-pane backdrop: the converged nav study at reduced fidelity, under the scrim. */
+.backdrop{position:absolute;inset:0;padding:1.5em 1.25em;background:#fff}
+.backdrop .brand-word{font-size:1.5em;font-weight:600;letter-spacing:-.01em;line-height:1.2;color:var(--accent)}
+.backdrop .brand-tag{display:block;font-size:.875em;font-weight:300;color:var(--fg-secondary)}
+.backdrop .section-label{margin-top:1.5em}
+.backdrop .rcard{display:flex;flex-direction:column;gap:.25em;margin-top:.5em;padding:1em;border-radius:1em;background:var(--gray-50)}
+.backdrop .rcard:first-of-type{margin-top:.625em;background:var(--yellow-500)}
+.backdrop .rcard .title{font-size:1.125em;font-weight:500;line-height:1.25}
+.backdrop .rcard .sub{font-size:.8125em;color:var(--fg-caption)}
+.scrim{position:absolute;inset:0;background:rgba(15,24,42,.4)}
+.sheet{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;max-height:100%;border-radius:var(--radius) var(--radius) 0 0;box-shadow:var(--shadow-float);padding-bottom:1.5em}
+.sheet.hug{background:var(--bg-primary)}
+.sheet.full{top:44px;background:var(--gray-100)}
+.handle{flex-shrink:0;width:36px;height:4px;margin:.75em auto .5em;border-radius:2px;background:var(--gray-400)}
+.sheet .body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 1.25em}
+.sheet h3{font-size:1.375em;line-height:1.2;font-weight:600;letter-spacing:-.01em}
+.sheet .sub{font-size:.875em;line-height:1.35;color:var(--fg-secondary);margin-top:.25em}
+.primary{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;border-radius:var(--radius-pill);background:var(--accent);color:#fff;font-weight:600;font-size:1em;text-align:center}
+.primary[disabled]{opacity:.4;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:.5em}
+.chip{display:inline-flex;align-items:center;gap:.375em;min-height:40px;padding:.375em .875em .375em .625em;border-radius:var(--radius-pill);border:1.5px dashed var(--beige-400);color:var(--fg-body);font-size:.9375em}
+.chip[aria-pressed="true"]{border-style:solid;border-color:var(--accent);background:var(--blue-100)}
+
+/* ── 1 · Pick and go ──────────────────────────────────────────────────── */
+#p1 .langs{margin-top:1em;border-radius:var(--radius-sm);background:var(--bg-surface);padding:0 1em}
+#p1 .lang{display:flex;align-items:center;gap:.75em;width:100%;min-height:52px;padding:.5em 0}
+#p1 .lang+.lang{border-top:1px solid var(--gray-100)}
+#p1 .lang .flag{font-size:1.375em;line-height:1}
+#p1 .lang .name{flex:1;font-size:1.0625em}
+#p1 .lang .tick{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--gray-400)}
+#p1 .lang[aria-checked="true"] .name{font-weight:600}
+#p1 .lang[aria-checked="true"] .tick{border-color:var(--accent);background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='m9.55 18-5.7-5.7 1.425-1.425L9.55 15.15l9.175-9.175L20.15 7.4z'/%3E%3C/svg%3E") center/18px no-repeat}
+#p1 .sugg{margin-top:1.25em}
+#p1 .sugg .chips{margin-top:.625em}
+#p1 .ability{margin-top:1.25em}
+#p1 .seg{display:flex;margin-top:.625em;padding:3px;border-radius:var(--radius-pill);background:var(--bg-surface)}
+#p1 .seg button{flex:1;min-height:38px;border-radius:var(--radius-pill);text-align:center;font-size:.9375em;font-weight:500;color:var(--fg-secondary)}
+#p1 .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+#p1 .primary{margin-top:1.5em}
+
+/* ── 2 · Two paths ────────────────────────────────────────────────────── */
+#p2 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(4.5em,1fr));gap:.5em;margin-top:1em}
+#p2 .tile{display:flex;flex-direction:column;align-items:center;gap:.25em;min-height:64px;padding:.625em .25em;border-radius:var(--radius-sm);background:var(--bg-surface);border:1.5px solid transparent;text-align:center}
+#p2 .tile .flag{font-size:1.75em;line-height:1}
+#p2 .tile .name{font-size:.75em;font-weight:500;color:var(--fg-secondary)}
+#p2 .tile[aria-checked="true"]{border-color:var(--accent);background:var(--blue-100)}
+#p2 .tile[aria-checked="true"] .name{color:var(--fg-body)}
+#p2 .card{margin-top:1em;padding:1.125em 1em 1em;border-radius:1em;background:var(--bg-surface)}
+#p2 .card h4{font-size:1.125em;font-weight:600;line-height:1.2}
+#p2 .card p{font-size:.875em;line-height:1.35;color:var(--fg-caption);margin-top:.25em}
+#p2 .field{display:flex;align-items:center;width:100%;min-height:48px;margin-top:.75em;padding:.625em .875em;border-radius:var(--radius-sm);border:1px solid var(--border-default);background:var(--gray-50);color:var(--fg-caption);font-size:1em;line-height:1.3}
+#p2 .field span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#p2 .card .primary{margin-top:.75em;min-height:48px;font-size:.9375em}
+#p2 .srow{display:flex;align-items:center;gap:.75em;width:100%;min-height:48px;padding:.625em 0}
+#p2 .srow+.srow{border-top:1px solid var(--gray-100)}
+#p2 .srow .emoji{font-size:1.375em;line-height:1;width:1.5em;text-align:center}
+#p2 .srow .t{flex:1;display:flex;flex-direction:column;gap:.125em;min-width:0}
+#p2 .srow .title{font-size:1.0625em;line-height:1.25}
+#p2 .srow .n{font-size:.8125em;color:var(--fg-caption)}
+#p2 .srow .chev{flex-shrink:0;width:24px;height:24px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231e9aff' d='M9.4 18 8 16.6l4.6-4.6L8 7.4 9.4 6l6 6z'/%3E%3C/svg%3E") center/24px no-repeat}
+#p2 .list{margin-top:.5em}
+</style>
+<main>
+<header class="intro">
+<div class="eyebrow">Catchphrase / new-phrasebook-pane study · iteration 1</div>
+<h1>Pick a language.<br>Then what?</h1>
+<p><strong>Question.</strong> The new-phrasebook action pane currently asks one thing, the target language, through a native select, and hands off to guided creation. The navigation study moved suggested phrasebooks off the landing page and onto this pane. With two things to offer, what should the pane look like: a language choice with suggestions as an optional shortcut, or a language choice followed by two explicit paths?</p>
+<p><strong>Boundary.</strong> Two competing treatments of the same action pane (action layer), shown over the converged navigation pane. Language and suggestion selection really work. Tapping a primary button, field or suggestion row shows the transition it would fire. Not in scope: the creation flow itself (situation, questions, conversation checklist), the suggestion preview, ability memory per language, the sheet’s open/close animation and swipe-down dismissal. Suggestions for Spanish and Chinese are hypothetical fixtures; only the Japanese set exists in the app today.</p>
+<p style="margin-top:12px"><a href="../methodology.md">Methodology</a> · <a href="../../docs/DESIGN.md">UX design</a> · <a href="../../web/docs/PANE_PROTOCOL.html">Pane Protocol</a> · <a href="../navigation-pane/NAV_EXPLORATION.html">Navigation-pane study</a> · <a href="#decisions">Decision record</a></p>
+</header>
+
+<form class="controls" id="controls">
+<label>Preselected language<select id="lang"><option value="ja" selected>Japanese</option><option value="zh">Chinese</option><option value="es">Spanish</option><option value="cs">Czech</option></select></label>
+<label>Suggestions<select id="sugg"><option value="seed" selected>As seeded · ja 4, es 2, zh 2, cs 0</option><option value="none">None for any language</option></select></label>
+<label>Phone width<select id="width"><option>320</option><option selected>390</option><option>430</option></select></label>
+<label>Text size<select id="scale"><option value="1">100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label>
+<button class="reset" type="reset">Reset study</button>
+</form>
+<p class="caption">Change the language inside either sheet and the suggestions follow it. Czech has no suggestions, which is the case where that section must disappear cleanly. In approach 1 a tapped suggestion becomes the selected choice and reveals the ability question; in approach 2 a suggestion row opens its preview directly.</p>
+
+<div class="study">
+<section class="direction"><header><div class="eyebrow">1 · Pick and go</div><h2>One sheet, one button</h2><p>Content-hugging beige sheet, the current sheet’s size and surface. Languages are a white list with a check mark instead of a native select. Suggestions for the chosen language are dashed chips under it. Choosing a chip turns the button into “View” and reveals the ability question, matching the app’s existing confirmation gate. Otherwise the button continues to guided creation.</p><dl><dt>Sheet</dt><dd>Content-hugging, beige</dd><dt>Language</dt><dd>List with check</dd><dt>Suggestions</dt><dd>Chips, selectable</dd><dt>Flow</dt><dd>Unchanged</dd></dl></header><div class="phone" id="p1"></div></section>
+<section class="direction"><header><div class="eyebrow">2 · Two paths</div><h2>Language up top, then choose how to start</h2><p>Full-height gray sheet, the size the creation and review panes already use. Languages are a row of flag tiles. Below, two white cards: “Describe a situation”, which absorbs the first step of guided creation into this pane, and “Start from a suggestion”, a list of rows that open their preview directly. The second card disappears when the language has no suggestions.</p><dl><dt>Sheet</dt><dd>Full-height, gray-100</dd><dt>Language</dt><dd>Flag tiles</dd><dt>Suggestions</dt><dd>Rows, open directly</dd><dt>Flow</dt><dd>Absorbs the situation step</dd></dl></header><div class="phone" id="p2"></div></section>
+</div>
+
+<section class="notes" id="decisions"><div class="eyebrow">Decision record</div><h2>Status: exploring</h2>
+<table>
+<tr><th>Status</th><td>Exploring. Two treatments awaiting feedback; none selected.</td></tr>
+<tr><th>Question</th><td>With suggested phrasebooks moved into this pane, should it stay a single-purpose language gate with suggestions as an optional shortcut (1), or become the place where the learner chooses between describing a situation and picking a suggestion (2)?</td></tr>
+<tr><th>What differs</th><td>
+<ul>
+<li><strong>Sheet size and surface.</strong> 1 hugs its content on beige, as today. 2 is full-height on gray-100, as creation and review are today.</li>
+<li><strong>Language control.</strong> 1: a white list with a check, one tap. 2: flag tiles in a row, one tap. Both replace the native select; both assume four languages, the app’s current list.</li>
+<li><strong>Suggestions.</strong> 1: selectable chips; a selection changes the primary button to “View …” and reveals ability, so the pane still has one button. 2: rows that open the preview directly; ability would be asked on the preview.</li>
+<li><strong>Flow.</strong> 1 keeps the current sequence: language, then creation mode asks for the situation. 2 asks for the situation here and would enter creation mode at the questions step. That is a change to <a href="../../docs/DESIGN.md">DESIGN.md</a>’s guided-creation sequence and needs a separate decision.</li>
+</ul></td></tr>
+<tr><th>Data assumptions</th><td>Languages are <code>["zh","ja","es","cs"]</code> from <code>new-phrasebook-panel.js</code>. Suggestions are <code>pendingSuggestions</code> filtered by language; only Japanese entries exist today, the Spanish and Chinese ones here are hypothetical. Ability values are <code>none</code>, <code>basics</code>, <code>conversational</code> and default to the language’s last-used value or “basics”. The preselected language would be the last-used language rather than a fixed default; the study exposes it as a control.</td></tr>
+<tr><th>Observation</th><td id="verification">Iteration 1 verified 2026-09-16 in gstack’s headless Chromium (desktop viewport, Google Fonts loaded), zero console errors, with Japanese preselected, a chip picked in approach 1, Czech chosen in approach 2, and 320 px at 150 % text.<ul><li><strong>Approach 1, Japanese.</strong> The hugging sheet covers roughly two thirds of the phone: title, four language rows, four chips, Continue. Picking a chip adds the ability segment and the sheet grows to cover most of the backdrop; the sheet scrolls internally once it reaches the top. At 320 px / 150 % the body scrolls and the button is below the fold until scrolled.</li><li><strong>Approach 2, Czech.</strong> The suggestion card disappears and the lower half of the full-height sheet is empty gray. The situation card alone carries the pane.</li><li><strong>Approach 2, Japanese.</strong> Tiles, the situation card and three of four suggestion rows fit at 390 px / 100 %; the fourth needs a scroll.</li><li><strong>Fix during verification:</strong> approach 2’s fixed four-column tile row clipped the Czech tile at 320 px / 150 %; tiles now wrap to two rows when the width demands it.</li><li>Neither approach shows the sheet’s slide-up or swipe-down; both are static compositions.</li><li>Emoji render as monochrome glyphs in the headless environment; real browsers show colour emoji.</li></ul></td></tr>
+<tr><th>Decision</th><td>None yet.</td></tr>
+<tr><th>Open checks</th><td>Physical iPhone Safari, VoiceOver, native Dynamic Type, and swipe-down dismissal with a scrollable body (2) are unverified. Whether the pane can also be reached in “confirm” mode for a suggestion tapped elsewhere no longer applies if suggestions live only here; confirm with the action-pane owner.</td></tr>
+<tr><th>Handoff</th><td>Target: <code>web/app/src/components/new-phrasebook-panel.js</code> (<code>renderBody</code>, <code>bind</code>), <code>web/app/src/components/bottom-sheet.js</code> (<code>size</code> option for approach 2), the <code>.new-phrasebook-*</code> rules in <code>web/app/src/styles/components.css</code>, and <code>web/app/src/panes/action-pane.js</code> for the new-phrasebook branch. Transitions named in toasts: <code>action/open</code> with kind <code>creation</code> (create path) or the suggestion preview (view path).</td></tr>
+</table></section>
+</main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const LANGS=['zh','ja','es','cs'];
+const LANG={zh:{flag:'🇨🇳',name:'Chinese'},ja:{flag:'🇯🇵',name:'Japanese'},es:{flag:'🇪🇸',name:'Spanish'},cs:{flag:'🇨🇿',name:'Czech'}};
+const SUGG=[
+  {id:'seed-greetings-ja',lang:'ja',emoji:'👋',title:'Greetings',words:0,phrases:4},
+  {id:'seed-directions-ja',lang:'ja',emoji:'🧭',title:'Directions',words:2,phrases:1},
+  {id:'seed-restaurant-ja',lang:'ja',emoji:'🍜',title:'Eating at a restaurant',words:1,phrases:2},
+  {id:'seed-exclamations-ja',lang:'ja',emoji:'🗣️',title:'Exclamations',words:0,phrases:2},
+  {id:'seed-greetings-es',lang:'es',emoji:'👋',title:'Greetings',words:0,phrases:4},
+  {id:'seed-eating-es',lang:'es',emoji:'🍽️',title:'Eating out',words:3,phrases:5},
+  {id:'seed-greetings-zh',lang:'zh',emoji:'👋',title:'Greetings',words:0,phrases:4},
+  {id:'seed-taxi-zh',lang:'zh',emoji:'🚕',title:'Taking a taxi',words:2,phrases:3},
+];
+const ABILITIES=[['none','None'],['basics','Basics'],['conversational','Conversational']];
+const countText=s=>{const n=s.words+s.phrases;return `${n} ${s.phrases===0?'words':'words & phrases'}`;};
+const sim=(t,label)=>`data-sim="${esc(t)}" data-label="${esc(label)}"`;
+
+// Per-phone local state; reset by the controls.
+const local={p1:{lang:null,pick:null,ability:'basics'},p2:{lang:null}};
+const pending=lang=>$('sugg').value==='none'?[]:SUGG.filter(s=>s.lang===lang);
+
+const backdrop=`<div class="backdrop" aria-hidden="true"><span class="brand-word">CatchPhrase</span><span class="brand-tag">Say what you need, avoid the rest</span><span class="section-label">Jump back in</span><div class="rcard"><span class="title">Dinner with my girlfriend's parents in Osaka</span><span class="sub">Japanese · 45 words &amp; phrases · Today</span></div><div class="rcard"><span class="title">A weekend in Oaxaca with friends</span><span class="sub">Spanish · 55 words &amp; phrases · Yesterday</span></div><div class="rcard"><span class="title">Ordering at an izakaya</span><span class="sub">Japanese · 21 words &amp; phrases · Yesterday</span></div></div><div class="scrim"></div>`;
+
+// ── 1 · Pick and go ───────────────────────────────────────────────────────
+function render1(){
+  const s=local.p1;if(s.lang===null)s.lang=$('lang').value;
+  const list=pending(s.lang);
+  if(s.pick&&!list.some(x=>x.id===s.pick))s.pick=null;
+  const picked=list.find(x=>x.id===s.pick);
+  const langs=`<div class="langs" role="radiogroup" aria-label="Language">${LANGS.map(l=>`<button class="lang" role="radio" aria-checked="${l===s.lang}" data-lang="${l}"><span class="flag" aria-hidden="true">${LANG[l].flag}</span><span class="name">${LANG[l].name}</span><span class="tick" aria-hidden="true"></span></button>`).join('')}</div>`;
+  const sugg=list.length?`<div class="sugg"><span class="section-label">Or start from a suggestion</span><div class="chips">${list.map(x=>`<button class="chip" aria-pressed="${x.id===s.pick}" data-pick="${x.id}"><span aria-hidden="true">${x.emoji}</span>${esc(x.title)}</button>`).join('')}</div></div>`:'';
+  const ability=picked?`<div class="ability"><span class="section-label">Your ${LANG[s.lang].name}</span><div class="seg" role="radiogroup" aria-label="Your ability">${ABILITIES.map(([v,l])=>`<button role="radio" aria-checked="${v===s.ability}" aria-pressed="${v===s.ability}" data-ability="${v}">${l}</button>`).join('')}</div></div>`:'';
+  const btn=picked
+    ?`<button class="primary" ${sim('action/open · suggestion preview',`View “${picked.title}” (${LANG[s.lang].name}, ${s.ability})`)}>View “${esc(picked.title)}”</button>`
+    :`<button class="primary" ${sim('action/open · creation',`Continue with ${LANG[s.lang].name}`)}>Continue</button>`;
+  return `${backdrop}<div class="sheet hug"><div class="handle"></div><div class="body"><h3>New phrasebook</h3><p class="sub">Choose the language you want to catch.</p>${langs}${sugg}${ability}${btn}</div></div><div class="toast" role="status"></div>`;
+}
+
+// ── 2 · Two paths ─────────────────────────────────────────────────────────
+function render2(){
+  const s=local.p2;if(s.lang===null)s.lang=$('lang').value;
+  const list=pending(s.lang);
+  const tiles=`<div class="tiles" role="radiogroup" aria-label="Language">${LANGS.map(l=>`<button class="tile" role="radio" aria-checked="${l===s.lang}" data-lang="${l}"><span class="flag" aria-hidden="true">${LANG[l].flag}</span><span class="name">${LANG[l].name}</span></button>`).join('')}</div>`;
+  const create=`<div class="card"><h4>Describe a situation</h4><p>You get the phrases you’d actually say there, and none you wouldn’t.</p><button class="field" ${sim('action/open · creation (situation prefilled)','Situation field')}><span>Dinner with my partner’s parents…</span></button><button class="primary" ${sim('action/open · creation',`Create ${LANG[s.lang].name} phrasebook`)}>Create phrasebook</button></div>`;
+  const sugg=list.length?`<div class="card"><h4>Or start from a suggestion</h4><p>Ready-made ${LANG[s.lang].name} phrasebooks you can preview and save.</p><div class="list">${list.map(x=>`<button class="srow" ${sim('action/open · suggestion preview',`Preview “${x.title}”`)}><span class="emoji" aria-hidden="true">${x.emoji}</span><span class="t"><span class="title">${esc(x.title)}</span><span class="n">${esc(countText(x))}</span></span><span class="chev" aria-hidden="true"></span></button>`).join('')}</div></div>`:'';
+  return `${backdrop}<div class="sheet full"><div class="handle"></div><div class="body"><h3>New phrasebook</h3><p class="sub">Which language?</p>${tiles}${create}${sugg}</div></div><div class="toast" role="status"></div>`;
+}
+
+function render(){
+  document.documentElement.style.setProperty('--width',$('width').value+'px');
+  document.documentElement.style.setProperty('--scale',$('scale').value);
+  $('p1').innerHTML=render1();$('p2').innerHTML=render2();
+}
+const timers=new WeakMap();
+document.addEventListener('click',e=>{
+  const phone=e.target.closest('.phone');if(!phone)return;
+  const s=local[phone.id];
+  const lang=e.target.closest('[data-lang]');
+  if(lang){s.lang=lang.dataset.lang;if(s.pick!==undefined)s.pick=null;render();return;}
+  const pick=e.target.closest('[data-pick]');
+  if(pick){s.pick=s.pick===pick.dataset.pick?null:pick.dataset.pick;render();return;}
+  const ab=e.target.closest('[data-ability]');
+  if(ab){s.ability=ab.dataset.ability;render();return;}
+  const b=e.target.closest('[data-sim]');if(!b)return;
+  const toast=phone.querySelector('.toast');
+  toast.textContent=`Simulated · ${b.dataset.sim} → ${b.dataset.label}`;toast.setAttribute('data-show','');
+  clearTimeout(timers.get(phone));timers.set(phone,setTimeout(()=>toast.removeAttribute('data-show'),1600));
+});
+function resetLocal(){local.p1={lang:null,pick:null,ability:'basics'};local.p2={lang:null};}
+$('controls').addEventListener('change',e=>{if(e.target.id==='lang'||e.target.id==='sugg')resetLocal();render();});
+$('controls').addEventListener('reset',()=>{resetLocal();setTimeout(render,0);});
+render();
+})();
+</script>
+</html>

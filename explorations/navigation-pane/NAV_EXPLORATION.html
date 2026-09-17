@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Navigation pane · converged treatment · Catchphrase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300;8..144,400;8..144,500;8..144,600;8..144,700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── Study page chrome (not part of the treatment) ────────────────────── */
+:root{color-scheme:light;--ink:#0f182a;--muted:#64718b;--line:#e2e7f0;--accent:#1e9aff;--width:390px}
+*{box-sizing:border-box}
+body{margin:0;background:#f9fafb;color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
+main{max-width:1320px;margin:auto;padding:36px 24px 64px}
+h1,h2,h3,h4,p{margin:0}
+h1{font:500 clamp(36px,5vw,56px)/1.05 Georgia,serif;letter-spacing:-.04em;margin:10px 0 16px}
+h2{font-size:25px;letter-spacing:-.03em}
+a{color:var(--accent)}
+.eyebrow{font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:750;color:var(--accent)}
+.intro{max-width:760px}
+.intro p,.caption{color:var(--muted)}
+.intro p+p{margin-top:10px}
+.caption{font-size:13px;margin:24px 0 22px}
+:focus-visible{outline:3px solid #b5582d;outline-offset:-3px}
+.study{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--width)),1fr));gap:36px 24px;justify-items:center;align-items:start}
+.direction{width:100%;display:flex;flex-direction:column;align-items:center}
+.direction>header{width:var(--width);max-width:100%;margin:0 0 14px}
+.direction>header h2{font-size:21px}
+.direction>header p{color:var(--muted);font-size:13px;margin-top:6px}
+.phone{position:relative;width:var(--width);max-width:100%;height:780px;border:1px solid #bac7bd;border-radius:24px;overflow:hidden;display:flex;flex-direction:column;font-size:16px;font-family:"Roboto Flex","Noto Sans JP",sans-serif;font-synthesis:none;color:var(--fg-body);background:var(--bg-surface)}
+.notes{margin-top:48px;border-top:1px solid var(--line);padding-top:24px}
+.notes table{border-collapse:collapse;width:100%;font-size:14px}
+.notes td,.notes th{padding:12px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.notes th{width:145px}
+.notes ul{margin:6px 0 0;padding-left:18px}
+.notes li+li{margin-top:4px}
+code{font-size:12px}
+@media(max-width:480px){main{padding:24px 12px 48px}.phone{border-radius:14px}.notes th{width:100px}}
+
+/* ── Tokens (copied from web/app/src/styles/variables.css) ────────────── */
+.phone{
+  --gray-50:#f9fafb;--gray-100:#f1f4f9;--gray-200:#e2e7f0;--gray-500:#64718b;--gray-900:#0f182a;
+  --blue-500:#1e9aff;--yellow-100:#fffad1;
+  --fg-body:var(--gray-900);--fg-caption:var(--gray-500);--fg-secondary:var(--gray-500);
+  --bg-surface:#fff;--accent:var(--blue-500);--border-default:var(--gray-200);
+  --radius:24px;--radius-pill:999px;--shadow-float:0 8px 24px rgba(15,24,42,.14);
+  --card:var(--gray-50);--hi:var(--yellow-100);
+}
+:where(.phone) *{margin:0}
+:where(.phone) button{border:0;background:none;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.phone :focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:1.5em 1.25em 6.5em}
+.phone[data-state="empty"] .scroll{padding-bottom:14em}
+.toast{position:absolute;left:12px;right:12px;top:12px;z-index:9;padding:.625em .875em;border-radius:12px;background:#fff;color:var(--gray-900);border:1px solid var(--border-default);box-shadow:var(--shadow-float);font-size:.8125em;line-height:1.35;opacity:0;transform:translateY(-6px);transition:opacity .18s,transform .18s;pointer-events:none}
+.toast[data-show]{opacity:1;transform:none}
+.section-label{display:block;font-size:.875em;font-weight:600;line-height:1;text-transform:uppercase;color:var(--fg-secondary);letter-spacing:.04em}
+.sec{padding:1.5em 0 .625em}
+.chev{flex-shrink:0;width:24px;height:24px}
+.chev::before{content:"";display:block;width:24px;height:24px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231e9aff' d='M9.4 18 8 16.6l4.6-4.6L8 7.4 9.4 6l6 6z'/%3E%3C/svg%3E") center/24px no-repeat}
+
+/* Header. */
+.brand{display:flex;flex-direction:column;gap:.125em}
+.brand-word{font-size:1.5em;font-weight:600;letter-spacing:-.01em;line-height:1.2;color:var(--accent)}
+.brand-tag{font-size:.875em;font-weight:300;color:var(--fg-secondary);line-height:1.3}
+
+/* Cards: Jump back in and Library share one geometry. */
+.cards{display:flex;flex-direction:column;gap:.5em;margin-top:.625em}
+.card{display:flex;align-items:center;justify-content:space-between;gap:.75em;width:100%;min-height:56px;padding:1em;border-radius:1em;background:var(--card)}
+.card .t{display:flex;flex-direction:column;gap:.25em;min-width:0;flex:1}
+.card .title{font-size:1.125em;line-height:1.25;font-weight:500;overflow-wrap:anywhere}
+.card .sub{font-size:.8125em;line-height:1.3;color:var(--fg-caption)}
+.card .flag{font-size:1.5em;line-height:1;flex-shrink:0}
+.cards.recent .card:first-child{background:var(--hi)}
+
+/* Bottom-anchored create action. */
+.bar{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:.75em 1.25em 1.25em;background:linear-gradient(to top,#fff 70%,rgba(255,255,255,0))}
+.primary{display:flex;align-items:center;justify-content:center;gap:.5em;width:100%;min-height:56px;border-radius:var(--radius);background:var(--accent);color:#fff;font-weight:600;font-size:1em;box-shadow:var(--shadow-float)}
+.primary::before{content:"+";font-size:1.375em;line-height:1;font-weight:400}
+.callout{display:flex;flex-direction:column;gap:.5em;padding:1.25em;border-radius:var(--radius);background:var(--accent);color:#fff;box-shadow:var(--shadow-float)}
+.callout h3{font-size:1.5em;line-height:1.2;font-weight:600;letter-spacing:-.01em}
+.callout p{font-size:.9375em;line-height:1.4;opacity:.92}
+.callout .btn{align-self:flex-start;margin-top:.5em;padding:.75em 1.25em;border-radius:var(--radius-pill);background:#fff;color:var(--accent);font-weight:600;font-size:.9375em;min-height:44px}
+</style>
+<main>
+<header class="intro">
+<div class="eyebrow">Catchphrase / navigation-pane study · iteration 4 · converged</div>
+<h1>What should the first screen<br>put in your hand?</h1>
+<p><strong>Question.</strong> Which navigation-pane hierarchy makes the state-dependent primary action (create when empty, return when not) obvious, keeps the library from overwhelming the screen as it grows, and settles whether the app name belongs on the screen? Three rounds of comparison led to one treatment; this iteration shows it in its three states with no variables left open.</p>
+<p><strong>Boundary.</strong> One treatment of the navigation pane (shell layer) at 390 px and 100 % text. Suggested phrasebooks are not on this surface; they belong to the new-phrasebook action pane, studied in <a href="../new-phrasebook-pane/NEW_PHRASEBOOK_EXPLORATION.html">the new-phrasebook study</a>. Not in scope: the content pane, swipe-to-reveal, Starred beyond its place inside a language, narrow widths and larger text (exercised in iterations 1 to 3 and recorded below). Taps show the transition they would fire and do not navigate.</p>
+<p style="margin-top:12px"><a href="../methodology.md">Methodology</a> · <a href="../../docs/DESIGN.md">UX design</a> · <a href="../../web/docs/PANE_PROTOCOL.html">Pane Protocol</a> · <a href="../phrasebook-navigation/PHRASEBOOK_EXPLORATION.html">Adopted phrasebook study</a> · <a href="#decisions">Decision record</a></p>
+</header>
+
+<p class="caption">Same treatment, three states. Jump back in and Library hide themselves when empty, so the first-run state is the header plus the bottom callout. Library cards open the language’s browse view in the content pane; they do not expand in place.</p>
+
+<div class="study">
+<section class="direction"><header><div class="eyebrow">State 1</div><h2>First run</h2><p>No phrasebooks. Header only, with the “Make your first phrasebook” callout anchored at the bottom.</p></header><div class="phone" id="empty"></div></section>
+<section class="direction"><header><div class="eyebrow">State 2</div><h2>Returning</h2><p>Four phrasebooks in two languages. Three recent cards, the newest in yellow-100, then one library card per language and the pinned button.</p></header><div class="phone" id="returning"></div></section>
+<section class="direction"><header><div class="eyebrow">State 3</div><h2>Full library</h2><p>Nine phrasebooks in three languages with a Starred collection. The library stays three cards tall no matter how many phrasebooks there are.</p></header><div class="phone" id="heavy"></div></section>
+</div>
+
+<section class="notes" id="decisions"><div class="eyebrow">Decision record</div><h2>Status: converged · iteration 4</h2>
+<table>
+<tr><th>Status</th><td>Converged. All visual choices are fixed as of 2026-09-16; no controls remain. Awaiting explicit selection for implementation.</td></tr>
+<tr><th>Question</th><td>Which navigation-pane hierarchy makes the state-dependent primary action (create when empty, return when not) obvious, keeps the library from overwhelming the screen as it grows, and settles whether the app name belongs on the screen?</td></tr>
+<tr><th>Decisions</th><td>
+<ul>
+<li><strong>Surface:</strong> white. The white-to-yellow gradient is dropped.</li>
+<li><strong>Header:</strong> wordmark at 24 px semibold in the accent colour, tagline “Say what you need, avoid the rest” at 14 px light. The app name stays.</li>
+<li><strong>Jump back in:</strong> the three most recently opened phrasebooks as gray-50 cards with no border; the newest card is yellow-100. Hidden when there are no phrasebooks.</li>
+<li><strong>Library:</strong> one gray-50 card per language, flag, language name, phrasebook count, chevron. Tapping opens that language’s browse view in the content pane (the existing <code>lang:</code> deck id path in <code>nav/open-deck</code>). Not an accordion. Hidden when there is nothing to show.</li>
+<li><strong>New phrasebook:</strong> blue full-width button anchored at the bottom with a white fade above it. On first run it becomes the “Make your first phrasebook” callout, still anchored at the bottom.</li>
+<li><strong>Suggested:</strong> removed from this surface; lives in the new-phrasebook action pane.</li>
+</ul></td></tr>
+<tr><th>Rejected along the way</th><td>
+<ul>
+<li>A hero card for the single newest phrasebook above plain rows (iteration 1): two Recent styles read as two different things.</li>
+<li>Outlined or in-flow create buttons (iterations 1 and 2): got lost under Recent. An unlabelled inline situation prompt: unclear what it did.</li>
+<li>Suggested phrasebooks as tiles or grids with counts and repeated “Preview” labels: wordy. Chips were accepted but then moved off this pane altogether.</li>
+<li>Navy header (iteration 1) and blue-100 header (iteration 2): colour differentiation liked, but the plain white surface won.</li>
+<li>Flat per-language row lists (iteration 1), accordion (iterations 2 and 3), language pills (iterations 2 and 3): all keep rows on this surface; a card per language keeps the pane fixed-height and moves rows to the content pane.</li>
+<li>yellow-500 highlight: too strong next to the gray cards; yellow-100 chosen.</li>
+</ul></td></tr>
+<tr><th>Data assumptions</th><td>Recent is the three most recently opened phrasebooks (<code>getRecentDecks(3)</code>). Library counts every non-system deck per language, plus Starred when present. Language cards are ordered by language code, as the app orders groups today (Spanish, Japanese, Chinese); ordering by most recent use or by count is a reasonable alternative to decide at implementation. “Last opened” relative dates are hypothetical: the app stores an access time but does not display it today.</td></tr>
+<tr><th>Observation</th><td id="verification">Iteration 4 verified 2026-09-16 in gstack’s headless Chromium at 390 px / 100 %, zero console errors, with a library card tapped in the full-library state.<ul><li><strong>First run.</strong> Header at the top, callout at the bottom, empty white between. Deliberate, but it is the one state where the screen looks unfinished; a real device shows less of the gap because of the status bar and home indicator.</li><li><strong>Returning.</strong> Header, three recent cards, two library cards and the pinned button all fit without scrolling. yellow-100 reads as a highlight against gray-50 without shouting.</li><li><strong>Full library.</strong> Three recent plus three language cards fit above the button. The language cards are the same geometry as the recent cards, so the two sections read as one rhythm; the section labels and the flag do the separating.</li><li><strong>Fixed height.</strong> The pane is now the same height in every state regardless of phrasebook count: 3 recent cards + N language cards, where N is the number of languages. Nine phrasebooks and four produce the same six cards, which was the goal of moving rows to the content pane.</li><li>Starred is folded into its language’s count as “incl. Starred” rather than getting its own card; confirm that is right when the browse view is designed.</li><li>Emoji render as monochrome glyphs in the headless environment; real browsers show colour emoji.</li></ul></td></tr>
+<tr><th>Open checks</th><td>Physical iPhone Safari, VoiceOver, native Dynamic Type, and the swipe-to-reveal gesture over a pinned bottom bar are unverified. yellow-100 against gray-50 neighbours should be confirmed on a real display; iteration 3 found it faint against gray-100, which is why the cards stay gray-50. Whether the per-language browse view needs a header treatment of its own belongs to the content-pane study.</td></tr>
+<tr><th>Handoff</th><td>Target: <code>web/app/src/panes/nav-pane.js</code> (<code>renderHero</code>, <code>renderCtaBanner</code>, <code>loadNavItems</code>, the FAB), <code>web/app/src/components/phrasebook-row.js</code>, and the <code>.nav-*</code> / <code>.deck-picker-*</code> rules in <code>web/app/src/styles/components.css</code>. Remove the suggested section and <code>nav/view-suggested</code> / <code>nav/view-all-suggested</code> from this pane; <code>pendingSuggestions</code> moves to the new-phrasebook panel. Language cards use <code>nav/open-deck</code> with <code>lang:&lt;code&gt;</code> ids, which already bypasses <code>updateDeckAccessTime</code>. Geometry: 20 px side gutters, 16 px card radius, 16 px card padding, 8 px between cards, 24 px section spacing, 56 px pinned button with 24 px radius. iOS is out of scope.</td></tr>
+</table></section>
+</main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const LANG={ja:{flag:'🇯🇵',name:'Japanese'},zh:{flag:'🇨🇳',name:'Chinese'},es:{flag:'🇪🇸',name:'Spanish'}};
+const BOOK={
+  osaka:    {lang:'ja',title:"Dinner with my girlfriend's parents in Osaka",words:14,phrases:31,ago:'Today'},
+  izakaya:  {lang:'ja',title:'Ordering at an izakaya',words:9,phrases:12,ago:'Yesterday'},
+  greetings:{lang:'ja',title:'Greetings',words:0,phrases:4,ago:'3 days ago'},
+  coworkers:{lang:'ja',title:'Meeting my new coworkers and surviving the welcome party',words:22,phrases:40,ago:'Last week'},
+  chengdu:  {lang:'zh',title:'Visiting my in-laws in Chengdu',words:18,phrases:27,ago:'Today'},
+  tea:      {lang:'zh',title:'Buying tea at the market',words:11,phrases:0,ago:'2 weeks ago'},
+  taxi:     {lang:'zh',title:'Taking a taxi',words:6,phrases:9,ago:'Last month'},
+  oaxaca:   {lang:'es',title:'A weekend in Oaxaca with friends',words:20,phrases:35,ago:'Yesterday'},
+  pharmacy: {lang:'es',title:'At the pharmacy',words:12,phrases:8,ago:'Last month'},
+};
+const STATES={
+  empty:    {books:[],recent:[],starred:{}},
+  returning:{books:['osaka','izakaya','greetings','oaxaca'],recent:['osaka','oaxaca','izakaya'],starred:{}},
+  heavy:    {books:Object.keys(BOOK),recent:['osaka','chengdu','izakaya'],starred:{ja:12}},
+};
+const countText=b=>{const n=b.words+b.phrases;return `${n} ${b.phrases===0?'words':'words & phrases'}`;};
+const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+const sim=(t,label)=>`data-sim="${esc(t)}" data-label="${esc(label)}"`;
+
+function model(state){
+  const st=STATES[state];
+  const books=st.books.map(k=>({key:k,...BOOK[k]}));
+  const byLang={};
+  for(const b of books)(byLang[b.lang]??=[]).push(b);
+  const groups=Object.keys(byLang).sort().map(l=>({lang:l,...LANG[l],count:byLang[l].length+(st.starred[l]?1:0),starred:st.starred[l]}));
+  return {state,recent:st.recent.map(k=>({key:k,...BOOK[k]})),groups};
+}
+
+const recentCard=b=>`<button class="card" ${sim('nav/open-deck',b.title)}><span class="t"><span class="title">${esc(b.title)}</span><span class="sub">${esc(`${LANG[b.lang].name} · ${countText(b)} · ${b.ago}`)}</span></span><span class="chev" aria-hidden="true"></span></button>`;
+const langCard=g=>`<button class="card" ${sim('nav/open-deck',`lang:${g.lang} · ${g.name} browse view`)}><span class="flag" aria-hidden="true">${g.flag}</span><span class="t"><span class="title">${esc(g.name)}</span><span class="sub">${plural(g.count,'phrasebook')}${g.starred?' · incl. Starred':''}</span></span><span class="chev" aria-hidden="true"></span></button>`;
+
+function renderPhone(m){
+  const brand=`<div class="brand"><span class="brand-word">CatchPhrase</span><span class="brand-tag">Say what you need, avoid the rest</span></div>`;
+  const recent=m.recent.length?`<div class="sec"><span class="section-label">Jump back in</span><div class="cards recent">${m.recent.map(recentCard).join('')}</div></div>`:'';
+  const lib=m.groups.length?`<div class="sec"><span class="section-label">Library</span><div class="cards">${m.groups.map(langCard).join('')}</div></div>`:'';
+  const bar=m.recent.length
+    ?`<div class="bar"><button class="primary" ${sim('nav/open-new-phrasebook','New phrasebook')}>New phrasebook</button></div>`
+    :`<div class="bar"><div class="callout"><h3>Make your first phrasebook</h3><p>Tell us the situation. You get the phrases you’d actually say, and none you wouldn’t.</p><button class="btn" ${sim('nav/open-new-phrasebook','New phrasebook')}>New phrasebook</button></div></div>`;
+  return `<div class="scroll">${brand}${recent}${lib}</div>${bar}<div class="toast" role="status"></div>`;
+}
+
+for(const state of Object.keys(STATES)){const el=$(state);el.dataset.state=state;el.innerHTML=renderPhone(model(state));}
+
+const timers=new WeakMap();
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-sim]');if(!b)return;
+  const phone=b.closest('.phone');const toast=phone.querySelector('.toast');
+  toast.textContent=`Simulated · ${b.dataset.sim} → ${b.dataset.label}`;toast.setAttribute('data-show','');
+  clearTimeout(timers.get(phone));timers.set(phone,setTimeout(()=>toast.removeAttribute('data-show'),1600));
+});
+})();
+</script>
+</html>
