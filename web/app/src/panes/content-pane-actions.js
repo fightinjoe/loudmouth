@@ -49,10 +49,8 @@ export function registerCardActions({ host, isEdit, resetReveal }) {
       });
     }],
 
-    // In normal mode the row plays its pronunciation. In Edit cards mode,
-    // tapping anywhere except the right-side reorder grip opens the existing
-    // edit/detail pathway (which also owns deletion).
-    ["content/play-card", (_e, el) => {
+    // Edit mode keeps the existing editor; vocabulary keeps tap-to-pronounce.
+    ["content/open-card", (_e, el) => {
       if (isEdit()) {
         openEditor(el);
         return;
@@ -64,6 +62,23 @@ export function registerCardActions({ host, isEdit, resetReveal }) {
       }
       const { cards } = ui.get("content");
       const card = cards.find((candidate) => String(candidate.id) === el.dataset.cardId);
+      if (!card) return;
+      if (card.type === "word") {
+        speak(ttsText(card), card.lang);
+      } else if (!ui.get("action")) {
+        ui.transition("details/open", {
+          card,
+          opener: el.querySelector(".card-term"),
+          readingDisplay: ui.get("content").deck?.readingDisplay || "reading",
+          showEnglish: true,
+          showReadings: true,
+        });
+      }
+    }],
+
+    ["content/play-card", (_e, el) => {
+      if (isEdit()) return;
+      const card = ui.get("content").cards.find((candidate) => String(candidate.id) === el.dataset.cardId);
       if (card) speak(ttsText(card), card.lang);
     }],
   ];

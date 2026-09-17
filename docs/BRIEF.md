@@ -47,8 +47,9 @@ Initial product languages are Chinese and Japanese. The API also supports Spanis
 5. **Review:** on web, browse conversation-specific tabs followed by **Vocab**. Star priority cards,
    then review that starred set with reveal, direction switching, pronunciation, and swiping.
 
-Difficulty, explanation depth, and expansion (more cards, decomposition) are deferred to a later
-phase, not part of initial generation.
+Web phrase and sentence cards support on-demand semantic breakdowns, generated when opened in the
+details layer. This does not add work to initial phrasebook generation or change persisted card
+fields. Difficulty controls and further content expansion remain deferred.
 
 ## Goals
 
@@ -77,6 +78,8 @@ phase, not part of initial generation.
 - Complete phrasebook generation: several short two-sided conversations plus a vocabulary group.
 - Web conversation-tab browsing followed by Vocab; starred-card review with reveal, direction toggle,
   swipe navigation, and audio. The web navigation adoption does not change iOS.
+- Web phrase breakdowns: source-aligned semantic parts, contextual explanations, and optional reusable
+  patterns; generated through `/phrase-breakdown`, cached for the browser tab, and independent of review.
 
 ### Phase 2 — Library durability
 
@@ -98,6 +101,9 @@ phase, not part of initial generation.
   An independent `/phrasebook-title` call runs alongside context setup, generating a short English
   name without delaying creation. The client freezes that name or the seed fallback when saving.
   Cards, usage accounting, and provider adapters are shared.
+- **Phrase analysis:** `/phrase-breakdown` analyzes an existing phrase on demand using the same
+  server-selected model infrastructure. The web client owns loading, retry, cancellation, and
+  content-keyed session caching; neither the server nor IndexedDB stores analysis.
 - **LLMs:** server-selected with `LLM_BACKEND`, default `gemini-3.5-flash-lite`; clients cannot
   select a backend. Alternate server values are `g-flash`, `claude`, and `chatgpt`.
 - **Creation ability:** `none | basics | conversational`, remembered per language in this browser

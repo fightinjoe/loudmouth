@@ -5,7 +5,7 @@
 ## Architecture constraints (non-negotiable)
 
 - **No framework.** Plain JS only — no React, Vue, Svelte, etc.
-- **No backend.** Fully client-side. Do not introduce server-side logic or APIs.
+- **No web backend runtime.** The web app stays fully client-side. Approved model generation and phrase analysis call the existing monorepo `api/` service; do not add a separate web server or server-held library.
 - **Small, modular files.** One concern per file. No monolithic modules.
 - **PWA installability must be maintained.** Do not break the service worker, manifest, or caching strategy.
 - **Audio is mobile-only.** Web Speech API. Do not attempt to support macOS Safari or Chrome Desktop.
@@ -29,6 +29,7 @@ Panes (nav, content, action, etc.) live in `src/panes/` and follow the Pane Prot
 - **`utilities.css`** — single-purpose utility classes (Tailwind-like: `.flex-row`, `.gap-sm`, `.text-h2`). No component-specific styles here.
 - **`base.css`** — global resets, element defaults, button styles.
 - **`components.css`** — component-specific styles keyed to class names or `data-*` attributes.
+- **`phrase-breakdown.css`** — scoped details-layer expansion, semantic selection, and explanation styles.
 
 Display logic belongs in CSS, not JS. Use `data-*` attributes on elements and CSS attribute selectors to control visibility based on mode/state. Do not toggle `display` or `visibility` via JS DOM manipulation.
 
@@ -149,6 +150,18 @@ When implementing a new pane, follow the contract in Rule 3 verbatim: a default 
 - `src/js/delegate.js` — `createDelegate`.
 
 Cross-pane communication goes through `host.ui` transitions, never through method bags or direct imports of other panes.
+
+### Phrase-breakdown migration
+
+The production details layer now uses the expanding-card interaction in
+`explorations/phrase-breakdown/PHRASE_BREAKDOWN.html`, not the protocol demo's sibling-traversal sheet.
+Phrase/sentence taps open details; explicit audio buttons retain pronunciation, while word taps still
+play audio. `details-pane.js` owns its namespace and per-layer delegate. It closes synchronously before
+action-pane handoff or navigation, with no delayed focus restoration into the underlying content.
+The source row stays in place and is hidden while its geometric copy expands; reduced motion skips
+animation. Selection and disclosures live in the details slice. Analysis data/cache helpers belong in
+`src/js/phrase-breakdown.js`; `src/components/phrase-breakdown.js` remains pure markup. There is no new
+persisted card field. `/phrase-breakdown` and its gateway route must deploy with the web client.
 
 ## Testing
 

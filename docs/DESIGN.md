@@ -26,8 +26,8 @@ from bottom to top: **shell**, **content**, **details**, and **action**.
   content pane right reveals it.
 - **Content pane** (content) — shows the selected phrasebook or a browse list. Changing content swaps
   this pane's screen rather than adding a layer.
-- **Details pane** (details) — an optional bottom-anchored card detail surface over a scrim. It can
-  traverse sibling cards and returns to the same content position when dismissed.
+- **Details pane** (details) — an expanding phrase-card modal over a scrim on web. It explains one
+  phrase and returns to the original card and content scroll position when dismissed.
 - **Action pane** (action) — an optional modal bottom sheet over a scrim. It hosts new-phrasebook
   setup, guided creation, and review. At most one action pane is open.
 
@@ -117,13 +117,45 @@ script with available furigana, or romaji using the same target-text styling. If
 it retains Japanese script and available furigana. Chinese ruby pinyin is unchanged. The standalone
 `explorations/card-styling/CARD_EXPLORATION.html` also demonstrates this order and Japanese selection.
 
-Cards can be starred for review. Tapping a card plays its target-language pronunciation; swipe actions
-expose card editing and deletion where the platform supports them. Phrasebook settings and card reorder
-remain available from the phrasebook title menu. Generated group context is preserved on cards so
-conversation membership survives local storage and display filtering.
+Cards can be starred for review. On web, tapping a phrase or sentence opens its breakdown; explicit
+audio buttons on the row and in details play target-language pronunciation. Vocabulary keeps
+tap-to-pronounce. In edit mode, card taps still open the editor. Phrasebook settings and card reorder
+remain available from the title menu. Generated group context is preserved on cards so conversation
+membership survives local storage and display filtering.
 
 The phrasebook action bar contains **Review**. Phrasebook content is not extended from this view; a new
 situation starts a new guided phrasebook from navigation.
+
+## Phrase breakdown (web)
+
+The reference is `explorations/phrase-breakdown/PHRASE_BREAKDOWN.html`. The existing details layer
+hosts the expanding-card interaction; it is not a fifth layer or an action-pane mode. A geometric
+copy grows from the card over 400 ms without scaling text. The original row stays in place but hidden,
+preserving conversation geometry and scroll. Closing reverses to it. Reduced motion skips animation.
+The modal has 12 px side margins within the 480 px app width, 36 px vertical margins, and 20 px corners.
+Close remains bottom-right while the body scrolls.
+
+English precedes the source phrase; ruby stays above the characters. Japanese reading mode does not
+also show romaji. Selecting a semantic chunk shows its contextual English meaning, exact source
+fragment with available readings, role, and explanation. Selected text, underline, and explanation
+share blue emphasis. **SHOW ALL** highlights every chunk and displays explanations in source order;
+**SHOW SELECTED** restores the last individual selection. Selecting a chunk exits all-mode.
+The count and toggle follow the explanations; a single-part phrase has no toggle. Optional patterns
+include a reusable formula, explanation, and note/example disclosures. Reopening resets selection,
+disclosures, and detail scroll.
+
+Opening calls `/phrase-breakdown` with the saved language, exact text, translation, and optional
+conversation context. The source remains visible during loading and errors; **Retry** makes a new
+request after failure. Valid results are cached in tab-scoped sessionStorage under the exact request
+content and a schema version. Editing source, translation, language, or context therefore cannot reuse
+stale analysis. Closing aborts the client request and late results are ignored. Analysis is not saved
+into card records, exported, starred separately, or generated during phrasebook creation.
+
+The conversation is inert while details is open. Focus enters Close; Tab stays within the modal.
+Close, Escape, or the scrim dismiss and restore focus to the original card without scrolling.
+Opening an action pane or navigating/replacing content releases details immediately, without a
+delayed focus restoration that could interrupt the next pane. There is no sibling traversal or
+drag-to-dismiss in this variant. Native iOS behavior is unchanged.
 
 ## Review
 

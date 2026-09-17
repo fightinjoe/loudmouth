@@ -1,7 +1,8 @@
 # Catchphrase API
 
-Stateless Node.js Cloud Run service for guided phrasebook creation. The creation flow uses **`/context` → `/phrasebook`**, with independent UI naming via
-**`/phrasebook-title`**.
+Stateless Node.js Cloud Run service for guided phrasebook creation and on-demand phrase analysis.
+Creation uses **`/context` → `/phrasebook`**, with independent UI naming via **`/phrasebook-title`**.
+Existing phrases use **`/phrase-breakdown`**.
 
 [`docs/API_DESIGN.md`](../docs/API_DESIGN.md) is the endpoint contract; see
 [`docs/CARD_SCHEMA.md`](../docs/CARD_SCHEMA.md) for cards and reading tokens.
@@ -57,6 +58,20 @@ The service validates output, retries invalid generation or translation
 chunks once, backs off on provider rate limits, and returns no partial phrasebook. See API_DESIGN for
 exact bounds and deadlines.
 
+### `POST /phrase-breakdown`
+
+```json
+{ "language": "ja", "text": "ここで写真を撮ってもいいですか。", "translation": "May I take photos here?", "context": "Taking photos" }
+```
+
+Required language supports `zh`, `ja`, `es`, and `cs`. Exact text and English translation are each
+non-blank and at most 2,000 UTF-16 code units; optional context is at most 500. Returns
+`{ chunks: [{ start, end, text, gloss, role, explanation }], pattern?, usage }`, with ordered,
+non-overlapping exact source spans and optional reusable-pattern teaching. See API_DESIGN for bounds.
+One provider call, no automatic retry, 4,096-token ceiling, 15-second default timeout or the configured
+alternate adapter's timeout. The client handles Retry and tab-scoped caching; analysis is not stored
+in cards. API, gateway route, and web changes must deploy together.
+
 ## Shared HTTP behavior
 
 All routes accept `POST` JSON and reject a client-supplied `llm` selector. `OPTIONS` returns `204`
@@ -104,6 +119,10 @@ api/
     │   ├── index.js
     │   ├── prompt.js
     │   └── prompt.txt
+    ├── phrase-breakdown/
+    │   ├── index.js
+    │   ├── prompt.js
+    │   └── prompt.txt
     ├── phrasebook/
     │   ├── index.js
     │   ├── parse.js
@@ -119,8 +138,9 @@ api/
     └── test/
 ```
 
-The text files under `src/context/`, `src/phrasebook-title/`, and `src/phrasebook/` are the authoritative runtime prompts.
-Edit them in place; there is no separate prompt-source tree or copy step.
+The text files under `src/context/`, `src/phrasebook-title/`, `src/phrasebook/`, and
+`src/phrase-breakdown/` are the authoritative runtime prompts. Edit them in place; there is no
+separate prompt-source tree or copy step.
 
 `src/index.js` exports the Cloud Function `translate` and owns CORS, method handling, and route
 dispatch. `src/llm-config.js` owns server backend configuration, `src/llms/` contains provider

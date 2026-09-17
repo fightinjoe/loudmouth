@@ -17,7 +17,7 @@ description: >
 |---|---|---|
 | **Navigation pane** | Shell layer, revealed when content slides aside | Landing page, library navigation |
 | **Content pane** | Main content layer; swaps screens in place | Phrasebook, browse list, suggested preview |
-| **Details pane** | Bottom-anchored over a scrim | Card detail and sibling traversal |
+| **Details pane** | Expands from a phrase card over a scrim | On-demand phrase breakdown (web) |
 | **Action pane** | Modal bottom sheet over a scrim | New phrasebook, creation, review |
 
 Content names describe what a pane renders; they do not create new pane components. **Creation** and
@@ -97,16 +97,19 @@ they want in the review set.
 
 1. **Open a phrasebook.** Selecting a recent or language-grouped phrasebook opens its content pane.
 2. **Browse tabs.**
-   - **Conversations** shows generated conversation groups in their stored order.
-   - **Vocab** shows the pooled vocabulary cards.
-   - **Starred** shows the phrasebook's current review set.
+   - Each named conversation has its own tab, followed by **Vocab**.
+   - Context-less phrases occupy **Translations** when present.
+   - Stars mark the review set; there is no separate Starred tab.
 3. **Read a conversation.** Speaker metadata renders learner and partner lines on opposite sides.
    Alternatives remain in the same conversation group.
-4. **Use a card.** Tapping the card body plays target-language audio. The star affordance toggles the
-   card's membership in the review set without changing tabs.
-5. **Inspect or maintain content.** The details pane shows a card's complete data and can traverse
-   siblings. Platform card actions support editing and deletion; the phrasebook title menu exposes
-   settings and reorder.
+4. **Use a card.** On web, tapping a phrase opens its breakdown. Select a phrase part or use
+   **SHOW ALL** to inspect every explanation; optional patterns include notes and another example.
+   The source stays visible during generation and errors, with Retry after a failure.
+5. **Listen or prioritize.** Explicit audio buttons pronounce phrases; vocabulary still plays on tap.
+   The star affordance changes the review set without opening details.
+6. **Return or maintain content.** Close, Escape, or the scrim returns to the original card and scroll
+   position. Editing and deletion remain in edit mode; the phrasebook title menu exposes settings
+   and reorder. Opening another pane dismisses the breakdown rather than stacking task interfaces.
 
 ### Key rules
 

@@ -275,7 +275,7 @@ ruby {
 .card-row {
   position: relative;
   z-index: 1;
-  padding: 20px 20px 10px;
+  padding: 16px 16px 10px;
   border: 0;
   border-radius: 16px;
   background: hsl(var(--gray-50));
@@ -297,6 +297,12 @@ ruby {
 .card-term {
   min-width: 0;
   gap: 6px;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
 }
 
 .card-term-target {
@@ -365,6 +371,35 @@ ruby {
 
 #content-pane[data-edit-mode] .card-star {
   display: none;
+}
+
+#content-pane[data-edit-mode] .card-audio,
+#content-pane[data-edit-mode] .card-explore-cue {
+  display: none;
+}
+
+.card-term-english {
+  padding-right: 32px;
+}
+
+.card-audio {
+  position: absolute;
+  bottom: 4px;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+}
+
+.card-explore-cue {
+  padding: 6px 32px 0 0;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--accent);
 }
 
 /* Conversation bubbles retain speaker offset. Partner/left is neutral,

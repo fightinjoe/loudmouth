@@ -3,7 +3,7 @@
 > Client-only PWA built with plain HTML/JS + Vite, storing cards in IndexedDB via Dexie.js, deployed on Vercel.
 
 ## Status
-**As of:** 2026-03-18
+**As of:** 2026-09-16 (phrase-breakdown integration; historical sections below retain earlier decisions)
 **Brief:** See docs/BRIEF.md
 
 ## Platform
@@ -15,18 +15,28 @@ Mobile-first PWA. Web only — no native app. PWA manifest + service worker enab
 **Why:** The app is a focused single-purpose tool with no SEO requirement and no server. A framework adds bundle weight and abstraction overhead with no payoff here. Vite provides fast dev builds, ES module bundling, and static output for Vercel. Files should be small and modular — one concern per file.
 
 **Source layout:**
-- `src/js/` — generic utilities and app logic: `router`, `db`, `tts`, `import-parser`, `base64url`, `modes`, `gestures` (touch gesture factories), `lang` (language name/flag constants), `utils` (shared utilities: `relativeTime`, `stripHashParam`)
-- `src/screens/` — full-page views (one file per route/screen)
+- `src/js/` — utilities and app logic, including shared UI state/delegation, API clients, and validated tab-scoped phrase analysis caching
+- `src/panes/` — navigation, content, details, and action layer owners; no `src/screens/` directory
 - `src/components/` — reusable rendering functions for specific UI components (template-literal renderers)
 - `src/styles/` — CSS split by concern: `variables.css` (all design tokens — primitive HSL channels + semantic variables), `utilities.css` (layout/typography utility classes), `base.css` (global resets/defaults), `components.css` (component-specific styles)
 
 **CSS approach:** Display logic is handled via CSS (`data-*` attribute selectors), not JS DOM manipulation. Mode-specific visibility (e.g. card faces in review vs. browse) is toggled by setting `data-card-mode` on the element and using CSS selectors to show/hide the appropriate content. Utility classes follow a Tailwind-like naming convention (e.g. `.flex-row`, `.gap-sm`, `.text-h2`).
 
-**Gesture handling:** All touch gesture logic is centralised in `src/js/gestures.js` as reusable factories (`wireDrawerGesture`, `wireRevealGesture`). Screens and components call these factories rather than implementing gesture state machines inline. See `AGENTS.md` for the canonical swipe gesture pattern.
+**Gesture handling:** Pane owners wire static handles; `content-pane-gestures.js` owns shell/pager/reorder gestures. The details pane's expansion is a geometric Web Animation, not a swipe gesture. See `AGENTS.md` and the Pane Protocol for the current contract.
 
 ## Backend
-**Approach:** None — fully client-side
-**Why:** No user accounts, no cross-device sync, no server-side secrets. Everything runs in the browser. This is a deliberate constraint from the brief and should not be relaxed without a concrete forcing function (see Constraints).
+**Approach:** Static web client with the monorepo `api/` model-generation service.
+**Boundary:** The server is stateless and stores no library. `/phrase-breakdown` analyzes existing
+phrases on demand with exact source spans, contextual teaching, and optional reusable patterns.
+The details pane aborts dismissed client requests and ignores late results. Validated responses are
+cached by exact language/text/translation/context in tab-scoped sessionStorage, not IndexedDB.
+Edits change the cache key. API/gateway and web must deploy together.
+
+**Details interaction:** `details-pane.js` owns selection, all-mode, disclosures, modal focus, inert
+content, and geometry; pure renderers live in `components/phrase-breakdown.js`, data/cache helpers in
+`js/phrase-breakdown.js`, and styles in `phrase-breakdown.css`. It occupies the existing details layer.
+Action opening or navigation closes details synchronously; normal dismissal reverses expansion and
+returns focus without changing conversation scroll. No framework or new persisted card schema.
 
 ## Data & Storage
 **Primary store:** IndexedDB via [Dexie.js](https://dexie.org/)

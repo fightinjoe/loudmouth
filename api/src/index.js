@@ -1,6 +1,7 @@
 const { handlePhrasebookTitle } = require('./phrasebook-title');
 const { handleContext } = require('./context');
 const { handlePhrasebook } = require('./phrasebook');
+const { handlePhraseBreakdown } = require('./phrase-breakdown');
 const { getBackendName, LLM_REGISTRY } = require('./llm-config');
 
 // Fail during process startup rather than on the first request when the
@@ -27,6 +28,9 @@ exports.translate = async (req, res) => {
 
   if (path === '/phrasebook-title') {
     return handlePhrasebookTitle(req, res, LLM_REGISTRY);
+  }
+  if (path === '/phrase-breakdown') {
+    return handlePhraseBreakdown(req, res, LLM_REGISTRY);
   }
 
   if (path === '/context') {

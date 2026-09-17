@@ -99,6 +99,12 @@ vocabulary without an identified source omits it. These are not object-valued `n
 It does not currently generate `definition`, `formality`, or `example`; those optional fields remain
 part of the shared card shape for imported or existing cards.
 
+Web phrase breakdowns do not extend this persisted schema or `notes`. `/phrase-breakdown` accepts
+existing card content and returns separately validated semantic spans and teaching text. These
+temporary results are cached per browser tab, not imported or exported with cards. Reading tokens
+remain pronunciation units, not grammar segmentation; a token spanning a semantic boundary is shown
+as plain text rather than attaching its entire annotation to a partial fragment.
+
 So a single card can carry translation + definition + notes:
 
 ```json

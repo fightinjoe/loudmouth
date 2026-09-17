@@ -12,6 +12,7 @@ import { createDelegate } from "../js/delegate.js";
 import navPane from "./nav-pane.js";
 import contentPane from "./content-pane.js";
 import actionPane from "./action-pane.js";
+import detailsPane from "./details-pane.js";
 import * as db from "../js/db.js";
 
 const LAST_DECK_KEY = "loudmouth.lastDeckId";
@@ -57,6 +58,7 @@ export function initApp(params) {
       ${contentPane.render(contentPane.initialState)}
       <div class="shell-swipe-handle"></div>
     </div>
+    ${detailsPane.render(detailsPane.initialState)}
     ${actionPane.render(actionPane.initialState)}
   `;
 
@@ -66,11 +68,13 @@ export function initApp(params) {
     [navPane.namespace]: navPane.initialState,
     [contentPane.namespace]: contentPane.initialState,
     [actionPane.namespace]: actionPane.initialState,
+    [detailsPane.namespace]: detailsPane.initialState,
   });
   ui.registerTransitions(shellTransitions);
   ui.registerTransitions(navPane.transitions);
   ui.registerTransitions(contentPane.transitions);
   ui.registerTransitions(actionPane.transitions);
+  ui.registerTransitions(detailsPane.transitions);
 
   // Shell subscriber writes the data-* attribute that the CSS uses.
   ui.subscribe("shell", (next) => {
@@ -93,6 +97,10 @@ export function initApp(params) {
   const actionEl = appEl.querySelector("#action-layer");
   navPane.bindEvents(navEl, createHost({ ui, delegate: shellDelegate, stageEl: appEl }));
   contentPane.bindEvents(contentEl, createHost({ ui, delegate: contentDelegate, stageEl: appEl }));
+  const detailsEl = appEl.querySelector("#details-layer");
+  detailsPane.bindEvents(detailsEl, createHost({
+    ui, delegate: createDelegate(detailsEl), stageEl: appEl,
+  }));
   actionPane.bindEvents(actionEl, createHost({ ui, delegate: null, stageEl: appEl }));
 
   // Initial route — kick off a deck load.

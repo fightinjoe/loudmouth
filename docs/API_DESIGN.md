@@ -29,6 +29,8 @@ Endpoint code and accepted prompt artifacts live together:
 - `api/src/phrasebook/prompt.txt` — canonical English-generation prompt
 - `api/src/phrasebook/translate-prompt.txt` — canonical translation prompt
 - `api/src/phrasebook/reading-rules-ja.txt` and `reading-rules-zh.txt` — language-specific reading rules
+- `api/src/phrase-breakdown/index.js` — on-demand analysis validation, source alignment, and execution
+- `api/src/phrase-breakdown/prompt.js` and `prompt.txt` — trusted contextual-teaching prompt
 
 Provider adapters remain in `api/src/llms/`. Shared backend configuration, card validation, and
 pricing remain in `api/src/llm-config.js`, `api/src/card-validate.js`, and `api/src/pricing.js`.
@@ -198,6 +200,54 @@ back to the original seed. Pending title work is aborted and late responses are 
 remain silent. The title is stored as the local phrasebook name and is not sent to `/phrasebook`.
 Answer changes and card-generation retries reuse the title; submitting a different seed replaces the
 naming request, and dismissal aborts it. A failed local save also retains the frozen title on retry.
+
+## `/phrase-breakdown`
+
+Analyzes one existing phrase independently of phrasebook creation. Request:
+
+```json
+{
+  "language": "zh",
+  "text": "可以给我一杯水吗？",
+  "translation": "Could I have a glass of water?",
+  "context": "At the café"
+}
+```
+
+`language` is required (`zh`, `ja`, `es`, `cs`). `text` and `translation` must be non-blank strings
+of at most 2,000 JavaScript UTF-16 code units each. They are preserved without trimming or
+normalization. Optional `context` is a string of at most 500 code units. Client `llm` is rejected.
+
+The response is `{ chunks, pattern?, usage }`:
+
+- `chunks`: 1–32 ordered `{ start, end, text, gloss, role, explanation }` entries.
+- `start`/`end`: inclusive/exclusive UTF-16 offsets into the exact request text.
+- `text`: the exact source substring, not a dictionary form or reading.
+- `gloss`: contextual English meaning (at most 500 code units).
+- `role`: learner-facing grammatical/pragmatic role (at most 200).
+- `explanation`: concise English teaching text (at most 1,000).
+- Optional `pattern`: `{ formula, explanation, noteTitle?, note?, example?, exampleTranslation? }`.
+  Formula is at most 500; explanation and note at most 1,000; note title at most 200;
+  example and translation at most 2,000 each. Note/title and example/translation must appear in pairs.
+
+The model emits ordered exact chunk text rather than calculating offsets. The server locates each
+chunk after the preceding one, rejects overlap or reordered/non-source text, and derives offsets.
+Only Unicode punctuation and whitespace may remain uncovered. Boundaries cannot split surrogate
+pairs. These checks enforce alignment, not linguistic correctness or optimal semantic segmentation.
+The prompt asks for meaningful units, no punctuation-only teaching cards, and no forced pattern for
+short replies. Ruby boundaries are never used as semantic boundaries.
+
+One server-selected provider call uses separate trusted instructions and JSON task content, a
+4,096-token output ceiling, and a 15-second default deadline (60 seconds for alternate adapters).
+There is no application-level retry. Invalid input returns `400`; provider failure, timeout, malformed
+JSON, or invalid analysis returns `502`. Usage follows the shared accounting contract.
+
+The web details pane keeps the source visible while loading or on failure, and offers explicit Retry.
+Validated success is cached in tab-scoped sessionStorage, keyed by schema version plus exact language,
+text, translation, and context. Changes to those inputs miss the cache; no card schema or IndexedDB
+migration is involved. Dismissal aborts the client fetch and guards against late completion; it does
+not guarantee that an already-started provider call stops at the server. Deploy the API route and
+gateway configuration with the web client.
 
 ## `/phrasebook`
 

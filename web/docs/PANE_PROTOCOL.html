@@ -1005,13 +1005,13 @@
     <dd>Lives in the <em>content</em> layer. Shows the currently selected screen — a deck, a browse view, the empty state. Slides sideways to reveal the navigation pane underneath.</dd>
 
     <dt>Details pane</dt>
-    <dd>Lives in the <em>details</em> layer. A bottom-anchored surface that slides up over a scrim and shows one item at a time (one card's full detail view). It is not full-height; the content pane it dims is visible behind the scrim. Horizontal swipe inside the details pane navigates to the previous or next sibling item without dismissing — the pane stays open, only the item changes. A back affordance (or a click on the scrim) closes the layer and returns to the content pane.</dd>
+    <dd>Lives in the <em>details</em> layer. In production web, a phrase card expands into a floating modal over a scrim. It explains one phrase without sibling traversal or a drag handle. Close, Escape, or the scrim returns to the original card and content scroll position. The earlier sliding/sibling-traversal specimen above remains a protocol mechanics example, not the current phrase-breakdown presentation.</dd>
 
     <dt>Action pane</dt>
     <dd>Lives in the <em>action</em> layer. A bottom-anchored, modal surface that slides up over a scrim. Used for transient tasks: translation, generate cards, deck settings. Dismissed by swipe-down, scrim click, or an explicit close action. At most one action pane is open at a time.</dd>
 
     <dt>Scrim</dt>
-    <dd>A semi-transparent overlay that dims the layers underneath when a higher layer is open. The scrim is interactive: clicking it dismisses the layer above it. Both the details pane and the action pane slide up over a scrim; the shell-reveal does not (full-height content simply slides aside to expose the navigation pane underneath).</dd>
+    <dd>A semi-transparent overlay that dims the layers underneath when a higher layer is open. Clicking the scrim dismisses its pane. The details pane expands from its source card; the action pane slides up. Shell reveal does not use a scrim.</dd>
 
     <dt>Handle</dt>
     <dd>A static DOM element that exists for the sole purpose of receiving touch gestures. A handle is always present in the same place relative to its parent layer; it is never created or destroyed by content changes. Examples: the top bar of the content pane (where the swipe-to-reveal-nav gesture lives), the drag-bar at the top of an action pane.</dd>
@@ -1050,8 +1050,8 @@
 <ol>
   <li><strong>Shell layer.</strong> The navigation pane. Lowest, always present, never dismissed. Visible only when the content layer is slid aside.</li>
   <li><strong>Content layer.</strong> The content pane. Sits over the shell. Always present; the user navigates between content screens (a deck, a browse view, an empty state) by swapping what the content pane renders, not by adding new layers.</li>
-  <li><strong>Details layer.</strong> The details pane. Optional. Bottom-anchored and scrim'd; slides up over the content pane when the user drills into a single item, and is not full-height (the dimmed content shows behind it). Stays open across horizontal swipes — swiping left or right inside the details pane traverses to the previous or next sibling item from the underlying content list, without dismissing. A back affordance or a scrim click closes it.</li>
-  <li><strong>Action layer.</strong> The action pane. Optional. Sits over everything else. Bottom-anchored, modal, scrim'd. Used for transient tasks. At most one action pane open at a time. Action layer always wins the z-order — if a details pane is open and an action pane opens on top, the action pane is in front and the details pane remains intact underneath.</li>
+  <li><strong>Details layer.</strong> The details pane. Optional, scrim'd, and not full-height. Production phrase breakdowns expand geometrically from a source card without scaling text. The original row remains in place, hidden during expansion, so closing restores the same content position. The surface has 12 px side margins within the app width, 36 px vertical margins, and 20 px corners. Close, Escape, and scrim dismiss; reduced motion skips animation.</li>
+  <li><strong>Action layer.</strong> The action pane. Optional, bottom-anchored, modal, and above details. At most one action pane is open. Production phrase breakdowns close synchronously when an action opens; they do not remain underneath or later steal the action pane's focus.</li>
 </ol>
 
 <p>The shared state object has one slice per layer plus any other independent concerns (for example, which deck is currently selected for the content layer to render). Each slice has a single owner — a pane module — that defines the slice's shape and the transitions that move it between states.</p>
@@ -1175,7 +1175,7 @@
 <p>The four layers stack in a fixed order. Lower layers are visually behind higher layers; clicks on higher layers shadow lower layers. The stack order never changes at runtime.</p>
 
 <ul>
-  <li>The action layer is always on top. If a details pane is open and an action pane opens, the action pane sits above the details pane and the details pane is fully preserved underneath — when the action pane closes, the user returns to the same details pane in the same state.</li>
+  <li>The action layer is always on top. Opening an action pane releases the phrase-breakdown details layer immediately, aborting its client request and removing its focus trap/inert ownership before the action pane mounts. No reverse animation or delayed opener focus runs during this handoff. The illustrative specimen above predates this production exclusivity policy.</li>
   <li>The details layer sits above the content layer. The content pane is fully preserved underneath; closing the details pane returns the user to the same content scroll position and same selection.</li>
   <li>The content layer sits above the shell layer. The navigation pane is preserved underneath the content pane and is revealed by sliding the content pane sideways, not by destroying it.</li>
 </ul>
@@ -1183,6 +1183,8 @@
 <p>Stacking is not flexible. The protocol does not support "details over action" or any other reordering. If a future requirement seems to need it, the protocol must be revised — do not invent ad-hoc z-index gymnastics in a pane.</p>
 
 <p>Sheets / action panes do not stack on top of each other. Opening an action pane while another is already open is an error and should be treated as "close the existing action pane, then open the new one" — never as stacking action panes on action panes.</p>
+
+<p><strong>Expanding-card migration:</strong> <code>details-pane.js</code> owns the production modal's state, request lifecycle, selection, disclosures, and focus. Its surface and scrim remain mounted; source/explanation regions render from changed data. The geometric Web Animation is temporary presentation, not a fifth layer. Navigation and content replacement dismiss it synchronously. Plain data validation and tab-scoped analysis caching live in <code>js/phrase-breakdown.js</code>; pure markup lives in <code>components/phrase-breakdown.js</code>.</p>
 
 <h2 id="applying">Applying the contract to a new pane</h2>
 

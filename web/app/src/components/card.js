@@ -43,8 +43,14 @@ export function renderCardRow(card, readingDisplay = "reading") {
         >${icon("delete")}</button>
       </div>
 
-      <div class="card-row flex-row items-start tappable" data-action="content/play-card" data-card-id="${cardId}">
+      <div class="card-row flex-row items-start tappable" data-action="content/open-card" data-card-id="${cardId}">
         ${renderCardContent(card, readingDisplay)}
+        ${card.type !== "word" ? `<button
+          class="card-audio tappable"
+          data-action="content/play-card"
+          data-card-id="${cardId}"
+          aria-label="Play pronunciation: ${escapeHTML(card.translation)}"
+        >${icon("sound")}</button>` : ""}
         <button
           class="card-star tappable shrink-0"
           data-action="content/star-card"
@@ -91,11 +97,14 @@ function renderCardContent(card, readingDisplay = "reading") {
   const reading = !japanese && !hasRuby ? escapeHTML(card[readingDisplay]) : "";
 
   return `
-    <div class="card-term flex-col flex-1 min-w-0" ${hasRuby ? "data-has-ruby" : ""}>
-      <div class="card-term-english fg-secondary">${escapeHTML(card.translation)}</div>
-      <div class="card-term-target fg-body">${target}</div>
-      ${reading ? `<div class="card-term-reading">${reading}</div>` : ""}
-    </div>
+    <button type="button" class="card-term flex-col flex-1 min-w-0"
+      aria-label="${card.type === "word" ? "Play pronunciation" : "Explore phrase"}: ${escapeHTML(card.translation)}"
+      ${hasRuby ? "data-has-ruby" : ""}>
+      <span class="card-term-english fg-secondary">${escapeHTML(card.translation)}</span>
+      <span class="card-term-target fg-body" lang="${escapeHTML(card.lang)}">${target}</span>
+      ${reading ? `<span class="card-term-reading">${reading}</span>` : ""}
+      ${card.type !== "word" ? '<span class="card-explore-cue">Explore phrase</span>' : ""}
+    </button>
   `;
 }
 

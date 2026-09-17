@@ -58,6 +58,105 @@ paths:
           description: Bad request (missing/invalid field or client-selected llm)
         502:
           description: LLM request failed or returned an invalid response
+  /phrase-breakdown:
+    options:
+      summary: CORS preflight
+      operationId: phraseBreakdownOptions
+      parameters: []
+      responses:
+        204:
+          description: CORS preflight response
+    post:
+      summary: Explain a target-language utterance in contextual semantic chunks
+      operationId: phraseBreakdown
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [language, text, translation]
+            properties:
+              language:
+                type: string
+                enum: [zh, ja, es, cs]
+              text:
+                type: string
+                minLength: 1
+                maxLength: 2000
+              translation:
+                type: string
+                minLength: 1
+                maxLength: 2000
+              context:
+                type: string
+                maxLength: 500
+      responses:
+        200:
+          description: Ordered source spans with contextual explanations, an optional reusable pattern, and model usage
+          schema:
+            type: object
+            required: [chunks, usage]
+            properties:
+              chunks:
+                type: array
+                minItems: 1
+                maxItems: 32
+                items:
+                  type: object
+                  required: [start, end, text, gloss, role, explanation]
+                  properties:
+                    start:
+                      type: integer
+                      minimum: 0
+                      description: Inclusive JavaScript UTF-16 offset in the request text
+                    end:
+                      type: integer
+                      minimum: 1
+                      description: Exclusive JavaScript UTF-16 offset in the request text
+                    text:
+                      type: string
+                    gloss:
+                      type: string
+                      maxLength: 500
+                    role:
+                      type: string
+                      maxLength: 200
+                    explanation:
+                      type: string
+                      maxLength: 1000
+              pattern:
+                type: object
+                required: [formula, explanation]
+                properties:
+                  formula:
+                    type: string
+                    maxLength: 500
+                  explanation:
+                    type: string
+                    maxLength: 1000
+                  noteTitle:
+                    type: string
+                    maxLength: 200
+                  note:
+                    type: string
+                    maxLength: 1000
+                  example:
+                    type: string
+                    maxLength: 2000
+                  exampleTranslation:
+                    type: string
+                    maxLength: 2000
+              usage:
+                type: object
+        400:
+          description: Bad request (missing/invalid field or client-selected llm)
+        502:
+          description: LLM request failed or returned an invalid response
   /context:
     options:
       summary: CORS preflight
