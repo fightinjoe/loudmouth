@@ -9,6 +9,7 @@ const MAX_TEXT_LENGTH = 2000;
 const MAX_TRANSLATION_LENGTH = 2000;
 const MAX_CONTEXT_LENGTH = 500;
 const MAX_CHUNKS = 32;
+const MAX_LEARNING_ITEMS = 32;
 const PHRASE_BREAKDOWN_MAX_TOKENS = 4096;
 const PHRASE_BREAKDOWN_TIMEOUT_MS = 15000;
 
@@ -16,11 +17,10 @@ const FIELD_LIMITS = Object.freeze({
   gloss: 500,
   role: 200,
   explanation: 1000,
-  formula: 500,
-  noteTitle: 200,
-  note: 1000,
-  example: 2000,
-  exampleTranslation: 2000,
+  learningItemSurface: 2000,
+  learningItemText: 2000,
+  learningItemMeaning: 500,
+  learningItemReading: 2000,
 });
 
 class PhraseBreakdownTimeoutError extends Error {}
@@ -126,28 +126,63 @@ function alignChunks(source, chunks) {
   return aligned;
 }
 
-function validatePattern(value) {
-  if (!isPlainObject(value)) throw new Error('"pattern" must be an object');
-  const pattern = {
-    formula: boundedString(value.formula, 'pattern.formula', FIELD_LIMITS.formula),
-    explanation: boundedString(value.explanation, 'pattern.explanation', FIELD_LIMITS.explanation),
-  };
-
-  for (const [first, second] of [['noteTitle', 'note'], ['example', 'exampleTranslation']]) {
-    const hasFirst = Object.hasOwn(value, first);
-    const hasSecond = Object.hasOwn(value, second);
-    if (hasFirst !== hasSecond) {
-      throw new Error(`pattern.${first} and pattern.${second} must be provided together`);
-    }
-    if (hasFirst) {
-      pattern[first] = boundedString(value[first], `pattern.${first}`, FIELD_LIMITS[first]);
-      pattern[second] = boundedString(value[second], `pattern.${second}`, FIELD_LIMITS[second]);
-    }
-  }
-  return pattern;
+function hasMeaningfulContent(value) {
+  return /[^\p{P}\p{White_Space}]/u.test(value);
 }
 
-function validatePhraseBreakdownResponse(raw, source) {
+function validateLearningItems(value, chunk, chunkIndex, language) {
+  const field = `chunks[${chunkIndex}].learningItems`;
+  if (!Array.isArray(value) || value.length > MAX_LEARNING_ITEMS) {
+    throw new Error(`"${field}" must be an array with at most ${MAX_LEARNING_ITEMS} items`);
+  }
+
+  return value.map((item, itemIndex) => {
+    const prefix = `${field}[${itemIndex}]`;
+    if (!isPlainObject(item)) throw new Error(`${prefix} must be an object`);
+    if (Object.hasOwn(item, 'chunkIndex')) {
+      throw new Error(`${prefix}.chunkIndex is not allowed; learning items must be nested in their source chunk`);
+    }
+
+    if (typeof item.surface !== 'string' || item.surface.length === 0) {
+      throw new Error(`"${prefix}.surface" must be a non-empty string`);
+    }
+    if (item.surface.length > FIELD_LIMITS.learningItemSurface) {
+      throw new Error(`"${prefix}.surface" must be at most ${FIELD_LIMITS.learningItemSurface} characters`);
+    }
+    if (item.surface !== item.surface.trim()) {
+      throw new Error(`"${prefix}.surface" must not have surrounding whitespace`);
+    }
+    if (!hasMeaningfulContent(item.surface)) {
+      throw new Error(`"${prefix}.surface" must not be punctuation-only`);
+    }
+    if (!chunk.text.includes(item.surface)) {
+      throw new Error(`"${prefix}.surface" must be an exact substring of its containing chunk`);
+    }
+
+    const learningItem = {
+      surface: item.surface,
+      text: boundedString(item.text, `${prefix}.text`, FIELD_LIMITS.learningItemText),
+      meaning: boundedString(item.meaning, `${prefix}.meaning`, FIELD_LIMITS.learningItemMeaning),
+    };
+    const hasReading = Object.hasOwn(item, 'reading');
+    if (language === 'ja' || language === 'zh') {
+      if (!hasReading) throw new Error(`"${prefix}.reading" is required for ${language}`);
+      learningItem.reading = boundedString(
+        item.reading,
+        `${prefix}.reading`,
+        FIELD_LIMITS.learningItemReading,
+      );
+    } else if (hasReading) {
+      throw new Error(`"${prefix}.reading" must be omitted for ${language}`);
+    }
+    return learningItem;
+  });
+}
+
+function validatePhraseBreakdownResponse(raw, source, language) {
+  if (!LANGUAGES.includes(language)) {
+    throw new Error(`"language" must be one of: ${LANGUAGES.join(', ')}`);
+  }
   if (typeof raw !== 'string') throw new Error('Model output must be text');
   let data;
   try {
@@ -156,11 +191,17 @@ function validatePhraseBreakdownResponse(raw, source) {
     throw new Error(`Model output is not valid JSON: ${err.message}`);
   }
   if (!isPlainObject(data)) throw new Error('Model output must be a JSON object');
+  if (Object.hasOwn(data, 'pattern')) {
+    throw new Error('"pattern" is not allowed');
+  }
+  if (Object.hasOwn(data, 'learningItems')) {
+    throw new Error('"learningItems" must be nested in their source chunk');
+  }
   if (!Array.isArray(data.chunks) || data.chunks.length < 1 || data.chunks.length > MAX_CHUNKS) {
     throw new Error(`"chunks" must contain 1–${MAX_CHUNKS} items`);
   }
 
-  const chunks = data.chunks.map((value, index) => {
+  const rawChunks = data.chunks.map((value, index) => {
     if (!isPlainObject(value)) throw new Error(`chunks[${index}] must be an object`);
     if (typeof value.text !== 'string' || value.text.length === 0) {
       throw new Error(`chunks[${index}].text must be a non-empty string`);
@@ -168,17 +209,43 @@ function validatePhraseBreakdownResponse(raw, source) {
     if (value.text.length > MAX_TEXT_LENGTH) {
       throw new Error(`chunks[${index}].text must be at most ${MAX_TEXT_LENGTH} characters`);
     }
-    return {
-      text: value.text,
-      gloss: boundedString(value.gloss, `chunks[${index}].gloss`, FIELD_LIMITS.gloss),
-      role: boundedString(value.role, `chunks[${index}].role`, FIELD_LIMITS.role),
-      explanation: boundedString(value.explanation, `chunks[${index}].explanation`, FIELD_LIMITS.explanation),
-    };
+    return { text: value.text, value, index };
   });
 
-  const response = { chunks: alignChunks(source, chunks) };
-  if (Object.hasOwn(data, 'pattern')) response.pattern = validatePattern(data.pattern);
-  return response;
+  const alignedChunks = alignChunks(source, rawChunks);
+  const chunks = [];
+  for (const aligned of alignedChunks) {
+    const { value, index } = aligned;
+    if (!Array.isArray(value.learningItems)) {
+      throw new Error(`"chunks[${index}].learningItems" must be an array with at most ${MAX_LEARNING_ITEMS} items`);
+    }
+
+    if (!hasMeaningfulContent(aligned.text)) {
+      if (value.learningItems.length !== 0) {
+        throw new Error(`chunks[${index}] is punctuation-only and cannot have learning items`);
+      }
+      continue;
+    }
+
+    chunks.push({
+      start: aligned.start,
+      end: aligned.end,
+      text: aligned.text,
+      gloss: boundedString(value.gloss, `chunks[${index}].gloss`, FIELD_LIMITS.gloss),
+      role: boundedString(value.role, `chunks[${index}].role`, FIELD_LIMITS.role),
+      explanation: boundedString(
+        value.explanation,
+        `chunks[${index}].explanation`,
+        FIELD_LIMITS.explanation,
+      ),
+      learningItems: validateLearningItems(value.learningItems, aligned, index, language),
+    });
+  }
+
+  if (chunks.length === 0) {
+    throw new Error('"chunks" must contain at least one meaningful chunk');
+  }
+  return { chunks };
 }
 
 async function performPhraseBreakdown(
@@ -212,7 +279,11 @@ async function performPhraseBreakdown(
 
   let result;
   try {
-    result = validatePhraseBreakdownResponse(reply && reply.text, parsedRequest.text);
+    result = validatePhraseBreakdownResponse(
+      reply && reply.text,
+      parsedRequest.text,
+      parsedRequest.language,
+    );
   } catch (err) {
     console.error({
       event: 'validation_error',

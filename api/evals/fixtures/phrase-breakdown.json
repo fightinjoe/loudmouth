@@ -1,0 +1,61 @@
+[
+  {
+    "id": "ja-meat-fish",
+    "provenance": "Request fields recovered from api/tmp/2026-09-17T21-51-02.086Z-phrasebook.json; breakdown reference: 2026-09-17T21-57-53.948Z-phrase-breakdown.json. HTTP request itself was not captured.",
+    "request": {
+      "language": "ja",
+      "text": "肉も魚も食べません。",
+      "translation": "I don't eat meat or fish.",
+      "context": "State dietary requirements"
+    },
+    "review": [
+      "Priority: understandable chunks with no punctuation-only fragments. Prefer larger coherent units over unnecessary fragmentation; grouping 肉も魚も together is welcome.",
+      "Offer 肉 (にく), 魚 (さかな), and 食べる (たべる) as vocabulary, not 肉も, 魚も, or 食べません.",
+      "Explain the repeated も with negation without claiming the list exhausts all possible excluded foods."
+    ]
+  },
+  {
+    "id": "es-weather",
+    "provenance": "Source reconstructed from chunks in api/tmp/2026-09-17T21-59-41.900Z-phrase-breakdown.json. Translation supplied for this experiment; original translation and context unavailable in that response capture. Context omitted.",
+    "request": {
+      "language": "es",
+      "text": "Un poco caluroso, pero me gusta.",
+      "translation": "A bit hot, but I like it."
+    },
+    "review": [
+      "Priority: understandable chunks with no punctuation-only fragments. Larger coherent chunks are preferable to fragmented output.",
+      "Secondary: useful expressions such as un poco (a bit) and me gusta (I like it) are welcome, but missing them is less serious than poor segmentation.",
+      "Do not claim that pero always introduces a positive stance or assert an omitted noun with unwarranted certainty."
+    ]
+  },
+  {
+    "id": "ja-restaurant",
+    "provenance": "Synthetic evaluation fixture added to test contrast, adjective forms, and content words within larger chunks.",
+    "request": {
+      "language": "ja",
+      "text": "この店は少し高いですが、料理はおいしいです。",
+      "translation": "This restaurant is a little expensive, but the food is delicious.",
+      "context": "Choosing a restaurant"
+    },
+    "review": [
+      "Priority: coherent meaningful chunks with no punctuation-only fragments; retain exact source alignment after normalization.",
+      "Keep useful content words associated with their original chunks, including adjective dictionary forms.",
+      "Explain contrast and the contextual expensive sense of 高い without inventing unsupported implications."
+    ]
+  },
+  {
+    "id": "es-soup",
+    "provenance": "Synthetic evaluation fixture added to test negation, tener hambre, me gustaría, and dictionary-form verbs.",
+    "request": {
+      "language": "es",
+      "text": "No tengo mucha hambre, pero me gustaría probar la sopa.",
+      "translation": "I’m not very hungry, but I’d like to try the soup.",
+      "context": "Ordering food"
+    },
+    "review": [
+      "Priority: coherent meaningful chunks with no punctuation-only fragments; retain exact source alignment after normalization.",
+      "Assess useful expressions and underlying verbs without requiring every component to be extracted.",
+      "Preserve negation and the polite would-like meaning; keep learning items linked to the correct clause."
+    ]
+  }
+]

@@ -33,8 +33,7 @@ const detailsPane = {
       readingDisplay: payload.readingDisplay || "reading",
       showEnglish: payload.showEnglish !== false,
       showReadings: payload.showReadings !== false,
-      status: "loading", breakdown: null, selectedIndex: 0, all: false,
-      noteOpen: false, exampleOpen: false, requestId: 0,
+      status: "loading", breakdown: null, selectedIndex: 0, all: false, requestId: 0,
     }),
     "details/close": () => null,
     "details/retry": (slice) => slice?.status === "error"
@@ -52,12 +51,6 @@ const detailsPane = {
     },
     "details/toggle-all": (slice) => slice?.status === "ready" && slice.breakdown.chunks.length > 1
       ? { ...slice, all: !slice.all } : slice,
-    "details/toggle-disclosure": (slice, payload) => {
-      if (!slice || slice.status !== "ready") return slice;
-      if (payload?.kind === "note") return { ...slice, noteOpen: !slice.noteOpen };
-      if (payload?.kind === "example") return { ...slice, exampleOpen: !slice.exampleOpen };
-      return slice;
-    },
   },
 
   render() {
@@ -199,12 +192,6 @@ const detailsPane = {
         toggle.textContent = slice.all ? "SHOW SELECTED" : "SHOW ALL";
         toggle.setAttribute("aria-pressed", String(slice.all));
       }
-      for (const kind of ["note", "example"]) {
-        const disclosure = rootEl.querySelector(`[data-disclosure="${kind}"]`);
-        if (!disclosure) continue;
-        disclosure.open = slice[`${kind}Open`];
-        disclosure.querySelector("summary").setAttribute("aria-expanded", String(disclosure.open));
-      }
     }
 
     const unsubRender = ui.subscribe("details", (next, prev) => {
@@ -247,7 +234,7 @@ const detailsPane = {
       const task = cached ? Promise.resolve(cached) : getPhraseBreakdown({ ...request, signal: controller.signal });
       task.then((raw) => {
         if (controller.signal.aborted || requestController !== controller) return;
-        const breakdown = cached || normalizeBreakdown(raw, request.text);
+        const breakdown = cached || normalizeBreakdown(raw, request.text, request.language);
         if (!breakdown) throw new Error("Invalid phrase breakdown response");
         if (!cached) writeCache(request, breakdown);
         requestController = null;
@@ -264,10 +251,6 @@ const detailsPane = {
       "details/retry": () => ui.transition("details/retry"),
       "details/toggle-all": () => ui.transition("details/toggle-all"),
       "details/select-part": (_event, element) => ui.transition("details/select-part", { index: Number(element.dataset.index) }),
-      "details/toggle-disclosure": (event, element) => {
-        event.preventDefault();
-        ui.transition("details/toggle-disclosure", { kind: element.dataset.kind });
-      },
       "details/play-audio": () => {
         const slice = ui.get("details");
         if (slice) speak(ttsText(slice.card), slice.card.lang);

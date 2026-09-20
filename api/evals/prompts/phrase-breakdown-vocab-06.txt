@@ -16,7 +16,15 @@ Return JSON only:
         {"surface": "exact substring of this chunk", "text": "word or expression to learn", "meaning": "concise English meaning of this item text in the relevant sense"}
       ]
     }
-  ]
+  ],
+  "pattern": {
+    "formula": "reusable construction with slots when useful",
+    "explanation": "how and when it is used",
+    "noteTitle": "optional title",
+    "note": "optional usage or grammar note",
+    "example": "optional target-language example",
+    "exampleTranslation": "English translation of example"
+  }
 }
 
 1. Segment and explain the utterance.
@@ -31,5 +39,9 @@ Return JSON only:
 - An expression and a constituent word may both be useful when they teach distinct things, but do not enumerate every component or repeat equivalent learning targets. Chunk boundaries need not match learning-item boundaries.
 - Put learningItems inside the chunk they come from; do not return a top-level learningItems array or chunkIndex. Each surface is an exact contiguous substring of its containing chunk, without surrounding punctuation or whitespace. item text is the dictionary-form word or reusable expression; meaning describes that chosen item's relevant sense. Every chunk has a learningItems array with zero, one, or several items. Deduplicate the same item text and sense, linking it to its first source occurrence. Return [] when none are useful.
 - For ja, add a non-empty reading field to each learning item containing the item text's kana reading; for zh, add tone-marked pinyin. For es and cs, omit the reading key entirely, never an empty string or null. Do not insert pronunciation into source-aligned fields.
+
+3. Add a pattern only when genuinely useful.
+- pattern is optional. Omit it for short fixed replies or when a reusable construction would be forced. The explanation must match the formula's scope: do not turn one example's sentiment into a universal property of a conjunction.
+- noteTitle and note must appear together or both be omitted. example and exampleTranslation must appear together or both be omitted.
 
 Keep all strings concise, plain text, without Markdown or HTML. Return only the fields specified above. Before returning, check that no chunk is punctuation-only and that learning-item selection preserved useful lexical expressions before normalizing individual words.

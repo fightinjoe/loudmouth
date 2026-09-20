@@ -1,6 +1,9 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
 import { renderExplanations, renderSource } from "../components/phrase-breakdown.js";
+import {
+  cardRequest, normalizeBreakdown, readCache, writeCache,
+} from "../js/phrase-breakdown.js";
 import detailsPane from "../panes/details-pane.js";
 import { createUIState, createHost } from "../js/uiState.js";
 import { createDelegate } from "../js/delegate.js";
@@ -25,6 +28,98 @@ function root(html) {
   element.innerHTML = html;
   return element;
 }
+
+function apiBreakdown() {
+  return {
+    chunks: [
+      {
+        start: 0,
+        end: 5,
+        text: "食べました",
+        gloss: " ate ",
+        role: " predicate ",
+        explanation: " polite past form ",
+        learningItems: [{
+          surface: "食べました",
+          text: " 食べる ",
+          meaning: " to eat ",
+          reading: " たべる ",
+        }],
+      },
+      { start: 5, end: 6, text: "。", learningItems: [] },
+    ],
+  };
+}
+
+describe("phrase-breakdown response contract", () => {
+  it("keeps nested learning items while safely removing punctuation-only chunks", () => {
+    expect(normalizeBreakdown(apiBreakdown(), "食べました。", "ja")).toEqual({
+      chunks: [{
+        start: 0,
+        end: 5,
+        text: "食べました",
+        gloss: "ate",
+        role: "predicate",
+        explanation: "polite past form",
+        learningItems: [{
+          surface: "食べました",
+          text: "食べる",
+          meaning: "to eat",
+          reading: "たべる",
+        }],
+      }],
+    });
+
+    const punctuationTeaching = apiBreakdown();
+    punctuationTeaching.chunks[1].learningItems.push({
+      surface: "。",
+      text: "。",
+      meaning: "period",
+      reading: "まる",
+    });
+    expect(normalizeBreakdown(punctuationTeaching, "食べました。", "ja")).toBeNull();
+  });
+
+  it("rejects obsolete response shapes", () => {
+    const pattern = apiBreakdown();
+    pattern.pattern = { formula: "x", explanation: "y" };
+    expect(normalizeBreakdown(pattern, "食べました。", "ja")).toBeNull();
+
+    const topLevelItems = apiBreakdown();
+    topLevelItems.learningItems = [];
+    expect(normalizeBreakdown(topLevelItems, "食べました。", "ja")).toBeNull();
+
+    const indexedItem = apiBreakdown();
+    indexedItem.chunks[0].learningItems[0].chunkIndex = 0;
+    expect(normalizeBreakdown(indexedItem, "食べました。", "ja")).toBeNull();
+  });
+
+  it("enforces language-specific reading fields", () => {
+    const missingJapaneseReading = apiBreakdown();
+    delete missingJapaneseReading.chunks[0].learningItems[0].reading;
+    expect(normalizeBreakdown(missingJapaneseReading, "食べました。", "ja")).toBeNull();
+
+    const spanishReading = apiBreakdown();
+    expect(normalizeBreakdown(spanishReading, "食べました。", "es")).toBeNull();
+    delete spanishReading.chunks[0].learningItems[0].reading;
+    expect(normalizeBreakdown(spanishReading, "食べました。", "es")).not.toBeNull();
+  });
+
+  it("ignores v1 cache entries and round-trips nested items in v2", () => {
+    sessionStorage.clear();
+    const request = cardRequest({ lang: "ja", text: "食べました。", translation: "I ate." });
+    sessionStorage.setItem(
+      `loudmouth.phrase-breakdown.v1:${JSON.stringify(request)}`,
+      JSON.stringify(apiBreakdown()),
+    );
+    expect(readCache(request)).toBeNull();
+
+    const breakdown = normalizeBreakdown(apiBreakdown(), request.text, request.language);
+    writeCache(request, breakdown);
+    expect(readCache(request)).toEqual(breakdown);
+    sessionStorage.clear();
+  });
+});
 
 describe("phrase-breakdown source fidelity", () => {
   it("does not duplicate a compound reading onto partial semantic chunks", () => {

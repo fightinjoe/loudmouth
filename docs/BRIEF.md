@@ -78,8 +78,8 @@ fields. Difficulty controls and further content expansion remain deferred.
 - Complete phrasebook generation: several short two-sided conversations plus a vocabulary group.
 - Web conversation-tab browsing followed by Vocab; starred-card review with reveal, direction toggle,
   swipe navigation, and audio. The web navigation adoption does not change iOS.
-- Web phrase breakdowns: source-aligned semantic parts, contextual explanations, and optional reusable
-  patterns; generated through `/phrase-breakdown`, cached for the browser tab, and independent of review.
+- Web phrase breakdowns: source-aligned semantic parts, contextual explanations, and nested learning-item
+  candidates; generated through `/phrase-breakdown`, cached for the browser tab, and independent of review.
 
 ### Phase 2 — Library durability
 
@@ -102,8 +102,10 @@ fields. Difficulty controls and further content expansion remain deferred.
   name without delaying creation. The client freezes that name or the seed fallback when saving.
   Cards, usage accounting, and provider adapters are shared.
 - **Phrase analysis:** `/phrase-breakdown` analyzes an existing phrase on demand using the same
-  server-selected model infrastructure. The web client owns loading, retry, cancellation, and
-  content-keyed session caching; neither the server nor IndexedDB stores analysis.
+  server-selected model infrastructure. The web client validates and caches semantic chunks and their
+  nested learning items by request content for the browser tab, but currently displays only chunk
+  teaching. Neither the server nor IndexedDB stores analysis, and learning items cannot yet be saved
+  or starred from the breakdown.
 - **LLMs:** server-selected with `LLM_BACKEND`, default `gemini-3.5-flash-lite`; clients cannot
   select a backend. Alternate server values are `g-flash`, `claude`, and `chatgpt`.
 - **Creation ability:** `none | basics | conversational`, remembered per language in this browser

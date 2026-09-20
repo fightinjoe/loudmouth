@@ -218,24 +218,39 @@ Analyzes one existing phrase independently of phrasebook creation. Request:
 of at most 2,000 JavaScript UTF-16 code units each. They are preserved without trimming or
 normalization. Optional `context` is a string of at most 500 code units. Client `llm` is rejected.
 
-The response is `{ chunks, pattern?, usage }`:
+The response is `{ chunks, usage }`:
 
-- `chunks`: 1–32 ordered `{ start, end, text, gloss, role, explanation }` entries.
+- `chunks`: 1–32 ordered
+  `{ start, end, text, gloss, role, explanation, learningItems }` entries.
 - `start`/`end`: inclusive/exclusive UTF-16 offsets into the exact request text.
-- `text`: the exact source substring, not a dictionary form or reading.
-- `gloss`: contextual English meaning (at most 500 code units).
-- `role`: learner-facing grammatical/pragmatic role (at most 200).
-- `explanation`: concise English teaching text (at most 1,000).
-- Optional `pattern`: `{ formula, explanation, noteTitle?, note?, example?, exampleTranslation? }`.
-  Formula is at most 500; explanation and note at most 1,000; note title at most 200;
-  example and translation at most 2,000 each. Note/title and example/translation must appear in pairs.
+- `text`: the exact source substring, not a dictionary form or reading; at most 2,000 code units.
+- `gloss`: required non-blank contextual English meaning, trimmed on output (at most 500 code units).
+- `role`: required non-blank learner-facing grammatical/pragmatic role, trimmed on output (at most 200).
+- `explanation`: required non-blank teaching text, trimmed on output (at most 1,000).
+- `learningItems`: a required array of 0–32
+  `{ surface, text, meaning, reading? }` entries belonging to that chunk.
+- Learning-item `surface` is preserved exactly, is at most 2,000 code units, must be a contiguous
+  substring of its containing chunk, must have no surrounding whitespace, and cannot be
+  punctuation-only. Item `text` is a required non-blank dictionary form or reusable expression of at
+  most 2,000 code units; `meaning` is a required non-blank contextual English meaning of at most 500.
+  Both are trimmed on output.
+- Every Japanese and Chinese learning item requires a non-blank `reading` of at most 2,000 code
+  units (kana for Japanese, tone-marked pinyin for Chinese), trimmed on output. Spanish and Czech
+  items must omit the `reading` key.
 
-The model emits ordered exact chunk text rather than calculating offsets. The server locates each
-chunk after the preceding one, rejects overlap or reordered/non-source text, and derives offsets.
-Only Unicode punctuation and whitespace may remain uncovered. Boundaries cannot split surrogate
-pairs. These checks enforce alignment, not linguistic correctness or optimal semantic segmentation.
-The prompt asks for meaningful units, no punctuation-only teaching cards, and no forced pattern for
-short replies. Ruby boundaries are never used as semantic boundaries.
+The model emits ordered exact chunk text rather than calculating offsets. The server first locates
+every raw chunk after the preceding one, rejects overlap or reordered/non-source text, and derives
+offsets. Only Unicode punctuation and whitespace may remain uncovered. Boundaries cannot split
+surrogate pairs. After source alignment, punctuation-only chunks are removed if and only if their
+`learningItems` array is empty; their teaching strings may be empty because they are not returned.
+An item attached to a removed chunk, or a response with no meaningful chunk after removal, is
+rejected. Retained offsets continue to address the original, untouched request text.
+
+The server rejects the former top-level `pattern`, a top-level `learningItems` array, and nested
+`chunkIndex`; learning-item association comes only from nesting. It validates the association and
+language-dependent shape without guessing, moving, or deduplicating items. These checks enforce
+alignment and structural bounds, not reading correctness or optimal semantic segmentation. The
+prompt asks for meaningful chunks and a small selection of reusable words and expressions.
 
 One server-selected provider call uses separate trusted instructions and JSON task content, a
 4,096-token output ceiling, and a 15-second default deadline (60 seconds for alternate adapters).
@@ -243,11 +258,13 @@ There is no application-level retry. Invalid input returns `400`; provider failu
 JSON, or invalid analysis returns `502`. Usage follows the shared accounting contract.
 
 The web details pane keeps the source visible while loading or on failure, and offers explicit Retry.
-Validated success is cached in tab-scoped sessionStorage, keyed by schema version plus exact language,
-text, translation, and context. Changes to those inputs miss the cache; no card schema or IndexedDB
-migration is involved. Dismissal aborts the client fetch and guards against late completion; it does
-not guarantee that an already-started provider call stops at the server. Deploy the API route and
-gateway configuration with the web client.
+Validated success, including nested learning items, is cached in tab-scoped sessionStorage, keyed by
+schema version plus exact language, text, translation, and context. Changes to those inputs miss the
+cache; no card schema or IndexedDB migration is involved. The current details UI still renders only
+chunk teaching. Saving or starring learning items as cards is design work, not part of this API
+promotion and remains unimplemented. Dismissal aborts the client fetch and guards against late
+completion; it does not guarantee that an already-started provider call stops at the server. Deploy
+the API route and gateway configuration with the web client.
 
 ## `/phrasebook`
 

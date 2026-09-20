@@ -7,16 +7,19 @@ Produce two distinct teaching layers: chunks explain the utterance as encountere
 Return JSON only:
 {
   "chunks": [
-    {
-      "text": "exact source substring",
-      "gloss": "meaning here",
-      "role": "short learner-friendly local function",
-      "explanation": "why it works this way here",
-      "learningItems": [
-        {"surface": "exact substring of this chunk", "text": "word or expression to learn", "meaning": "concise English meaning of this item text in the relevant sense"}
-      ]
-    }
-  ]
+    {"text": "exact source substring", "gloss": "meaning here", "role": "short learner-friendly local function", "explanation": "why it works this way here"}
+  ],
+  "learningItems": [
+    {"chunkIndex": 0, "surface": "exact substring of that chunk", "text": "word or expression to learn", "reading": "item text pronunciation; ja/zh only", "meaning": "concise English meaning of this item text in the relevant sense"}
+  ],
+  "pattern": {
+    "formula": "reusable construction with slots when useful",
+    "explanation": "how and when it is used",
+    "noteTitle": "optional title",
+    "note": "optional usage or grammar note",
+    "example": "optional target-language example",
+    "exampleTranslation": "English translation of example"
+  }
 }
 
 1. Segment and explain the utterance.
@@ -29,7 +32,11 @@ Return JSON only:
 - Offer a small selection of useful words and ready-to-use expressions from each chunk. An expression can be ordinary and compositional, not just an idiom. Keep its words together when that is the useful thing to learn; do not reduce every expression to its smallest word or dictionary root.
 - For individual words, use dictionary forms and remove productive grammatical attachments. For expressions, retain the familiar usable form and translate that expression as a whole. This is a choice of learning target, not a requirement to normalize every verb phrase to an infinitive.
 - An expression and a constituent word may both be useful when they teach distinct things, but do not enumerate every component or repeat equivalent learning targets. Chunk boundaries need not match learning-item boundaries.
-- Put learningItems inside the chunk they come from; do not return a top-level learningItems array or chunkIndex. Each surface is an exact contiguous substring of its containing chunk, without surrounding punctuation or whitespace. item text is the dictionary-form word or reusable expression; meaning describes that chosen item's relevant sense. Every chunk has a learningItems array with zero, one, or several items. Deduplicate the same item text and sense, linking it to its first source occurrence. Return [] when none are useful.
-- For ja, add a non-empty reading field to each learning item containing the item text's kana reading; for zh, add tone-marked pinyin. For es and cs, omit the reading key entirely, never an empty string or null. Do not insert pronunciation into source-aligned fields.
+- chunkIndex is zero-based. surface is an exact contiguous substring of that chunk without surrounding punctuation or whitespace. item text is the dictionary-form word or reusable expression; meaning describes that chosen item's relevant sense. A chunk may have zero, one, or several vocabulary items. Deduplicate the same item text and sense, linking it to its first source occurrence. Return [] when none are useful.
+- For ja, reading is the item text's kana reading; for zh, tone-marked pinyin. Omit reading for es and cs. Do not insert pronunciation into source-aligned fields.
+
+3. Add a pattern only when genuinely useful.
+- pattern is optional. Omit it for short fixed replies or when a reusable construction would be forced. The explanation must match the formula's scope: do not turn one example's sentiment into a universal property of a conjunction.
+- noteTitle and note must appear together or both be omitted. example and exampleTranslation must appear together or both be omitted.
 
 Keep all strings concise, plain text, without Markdown or HTML. Return only the fields specified above. Before returning, check that no chunk is punctuation-only and that learning-item selection preserved useful lexical expressions before normalizing individual words.

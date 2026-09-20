@@ -66,11 +66,18 @@ exact bounds and deadlines.
 
 Required language supports `zh`, `ja`, `es`, and `cs`. Exact text and English translation are each
 non-blank and at most 2,000 UTF-16 code units; optional context is at most 500. Returns
-`{ chunks: [{ start, end, text, gloss, role, explanation }], pattern?, usage }`, with ordered,
-non-overlapping exact source spans and optional reusable-pattern teaching. See API_DESIGN for bounds.
+`{ chunks: [{ start, end, text, gloss, role, explanation, learningItems }], usage }` with 1–32
+ordered, non-overlapping exact source chunks. Every chunk has 0–32 nested
+`{ surface, text, meaning, reading? }` items. Item surface/text/reading are at most 2,000 code units
+and meaning is at most 500; surface must occur exactly within its chunk. Japanese and Chinese require
+non-blank readings, while Spanish and Czech forbid the reading key. Source-aligned punctuation-only
+chunks with no items are removed without shifting retained offsets; items on such chunks and
+all-punctuation analyses are rejected. The legacy `pattern`, top-level learning items, and
+`chunkIndex` are rejected. See API_DESIGN for all field bounds and normalization details.
 One provider call, no automatic retry, 4,096-token ceiling, 15-second default timeout or the configured
-alternate adapter's timeout. The client handles Retry and tab-scoped caching; analysis is not stored
-in cards. API, gateway route, and web changes must deploy together.
+alternate adapter's timeout. The client handles Retry and tab-scoped caching. Nested items are not
+yet displayed, saved, or starred as cards; no card-persistence design is implemented by this API
+promotion. API, gateway route, and web changes must deploy together.
 
 ## Shared HTTP behavior
 
@@ -214,6 +221,9 @@ Deterministic API tests run from `api/src`:
 ```bash
 npm test
 ```
+
+Phrase-breakdown prompt evaluation methodology, fixtures, scoring, and commands are documented in
+[`evals/PHRASE_BREAKDOWN.md`](evals/PHRASE_BREAKDOWN.md).
 
 The adversarial eval makes paid provider calls and reads server credentials from `api/.env` without
 including them in prompts:

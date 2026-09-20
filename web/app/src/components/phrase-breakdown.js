@@ -78,26 +78,11 @@ export function renderExplanations(slice, chunks) {
   </section>`).join("");
 }
 
-function renderPattern(slice) {
-  const pattern = slice.breakdown.pattern;
-  if (!pattern) return "";
-  const note = pattern.noteTitle && pattern.note;
-  const example = pattern.example;
-  return `<section class="details-pattern">
-    <div class="details-kicker">Put it together</div>
-    <h3 lang="${escapeHTML(slice.card.lang)}">${escapeHTML(pattern.formula)}</h3>
-    <p>${escapeHTML(pattern.explanation)}</p>
-    ${note ? `<details data-disclosure="note"><summary data-action="details/toggle-disclosure" data-kind="note">${escapeHTML(pattern.noteTitle)}</summary><p>${escapeHTML(pattern.note)}</p></details>` : ""}
-    ${example ? `<details data-disclosure="example"><summary data-action="details/toggle-disclosure" data-kind="example">Another example of this pattern</summary><div class="details-example"><p lang="${escapeHTML(slice.card.lang)}">${escapeHTML(pattern.example)}</p>${pattern.exampleTranslation ? `<p>${escapeHTML(pattern.exampleTranslation)}</p>` : ""}</div></details>` : ""}
-  </section>`;
-}
-
 export function renderReadyBody(slice) {
   const count = slice.breakdown.chunks.length;
   return `<div id="details-explanations" class="details-explanations" aria-live="polite"></div>
     <div class="details-tools">
       <span data-region="details-count"></span>
       ${count > 1 ? '<button type="button" data-action="details/toggle-all" aria-controls="details-explanations"></button>' : ""}
-    </div>
-    ${renderPattern(slice)}`;
+    </div>`;
 }

@@ -13,6 +13,11 @@ term-batch parser. It is distinct from client storage metadata and full-library 
 The web app normally assigns `id`, `createdAt`, and `importIndex` when importing cards, and sets
 `deckIds` from the destination phrasebook. It does not assign `importedAt`.
 
+This document is also the source of truth for the planned card lifecycle, identity, and provenance
+model. All sections before [Target design — not implemented](#target-design--not-implemented)
+describe the current contract. The target section separates agreed requirements, recommended
+design, and open decisions; it does not change the current API, validators, storage, or UI.
+
 ## Batch envelope
 
 ```json
@@ -100,10 +105,13 @@ It does not currently generate `definition`, `formality`, or `example`; those op
 part of the shared card shape for imported or existing cards.
 
 Web phrase breakdowns do not extend this persisted schema or `notes`. `/phrase-breakdown` accepts
-existing card content and returns separately validated semantic spans and teaching text. These
-temporary results are cached per browser tab, not imported or exported with cards. Reading tokens
-remain pronunciation units, not grammar segmentation; a token spanning a semantic boundary is shown
-as plain text rather than attaching its entire annotation to a partial fragment.
+existing card content and returns separately validated semantic spans and teaching text, with
+learning items nested under their source chunks. The web client retains those items in the
+tab-scoped response cache but currently displays only chunk teaching; it does not import, export,
+save, or star learning items. The card and persistence design later in this document remains
+unimplemented. Reading tokens remain pronunciation units, not grammar segmentation; a token spanning
+a semantic boundary is shown as plain text rather than attaching its entire annotation to a partial
+fragment.
 
 So a single card can carry translation + definition + notes:
 
@@ -242,3 +250,234 @@ and copies recognized optional content fields. It does not enforce language/type
 types, reading-token structure, or JSON metadata shape. Null card entries are not safely handled.
 Neither this parser nor direct database import should be treated as a strict schema-validation
 boundary.
+
+## Target design — not implemented
+
+**Status: design starting point for a separate implementation session.** None of the target types,
+relationships, or lifecycle changes below should be assumed to exist in the current application.
+Conceptual names are not finalized JSON fields or database tables. Resolve the open decisions before
+implementing the affected behavior; do not treat recommendations as a completed migration spec.
+
+This section owns card lifecycle, identity, and provenance. [DESIGN.md](./DESIGN.md) owns interaction
+and review presentation; [API_DESIGN.md](./API_DESIGN.md) owns endpoint contracts. Their current
+descriptions of temporary breakdowns remain accurate until implementation explicitly updates them.
+
+### Agreed requirements: lifecycle
+
+Four properties must remain distinct:
+
+- **Generated:** content has been returned by a model; this alone does not save it.
+- **Cached:** temporary content is retained to avoid regeneration; it is not library content.
+- **Saved:** a durable card exists in the local library and is included in library export.
+- **Starred:** a saved card is selected for review **within a particular phrasebook**.
+
+These are not four mutually exclusive states. A saved card may be unstarred, and cached analysis
+may describe either saved cards or unsaved candidates.
+
+| Event | Durable library effect | Review effect |
+|---|---|---|
+| Commit initial phrasebook | Save all cards in the committed phrasebook, including vocabulary | Saving does not itself mean starring |
+| Generate speculative, unselected conversations | Do not save them as part of the committed phrasebook | None |
+| Open or regenerate a breakdown | Cache analysis and candidates; do not automatically save derived cards | None |
+| Star a breakdown candidate | Resolve or create the card and ensure current phrasebook membership | Toggle that membership's star |
+| Unstar a saved card | Retain the card and phrasebook membership | Remove it from that phrasebook's review set |
+| Close breakdown or clear its cache | Leave saved cards and provenance unchanged | Leave stars unchanged |
+
+“Only starred breakdown cards are saved” means that starring triggers their initial persistence,
+not that a saved card must remain starred forever. Deletion is a separate action. Regeneration must
+not silently overwrite content the learner previously saved.
+
+### Agreed requirements: phrasebook-scoped starring
+
+One user star action performs the following as one atomic operation:
+
+1. Look up the card using its type-specific identity. Create it only if absent.
+2. Check membership in the current phrasebook. Add it only if absent.
+3. Toggle the starred state of that membership. A newly created membership starts unstarred, so its
+   first toggle stars it.
+
+Consequences:
+
+- The same card may be starred in phrasebook A and unstarred in phrasebook B.
+- All appearances of the same card within one phrasebook reflect the same star state.
+- Adding an existing card to another phrasebook must not copy its star from the first phrasebook.
+- Unstarring does not delete the card or detach it from the phrasebook.
+- Failure must not leave a partially created card or membership.
+- Cached candidates resolve against current library state; cached star flags are not authoritative.
+
+### Recommended design: card types and learning targets
+
+Use **Word**, **Chunk**, and **Phrase** as the core conceptual types. **Character** and **Grammar**
+are proposed extensions, not committed launch scope. Current `word | phrase | sentence` values
+remain unchanged until migration is designed.
+
+| Type | Learning target and important content | Review | Exploration/breakdown |
+|---|---|---|---|
+| Word | Dictionary-form lexical item in a particular sense, with pronunciation and relevant part of speech | Headword and meaning; source examples available as supporting context | Usage examples, inflection, and relevant character composition |
+| Chunk | A selected expression or construction as used in a particular source phrase, with contextual meaning and explanation | Source phrase with the selected span highlighted; never assume the fragment is independently meaningful | Constituent vocabulary and grammatical explanation; possible links to Grammar cards |
+| Phrase | Complete communicative utterance, not necessarily a full grammatical sentence, with translation and pronunciation | Utterance and translation | Semantic chunks |
+| Character — proposed | Written character in a language, with relevant readings, meanings, and example words | Character knowledge supported by examples | Components and word formation |
+| Grammar — proposed | Reusable construction independent of a single occurrence, with usage constraints and examples | Pattern, contrasting examples, or completion exercises; exact interaction undecided | Related constructions and source occurrences |
+
+A Word can be a noun, verb, adjective, adverb, or another lexical category; these are attributes,
+not separate card types. “Word” includes useful multiword lexical expressions such as `un poco`.
+Character exploration must not imply that every character transparently explains a compound's
+meaning or has one context-independent pronunciation.
+
+#### Breakdown spans are not automatically Chunk cards
+
+A breakdown chunk is an explanatory source span. A Chunk card is a durable learning item derived
+from such a span. Generating a breakdown does not create one card per span.
+
+Prefer a Word card when a span and its extracted vocabulary represent the same learning target:
+`caluroso — hot` should expose one star, not indistinguishable Word and Chunk stars. Word count alone
+does not establish equivalence:
+
+- `食べません` as a polite negative form and `食べる — to eat` as vocabulary are distinct learning
+  targets even though the source span contains one inflected verb.
+- `肉も` in a negative listing is distinct from the vocabulary item `肉 — meat`.
+- A lexical expression can remain a Word even when written with multiple words.
+
+Show generated vocabulary under its associated chunk, allowing zero, one, or several vocabulary
+items. Distinct chunk and vocabulary targets have independent stars; starring one does not star the
+other. Equivalent targets share one control and resolve to one saved card.
+
+Whether every meaningful span exposes a chunk star is still open. The recommended review rule is
+that every saved Chunk card retains and displays its source context, rather than asking the model
+to decide which fragments are useful in isolation. Punctuation-only output is not a learning target.
+
+### Agreed requirements: context and source preservation
+
+Phrasebook generation context belongs to the phrasebook and is inherited through the active
+phrasebook occurrence, not copied onto every shared card. A shared card must not inherit an
+arbitrary other phrasebook's situation.
+
+Saved derived items must remain meaningful after source-card edits or deletion. A live source-card
+reference alone is insufficient. In particular, a saved Chunk needs its original phrase and selected
+occurrence, not merely the chunk text.
+
+#### Recommended ownership model
+
+| Concept | Owns |
+|---|---|
+| Card | Reusable learning content and type-specific identity |
+| Phrasebook | Generation situation, audience, ability, and answers |
+| Conversation/group | Topic, conversational purpose, and ordering within its phrasebook |
+| Card–phrasebook membership | Inclusion in that phrasebook and phrasebook-specific star state |
+| Card occurrence | Placement in a conversation/group, speaker, position, and occurrence-specific interpretation where needed |
+| Source provenance | Relationship from a derived learning item to the phrase occurrence that produced it, plus a durable snapshot |
+
+Membership and occurrence are different: a card may appear several times in a phrasebook while
+having one membership and one star state there. The existing free-form card `context` field is a
+group label, not this target relationship model.
+
+Use structured provenance rather than adding relationship semantics to teaching notes. The current
+`notes` field is a string, sometimes containing JSON; it is not an array. Exact new fields and
+storage layout remain open.
+
+#### Recommended source provenance
+
+Use **references plus snapshots**:
+
+- References identify the source card and occurrence when available, supporting navigation.
+- A snapshot preserves the exact source phrase text, language, translation, and information needed
+  to review the selected fragment, independently of those references.
+- A selected span identifies the precise occurrence, including when text repeats within the phrase.
+  Use inclusive/exclusive UTF-16 offsets into the exact snapshot, consistent with the breakdown API;
+  never apply those offsets to a subsequently edited phrase.
+- Save the selected learning content, including the chunk's contextual meaning and explanation,
+  rather than depending on future regeneration to reproduce it.
+- Word provenance retains the encountered form and source phrase even when the card uses a different
+  dictionary form. One Word card may have multiple source occurrences.
+- Preserve pronunciation information needed by the saved presentation; do not assume that readings
+  for an inflected source form can simply be reused for its dictionary-form headword.
+
+Deleting a parent may make navigation unavailable, but must not cascade-delete or invalidate a
+saved derivative. Editing the parent must not rewrite historical snapshots or silently reinterpret
+saved spans. Phrasebook context is inherited; the source snapshot is historical evidence, not a
+second mutable copy of the phrasebook's generation settings.
+
+### Recommended design: type-specific identity
+
+| Type | Identity basis | Must not determine identity |
+|---|---|---|
+| Word | Language + normalized headword + lexical sense | Exact wording of a generated translation or definition |
+| Chunk | Language + source snapshot/occurrence + selected span | Revised explanation wording |
+| Phrase | Language + conservatively normalized utterance text | Routine translation wording drift |
+| Character — proposed | Language + character, subject to a variant policy | Example wording |
+| Grammar — proposed | Stable construction identity | Generated title or explanatory prose alone |
+
+For Words, “term + definition” expresses the intended sense distinction, not a requirement to
+compare definition strings literally. `eat` and `to eat` must not automatically become different
+senses; genuinely different senses of the same headword may require different cards. The
+sense-matching and normalization algorithms are unresolved.
+
+For Phrases, reuse must not discard occurrence-specific translations or interpretations, and a new
+generation must not silently overwrite saved content. Identical utterance text may have different
+pragmatic meanings in different conversations.
+
+For Chunks, identical fragment text in different source contexts is not automatically equivalent.
+How source snapshots/occurrences are canonicalized across repeated analysis is an open decision;
+regenerating the same source occurrence must not duplicate its saved learning item merely because
+the teaching prose changed.
+
+### Worked design examples
+
+These are conceptual records, not a new import or API JSON contract.
+
+**Source Phrase:** `肉も魚も食べません。` — “I don't eat meat or fish.”
+
+| Saved learning item | Primary content | Retained provenance | Review |
+|---|---|---|---|
+| Word: 肉 | `肉`, reading `にく`, meaning “meat” | Encountered as `肉` in the source phrase | Dictionary-form word; source phrase available |
+| Word: 食べる | `食べる`, reading `たべる`, meaning “to eat” | Encountered as `食べません` in the source phrase | Dictionary-form verb, not the negative encountered form |
+| Chunk: 肉も | `肉も`, contextual meaning “neither meat”, explanation of its role in the negative listing | Full source snapshot and span `[0, 2)` | Full phrase with `肉も` highlighted, not an isolated equivalence |
+| Chunk: 食べません。 | Polite negative expression and contextual meaning “do not eat” | Full source snapshot and span `[4, 10)` | Form in its source sentence; separate from Word 食べる |
+
+The two Chunk rows demonstrate distinct possible learning targets, not a requirement to generate or
+save both. Opening the breakdown saves none of these derived items. Starring a target resolves its
+identity, ensures current phrasebook membership, and toggles its phrasebook-specific star.
+
+### Acceptance scenarios for implementation
+
+These scenarios express the target behavior, not claims about current tests:
+
+1. Committing a phrasebook saves all cards in its selected conversations and committed vocabulary,
+   including unstarred cards; discarded speculative conversations are not saved.
+2. Opening and closing a breakdown without starring anything creates no derived library cards.
+3. Starring a new Word creates it, adds it to the current phrasebook, and stars that membership.
+4. Starring an equivalent Word already in another phrasebook reuses the card, adds the current
+   membership, and leaves the other phrasebook's star unchanged.
+5. Toggling a starred card again retains the card and membership but removes it from current review.
+6. Starring a Chunk does not also star its vocabulary, or vice versa. An equivalent Word/chunk
+   target exposes one control rather than creating two indistinguishable cards.
+7. Clearing the breakdown cache or regenerating analysis leaves saved cards, provenance, and stars
+   intact; regenerated explanation wording alone creates no duplicate.
+8. Reviewing saved `肉も` shows the original phrase with the selected span highlighted. Reviewing
+   Word `食べる` uses its dictionary form, with `食べません` available as source context.
+9. Editing or deleting the parent Phrase does not invalidate either saved learning item.
+10. Opening a shared card from phrasebook A uses A's active occurrence context, not B's; repeated
+    appearances within A agree on its star state.
+11. A failed star operation leaves no partially created card or membership. Export/restore preserves
+    saved learning content, memberships, stars, and the source information needed for review.
+
+### Open decisions and handoff boundary
+
+Before implementing affected behavior, resolve:
+
+- Exact structured fields, relationship storage, required data by card type, and schema versioning.
+- Whether all meaningful chunks expose stars, and the concrete contextual Chunk review interaction.
+- Word-sense matching, text normalization, ambiguous-match handling, and source-occurrence identity.
+- How equivalent chunk/vocabulary targets are recognized and collapsed without losing distinct
+  inflection-learning targets.
+- Whether Character and Grammar cards belong in launch scope; their identity, review behavior, and
+  links from Words/Chunks if adopted.
+- How to choose among multiple source examples and preserve genuinely different phrase interpretations.
+- Migration of current `sentence` cards, card-level group labels, JSON-encoded `notes`, memberships,
+  and existing review/star metadata. Historical context must not be fabricated.
+- API/import/export changes and validation of provenance, including missing or deleted references.
+- Phrasebook/group deletion and library orphan handling; this must respect the non-invalidation rule.
+
+Do not implement the target by silently accepting new card types or storing relationships in
+unvalidated `notes`. Update the current contract, callers, persistence, import/export, review,
+API documentation, and UX documentation together when the implementation is ready.

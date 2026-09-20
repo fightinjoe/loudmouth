@@ -140,16 +140,17 @@ also show romaji. Selecting a semantic chunk shows its contextual English meanin
 fragment with available readings, role, and explanation. Selected text, underline, and explanation
 share blue emphasis. **SHOW ALL** highlights every chunk and displays explanations in source order;
 **SHOW SELECTED** restores the last individual selection. Selecting a chunk exits all-mode.
-The count and toggle follow the explanations; a single-part phrase has no toggle. Optional patterns
-include a reusable formula, explanation, and note/example disclosures. Reopening resets selection,
-disclosures, and detail scroll.
+The count and toggle follow the explanations; a single-part phrase has no toggle. Reopening resets
+selection and detail scroll. Each API chunk also contains validated nested learning items. The client
+retains them in the tab cache but does not yet display, save, or star them.
 
 Opening calls `/phrase-breakdown` with the saved language, exact text, translation, and optional
 conversation context. The source remains visible during loading and errors; **Retry** makes a new
-request after failure. Valid results are cached in tab-scoped sessionStorage under the exact request
-content and a schema version. Editing source, translation, language, or context therefore cannot reuse
-stale analysis. Closing aborts the client request and late results are ignored. Analysis is not saved
-into card records, exported, starred separately, or generated during phrasebook creation.
+request after failure. Valid chunk teaching and nested learning items are cached in tab-scoped
+sessionStorage under the exact request content and a schema version. Editing source, translation,
+language, or context therefore cannot reuse stale analysis. Closing aborts the client request and
+late results are ignored. Analysis is not saved into card records, exported, starred separately, or
+generated during phrasebook creation; the later learning-item card design remains unimplemented.
 
 The conversation is inert while details is open. Focus enters Close; Tab stays within the modal.
 Close, Escape, or the scrim dismiss and restore focus to the original card without scrolling.
