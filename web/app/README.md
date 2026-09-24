@@ -69,9 +69,9 @@ Code discovers the symlinked `.claude/skills` entries, and OMP discovers the
 
 In Codex, use `$add_worktree` and `$merge_worktree` or the `/skills` picker.
 Restart/reload the host if newly installed skills or commands are not visible.
-Python 3 and npm are required for worktree creation. Commit the setup changes
-to main before using the skills: creation deliberately requires clean main and
-branches from its committed state.
+Python 3, npm, tmux, OMP, and an existing `loudmouth` tmux session are required
+for worktree creation. Commit the setup changes to main before using the skills:
+creation deliberately requires clean main and branches from its committed state.
 
 `/add_worktree` creates sibling `loudmouth-527-card-layout` on
 `feat/527-card-layout`, installs each package's dependencies independently, and
@@ -79,21 +79,25 @@ configures web port **5270**, API port **5271**, and Playwright port **5272**.
 The identifier is selected automatically unless supplied; valid identifiers are
 103–999, excluding 172, 506, and 600 (browser-restricted ports). It checks existing
 worktrees, directories, branches, and occupied ports.
-It does not start servers or push.
+It does not push. After installation it opens a detached tmux window named for the
+worktree, with OMP at the worktree root on the left, the web server upper-right,
+and the API server lower-right. Both dev servers are started in their panes;
+check their output for readiness or startup errors.
 
 The generated, ignored `web/app/.env.local` contains:
 
 ```dotenv
 VITE_DEV_PORT=5270
-VITE_API_URL=http://localhost:5271
+VITE_API_URL=http://tiny:5271
 PLAYWRIGHT_PORT=5272
 ```
 
 The generated `api/.env.local` contains `PORT=5271`. Only the main checkout's
 ignored `api/.env` credential file is copied, privately, when present; arbitrary
 local files and frontend environment overrides are not copied. Missing API
-credentials are reported rather than invented. Start `npm run dev` separately
-in the new worktree's `api/src` and `web/app` directories.
+credentials are reported rather than invented. `tiny` is the API host's Tailscale
+MagicDNS name: remote browsers must be on the tailnet to reach the API. Open the
+web app at `http://tiny:5270` remotely (or `http://localhost:5270` locally).
 
 Run `npm run test:e2e` from that worktree's `web/app`. Playwright uses its own
 preview port (default **4173** outside configured worktrees), and never reuses

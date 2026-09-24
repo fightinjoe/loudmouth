@@ -358,6 +358,55 @@ def npm_ci(directory: Path) -> None:
         raise SetupError(f"npm ci failed in {directory} (exit status {result.returncode})")
 
 
+def tmux(*args: str) -> str:
+    try:
+        result = subprocess.run(
+            ["tmux", *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False
+        )
+    except FileNotFoundError as exc:
+        raise SetupError("tmux is not installed or is not on PATH") from exc
+    if result.returncode:
+        detail = result.stderr.decode(errors="replace").strip()
+        raise SetupError(f"tmux {args[0]} failed: {detail or result.returncode}")
+    return result.stdout.decode(errors="replace").strip()
+
+
+def require_tmux_session() -> None:
+    if shutil.which("omp") is None:
+        raise SetupError("omp is not installed or is not on PATH")
+    try:
+        tmux("has-session", "-t", "=loudmouth")
+    except SetupError as exc:
+        raise SetupError("tmux session 'loudmouth' must exist before creating a worktree") from exc
+
+
+def open_tmux_window(result: dict[str, object]) -> str:
+    target = result["target"]
+    number = result["id"]
+    assert isinstance(target, Path)
+    assert isinstance(number, int)
+    window, left = tmux(
+        "new-window", "-d", "-P", "-F", "#{window_id} #{pane_id}",
+        "-t", "loudmouth:", "-n", target.name, "-c", os.fspath(target),
+    ).split()
+    try:
+        web = tmux(
+            "split-window", "-d", "-h", "-p", "35", "-P", "-F", "#{pane_id}",
+            "-t", left, "-c", os.fspath(target / "web" / "app"),
+        )
+        api = tmux(
+            "split-window", "-d", "-v", "-p", "50", "-P", "-F", "#{pane_id}",
+            "-t", web, "-c", os.fspath(target / "api" / "src"),
+        )
+        for pane, command in ((web, "npm run dev"), (api, "npm run dev"), (left, "omp")):
+            tmux("send-keys", "-t", pane, "-l", command)
+            tmux("send-keys", "-t", pane, "Enter")
+    except (SetupError, ValueError):
+        tmux("kill-window", "-t", window)
+        raise
+    return window
+
+
 def setup(short_name: str, requested_id: int | None) -> dict[str, object]:
     script_checkout = Path(__file__).resolve().parents[4]
     initial_records = worktree_records(script_checkout)
@@ -427,7 +476,7 @@ def setup(short_name: str, requested_id: int | None) -> dict[str, object]:
 
                 web_env = (
                     f"VITE_DEV_PORT={number}0\n"
-                    f"VITE_API_URL=http://100.113.73.51:{number}1\n"
+                    f"VITE_API_URL=http://tiny:{number}1\n"
                     f"PLAYWRIGHT_PORT={number}2\n"
                 ).encode()
                 api_env = f"PORT={number}1\n".encode()
@@ -485,15 +534,18 @@ def print_result(result: dict[str, object]) -> None:
     print(f"  Web: {number}0")
     print(f"  API: {number}1")
     print(f"  Playwright: {number}2")
+    print(f"Remote web URL: http://tiny:{number}0")
+    print(f"API URL: http://tiny:{number}1")
     print(f"Environment: {target / 'web' / 'app' / '.env.local'}")
     print(f"Environment: {target / 'api' / '.env.local'}")
     if result["credentials_present"]:
         print(f"API credentials copied privately to {target / 'api' / '.env'}")
     else:
-        print(f"API credentials absent: main had no api/.env; create {target / 'api' / '.env'} before starting the API")
-    print("Start commands (servers were not started):")
-    print(f"  (cd {shlex.quote(os.fspath(target / 'web' / 'app'))} && npm run dev)")
-    print(f"  (cd {shlex.quote(os.fspath(target / 'api' / 'src'))} && npm run dev)")
+        print(f"API credentials absent: main had no api/.env; API startup may require {target / 'api' / '.env'} or process credentials")
+    print("tmux panes (commands sent; check server readiness in the window):")
+    print(f"  OMP: {target} (omp)")
+    print(f"  Web: {target / 'web' / 'app'} (npm run dev)")
+    print(f"  API: {target / 'api' / 'src'} (npm run dev)")
 
 
 def parse_args() -> argparse.Namespace:
@@ -514,15 +566,21 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     arguments = parse_args()
+    result: dict[str, object] | None = None
     try:
+        require_tmux_session()
         result = setup(arguments.short_name, arguments.requested_id)
+        window = open_tmux_window(result)
     except KeyboardInterrupt:
         print("error: interrupted; no automatic rollback was attempted", file=sys.stderr)
         return 130
-    except (SetupError, OSError) as exc:
+    except (SetupError, OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
+        if result is not None:
+            print(f"Worktree retained for recovery: {result['target']}", file=sys.stderr)
         return 1
     print_result(result)
+    print(f"tmux window: loudmouth:{window} ({result['target'].name})")
     return 0
 
 

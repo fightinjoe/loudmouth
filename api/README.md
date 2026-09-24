@@ -205,8 +205,11 @@ For parallel worktrees, `/add_worktree` copies only the main checkout's ignored
 explicit process environment variable takes precedence. Credentials are never
 printed or committed. Keep Google application-default credentials in their
 normal machine-level location rather than copying them into worktrees.
-The web app uses `XYZ0` and its Playwright preview uses `XYZ2`; see
-[`web/app/README.md`](../web/app/README.md#parallel-worktrees) for both worktree skills.
+The web app uses `XYZ0` and its Playwright preview uses `XYZ2`; worktree
+configuration points the browser at `http://tiny:XYZ1` so remote tailnet clients
+can reach the API. The skill starts both dev servers in a new three-pane tmux
+window in session `loudmouth`; see
+[`web/app/README.md`](../web/app/README.md#parallel-worktrees) for details.
 
 For alternate providers, configure `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` and restart with
 `LLM_BACKEND=claude` or `LLM_BACKEND=chatgpt`.
