@@ -33,8 +33,25 @@ Endpoint code and accepted prompt artifacts live together:
 - `api/src/phrase-breakdown/prompt.js` and `prompt.txt` — trusted contextual-teaching prompt
 
 Provider adapters remain in `api/src/llms/`. Shared backend configuration, card validation, and
-pricing remain in `api/src/llm-config.js`, `api/src/card-validate.js`, and `api/src/pricing.js`.
+pricing remain in `api/src/llm-config.js`, `api/src/schema/index.ts`, and `api/src/pricing.js`.
 Endpoint tests remain in `api/src/test/`.
+
+## Prompt and code responsibilities
+
+Prompts provide the model with the smallest semantic task that produces useful content. They should
+remain concise, fast, and predictable: describe the desired meaning and compact output shape without
+asking the model to perform deterministic formatting, repair, or bookkeeping that application code
+can do exactly. Prompt text is a behavior-sensitive artifact; changes require approval and
+before-and-after regression evaluation.
+
+Endpoint code owns the discrete work around that semantic result. It validates request boundaries,
+parses model output, normalizes equivalent string representations, fills deterministic fields,
+resolves optional relationships, records recoverable quality problems, and produces the stable wire
+contract. Validation should shape usable model output whenever the intended value is unambiguous.
+It should reject output only when required structure or content is absent, unsafe, or too ambiguous
+to normalize without guessing. Optional enrichment failures should remain observable without
+discarding otherwise valid content.
+
 
 ## Shared conventions
 
@@ -52,8 +69,8 @@ Endpoint tests remain in `api/src/test/`.
 - Every model call separates trusted instructions from `JSON.stringify`-serialized task data.
   Gemini uses `systemInstruction`, Anthropic uses `system`, and OpenAI uses a `developer` message;
   request data is user content. This reduces instruction ambiguity, not the possibility of extraction.
-- Cards follow [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md). The service supplies `context`; the client
-  assigns storage IDs and import timestamps.
+- Cards follow [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md), validated by the shared v2 package.
+  Server draft UUIDs are remapped to local library IDs on commit; content contains no storage metadata.
 - `usage` reports provider token metadata, estimated USD cost, and elapsed model execution time rounded
   to milliseconds. `costUsd` is `null` when no rate is configured.
 - Japanese reading tokens are normalized by the service: kana and katakana are not ruby-annotated,
@@ -81,6 +98,46 @@ The endpoint's canonical prompt is `api/src/context/prompt.txt`; trusted task co
 
 Latency is the primary operational metric. The endpoint targets under 10 seconds end to end; this is
 a target, not a guarantee across providers and request conditions.
+
+### High-level flow
+
+```mermaid
+flowchart LR
+    subgraph INPUT["INPUT"]
+        A["POST /context<br/><br/>Situation or activity<br/>Target language<br/>Optional learner ability"]
+    end
+
+    subgraph CODE["DETERMINISTIC API CODE"]
+        B["Validate the request<br/><br/><b>Goal:</b> Check the situation and language;<br/>sanitize the optional ability"]
+        D["Shape the model response<br/><br/><b>Goal:</b> Trim text, check question and<br/>checklist structure, and clamp overflow"]
+        E["Build the API response<br/><br/><b>Goal:</b> Return the shaped content<br/>with model usage"]
+    end
+
+    subgraph PROMPT["PROBABILISTIC MODEL CALL"]
+        C["Context prompt<br/><code>context/prompt.txt</code><br/><br/><b>Goal:</b> Ask only the clarifying questions<br/>that change what should be prepared, and<br/>suggest an ordered checklist of conversations"]
+    end
+
+    subgraph OUTPUT["OUTPUT"]
+        F["200 Context response<br/><br/>Clarifying questions<br/>Conversation checklist<br/>Usage"]
+        G["400 Invalid request"]
+        H["502 Model call failed or<br/>required output is unusable"]
+    end
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+
+    B -. invalid input .-> G
+    C -. provider failure .-> H
+    D -. unusable required structure .-> H
+```
+
+The context prompt decides which unknown facts matter and which conversations are worth preparing.
+Code owns request limits, ability sanitization, response structure, overflow limits, and usage. This
+endpoint makes one model call and does not retry invalid model output.
+
 
 ### Request
 
@@ -181,6 +238,46 @@ navigate automatically. Dismissal aborts outstanding requests and discards uncom
 
 Independently distills a seed into an English UI title. It does not feed context or card generation.
 
+### High-level flow
+
+```mermaid
+flowchart LR
+    subgraph INPUT["INPUT"]
+        A["POST /phrasebook-title<br/><br/>Situation or activity"]
+    end
+
+    subgraph CODE["DETERMINISTIC API CODE"]
+        B["Validate the request<br/><br/><b>Goal:</b> Require a bounded,<br/>non-empty seed"]
+        D["Shape the title<br/><br/><b>Goal:</b> Trim the result and require<br/>one non-empty line within 80 characters"]
+        E["Build the API response<br/><br/><b>Goal:</b> Return the title<br/>with model usage"]
+    end
+
+    subgraph PROMPT["PROBABILISTIC MODEL CALL"]
+        C["Title prompt<br/><code>phrasebook-title/prompt.txt</code><br/><br/><b>Goal:</b> Distill the situation into a short,<br/>recognizable English phrasebook title"]
+    end
+
+    subgraph OUTPUT["OUTPUT"]
+        F["200 Title response<br/><br/>Phrasebook title<br/>Usage"]
+        G["400 Invalid request"]
+        H["502 Model call failed or<br/>the title is unusable"]
+    end
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+
+    B -. invalid input .-> G
+    C -. provider failure .-> H
+    D -. unusable title .-> H
+```
+
+The title prompt chooses a concise, descriptive name. Code owns request limits, the single-line title
+contract, usage, and errors. This endpoint runs independently from `/context`; the client does not
+wait for it before continuing phrasebook creation.
+
+
 - Request: `{ "seed": "Making small talk with other people at a dog park" }`.
 - Response: `{ "title": "Dog Park Chitchat 🐕", "usage": { ... } }`, using shared usage accounting.
 - `seed` is required, non-empty after trimming, and at most 200 characters before trimming,
@@ -203,68 +300,140 @@ naming request, and dismissal aborts it. A failed local save also retains the fr
 
 ## `/phrase-breakdown`
 
-Analyzes one existing phrase independently of phrasebook creation. Request:
+Analyzes the active occurrence of one Phrase independently of creation:
+
+### High-level flow
+
+```mermaid
+flowchart LR
+    subgraph INPUT["INPUT"]
+        A["POST /phrase-breakdown<br/><br/>Exact phrase snapshot<br/>Optional source references<br/>Optional phrasebook context"]
+    end
+
+    subgraph CODE["DETERMINISTIC API CODE"]
+        B["Validate the request<br/><br/><b>Goal:</b> Check the exact source snapshot,<br/>optional references, and bounded context"]
+        C["Build safe prompt input<br/><br/><b>Goal:</b> Send the phrase and teaching<br/>context without storage IDs"]
+        E["Align the analysis to the phrase<br/><br/><b>Goal:</b> Match chunks and words to exact<br/>source spans; remove punctuation-only chunks"]
+        F["Build learning targets<br/><br/><b>Goal:</b> Derive offsets, evidence, Word and<br/>Chunk cards, and one target per chunk"]
+        G["Build the API response<br/><br/><b>Goal:</b> Validate the completed analysis<br/>and attach model usage"]
+    end
+
+    subgraph PROMPT["PROBABILISTIC MODEL CALL"]
+        D["Breakdown prompt<br/><code>phrase-breakdown/prompt.txt</code><br/><br/><b>Goal:</b> Explain the phrase as meaningful<br/>chunks, identify dictionary words, and mark<br/>when a chunk is already a Word"]
+    end
+
+    subgraph OUTPUT["OUTPUT"]
+        H["200 Breakdown response<br/><br/>Source-aligned chunks<br/>Word and Chunk targets<br/>Teaching explanations<br/>Usage"]
+        I["400 Invalid request"]
+        J["502 Model call failed or the analysis<br/>cannot be aligned safely"]
+    end
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+
+    B -. invalid input .-> I
+    D -. provider failure .-> J
+    E -. unusable or unaligned analysis .-> J
+    G -. invalid final response .-> J
+```
+
+The breakdown prompt decides how to explain the phrase and which lexical targets are useful. Code
+owns the trust boundary: it withholds storage IDs, aligns model text to the exact source, derives
+evidence and offsets, constructs cards, and validates the final response. This endpoint makes one
+model call and does not retry invalid analysis.
+
 
 ```json
 {
-  "language": "zh",
-  "text": "可以给我一杯水吗？",
-  "translation": "Could I have a glass of water?",
-  "context": "At the café"
+  "schemaVersion": 2,
+  "source": {
+    "snapshot": {
+      "lang": "ja",
+      "text": "肉も魚も食べません。",
+      "translation": "I don't eat meat or fish.",
+      "reading": [["肉", "にく"], ["も", null], ["魚", "さかな"], ["も", null], ["食", "た"], ["べません。", null]]
+    },
+    "ref": { "cardId": "saved-card-id", "occurrenceId": "active-occurrence-id" }
+  },
+  "context": {
+    "generation": { "seed": "vegan dinner", "ability": "basics", "answers": {} },
+    "groupTitle": "Dietary restrictions",
+    "speaker": "you"
+  }
 }
 ```
 
-`language` is required (`zh`, `ja`, `es`, `cs`). `text` and `translation` must be non-blank strings
-of at most 2,000 JavaScript UTF-16 code units each. They are preserved without trimming or
-normalization. Optional `context` is a string of at most 500 code units. Client `llm` is rejected.
+The exact source snapshot is required; refs and context are optional. Text/translation are nonblank
+and at most 2,000 UTF-16 units. Optional generation uses a ≤200 seed, one of
+`none|basics|conversational`, and at most five answers (≤200 label, ≤500 value); group title is ≤500.
+All present fields are validated, including readings. Unknown keys and old requests are rejected.
+The prompt serializes only snapshot and active context, never IDs or another book's situation.
 
-The response is `{ chunks, usage }`:
+The response is `{schemaVersion:2,chunks,usage}` with 1–32 ordered meaningful chunks:
 
-- `chunks`: 1–32 ordered
-  `{ start, end, text, gloss, role, explanation, learningItems }` entries.
-- `start`/`end`: inclusive/exclusive UTF-16 offsets into the exact request text.
-- `text`: the exact source substring, not a dictionary form or reading; at most 2,000 code units.
-- `gloss`: required non-blank contextual English meaning, trimmed on output (at most 500 code units).
-- `role`: required non-blank learner-facing grammatical/pragmatic role, trimmed on output (at most 200).
-- `explanation`: required non-blank teaching text, trimmed on output (at most 1,000).
-- `learningItems`: a required array of 0–32
-  `{ surface, text, meaning, reading? }` entries belonging to that chunk.
-- Learning-item `surface` is preserved exactly, is at most 2,000 code units, must be a contiguous
-  substring of its containing chunk, must have no surrounding whitespace, and cannot be
-  punctuation-only. Item `text` is a required non-blank dictionary form or reusable expression of at
-  most 2,000 code units; `meaning` is a required non-blank contextual English meaning of at most 500.
-  Both are trimmed on output.
-- Every Japanese and Chinese learning item requires a non-blank `reading` of at most 2,000 code
-  units (kana for Japanese, tone-marked pinyin for Chinese), trimmed on output. Spanish and Czech
-  items must omit the `reading` key.
+```ts
+{
+  start: number; end: number; text: string;
+  gloss: string; role: string; explanation: string;
+  words: Candidate[]; // Word only, 0..32
+  target: {kind:'word'; index:number} | {kind:'chunk'; card:Chunk};
+}
+```
 
-The model emits ordered exact chunk text rather than calculating offsets. The server first locates
-every raw chunk after the preceding one, rejects overlap or reordered/non-source text, and derives
-offsets. Only Unicode punctuation and whitespace may remain uncovered. Boundaries cannot split
-surrogate pairs. After source alignment, punctuation-only chunks are removed if and only if their
-`learningItems` array is empty; their teaching strings may be empty because they are not returned.
-An item attached to a removed chunk, or a response with no meaningful chunk after removal, is
-rejected. Retained offsets continue to address the original, untouched request text.
+Bounds are exact UTF-16 `[start,end)` offsets. Gloss is ≤500, role ≤200, explanation ≤1,000;
+strings are nonblank teaching prose. Every meaningful source character is covered, with only
+punctuation/whitespace gaps permitted. Words carry dictionary-form readings and explicit POS/senseKey,
+plus source Evidence matching the request's exact snapshot/refs and a span inside their chunk.
+Japanese/Chinese generated Words require aligned ReadingToken arrays; Spanish/Czech may omit them.
+Structural validation does not prove phonetic accuracy.
 
-The server rejects the former top-level `pattern`, a top-level `learningItems` array, and nested
-`chunkIndex`; learning-item association comes only from nesting. It validates the association and
-language-dependent shape without guessing, moving, or deduplicating items. These checks enforce
-alignment and structural bounds, not reading correctness or optimal semantic segmentation. The
-prompt asks for meaningful chunks and a small selection of reusable words and expressions.
+The model emits the smaller shape:
+
+```ts
+{chunks: [{
+  text, gloss, role, explanation, equivalentWordIndex: number | null,
+  words: [{surface, occurrence, text, translation, partOfSpeech, senseKey, reading?, romanization?}]
+}]}
+```
+
+Chunk text is aligned in source order. Word surface is an exact meaningful substring without
+surrounding whitespace; zero-based `occurrence` selects its left-to-right overlapping occurrence
+inside that chunk. The server derives absolute offsets, language, source snapshots and refs.
+It does not trust model IDs or snapshots, guess source positions or reuse inflected source readings
+for dictionary forms. Punctuation-only chunks with no Words are removed after alignment without
+shifting retained offsets; Words on such chunks and all-punctuation analyses are rejected.
+
+A non-null equivalentWordIndex must index a Word whose encountered surface covers the chunk except
+edge punctuation/whitespace, and whose normalized dictionary text equals the edge-trimmed source span.
+The prompt permits equivalence only for the same lexical learning target. Invalid equivalence is
+invalid model output, not silently repaired. `caluroso` exposes one Word target; `肉も` versus `肉`
+and `食べません` versus `食べる` expose distinct Chunk and Word targets. Null equivalence produces a
+Chunk with exact source text/evidence, translation=gloss, role and explanation. Every meaningful
+chunk has one target; other distinct Words retain their own controls.
+
+Both producers use the pure pronunciation helpers in `api/src/reading.js`. No fragment reading is
+manufactured by cutting a source reading token; contextual rendering uses the original snapshot.
+Shared `validateBreakdownResponse` validates the final wire response against the full request.
 
 One server-selected provider call uses separate trusted instructions and JSON task content, a
-4,096-token output ceiling, and a 15-second default deadline (60 seconds for alternate adapters).
-There is no application-level retry. Invalid input returns `400`; provider failure, timeout, malformed
-JSON, or invalid analysis returns `502`. Usage follows the shared accounting contract.
+4,096-token ceiling and 15-second default deadline (alternate adapter timeout otherwise).
+There is no application-level retry. Invalid requests return `400`; provider failures, timeout,
+malformed JSON or invalid analysis return `502`. Usage follows the shared accounting contract.
 
-The web details pane keeps the source visible while loading or on failure, and offers explicit Retry.
-Validated success, including nested learning items, is cached in tab-scoped sessionStorage, keyed by
-schema version plus exact language, text, translation, and context. Changes to those inputs miss the
-cache; no card schema or IndexedDB migration is involved. The current details UI still renders only
-chunk teaching. Saving or starring learning items as cards is design work, not part of this API
-promotion and remains unimplemented. Dismissal aborts the client fetch and guards against late
-completion; it does not guarantee that an already-started provider call stops at the server. Deploy
-the API route and gateway configuration with the web client.
+The web cache is tab-scoped under `loudmouth-card-v2.phrase-breakdown.v1:` plus the serialized exact
+request, including refs, context and readings. Invalid cache entries are removed. Cache contains
+validated analysis, never authoritative resolved library IDs/stars. Open, Retry, Regenerate, close
+and cache clearing make no durable writes. Explicit starring atomically saves/reuses a target,
+records Word evidence and toggles the active phrasebook membership. Ready/reopened targets resolve
+their stars from IndexedDB. Regenerate bypasses cache and retains existing analysis on failure;
+it never overwrites saved teaching. Closing aborts fetch and suppresses stale UI updates, not an
+already committed star. API and web must deploy together.
+
 
 ## `/phrasebook`
 
@@ -276,6 +445,59 @@ are under `api/src/phrasebook/` as listed in [Source layout](#source-layout).
 
 Latency is an operational target: normal operation aims to complete under 10 seconds, but alternate
 providers, retries, and larger topic selections can take longer.
+
+### High-level flow
+
+```mermaid
+flowchart LR
+    subgraph INPUT["INPUT"]
+        A["POST /phrasebook<br/><br/>Situation<br/>Target language<br/>Learner ability<br/>Context answers<br/>Conversation topics"]
+    end
+
+    subgraph CODE["DETERMINISTIC API CODE"]
+        B["Validate the request<br/><br/><b>Goal:</b> Check required fields and bounds;<br/>normalize safe input values"]
+        D["Check the generated conversations<br/><br/><b>Goal:</b> Ensure there is one conversation<br/>per topic, with valid speakers, phrases,<br/>and vocabulary counts"]
+        F["Shape each translation<br/><br/><b>Goal:</b> Keep phrases and vocabulary aligned;<br/>normalize readings and romanization"]
+        G["Check vocabulary against the phrases<br/><br/><b>Goal:</b> Attach source evidence when a<br/>vocabulary word comes from a phrase;<br/>otherwise add a missing-source flag"]
+        H["Build the API response<br/><br/><b>Goal:</b> Create cards, IDs, groups, flags,<br/>usage data, and validate the final shape"]
+    end
+
+    subgraph PROMPTS["PROBABILISTIC MODEL CALLS"]
+        C["Generation prompt<br/><code>prompt.txt</code><br/><br/><b>Goal:</b> For each topic, generate an English<br/>conversation as an ordered list of phrases,<br/>plus a list of vocabulary words"]
+        E["Translation prompt<br/><code>translate-prompt.txt</code><br/>One parallel call per conversation<br/><br/><b>Goal:</b> Translate every phrase and vocabulary<br/>word; provide readings, romanization,<br/>and optional phrase-location hints"]
+    end
+
+    subgraph OUTPUT["OUTPUT"]
+        I["200 PhrasebookResponse<br/><br/>Conversation groups<br/>Phrase cards<br/>Vocabulary cards<br/>Source-quality flags<br/>Usage"]
+        J["400 Invalid request"]
+        K["502 Required model output<br/>remains unusable after retry"]
+    end
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+
+    B -. invalid input .-> J
+    D -. unusable required structure .-> K
+    F -. unusable required structure .-> K
+```
+
+`/phrasebook` alternates between deterministic code and probabilistic model calls. The generation
+prompt decides what conversations and vocabulary are useful. The translation prompt decides how to
+express that content in the target language. Code owns request limits, ordering, structural checks,
+normalization, source matching, card construction, diagnostics, usage accounting, and the final
+response contract.
+
+Required output that cannot be shaped safely—such as malformed JSON or incorrect conversation
+counts—can trigger a retry and eventually a `502`. Optional source evidence does not determine
+whether a vocabulary word survives: code attaches evidence when it can match the word to a phrase
+and otherwise returns the word with a `vocab-source-missing` flag.
+
 
 ### Request
 
@@ -317,59 +539,78 @@ situation-specific language.
 
 ```json
 {
+  "schemaVersion": 2,
   "title": "ordering vegan food",
-  "groups": [
-    {
-      "title": "State my dietary restrictions",
-      "cards": [
-        {
-          "lang": "ja",
-          "type": "phrase",
-          "text": "ヴィーガンです。",
-          "translation": "I'm vegan.",
-          "reading": [["ヴィーガンです。", null]],
-          "context": "State my dietary restrictions",
-          "notes": "{\"speaker\":\"you\"}"
-        }
-      ],
-      "vocab": []
-    }
-  ],
+  "groups": [{
+    "id": "00000000-0000-4000-8000-000000000001",
+    "title": "State my dietary restrictions",
+    "phrases": [{
+      "id": "00000000-0000-4000-8000-000000000002",
+      "card": {
+        "lang": "ja", "type": "phrase", "text": "ヴィーガンです。",
+        "translation": "I'm vegan.", "reading": [["ヴィーガンです。", null]]
+      },
+      "speaker": "you"
+    }],
+    "vocab": [{
+      "card": {
+        "lang": "ja", "type": "word", "text": "ヴィーガン", "translation": "vegan",
+        "partOfSpeech": "noun", "senseKey": "vegan-person", "reading": [["ヴィーガン", null]]
+      },
+      "sources": [{
+        "snapshot": {
+          "lang": "ja", "text": "ヴィーガンです。", "translation": "I'm vegan.",
+          "reading": [["ヴィーガンです。", null]]
+        },
+        "ref": {"occurrenceId": "00000000-0000-4000-8000-000000000002"},
+        "span": {"start": 0, "end": 5}
+      }]
+    }]
+  }],
   "usage": {
-    "model": "gemini-3.5-flash-lite",
-    "inputTokens": 0,
-    "outputTokens": 0,
-    "totalTokens": 0,
-    "costUsd": null,
-    "durationMs": 0
-  }
+    "model": "gemini-3.5-flash-lite", "inputTokens": 0, "outputTokens": 0,
+    "totalTokens": 0, "costUsd": null, "durationMs": 0
+  },
+  "flags": [{
+    "code": "vocab-source-missing",
+    "groupIndex": 0,
+    "vocabIndex": 0,
+    "reason": "unresolved"
+  }]
 }
 ```
 
-The example shows the envelope and card shape, not required content counts. This endpoint’s legacy `title` field comes from the
-seed; it makes no naming model call. The web client uses the independent `/phrasebook-title` result
-or the seed fallback for the saved name. Conversation groups follow request-topic order. Each group
-contains `cards` (phrase cards) and `vocab` (fully normalized word cards for that conversation).
-There is no pooled vocabulary group in the response. Each conversation card's `translation` is the
-English generation line; `text` is its translated target-language line with inline ruby markup removed.
+The abbreviated example illustrates shapes, not required generation counts. `title` remains the
+seed fallback; independent naming is unchanged. Groups retain request index order even with
+duplicate titles. Server-generated UUIDs identify groups/phrase drafts, never model-generated
+library IDs. Phrase drafts own `speaker` and optional `alternative:true`; an alternative requires
+an earlier same-speaker line, not immediate adjacency. Cards contain neither context nor JSON notes.
 
-`notes` remains a JSON-encoded string, not a new object-valued card field:
+Translated model vocabulary consists of `{target,partOfSpeech,senseKey,source?}` objects. `target`
+uses inline readings and dictionary form. `senseKey` is a canonical English concept identifier,
+such as `consume-food`, under the same policy as breakdown. Optional source is
+`{lineIndex,surface,occurrence}`: translated conversation line index, meaningful encountered
+surface, and zero-based left-to-right overlapping substring occurrence.
 
-- Conversation cards carry `speaker: "you" | "partner"` and `or: true` when an alternative.
-  Alternatives may be interleaved with the other speaker's lines; an earlier line by the same speaker
-  is required, not immediate adjacency.
-- Drawn vocabulary carries `source`, an exact target-language source line. Expansion vocabulary with
-  no identified source line omits it; the service does not invent example sentences.
-- Matching uses English tokens and common inflections within the originating conversation, then maps
-  that source index to the translated line. It does not infer synonyms or derivations.
+Source evidence is optional enrichment, not a condition for retaining a vocabulary card. For
+comparison, the service removes bracketed reading text from both translated lines and source
+surfaces. It canonicalizes a nonzero occurrence when the normalized surface has exactly one match.
+If source is omitted or cannot be resolved without guessing, the vocabulary remains in the response
+without `sources` and receives a top-level `vocab-source-missing` flag. Repeated surfaces with a
+valid occurrence still produce exact evidence spans; invalid or ambiguous hints become unresolved
+flags rather than translation failures. English substring or inflection heuristics are not used.
 
-The service sets card `context` to the originating topic title, including vocabulary provenance.
-The API preserves all per-conversation vocabulary, including duplicates across groups, without a global
-cap. The client first selects groups by request index, then pools their vocabulary in checklist order.
-It deduplicates by the English `translation` normalized with NFKC and `toLocaleLowerCase('en-US')`,
-preserving the first selected occurrence's translation and source metadata, and caps the result at
-the lesser of 24 words or five times the selected-topic count. Filtering must precede deduplication
-and capping so unselected conversations cannot remove selected vocabulary.
+The server copies English vocabulary into card translation and derives exact Evidence from the
+translated phrase, including available readings/romanization. Draft occurrence refs must remain
+inside the owning group and match its snapshot. Every card passes the same shared validator used
+by imports/persistence; generated Japanese/Chinese Words require their own aligned readings.
+
+The response keeps per-group vocabulary, including duplicates across groups, without a global cap.
+Client commit filters selected groups first, pools by conservative Word identity (language,
+NFC-trimmed headword, POS, senseKey), and caps generated vocabulary at `min(24, selectedCount * 5)`.
+It preserves first-selected content and all selected source examples, not merely the first source.
+All selected phrases and committed vocabulary are saved unstarred in one atomic transaction.
+Commit remaps selected draft references to fresh local occurrence/card IDs.
 
 Kanji and hanzi `base[reading]` runs become `ReadingToken` pairs; stray bracket annotations are removed.
 Japanese translation chunks additionally return `lineRomanizations` and `vocabRomanizations`, matched
@@ -404,9 +645,12 @@ client-stored cards are not rewritten; new `/phrasebook` responses use these rul
    non-empty text, alternative-line rules, and per-conversation counts; retry once on invalid output.
 4. Translate each conversation and its vocabulary in parallel. Results are assembled **by index,
    never by title text**, regardless of completion order.
-5. Validate each translated chunk's line and vocabulary counts and string values. Retry a malformed
-   or count-mismatched chunk once; never return a partially translated phrasebook.
-6. Normalize readings, assemble per-conversation phrase and vocabulary cards, and aggregate usage/costs.
+5. Validate translated line/vocabulary counts and required vocabulary fields. Normalize source
+   comparison strings and unambiguous single-match occurrence numbering. An omitted, malformed, or
+   unresolved optional source produces a flag instead of a retry; malformed required content and
+   count mismatches still retry once. Never return a partially translated phrasebook.
+6. Normalize readings, assemble common cards and evidence, aggregate flags and usage, then validate
+   the wire response.
 
 Each logical model attempt has a 15-second budget on the default backend or the adapter's extended
 60-second budget. That budget includes up to three `429` retries with 2/4/8-second backoff. Generation
@@ -423,13 +667,14 @@ Completeness remains a prompt requirement, not a semantic validator guarantee. `
 wall-clock pipeline time, not the sum of overlapping translation durations. Usage includes reported
 token consumption from invalid responses that caused retries.
 
-On Google backends, translation calls also supply a JSON response schema requiring `lines` and `vocab`
-arrays of strings with exactly the source item counts and no additional properties. For Japanese, the
-schema also requires the two corresponding romanization arrays. This constrains generation rather than
-repairing malformed JSON after the fact. Strict parsing, content validation, and the bounded retry
-remain in place. Surrounding Markdown JSON fences are accepted, but malformed JSON is not repaired.
-Local validation does not reject every unknown property or verify linguistic or reading correctness.
-Other providers ignore the schema option and retain prompt-and-validation output handling.
+On Google backends, translation calls supply a JSON response schema requiring `lines` strings and
+`vocab` objects with exactly the source item counts and no additional properties. Vocab objects
+require target/POS/senseKey; a present source requires lineIndex/surface/occurrence. Japanese also
+requires the corresponding romanization arrays. This constrains generation rather than repairing
+malformed JSON. Parsing, normalization, shared card validation and bounded retries remain;
+surrounding Markdown JSON fences are accepted, malformed JSON is not repaired. Other providers
+ignore the schema option and retain prompt-and-validation handling. No validator proves linguistic
+correctness.
 
 Reading rules are inserted into `{{READING_RULES}}`; Spanish and Czech insert an empty string.
 
@@ -447,8 +692,8 @@ Reading rules are inserted into `{{READING_RULES}}`; Spanish and Czech insert an
 - Background failures leave the checklist usable. Final Continue surfaces the error; retry preserves
   selections and starts fresh work. Dismissal aborts context, title, and phrasebook requests.
 - No automatic save or navigation occurs when speculative generation finishes. Persistence begins
-  only after final Continue and successful generation; incomplete saves are rolled back. Ability is
-  remembered per language only after import succeeds, never by speculative completion or deck creation.
+  only after final Continue and successful generation. One abortable transaction commits all records;
+  cancellation before completion rolls back, while completed saves remain. Ability is remembered only afterward.
   Historical setup preferences are not migrated. Updating remembered ability is deferred.
 - Clients do not choose the backend. This response contract requires deploying API and web together.
 
@@ -502,7 +747,7 @@ The endpoints share:
 - server-owned backend configuration, the `LLM_REGISTRY`, and provider adapters;
 - card-shape helpers and Japanese reading normalization, with endpoint-specific validation policies;
 - usage accounting and pricing;
-- the card-schema reading, gender-collapse, and optional-field rules.
+- strict v2 content, identity, evidence and reading-token validation.
 
 ## References
 
@@ -511,4 +756,4 @@ The endpoints share:
 - [`docs/DESIGN.md`](./DESIGN.md) and [`docs/journeys.md`](./journeys.md) — client interaction flows.
 - [`api/README.md`](../api/README.md) — local setup, deployment, and evaluation commands.
 - Runtime contract: `api/src/index.js`, `api/src/context/index.js`, `api/src/phrasebook/index.js`,
-  `api/src/phrasebook/parse.js`, `api/src/llm-config.js`, and `api/src/card-validate.js`.
+  `api/src/phrasebook/parse.js`, `api/src/llm-config.js`, and `api/src/schema/index.ts`.

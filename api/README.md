@@ -49,35 +49,51 @@ when saving. It never waits for naming or sends the title to `/phrasebook`.
 `ability` accepts `none`, `basics`, or `conversational`; omitted or invalid values default to `basics`. The learner chooses 1–8
 checklist topics. `answers` and `checklist` are top-level fields, not nested under a context object.
 
-Returns `{ title, groups, usage }`: one `{ title, cards, vocab }` conversation bundle per request topic,
-in request order. `vocab` contains normalized word cards without cross-topic deduplication or a global
-cap. The client prefetches all topics while the learner selects, then filters bundles by index before
-pooling, deduplicating, and capping vocabulary locally. API and web must deploy together.
-English generation is followed by parallel conversation-sized translation calls; assembly is by index.
-The service validates output, retries invalid generation or translation
-chunks once, backs off on provider rate limits, and returns no partial phrasebook. See API_DESIGN for
-exact bounds and deadlines.
+Returns `{schemaVersion:2,title,groups,flags,usage}`. Each group is
+`{id,title,phrases:[{id,card:Phrase,speaker,alternative?:true}],vocab:Candidate[]}`.
+Vocab candidates contain Word cards with explicit POS/senseKey and optional source Evidence.
+`flags` identifies vocabulary whose optional source was omitted or could not be resolved after
+normalization; those Words remain in the response. Group/phrase UUIDs are server draft handles,
+remapped at commit. Groups retain request index order, including duplicate titles. The client commits
+selected groups, deduplicates by conservative sense identity and caps unique generated Words while
+preserving selected evidence. API and web ship together. English generation is followed by parallel
+conversation-sized translation calls; assembly is by index. The service shapes recoverable output,
+retries malformed required generation or translation structures once, backs off on provider rate
+limits, and returns no partial phrasebook. See API_DESIGN for exact bounds and deadlines.
 
 ### `POST /phrase-breakdown`
 
 ```json
-{ "language": "ja", "text": "ここで写真を撮ってもいいですか。", "translation": "May I take photos here?", "context": "Taking photos" }
+{
+  "schemaVersion": 2,
+  "source": {
+    "snapshot": {
+      "lang": "ja", "text": "肉も魚も食べません。",
+      "translation": "I don't eat meat or fish."
+    }
+  },
+  "context": { "groupTitle": "Dietary restrictions", "speaker": "you" }
+}
 ```
 
-Required language supports `zh`, `ja`, `es`, and `cs`. Exact text and English translation are each
-non-blank and at most 2,000 UTF-16 code units; optional context is at most 500. Returns
-`{ chunks: [{ start, end, text, gloss, role, explanation, learningItems }], usage }` with 1–32
-ordered, non-overlapping exact source chunks. Every chunk has 0–32 nested
-`{ surface, text, meaning, reading? }` items. Item surface/text/reading are at most 2,000 code units
-and meaning is at most 500; surface must occur exactly within its chunk. Japanese and Chinese require
-non-blank readings, while Spanish and Czech forbid the reading key. Source-aligned punctuation-only
-chunks with no items are removed without shifting retained offsets; items on such chunks and
-all-punctuation analyses are rejected. The legacy `pattern`, top-level learning items, and
-`chunkIndex` are rejected. See API_DESIGN for all field bounds and normalization details.
-One provider call, no automatic retry, 4,096-token ceiling, 15-second default timeout or the configured
-alternate adapter's timeout. The client handles Retry and tab-scoped caching. Nested items are not
-yet displayed, saved, or starred as cards; no card-persistence design is implemented by this API
-promotion. API, gateway route, and web changes must deploy together.
+Snapshot lang supports `zh`, `ja`, `es`, `cs`; exact text/translation are nonblank and ≤2,000 UTF-16
+units. Source may include aligned reading tokens, romanization and advisory card/occurrence refs.
+Optional context contains active-book generation `{seed,ability,answers}`, groupTitle and speaker.
+The model receives snapshot/context, never IDs. Old flat requests are rejected.
+
+Returns `{schemaVersion:2,chunks,usage}`. Each meaningful chunk contains
+`{start,end,text,gloss,role,explanation,words:Candidate[],target}` with Word candidates and exactly one
+`{kind:'word',index}` or `{kind:'chunk',card:Chunk}` target. There are 1–32 ordered source-aligned
+chunks and 0–32 Words per chunk. Word sources retain exact request snapshots and selected spans;
+dictionary readings align to their own headwords, never inflected source forms. Japanese/Chinese
+generated Words require readings. Every meaningful source character is covered; bounds cannot split
+surrogate pairs. Explicit equivalence collapses `caluroso` to one Word target but retains independent
+Chunk/Word targets for `食べません`/`食べる`. See API_DESIGN for model fields, offsets and all limits.
+
+One provider call, no automatic retry, 4,096-token ceiling and 15-second default timeout (alternate
+adapter timeout otherwise). Invalid requests return 400; invalid model output returns 502. Web
+caches validated content but resolves stars from the active phrasebook membership. Opening analysis
+does not persist it; explicit starring does. Regeneration never overwrites saved teaching.
 
 ## Shared HTTP behavior
 
@@ -140,14 +156,15 @@ api/
     │   └── reading-rules-zh.txt
     ├── llms/
     ├── llm-config.js
-    ├── card-validate.js
+    ├── schema/                     # canonical strict TS contract; emits ignored dist/
     ├── pricing.js
     └── test/
 ```
 
 The text files under `src/context/`, `src/phrasebook-title/`, `src/phrasebook/`, and
-`src/phrase-breakdown/` are the authoritative runtime prompts. Edit them in place; there is no
-separate prompt-source tree or copy step.
+`src/phrase-breakdown/` are the authoritative runtime prompts. Changes require initial user approval
+and before-and-after regression evaluation of behavior, latency, and token usage. Edit approved
+changes in place; there is no separate prompt-source tree or copy step.
 
 `src/index.js` exports the Cloud Function `translate` and owns CORS, method handling, and route
 dispatch. `src/llm-config.js` owns server backend configuration, `src/llms/` contains provider
@@ -163,6 +180,7 @@ gcloud auth application-default login
 export GCP_PROJECT_ID=YOUR_PROJECT_ID
 export GCP_VERTEX_LOCATION=global
 export LLM_BACKEND=gemini-3.5-flash-lite
+npm run schema:build
 npx functions-framework --target=translate --port=8080
 ```
 
@@ -170,6 +188,16 @@ Alternatively, populate `api/.env` and use `npm run dev`. Google adapters use Ve
 application-default credentials. `GCP_VERTEX_LOCATION` defaults to `global`; use `global`, `us`, or
 `eu`, not a regional model endpoint such as `us-central1`. `GCP_LOCATION` remains the separate Cloud
 Run and API Gateway deployment region.
+
+The runtime-dependency-free card contract is compiled from `src/schema/index.ts`.
+`predev` and `pretest` build it locally; direct Node tests/evals or raw Functions
+Framework startup require `npm run schema:build` first. Deployment keeps `api/src`
+as the source root and uses `gcp-build` to emit `schema/dist` while TypeScript is
+available as a dev dependency. `start` deliberately does not invoke the compiler:
+runtime dev dependencies may have been pruned. Google documents custom build
+hooks and their dependency installation behavior in
+[Node.js buildpacks](https://docs.cloud.google.com/docs/buildpacks/nodejs).
+Do not override the build hook with an empty `GOOGLE_NODE_RUN_SCRIPTS`.
 
 For parallel worktrees, `/add_worktree` copies only the main checkout's ignored
 `api/.env` when present and writes an ignored `api/.env.local` with `PORT=XYZ1`.

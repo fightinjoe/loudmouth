@@ -18,6 +18,14 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
+    optimizeDeps: {
+      include: ['@catchphrase/card-schema'],
+    },
+    build: {
+      commonjsOptions: {
+        include: [/node_modules/, /api\/src\/schema\//],
+      },
+    },
     server: {
       host: true,
       port: parsePort(env.VITE_DEV_PORT, 'VITE_DEV_PORT', 8000),

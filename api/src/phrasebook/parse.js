@@ -1,7 +1,17 @@
 'use strict';
 
-const { toRomaji } = require('wanakana');
-const { validateCard } = require('../card-validate');
+const { randomUUID } = require('node:crypto');
+const {
+  PARTS_OF_SPEECH,
+  SCHEMA_VERSION,
+  validateCard,
+  validateCandidate,
+} = require('../schema');
+const {
+  parseInlineReading,
+  latinRomanization,
+  japanesePronunciation,
+} = require('../reading');
 
 const LANGUAGES = Object.freeze(['zh', 'ja', 'es', 'cs']);
 const { ABILITIES, DEFAULT_ABILITY, sanitizeAbility } = require('../ability');
@@ -17,54 +27,6 @@ const MIN_LINES_PER_CONVERSATION = 2;
 const MAX_LINES_PER_CONVERSATION = 10;
 const MIN_VOCAB_PER_CONVERSATION = 3;
 const MAX_VOCAB_PER_CONVERSATION = 6;
-
-const CJK_RUN_SOURCE = '[\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff々〆ヶ]+';
-const INLINE_READING_RE = new RegExp(`(${CJK_RUN_SOURCE})\\[([^\\[\\]]+)\\]`, 'gu');
-const STRAY_BRACKET_GROUP_RE = /\[[^\[\]]*\]/gu;
-const LONE_BRACKET_RE = /[\[\]]/gu;
-const ENGLISH_TOKEN_RE = /[a-z]+(?:['’][a-z]+)*/giu;
-
-const IRREGULAR_FORMS = Object.freeze({
-  be: ['am', 'is', 'are', 'was', 'were', 'been', 'being'],
-  become: ['became', 'become', 'becoming'],
-  begin: ['began', 'begun', 'beginning'],
-  bring: ['brought', 'bringing'],
-  buy: ['bought', 'buying'],
-  can: ['could'],
-  catch: ['caught', 'catching'],
-  choose: ['chose', 'chosen', 'choosing'],
-  come: ['came', 'coming'],
-  do: ['does', 'did', 'done', 'doing'],
-  drink: ['drank', 'drunk', 'drinking'],
-  eat: ['ate', 'eaten', 'eating'],
-  far: ['farther', 'farthest', 'further', 'furthest'],
-  feel: ['felt', 'feeling'],
-  find: ['found', 'finding'],
-  get: ['got', 'gotten', 'getting'],
-  give: ['gave', 'given', 'giving'],
-  go: ['went', 'gone', 'going'],
-  good: ['better', 'best'],
-  have: ['has', 'had', 'having'],
-  hear: ['heard', 'hearing'],
-  know: ['knew', 'known', 'knowing'],
-  leave: ['left', 'leaving'],
-  make: ['made', 'making'],
-  meet: ['met', 'meeting'],
-  pay: ['paid', 'paying'],
-  read: ['reading'],
-  run: ['ran', 'running'],
-  say: ['said', 'saying'],
-  see: ['saw', 'seen', 'seeing'],
-  speak: ['spoke', 'spoken', 'speaking'],
-  take: ['took', 'taken', 'taking'],
-  teach: ['taught', 'teaching'],
-  tell: ['told', 'telling'],
-  think: ['thought', 'thinking'],
-  understand: ['understood', 'understanding'],
-  want: ['wanted', 'wanting'],
-  wear: ['wore', 'worn', 'wearing'],
-  write: ['wrote', 'written', 'writing'],
-});
 
 function isObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -236,46 +198,65 @@ function validateGenerationResponse(raw, checklist) {
   return { conversations };
 }
 
-function stripStrayBrackets(text) {
-  return text.replace(STRAY_BRACKET_GROUP_RE, '').replace(LONE_BRACKET_RE, '');
-}
-
-function appendUnannotated(tokens, text) {
-  const cleaned = stripStrayBrackets(text);
-  if (!cleaned) return;
-  const previous = tokens[tokens.length - 1];
-  if (previous?.[1] === null) {
-    previous[0] += cleaned;
-  } else {
-    tokens.push([cleaned, null]);
+function assertExactFields(value, allowed, prefix) {
+  if (!isObject(value)) throw new Error(`${prefix} must be an object`);
+  for (const field of Object.keys(value)) {
+    if (!allowed.includes(field)) throw new Error(`${prefix}.${field} is not allowed`);
   }
 }
 
-function parseInlineReading(value) {
-  const tokens = [];
-  let cursor = 0;
-  for (const match of value.matchAll(INLINE_READING_RE)) {
-    appendUnannotated(tokens, value.slice(cursor, match.index));
-    tokens.push([match[1], match[2]]);
-    cursor = match.index + match[0].length;
+function translatedString(value, prefix) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`${prefix} must be a non-empty string`);
   }
-  appendUnannotated(tokens, value.slice(cursor));
+  const normalized = value.trim();
+  if (normalized.length > 2000) throw new Error(`${prefix} must be at most 2000 characters`);
+  if (!parseInlineReading(normalized).text.trim()) {
+    throw new Error(`${prefix} is empty after removing stray reading brackets`);
+  }
+  return normalized;
+}
+
+function validateSourceLocation(value, prefix, lineCount) {
+  assertExactFields(value, ['lineIndex', 'surface', 'occurrence'], prefix);
+  if (!Number.isSafeInteger(value.lineIndex)
+    || value.lineIndex < 0
+    || value.lineIndex >= lineCount) {
+    throw new Error(`${prefix}.lineIndex must reference a translated conversation line`);
+  }
+  if (typeof value.surface !== 'string'
+    || value.surface.length === 0
+    || value.surface !== value.surface.trim()) {
+    throw new Error(`${prefix}.surface must be a non-empty, unpadded string`);
+  }
+  if (value.surface.length > 2000) {
+    throw new Error(`${prefix}.surface must be at most 2000 characters`);
+  }
+  if (!/[\p{L}\p{N}]/u.test(value.surface)) {
+    throw new Error(`${prefix}.surface must contain content other than punctuation or whitespace`);
+  }
+  if (!Number.isSafeInteger(value.occurrence) || value.occurrence < 0) {
+    throw new Error(`${prefix}.occurrence must be a nonnegative integer`);
+  }
   return {
-    text: tokens.map(([base]) => base).join(''),
-    reading: tokens,
+    lineIndex: value.lineIndex,
+    surface: value.surface,
+    occurrence: value.occurrence,
   };
-}
-
-function latinRomanization(value) {
-  if (typeof value !== 'string') return undefined;
-  const normalized = value.normalize('NFC').trim().replace(/\s+/gu, ' ');
-  return /\p{Script=Latin}/u.test(normalized)
-    && /^[\p{Script=Latin}\p{M}\p{N}\p{P}\p{Zs}]+$/u.test(normalized)
-    ? normalized : undefined;
 }
 
 function validateTranslationResponse(raw, conversation, language) {
   const parsed = parseModelJson(raw);
+  assertExactFields(
+    parsed,
+    ['lines', 'vocab', 'lineRomanizations', 'vocabRomanizations'],
+    'response',
+  );
+  if (language !== 'ja'
+    && (Object.hasOwn(parsed, 'lineRomanizations')
+      || Object.hasOwn(parsed, 'vocabRomanizations'))) {
+    throw new Error('Romanization arrays must be omitted for non-Japanese translations');
+  }
   if (!Array.isArray(parsed.lines) || parsed.lines.length !== conversation.lines.length) {
     const count = Array.isArray(parsed.lines) ? parsed.lines.length : 'non-array';
     throw new Error(`"lines" count ${count} does not match source count ${conversation.lines.length}`);
@@ -285,39 +266,83 @@ function validateTranslationResponse(raw, conversation, language) {
     throw new Error(`"vocab" count ${count} does not match source count ${conversation.vocab.length}`);
   }
 
-  const validateStrings = (values, field) => values.map((value, index) => {
-    if (typeof value !== 'string' || !value.trim()) {
-      throw new Error(`${field}[${index}] must be a non-empty string`);
-    }
-    const normalized = value.trim();
-    if (!parseInlineReading(normalized).text.trim()) {
-      throw new Error(`${field}[${index}] is empty after removing stray reading brackets`);
-    }
-    return normalized;
-  });
-
+  const sourceFlags = [];
   const result = {
-    lines: validateStrings(parsed.lines, 'lines'),
-    vocab: validateStrings(parsed.vocab, 'vocab'),
+    lines: parsed.lines.map((value, index) => translatedString(value, `lines[${index}]`)),
+    vocab: parsed.vocab.map((value, index) => {
+      const prefix = `vocab[${index}]`;
+      assertExactFields(value, ['target', 'partOfSpeech', 'senseKey', 'source'], prefix);
+      const target = translatedString(value.target, `${prefix}.target`);
+      if (!PARTS_OF_SPEECH.includes(value.partOfSpeech)) {
+        throw new Error(`${prefix}.partOfSpeech must be a supported part of speech`);
+      }
+      if (typeof value.senseKey !== 'string'
+        || value.senseKey.length > 120
+        || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.senseKey)) {
+        throw new Error(`${prefix}.senseKey must be a lowercase kebab-case concept identifier`);
+      }
+      let source;
+      if (!Object.hasOwn(value, 'source')) {
+        sourceFlags.push({
+          code: 'vocab-source-missing',
+          vocabIndex: index,
+          reason: 'omitted',
+        });
+      } else {
+        try {
+          source = validateSourceLocation(value.source, `${prefix}.source`, parsed.lines.length);
+        } catch {
+          sourceFlags.push({
+            code: 'vocab-source-missing',
+            vocabIndex: index,
+            reason: 'unresolved',
+          });
+        }
+      }
+      return {
+        target,
+        partOfSpeech: value.partOfSpeech,
+        senseKey: value.senseKey,
+        ...(source === undefined ? {} : { source }),
+      };
+    }),
   };
+
+  result.vocab.forEach((word, index) => {
+    if (word.source === undefined) return;
+    const prefix = `vocab[${index}].source`;
+    const lineText = parseInlineReading(result.lines[word.source.lineIndex]).text;
+    try {
+      word.source = normalizeSourceLocation(lineText, word.source, prefix);
+    } catch {
+      delete word.source;
+      sourceFlags.push({
+        code: 'vocab-source-missing',
+        vocabIndex: index,
+        reason: 'unresolved',
+      });
+    }
+  });
+  result.flags = sourceFlags;
+
   if (language === 'ja') {
-    for (const [field, targets] of [
-      ['lineRomanizations', result.lines],
-      ['vocabRomanizations', result.vocab],
+    for (const [field, targets, capitalize] of [
+      ['lineRomanizations', result.lines, true],
+      ['vocabRomanizations', result.vocab.map(({ target }) => target), false],
     ]) {
       const supplied = parsed[field];
       // A count mismatch makes every index suspect; do not attach a shifted
       // model romanization to the wrong Japanese line.
       const aligned = Array.isArray(supplied) && supplied.length === targets.length;
       result[field] = targets.map((target, index) => {
-        const normalized = aligned ? latinRomanization(supplied[index]) : undefined;
+        const suppliedValue = aligned ? supplied[index] : undefined;
+        const normalized = latinRomanization(suppliedValue);
         if (normalized) return normalized;
-        const kana = parseInlineReading(target).reading
-          .map(([base, annotation]) => annotation ? ` ${annotation}` : base).join('');
-        const romaji = toRomaji(kana).trim().replace(/ha(?=$|[\s\p{P}])/gu, 'wa');
-        const fallback = latinRomanization(field === 'lineRomanizations'
-          ? romaji.charAt(0).toUpperCase() + romaji.slice(1)
-          : romaji);
+        const fallback = japanesePronunciation(
+          parseInlineReading(target).reading,
+          undefined,
+          { capitalize },
+        );
         console.warn({
           event: 'phrasebook_romanization_fallback',
           field,
@@ -325,8 +350,8 @@ function validateTranslationResponse(raw, conversation, language) {
           reason: aligned ? 'invalid_entry' : 'unaligned_array',
           available: !!fallback,
         });
-        // Unannotated kanji cannot be read mechanically. Keep the card rather
-        // than return Japanese characters as romanization or fail the chunk.
+        // Unannotated kanji cannot be read mechanically. Keep the phrase rather
+        // than return Japanese characters as romanization or fail the translation.
         return fallback;
       });
     }
@@ -334,89 +359,94 @@ function validateTranslationResponse(raw, conversation, language) {
   return result;
 }
 
-function buildCard({ language, target, romanization, translation, type, context, notes }) {
+function buildCard({
+  language,
+  target,
+  romanization,
+  translation,
+  type,
+  partOfSpeech,
+  senseKey,
+}) {
   const parsed = parseInlineReading(target);
   const card = {
-    lang: language,
-    text: parsed.text.trim(),
-    translation,
     type,
-    context,
-    ...(notes ? { notes: JSON.stringify(notes) } : {}),
+    lang: language,
+    text: parsed.text,
+    translation,
+    ...(type === 'word' ? { partOfSpeech, senseKey } : {}),
   };
-
-  if (language === 'ja' || language === 'zh') {
-    card.reading = parsed.reading;
+  if ((language === 'ja' || language === 'zh')
+    && type === 'word'
+    && parsed.reading.some(([base, annotation]) => (
+      annotation === null && /\p{Script=Han}/u.test(base)
+    ))) {
+    throw new Error(`${type} card.reading must annotate every dictionary-form Han character`);
   }
+
+  if (language === 'ja' || language === 'zh') card.reading = parsed.reading;
   if (language === 'ja' && romanization) card.romanization = romanization;
 
-  validateCard(card, `${type} card`);
-  return card;
+  return validateCard(card, `${type} card`);
 }
 
-function englishTokens(value) {
-  return Array.from(value.normalize('NFKC').toLocaleLowerCase('en-US').matchAll(ENGLISH_TOKEN_RE), (match) => (
-    match[0].replaceAll('’', "'")
-  ));
+function snapshotForPhrase(card) {
+  return {
+    lang: card.lang,
+    text: card.text,
+    translation: card.translation,
+    ...(card.reading === undefined ? {} : { reading: card.reading }),
+    ...(card.romanization === undefined ? {} : { romanization: card.romanization }),
+  };
 }
 
-function inflectedForms(word) {
-  const forms = new Set([word]);
-  for (const form of IRREGULAR_FORMS[word] || []) forms.add(form);
+function splitsSurrogatePair(text, offset) {
+  if (offset <= 0 || offset >= text.length) return false;
+  const before = text.charCodeAt(offset - 1);
+  const after = text.charCodeAt(offset);
+  return before >= 0xd800 && before <= 0xdbff
+    && after >= 0xdc00 && after <= 0xdfff;
+}
 
-  if (word.endsWith('y') && word.length > 2 && !/[aeiou]y$/u.test(word)) {
-    forms.add(`${word.slice(0, -1)}ies`);
-    forms.add(`${word.slice(0, -1)}ied`);
-  } else {
-    forms.add(`${word}s`);
-    forms.add(`${word}ed`);
+function normalizeSourceLocation(text, source, prefix) {
+  const surface = parseInlineReading(source.surface).text;
+  if (!surface
+    || surface !== surface.trim()
+    || !/[\p{L}\p{N}]/u.test(surface)) {
+    throw new Error(`${prefix}.surface must resolve to non-empty, unpadded content`);
   }
-  if (/(?:s|x|z|ch|sh|o)$/u.test(word)) forms.add(`${word}es`);
-  if (word.endsWith('e')) {
-    forms.add(`${word}d`);
-    forms.add(`${word.slice(0, -1)}ing`);
-  } else {
-    forms.add(`${word}ing`);
+
+  const first = text.indexOf(surface);
+  if (first < 0) {
+    throw new Error(`${prefix} does not select an existing surface occurrence`);
   }
-  if (/[^aeiou][aeiou][^aeiouwxy]$/u.test(word)) {
-    forms.add(`${word}${word.at(-1)}ed`);
-    forms.add(`${word}${word.at(-1)}ing`);
+
+  let occurrence = source.occurrence;
+  if (occurrence > 0 && text.indexOf(surface, first + 1) < 0) {
+    // The location is still exact when the model copies inline readings into
+    // the surface or numbers a single match as one instead of zero.
+    occurrence = 0;
   }
-  if (word.endsWith('f')) forms.add(`${word.slice(0, -1)}ves`);
-  if (word.endsWith('fe')) forms.add(`${word.slice(0, -2)}ves`);
-  if (word.length > 2) {
-    forms.add(`${word}er`);
-    forms.add(`${word}est`);
-    if (word.endsWith('e')) {
-      forms.add(`${word}r`);
-      forms.add(`${word}st`);
+  const normalized = { ...source, surface, occurrence };
+  locateSurface(text, normalized, prefix);
+  return normalized;
+}
+
+function locateSurface(text, source, prefix) {
+  let start = -1;
+  let from = 0;
+  for (let index = 0; index <= source.occurrence; index++) {
+    start = text.indexOf(source.surface, from);
+    if (start < 0) {
+      throw new Error(`${prefix} does not select an existing surface occurrence`);
     }
+    from = start + 1;
   }
-  return forms;
-}
-
-function lineContainsVocabulary(line, vocabulary) {
-  const wanted = englishTokens(vocabulary);
-  if (wanted.length === 0) return false;
-  const actual = englishTokens(line);
-  if (actual.length < wanted.length) return false;
-  const acceptedByPosition = wanted.map(inflectedForms);
-
-  for (let start = 0; start <= actual.length - wanted.length; start++) {
-    if (acceptedByPosition.every((forms, offset) => forms.has(actual[start + offset]))) {
-      return true;
-    }
+  const end = start + source.surface.length;
+  if (splitsSurrogatePair(text, start) || splitsSurrogatePair(text, end)) {
+    throw new Error(`${prefix} must not split a UTF-16 surrogate pair`);
   }
-  return false;
-}
-
-function findVocabularySource(vocabulary, conversations) {
-  for (const conversation of conversations) {
-    for (const line of conversation.lines) {
-      if (lineContainsVocabulary(line.text, vocabulary)) return line.text;
-    }
-  }
-  return undefined;
+  return { start, end };
 }
 
 function assemblePhrasebook({ seed, language, conversations, translations }) {
@@ -424,44 +454,77 @@ function assemblePhrasebook({ seed, language, conversations, translations }) {
     throw new Error('Translation result count does not match conversation count');
   }
 
+  const flags = [];
   const groups = conversations.map((conversation, conversationIndex) => {
     const translated = translations[conversationIndex];
-    const cards = conversation.lines.map((line, lineIndex) => buildCard({
-      language,
-      target: translated.lines[lineIndex],
-      romanization: translated.lineRomanizations?.[lineIndex],
-      translation: line.text,
-      type: 'phrase',
-      context: conversation.title,
-      notes: { speaker: line.speaker, ...(line.or ? { or: true } : {}) },
-    }));
-    const vocab = conversation.vocab.map((english, wordIndex) => {
-      const source = findVocabularySource(english, [conversation]);
-      const sourceIndex = conversation.lines.findIndex((line) => line.text === source);
-      return buildCard({
+    const phrases = conversation.lines.map((line, lineIndex) => {
+      const card = buildCard({
         language,
-        target: translated.vocab[wordIndex],
+        target: translated.lines[lineIndex],
+        romanization: translated.lineRomanizations?.[lineIndex],
+        translation: line.text,
+        type: 'phrase',
+      });
+      return {
+        id: randomUUID(),
+        card,
+        speaker: line.speaker,
+        ...(line.or ? { alternative: true } : {}),
+      };
+    });
+    const vocab = conversation.vocab.map((english, wordIndex) => {
+      const translatedWord = translated.vocab[wordIndex];
+      const card = buildCard({
+        language,
+        target: translatedWord.target,
         romanization: translated.vocabRomanizations?.[wordIndex],
         translation: english,
         type: 'word',
-        context: conversation.title,
-        ...(sourceIndex < 0 ? {} : { notes: { source: cards[sourceIndex].text } }),
+        partOfSpeech: translatedWord.partOfSpeech,
+        senseKey: translatedWord.senseKey,
       });
+      const source = translatedWord.source;
+      if (source === undefined) {
+        const translationFlag = translated.flags?.find(flag => flag.vocabIndex === wordIndex);
+        flags.push({
+          code: 'vocab-source-missing',
+          groupIndex: conversationIndex,
+          vocabIndex: wordIndex,
+          reason: translationFlag?.reason || 'omitted',
+        });
+      }
+      const candidate = {
+        card,
+        ...(source === undefined ? {} : {
+          sources: [{
+            snapshot: snapshotForPhrase(phrases[source.lineIndex].card),
+            ref: { occurrenceId: phrases[source.lineIndex].id },
+            span: locateSurface(
+              phrases[source.lineIndex].card.text,
+              source,
+              `vocab[${wordIndex}].source`,
+            ),
+          }],
+        }),
+      };
+      return validateCandidate(candidate, `group[${conversationIndex}].vocab[${wordIndex}]`);
     });
 
-    return { title: conversation.title, cards, vocab };
+    return {
+      id: randomUUID(),
+      title: conversation.title,
+      phrases,
+      vocab,
+    };
   });
 
-  return { title: seed, groups };
+  return { schemaVersion: SCHEMA_VERSION, title: seed, groups, flags };
 }
 
 module.exports = {
   parsePhrasebookRequest,
   validateGenerationResponse,
   validateTranslationResponse,
-  parseInlineReading,
-  lineContainsVocabulary,
-  findVocabularySource,
   assemblePhrasebook,
   LANGUAGES,
   ABILITIES,

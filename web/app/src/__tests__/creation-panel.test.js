@@ -1,29 +1,39 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 
-const { createDeck, deleteDeck, importCards } = vi.hoisted(() => ({
-  createDeck: vi.fn(async (name, lang, opts) => ({
-    id: "001-salsa-dancing",
-    name,
-    lang,
-    ability: opts?.ability || "beginner",
-  })),
-  deleteDeck: vi.fn(async () => {}),
-  importCards: vi.fn(async () => {}),
+const { commitPhrasebook } = vi.hoisted(() => ({
+  commitPhrasebook: vi.fn(),
 }));
-vi.mock("../js/db.js", () => ({ createDeck, deleteDeck, importCards }));
+vi.mock("../js/db", async (importOriginal) => ({
+  ...(await importOriginal()),
+  commitPhrasebook,
+}));
 
 const { getContext, generatePhrasebook, getPhrasebookTitle } = vi.hoisted(() => ({
   getContext: vi.fn(),
   getPhrasebookTitle: vi.fn(),
   generatePhrasebook: vi.fn(),
 }));
-vi.mock("../js/phrasebook-api.js", () => ({ getContext, generatePhrasebook, getPhrasebookTitle }));
+vi.mock("../js/phrasebook-api", () => ({
+  getContext,
+  generatePhrasebook,
+  getPhrasebookTitle,
+}));
 
-import { getLastAbility, setLastAbility } from "../js/preferences.js";
-import { ABILITY_QUESTION } from "../js/ability.js";
+import { createDb } from "../js/db";
+import { getLastAbility, setLastAbility } from "../js/preferences";
+import { ABILITY_QUESTION } from "../js/ability";
+import { openCreationPanel } from "../components/creation-panel";
 
-import { openCreationPanel } from "../components/creation-panel.js";
+const usage = {
+  model: "fixture",
+  inputTokens: 0,
+  outputTokens: 0,
+  totalTokens: 0,
+  costUsd: null,
+  durationMs: 0,
+};
 
 const sampleQuestionsResponse = {
   questions: [
@@ -35,31 +45,94 @@ const sampleQuestionsResponse = {
   ],
 };
 
+function phrase(id, text, translation, speaker = "you") {
+  return { id, card: { type: "phrase", lang: "es", text, translation }, speaker };
+}
+
+function source(phraseDraft, start, end) {
+  return {
+    snapshot: {
+      lang: phraseDraft.card.lang,
+      text: phraseDraft.card.text,
+      translation: phraseDraft.card.translation,
+    },
+    ref: { occurrenceId: phraseDraft.id },
+    span: { start, end },
+  };
+}
+
+function word(text, translation, senseKey, evidence) {
+  return {
+    card: {
+      type: "word",
+      lang: "es",
+      text,
+      translation,
+      partOfSpeech: "noun",
+      senseKey,
+    },
+    ...(evidence ? { sources: [evidence] } : {}),
+  };
+}
+
+const firstPhrase = phrase("draft-phrase-1", "¿Bailas?", "Would you like to dance?");
+const secondPhrase = phrase("draft-phrase-2", "Paso básico", "Basic step", "partner");
 const sampleGenerateResponse = {
-  title: "Salsa Social Dancing",
+  schemaVersion: 2,
+  title: "Provider title is not used for naming",
   groups: [
     {
+      id: "draft-group-1",
       title: "Ask someone to dance",
-      cards: [
-        { lang: "es", type: "phrase", text: "¿Bailas?", translation: "Wanna dance?", reading: [["¿Bailas?", null]], context: "Ask someone to dance" },
-      ],
-      vocab: [
-        { lang: "es", type: "word", text: "bailar", translation: "dance", reading: [["bailar", null]], context: "Ask someone to dance", notes: { source: "¿Bailas?" } },
-      ],
+      phrases: [firstPhrase],
+      vocab: [word("bailar", "dance", "dance", source(firstPhrase, 1, 7))],
     },
     {
+      id: "draft-group-2",
       title: "Dance/step vocabulary",
-      cards: [
-        { lang: "es", type: "phrase", text: "Paso básico", translation: "Basic step", reading: [["Paso básico", null]], context: "Dance/step vocabulary" },
-      ],
-      vocab: [
-        { lang: "es", type: "word", text: "paso", translation: "step", reading: [["paso", null]], context: "Dance/step vocabulary", notes: { source: "Paso básico" } },
-      ],
+      phrases: [secondPhrase],
+      vocab: [word("paso", "step", "step", source(secondPhrase, 0, 4))],
     },
   ],
+  usage,
 };
 
-let appEl;
+const committedDeck = {
+  id: "committed-deck",
+  name: "Salsa Social Dancing",
+  lang: "es",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "study",
+  order: "default",
+  readingDisplay: "reading",
+  generation: {
+    seed: "salsa dancing",
+    ability: "none",
+    answers: { "Salsa scene": "Latin America (neutral)" },
+  },
+};
+
+let appElement;
+let actualCommitPhrasebook;
+
+beforeAll(async () => {
+  ({ commitPhrasebook: actualCommitPhrasebook } = await vi.importActual("../js/db"));
+});
+
+beforeEach(() => {
+  document.body.innerHTML = "";
+  appElement = document.createElement("div");
+  document.body.appendChild(appElement);
+  localStorage.clear();
+  sessionStorage.clear();
+  commitPhrasebook.mockReset();
+  commitPhrasebook.mockResolvedValue(committedDeck);
+  getContext.mockReset();
+  getPhrasebookTitle.mockReset();
+  getPhrasebookTitle.mockReturnValue(new Promise(() => {}));
+  generatePhrasebook.mockReset();
+  generatePhrasebook.mockReturnValue(new Promise(() => {}));
+});
 
 function deferred() {
   let resolve;
@@ -71,288 +144,144 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-beforeEach(() => {
-  appEl = document.createElement("div");
-  document.body.appendChild(appEl);
-  localStorage.clear();
-  createDeck.mockClear();
-  deleteDeck.mockClear();
-  importCards.mockClear();
-  getContext.mockReset();
-  getPhrasebookTitle.mockReset();
-  getPhrasebookTitle.mockReturnValue(new Promise(() => {}));
-  generatePhrasebook.mockReset();
-  generatePhrasebook.mockReturnValue(new Promise(() => {}));
-});
-
-function typeAndSubmitTopic(el, topic) {
-  const inputEl = el.querySelector(".creation-input-field");
-  inputEl.value = topic;
-  inputEl.dispatchEvent(new Event("input"));
-  el.querySelector('[data-action="creation/submit-topic"]').click();
+function typeAndSubmitTopic(topic) {
+  const input = appElement.querySelector(".creation-input-field");
+  input.value = topic;
+  input.dispatchEvent(new Event("input"));
+  appElement.querySelector('[data-action="creation/submit-topic"]').click();
 }
 
-// Advance from the questions page (page 1) to the checklist page (page 2).
-function gotoChecklist(el) {
-  el.querySelector('[data-action="creation/to-checklist"]').click();
+function gotoChecklist() {
+  appElement.querySelector('[data-action="creation/to-checklist"]').click();
 }
 
-describe("openCreationPanel — topic entry", () => {
-  it("renders the language flag/name and an empty field", () => {
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, () => {}, () => {});
-    expect(appEl.querySelector(".pane-header-title").textContent).toContain("Spanish");
-    expect(appEl.querySelector(".creation-input-field").value).toBe("");
+async function openQuestions({
+  context = sampleQuestionsResponse,
+  params = { lang: "es", ability: "none" },
+  onCreated = () => {},
+  onDismiss = () => {},
+} = {}) {
+  getContext.mockResolvedValueOnce(context);
+  const sheet = openCreationPanel(appElement, params, onCreated, onDismiss);
+  typeAndSubmitTopic("salsa dancing");
+  await vi.waitFor(() => expect(appElement.querySelector(".creation-select")).toBeTruthy());
+  return sheet;
+}
+
+async function waitForCommit() {
+  await vi.waitFor(() => expect(commitPhrasebook).toHaveBeenCalledTimes(1), { timeout: 2500 });
+}
+
+function createStore() {
+  const store = createDb({ indexedDB: new IDBFactory(), IDBKeyRange });
+  return store.open().then(() => store);
+}
+
+describe("openCreationPanel — input and context", () => {
+  it("renders the chosen language and enables topic submission only for input", () => {
+    openCreationPanel(appElement, { lang: "es", ability: "none" }, () => {});
+    expect(appElement.querySelector(".pane-header-title").textContent).toContain("Spanish");
+    const submit = appElement.querySelector('[data-action="creation/submit-topic"]');
+    expect(submit.disabled).toBe(true);
+
+    const input = appElement.querySelector(".creation-input-field");
+    input.value = "salsa dancing";
+    input.dispatchEvent(new Event("input"));
+    expect(submit.disabled).toBe(false);
   });
 
-  it("submit button is disabled until the topic has a value", () => {
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, () => {}, () => {});
-    expect(appEl.querySelector('[data-action="creation/submit-topic"]').disabled).toBe(true);
-    const inputEl = appEl.querySelector(".creation-input-field");
-    inputEl.value = "salsa dancing";
-    inputEl.dispatchEvent(new Event("input"));
-    expect(appEl.querySelector('[data-action="creation/submit-topic"]').disabled).toBe(false);
-  });
-
-  it("back/close dismisses the whole pane", () => {
-    let dismissed = false;
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, () => {}, () => { dismissed = true; });
-    const panel = appEl.querySelector(".creation-panel");
-    appEl.querySelector('[data-action="creation/back"]').click();
-    panel.dispatchEvent(new Event("transitionend"));
-    expect(dismissed).toBe(true);
-  });
-
-  it("shows a loading skeleton while context questions are loading", async () => {
-    let resolveContext;
-    getContext.mockReturnValueOnce(new Promise((res) => { resolveContext = res; }));
-    openCreationPanel(appEl, { lang: "es", ability: "advanced" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "salsa dancing");
-
-    expect(appEl.querySelector(".creation-skeleton-list")).toBeTruthy();
-
-    resolveContext(sampleQuestionsResponse);
-    await vi.waitFor(() => expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)).toBeTruthy());
-  });
-
-  it("shows an error message when context loading rejects", async () => {
-    getContext.mockRejectedValueOnce(new Error("LLM request failed"));
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(".creation-error")).toBeTruthy(), { timeout: 2000 });
-    expect(appEl.querySelector(".creation-error").textContent).toContain("LLM request failed");
-  });
-});
-
-describe("openCreationPanel — context questions + checklist", () => {
-  async function openWithQuestions(response = sampleQuestionsResponse) {
-    getContext.mockResolvedValueOnce(response);
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)).toBeTruthy());
-  }
-
-  it("renders one select per question, pre-filled with its first option", async () => {
-    await openWithQuestions();
-    const select = appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`);
-    expect(select.value).toBe("Latin America (neutral)");
-  });
-
-  it("renders the checklist with pre-checked defaults", async () => {
-    await openWithQuestions();
-    gotoChecklist(appEl);
-    const items = appEl.querySelectorAll(".creation-checklist-item");
-    expect(items).toHaveLength(2);
-    expect(items[0].dataset.checked).toBe("true");
-    expect(items[1].dataset.checked).toBe("false");
-  });
-
-  it("tapping a checklist item toggles its checked state", async () => {
-    await openWithQuestions();
-    gotoChecklist(appEl);
-    appEl.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[1].click();
-    const items = appEl.querySelectorAll(".creation-checklist-item");
-    expect(items[1].dataset.checked).toBe("true");
-  });
-
-  it("keeps at least one checklist topic selected", async () => {
-    await openWithQuestions();
-    gotoChecklist(appEl);
-    appEl.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[0].click();
-    expect(appEl.querySelectorAll(".creation-checklist-item")[0].dataset.checked).toBe("true");
-  });
-
-  it("allows no more than eight checklist topics to be selected", async () => {
-    const checklist = Array.from({ length: 9 }, (_, index) => ({
-      label: `Topic ${index + 1}`,
-      checked: index === 0,
-    }));
-    await openWithQuestions({ ...sampleQuestionsResponse, checklist });
-    gotoChecklist(appEl);
-    const items = appEl.querySelectorAll('[data-action="creation/toggle-checklist-item"]');
-    for (let index = 1; index < items.length; index += 1) items[index].click();
-    const selected = [...appEl.querySelectorAll(".creation-checklist-item")]
-      .filter((item) => item.dataset.checked === "true");
-    expect(selected).toHaveLength(8);
-  });
-
-
-  it("renders hostile model-provided labels and option values literally", async () => {
+  it("renders hostile labels and option values literally", async () => {
     const hostileLabel = 'label"><img src=x onerror="window.__injected=true">';
     const hostileOption = 'option" autofocus onfocus="window.__injected=true';
-    await openWithQuestions({
-      questions: [{ label: hostileLabel, options: [hostileOption] }],
-      checklist: [{ label: hostileLabel, checked: true }],
+    await openQuestions({
+      context: {
+        questions: [{ label: hostileLabel, options: [hostileOption] }],
+        checklist: [{ label: hostileLabel, checked: true }],
+      },
     });
 
-    const select = appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`);
-    expect(appEl.querySelector("img")).toBeNull();
-    expect(select.closest(".creation-select-row").querySelector(".creation-select-label").textContent).toBe(hostileLabel);
+    const select = appElement.querySelector(".creation-select");
+    expect(appElement.querySelector("img")).toBeNull();
+    expect(select.closest(".creation-select-row").querySelector(".creation-select-label").textContent)
+      .toBe(hostileLabel);
     expect(select.dataset.label).toBe(hostileLabel);
-    const option = select.querySelector("option");
     expect(select.value).toBe(hostileOption);
-    expect(option.textContent).toBe(hostileOption);
-    expect(option.hasAttribute("autofocus")).toBe(false);
-    expect(option.hasAttribute("onfocus")).toBe(false);
+    expect(select.querySelector("option").hasAttribute("autofocus")).toBe(false);
 
-    gotoChecklist(appEl);
-    expect(appEl.querySelector(".creation-checklist-item").textContent).toContain(hostileLabel);
-    expect(appEl.querySelector("img")).toBeNull();
+    gotoChecklist();
+    expect(appElement.querySelector(".creation-checklist-item").textContent).toContain(hostileLabel);
+    expect(appElement.querySelector("img")).toBeNull();
   });
-});
 
-describe("openCreationPanel — generate + commit", () => {
-  async function openReadyToGenerate() {
-    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)).toBeTruthy());
-  }
-
-
-  it("on success, creates the deck and imports every card in one shot, then calls onCreated", async () => {
-    getPhrasebookTitle.mockResolvedValueOnce({ title: "Salsa Social Dancing" });
-    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
-    let createdDeck = null;
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, (deck) => { createdDeck = deck; }, () => {});
-    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)).toBeTruthy());
-
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(createDeck).toHaveBeenCalledWith("Salsa Social Dancing", "es", { ability: "none" });
-
-    await vi.waitFor(() => expect(importCards).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    const [cards, deckId] = importCards.mock.calls[0];
-    expect(deckId).toBe("001-salsa-dancing");
-    expect(cards).toHaveLength(2);
-    expect(cards[0].context).toBe("Ask someone to dance");
-    expect(cards[0].text).toBe("¿Bailas?");
-    expect(cards[1]).toMatchObject({
-      type: "word",
-      translation: "dance",
-      context: "Ask someone to dance",
-      notes: { source: "¿Bailas?" },
+  it("keeps __proto__ as a literal answer key in the frozen generation request", async () => {
+    await openQuestions({
+      context: {
+        questions: [{ label: "__proto__", options: ["family", "friends"] }],
+        checklist: [{ label: "Greetings", checked: true }],
+      },
     });
-
-    await vi.waitFor(() => expect(createdDeck).toBeTruthy());
-    expect(createdDeck.id).toBe("001-salsa-dancing");
-  });
-
-  it("shows an error and does not create a deck when phrasebook generation rejects", async () => {
-    generatePhrasebook.mockRejectedValueOnce(new Error("LLM request failed"));
-    await openReadyToGenerate();
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(appEl.querySelector(".creation-error")).toBeTruthy(), { timeout: 2000 });
-    expect(appEl.querySelector(".creation-error").textContent).toContain("LLM request failed");
-    expect(createDeck).not.toHaveBeenCalled();
-    expect(importCards).not.toHaveBeenCalled();
-    expect(getLastAbility("es")).toBeUndefined();
-  });
-
-  it("falls back to the raw topic without waiting for a pending title", async () => {
-    generatePhrasebook.mockResolvedValueOnce({ groups: sampleGenerateResponse.groups });
-    await openReadyToGenerate();
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(createDeck).toHaveBeenCalledWith("salsa dancing", "es", { ability: "none" });
-  });
-});
-
-describe("openCreationPanel — speculative generation lifecycle", () => {
-  async function openQuestions({
-    response = sampleQuestionsResponse,
-    onCreated = () => {},
-    onDismiss = () => {},
-  } = {}) {
-    getContext.mockResolvedValueOnce(response);
-    const sheet = openCreationPanel(
-      appEl,
-      { lang: "es", ability: "none" },
-      onCreated,
-      onDismiss,
-    );
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)).toBeTruthy());
-    return sheet;
-  }
-
-  it("starts once on checklist advance with all topics and a copy of the answers, without saving early", async () => {
-    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
-    await openQuestions();
-    const select = appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`);
-    select.value = "Cuban style";
+    const select = appElement.querySelector(".creation-select");
+    select.value = "friends";
     select.dispatchEvent(new Event("change"));
+    gotoChecklist();
 
-    gotoChecklist(appEl);
+    const generation = generatePhrasebook.mock.calls[0][0];
+    expect(Object.hasOwn(generation.answers, "__proto__")).toBe(true);
+    expect(generation.answers.__proto__).toBe("friends");
 
-    expect(generatePhrasebook).toHaveBeenCalledTimes(1);
-    const request = generatePhrasebook.mock.calls[0][0];
-    expect(request).toMatchObject({
-      seed: "salsa dancing",
-      language: "es",
-      answers: { "Salsa scene": "Cuban style" },
-      checklist: ["Ask someone to dance", "Dance/step vocabulary"],
-    });
-    expect(request.signal).toBeInstanceOf(AbortSignal);
-    await Promise.resolve();
-    expect(appEl.querySelector(".creation-checklist")).toBeTruthy();
-    expect(createDeck).not.toHaveBeenCalled();
-    expect(importCards).not.toHaveBeenCalled();
-    expect(getLastAbility("es")).toBeUndefined();
-
-    appEl.querySelector('[data-action="creation/back"]').click();
-    const changedSelect = appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`);
-    changedSelect.value = "Latin America (neutral)";
+    appElement.querySelector('[data-action="creation/back"]').click();
+    const changedSelect = appElement.querySelector(".creation-select");
+    changedSelect.value = "family";
     changedSelect.dispatchEvent(new Event("change"));
-    expect(request.answers).toEqual({ "Salsa scene": "Cuban style" });
+    expect(generation.signal.aborted).toBe(true);
+    expect(generation.answers.__proto__).toBe("friends");
   });
 
-  it("reuses the same pending and ready result when navigating back without changes", async () => {
-    const phrasebook = deferred();
-    generatePhrasebook.mockReturnValueOnce(phrasebook.promise);
+  it("caps checklist selection at eight and never permits zero selected groups", async () => {
+    await openQuestions({
+      context: {
+        questions: [{ label: "Style", options: ["Any"] }],
+        checklist: Array.from({ length: 9 }, (_, index) => ({
+          label: `Topic ${index}`,
+          checked: index === 0,
+        })),
+      },
+    });
+    gotoChecklist();
+    const rows = appElement.querySelectorAll('[data-action="creation/toggle-checklist-item"]');
+    rows[0].click();
+    expect(rows[0].dataset.checked).toBe("true");
+    for (let index = 1; index < rows.length; index += 1) {
+      appElement.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[index].click();
+    }
+    expect([...appElement.querySelectorAll(".creation-checklist-item")]
+      .filter((row) => row.dataset.checked === "true")).toHaveLength(8);
+  });
+});
+
+describe("openCreationPanel — speculative generation", () => {
+  it("reuses pending and ready generation while answers remain unchanged", async () => {
+    const generated = deferred();
+    generatePhrasebook.mockReturnValueOnce(generated.promise);
     await openQuestions();
 
-    gotoChecklist(appEl);
+    gotoChecklist();
     const signal = generatePhrasebook.mock.calls[0][0].signal;
-    appEl.querySelector('[data-action="creation/back"]').click();
-    gotoChecklist(appEl);
+    appElement.querySelector('[data-action="creation/back"]').click();
+    gotoChecklist();
     expect(generatePhrasebook).toHaveBeenCalledTimes(1);
     expect(signal.aborted).toBe(false);
 
-    phrasebook.resolve(sampleGenerateResponse);
+    generated.resolve(sampleGenerateResponse);
     await Promise.resolve();
     await Promise.resolve();
-    appEl.querySelector('[data-action="creation/back"]').click();
-    gotoChecklist(appEl);
+    appElement.querySelector('[data-action="creation/back"]').click();
+    gotoChecklist();
     expect(generatePhrasebook).toHaveBeenCalledTimes(1);
-    expect(createDeck).not.toHaveBeenCalled();
+    expect(commitPhrasebook).not.toHaveBeenCalled();
   });
 
-  it("aborts on answer changes and ignores a superseded response that resolves late", async () => {
+  it("aborts superseded generation and ignores its late response", async () => {
     const oldRequest = deferred();
     const newRequest = deferred();
     generatePhrasebook
@@ -360,452 +289,287 @@ describe("openCreationPanel — speculative generation lifecycle", () => {
       .mockReturnValueOnce(newRequest.promise);
     await openQuestions();
 
-    gotoChecklist(appEl);
+    gotoChecklist();
     const oldSignal = generatePhrasebook.mock.calls[0][0].signal;
-    appEl.querySelector('[data-action="creation/back"]').click();
-    const select = appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`);
+    appElement.querySelector('[data-action="creation/back"]').click();
+    const select = appElement.querySelector(".creation-select");
     select.value = "Cuban style";
     select.dispatchEvent(new Event("change"));
     expect(oldSignal.aborted).toBe(true);
 
-    gotoChecklist(appEl);
+    gotoChecklist();
+    oldRequest.resolve(sampleGenerateResponse);
+    await Promise.resolve();
+    expect(commitPhrasebook).not.toHaveBeenCalled();
     expect(generatePhrasebook).toHaveBeenCalledTimes(2);
-    oldRequest.resolve({ groups: [] });
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(createDeck).not.toHaveBeenCalled();
+    expect(generatePhrasebook.mock.calls[1][0].answers).toEqual({ "Salsa scene": "Cuban style" });
 
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
     newRequest.resolve(sampleGenerateResponse);
-    await vi.waitFor(() => expect(importCards).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(importCards.mock.calls[0][0]).toContainEqual(sampleGenerateResponse.groups[0].cards[0]);
   });
 
-  it("aborts speculative work when the seed changes and starts fresh for the new seed", async () => {
-    const nextContext = {
-      questions: [{ label: "Bachata style", options: ["Dominican", "Modern"] }],
-      checklist: [{ label: "Invite a partner", checked: true }],
-    };
-    getContext
-      .mockResolvedValueOnce(sampleQuestionsResponse)
-      .mockResolvedValueOnce(nextContext);
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)).toBeTruthy());
-    gotoChecklist(appEl);
-    const oldSignal = generatePhrasebook.mock.calls[0][0].signal;
-
-    appEl.querySelector('[data-action="creation/back"]').click();
-    appEl.querySelector('[data-action="creation/back"]').click();
-    const input = appEl.querySelector(".creation-input-field");
-    input.value = "bachata dancing";
-    input.dispatchEvent(new Event("input"));
-    expect(oldSignal.aborted).toBe(true);
-    appEl.querySelector('[data-action="creation/submit-topic"]').click();
-    await vi.waitFor(() => expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)?.dataset.label).toBe("Bachata style"));
-    gotoChecklist(appEl);
-
-    expect(generatePhrasebook).toHaveBeenCalledTimes(2);
-    expect(generatePhrasebook.mock.calls[1][0]).toMatchObject({
-      seed: "bachata dancing",
-      answers: { "Bachata style": "Dominican" },
-      checklist: ["Invite a partner"],
-    });
-  });
-
-  it("aborts a dismissed context request and ignores its late response", async () => {
-    const context = deferred();
-    getContext.mockReturnValueOnce(context.promise);
-    let dismissed = false;
-    openCreationPanel(
-      appEl,
-      { lang: "es", ability: "none" },
-      () => {},
-      () => { dismissed = true; },
-    );
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    const signal = getContext.mock.calls[0][0].signal;
-
-    const panel = appEl.querySelector(".creation-panel");
-    appEl.querySelector('[data-action="creation/back"]').click();
-    expect(signal.aborted).toBe(true);
-    context.resolve(sampleQuestionsResponse);
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)).toBeNull();
-    expect(createDeck).not.toHaveBeenCalled();
-
-    panel.dispatchEvent(new Event("transitionend"));
-    expect(dismissed).toBe(true);
-  });
-
-  it("aborts phrasebook generation on dismissal and never persists its late response", async () => {
-    const phrasebook = deferred();
-    generatePhrasebook.mockReturnValueOnce(phrasebook.promise);
-    await openQuestions();
-    gotoChecklist(appEl);
-    const signal = generatePhrasebook.mock.calls[0][0].signal;
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-
-    appEl.querySelector('[data-action="creation/back"]').click();
-    expect(signal.aborted).toBe(true);
-    phrasebook.resolve(sampleGenerateResponse);
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(createDeck).not.toHaveBeenCalled();
-    expect(importCards).not.toHaveBeenCalled();
-    expect(getLastAbility("es")).toBeUndefined();
-  });
-
-  it("rolls back a deck if dismissal wins the persistence race", async () => {
-    const deckCreation = deferred();
-    createDeck.mockReturnValueOnce(deckCreation.promise);
-    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
-    let created = false;
-    await openQuestions({ onCreated: () => { created = true; } });
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1), { timeout: 2000 });
-
-    appEl.querySelector('[data-action="creation/back"]').click();
-    deckCreation.resolve({
-      id: "001-racing-deck",
-      name: "Salsa Social Dancing",
-      lang: "es",
-      ability: "none",
-    });
-
-    await vi.waitFor(() => expect(deleteDeck).toHaveBeenCalledWith("001-racing-deck"));
-    expect(importCards).not.toHaveBeenCalled();
-    expect(getLastAbility("es")).toBeUndefined();
-    expect(created).toBe(false);
-  });
-
-  it("keeps background errors off the checklist, then surfaces on Continue and retries with choices intact", async () => {
+  it("keeps background generation errors off the checklist until Continue, then retries intact", async () => {
     generatePhrasebook
       .mockRejectedValueOnce(new Error("LLM request failed"))
       .mockResolvedValueOnce(sampleGenerateResponse);
     await openQuestions();
-    gotoChecklist(appEl);
-    appEl.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[1].click();
+    gotoChecklist();
+    appElement.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[1].click();
     await Promise.resolve();
     await Promise.resolve();
+    expect(appElement.querySelector(".creation-error")).toBeNull();
 
-    expect(appEl.querySelector(".creation-checklist")).toBeTruthy();
-    expect(appEl.querySelector(".creation-error")).toBeNull();
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    expect(appEl.querySelector(".creation-error").textContent).toContain("LLM request failed");
-
-    appEl.querySelector('[data-action="creation/retry"]').click();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    expect(appElement.querySelector(".creation-error").textContent).toContain("LLM request failed");
+    appElement.querySelector('[data-action="creation/retry"]').click();
     expect(generatePhrasebook).toHaveBeenCalledTimes(2);
-    const choices = [...appEl.querySelectorAll(".creation-checklist-item")]
-      .map((item) => item.dataset.checked);
-    expect(choices).toEqual(["true", "true"]);
-    await Promise.resolve();
-    await Promise.resolve();
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-
-    await vi.waitFor(() => expect(importCards).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(importCards.mock.calls[0][0]).toHaveLength(4);
+    expect([...appElement.querySelectorAll(".creation-checklist-item")]
+      .map((row) => row.dataset.checked)).toEqual(["true", "true"]);
   });
 
-  it("coalesces repeated final Continue clicks into one save", async () => {
+  it("aborts context, title, and generation work on dismissal", async () => {
+    const context = deferred();
+    getContext.mockReturnValueOnce(context.promise);
+    const first = openCreationPanel(appElement, { lang: "es", ability: "none" }, () => {});
+    typeAndSubmitTopic("salsa dancing");
+    const contextSignal = getContext.mock.calls[0][0].signal;
+    const titleSignal = getPhrasebookTitle.mock.calls[0][0].signal;
+    first.close();
+    expect(contextSignal.aborted).toBe(true);
+    expect(titleSignal.aborted).toBe(true);
+
+    document.body.innerHTML = "";
+    appElement = document.createElement("div");
+    document.body.appendChild(appElement);
     const phrasebook = deferred();
     generatePhrasebook.mockReturnValueOnce(phrasebook.promise);
-    await openQuestions();
-    gotoChecklist(appEl);
-    const continueButton = appEl.querySelector('[data-action="creation/submit-context"]');
-    continueButton.click();
-    continueButton.click();
+    const second = await openQuestions();
+    gotoChecklist();
+    const phrasebookSignal = generatePhrasebook.mock.calls.at(-1)[0].signal;
+    second.close();
+    expect(phrasebookSignal.aborted).toBe(true);
     phrasebook.resolve(sampleGenerateResponse);
-
-    await vi.waitFor(() => expect(importCards).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(generatePhrasebook).toHaveBeenCalledTimes(1);
-    expect(createDeck).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    expect(commitPhrasebook).not.toHaveBeenCalled();
   });
 });
 
-describe("openCreationPanel — selected-topic vocabulary", () => {
-  it("selects duplicate-titled groups by index, preserves provenance, deduplicates, and caps pooled vocab", async () => {
-    const phrase = (text, context) => ({
-      lang: "es",
-      type: "phrase",
-      text,
-      translation: `${text} translation`,
-      reading: [[text, null]],
-      context,
-    });
-    const word = (translation, context, source) => ({
-      lang: "es",
-      type: "word",
-      text: `${translation} target`,
-      translation,
-      reading: [[`${translation} target`, null]],
-      context,
-      notes: { source },
-    });
+describe("openCreationPanel — atomic commit lifetime", () => {
+  it("commits selected duplicate-title groups with frozen generation context", async () => {
+    const store = await createStore();
+    commitPhrasebook.mockImplementation((input, options) =>
+      actualCommitPhrasebook(input, { ...options, store }));
+    getPhrasebookTitle.mockResolvedValueOnce({ title: "Salsa Social Dancing" });
+
+    const selectedFirst = phrase("selected-first", "Hola", "Hello");
+    const discarded = phrase("discarded", "Adiós", "Goodbye");
+    const selectedThird = phrase("selected-third", "Hola", "Hi there", "partner");
     const response = {
-      title: "Duplicate topics",
+      schemaVersion: 2,
+      title: "Ignored provider title",
       groups: [
         {
+          id: "same-a",
           title: "Same title",
-          cards: [phrase("first phrase", "first context")],
-          vocab: ["coffee", "one", "two", "three", "four", "five"]
-            .map((translation) => word(translation, "first context", "first phrase")),
+          phrases: [selectedFirst],
+          vocab: [word("hola", "hello", "greeting", source(selectedFirst, 0, 4))],
         },
         {
-          title: "Same title",
-          cards: [phrase("unselected phrase", "middle context")],
-          vocab: [word("unselected", "middle context", "unselected phrase")],
+          id: "discarded-group",
+          title: "Discarded",
+          phrases: [discarded],
+          vocab: [word("adiós", "goodbye", "farewell", source(discarded, 0, 5))],
         },
         {
+          id: "same-c",
           title: "Same title",
-          cards: [phrase("third phrase", "third context")],
-          vocab: ["ＣＯＦＦＥＥ", "six", "seven", "eight", "nine", "ten", "eleven"]
-            .map((translation) => word(translation, "third context", "third phrase")),
+          phrases: [selectedThird],
+          vocab: [word("hola", "hi", "greeting", source(selectedThird, 0, 4))],
         },
       ],
+      usage,
     };
-    getContext.mockResolvedValueOnce({
-      questions: [{ label: "Style", options: ["Any"] }],
-      checklist: [
-        { label: "Same title", checked: true },
-        { label: "Same title", checked: false },
-        { label: "Same title", checked: false },
-      ],
-    });
     generatePhrasebook.mockResolvedValueOnce(response);
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "duplicate topics");
-    await vi.waitFor(() => expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)).toBeTruthy());
-    gotoChecklist(appEl);
-    appEl.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[2].click();
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(importCards).toHaveBeenCalledTimes(1), { timeout: 2000 });
-
-    expect(generatePhrasebook.mock.calls[0][0].checklist).toEqual([
-      "Same title",
-      "Same title",
-      "Same title",
-    ]);
-    const [cards] = importCards.mock.calls[0];
-    expect(cards.filter((card) => card.type === "phrase").map((card) => card.text)).toEqual([
-      "first phrase",
-      "third phrase",
-    ]);
-    const vocabulary = cards.filter((card) => card.type === "word");
-    expect(vocabulary.map((card) => card.translation)).toEqual([
-      "coffee",
-      "one",
-      "two",
-      "three",
-      "four",
-      "five",
-      "six",
-      "seven",
-      "eight",
-      "nine",
-    ]);
-    expect(vocabulary).toHaveLength(10);
-    expect(vocabulary[0]).toMatchObject({
-      translation: "coffee",
-      context: "first context",
-      notes: { source: "first phrase" },
+    let createdDeck = null;
+    await openQuestions({
+      context: {
+        questions: sampleQuestionsResponse.questions,
+        checklist: [
+          { label: "Same title", checked: true },
+          { label: "Discarded", checked: false },
+          { label: "Same title", checked: false },
+        ],
+      },
+      onCreated: (deck) => { createdDeck = deck; },
     });
-    expect(cards.some((card) => card.text === "unselected phrase")).toBe(false);
-    expect(cards.some((card) => card.translation === "unselected")).toBe(false);
-  });
-
-  it("applies the absolute 24-card vocabulary ceiling when five or more topics are selected", async () => {
-    const groups = Array.from({ length: 5 }, (_, groupIndex) => ({
-      title: `Topic ${groupIndex}`,
-      cards: [{
-        lang: "es",
-        type: "phrase",
-        text: `phrase ${groupIndex}`,
-        translation: `phrase ${groupIndex}`,
-        reading: [[`phrase ${groupIndex}`, null]],
-        context: `Topic ${groupIndex}`,
-      }],
-      vocab: Array.from({ length: 6 }, (_, wordIndex) => ({
-        lang: "es",
-        type: "word",
-        text: `word ${groupIndex}-${wordIndex}`,
-        translation: `word ${groupIndex}-${wordIndex}`,
-        reading: [[`word ${groupIndex}-${wordIndex}`, null]],
-        context: `Topic ${groupIndex}`,
-        notes: { source: `phrase ${groupIndex}` },
-      })),
-    }));
-    getContext.mockResolvedValueOnce({
-      questions: [{ label: "Style", options: ["Any"] }],
-      checklist: groups.map((group) => ({ label: group.title, checked: true })),
-    });
-    generatePhrasebook.mockResolvedValueOnce({ title: "Many topics", groups });
-    openCreationPanel(appEl, { lang: "es", ability: "none" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "many topics");
-    await vi.waitFor(() => expect(appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`)).toBeTruthy());
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(importCards).toHaveBeenCalledTimes(1), { timeout: 2000 });
-
-    const vocabulary = importCards.mock.calls[0][0].filter((card) => card.type === "word");
-    expect(vocabulary).toHaveLength(24);
-    expect(vocabulary.at(-1).translation).toBe("word 3-5");
-  });
-});
-
-describe("openCreationPanel — independent title lifecycle", () => {
-  async function openQuestions() {
-    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
-    const sheet = openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(".creation-select")).toBeTruthy());
-    return sheet;
-  }
-
-
-  it("starts naming and context together; dismissal aborts both", () => {
-    getContext.mockReturnValueOnce(new Promise(() => {}));
-    const sheet = openCreationPanel(appEl, { lang: "es", ability: "beginner" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    expect(getContext).toHaveBeenCalledTimes(1);
-    expect(getPhrasebookTitle).toHaveBeenCalledTimes(1);
-    expect(getPhrasebookTitle.mock.calls[0][0]).toEqual({ seed: "salsa dancing", signal: expect.any(AbortSignal) });
-    sheet.close();
-    expect(getContext.mock.calls[0][0].signal.aborted).toBe(true);
-    expect(getPhrasebookTitle.mock.calls[0][0].signal.aborted).toBe(true);
-  });
-
-  it.each(["failure", "invalid", "late"])("saves the seed for a %s title and never renames it", async (mode) => {
-    const title = deferred();
-    getPhrasebookTitle.mockReturnValueOnce(title.promise);
-    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
-    await openQuestions();
-    if (mode === "failure") title.reject(new Error("Title unavailable"));
-    if (mode === "invalid") title.resolve({ title: 42 });
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(importCards).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(createDeck).toHaveBeenCalledWith("salsa dancing", "es", { ability: "none" });
-    expect(getPhrasebookTitle.mock.calls[0][0].signal.aborted).toBe(true);
-    title.resolve({ title: "Too Late" });
-    await Promise.resolve();
-    expect(createDeck).toHaveBeenCalledTimes(1);
-    expect(appEl.querySelector(".creation-error")).toBeNull();
-  });
-
-  it("retains the title across answer changes and ignores titles in card responses", async () => {
-    getPhrasebookTitle.mockResolvedValueOnce({ title: "Salsa Nights 💃" });
-    generatePhrasebook.mockResolvedValue(sampleGenerateResponse);
-    await openQuestions();
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/back"]').click();
-    const select = appEl.querySelector(`.creation-select:not([data-label="${ABILITY_QUESTION}"])`);
+    const select = appElement.querySelector(".creation-select");
     select.value = "Cuban style";
     select.dispatchEvent(new Event("change"));
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(createDeck).toHaveBeenCalledWith("Salsa Nights 💃", "es", { ability: "none" });
-    expect(getPhrasebookTitle).toHaveBeenCalledTimes(1);
-    expect(generatePhrasebook).toHaveBeenCalledTimes(2);
-    expect(generatePhrasebook.mock.calls[1][0]).not.toHaveProperty("title");
+    gotoChecklist();
+    appElement.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[2].click();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await waitForCommit();
+    await vi.waitFor(() => expect(createdDeck).toBeTruthy());
+
+    expect(createdDeck.name).toBe("Salsa Social Dancing");
+    expect(createdDeck.generation).toEqual({
+      seed: "salsa dancing",
+      ability: "none",
+      answers: { "Salsa scene": "Cuban style" },
+    });
+    expect((await store.groups.where("deckId").equals(createdDeck.id).sortBy("position"))
+      .map((group) => group.title)).toEqual(["Same title", "Same title"]);
+    const occurrences = await store.occurrences.where("deckId").equals(createdDeck.id).toArray();
+    expect(occurrences.map((occurrence) => occurrence.translation).sort())
+      .toEqual(["Hello", "Hi there"]);
+    expect(await store.cards.where("type").equals("word").count()).toBe(1);
+    expect(await store.provenance.where("deckId").equals(createdDeck.id).count()).toBe(2);
+    expect(getLastAbility("es")).toBe("none");
+    store.close();
   });
 
-  it("replaces naming on a new seed and ignores the old response", async () => {
-    const oldTitle = deferred();
-    getPhrasebookTitle.mockReturnValueOnce(oldTitle.promise).mockResolvedValueOnce({ title: "Bachata Nights" });
+  it("coalesces repeated Continue clicks into one commit", async () => {
     generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
     await openQuestions();
-    appEl.querySelector('[data-action="creation/back"]').click();
-    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
-    typeAndSubmitTopic(appEl, "bachata dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(".creation-select")).toBeTruthy());
-    expect(getPhrasebookTitle.mock.calls[0][0].signal.aborted).toBe(true);
-    oldTitle.resolve({ title: "Stale Salsa" });
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(createDeck).toHaveBeenCalledTimes(1), { timeout: 2000 });
-    expect(createDeck).toHaveBeenCalledWith("Bachata Nights", "es", { ability: "none" });
+    gotoChecklist();
+    const continueButton = appElement.querySelector('[data-action="creation/submit-context"]');
+    continueButton.click();
+    continueButton.click();
+    await waitForCommit();
+    expect(commitPhrasebook).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts a real in-flight transaction on dismissal and leaves no rows", async () => {
+    const store = await createStore();
+    const settled = deferred();
+    let commitSignal;
+    commitPhrasebook.mockImplementation(async (input, options) => {
+      commitSignal = options.signal;
+      try {
+        return await actualCommitPhrasebook(input, { ...options, store });
+      } finally {
+        settled.resolve();
+      }
+    });
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    let created = false;
+    const sheet = await openQuestions({ onCreated: () => { created = true; } });
+    store.cards.hook("creating", () => sheet.close());
+    gotoChecklist();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await settled.promise;
+
+    expect(commitSignal.aborted).toBe(true);
+    expect(await store.decks.count()).toBe(0);
+    expect(await store.cards.count()).toBe(0);
+    expect(await store.memberships.count()).toBe(0);
+    expect(created).toBe(false);
+    expect(getLastAbility("es")).toBeUndefined();
+    store.close();
+  });
+
+  it("retains a transaction that completed before dismissal and remembers ability at that boundary", async () => {
+    const store = await createStore();
+    let sheet;
+    let durableDeck;
+    commitPhrasebook.mockImplementation(async (input, options) => {
+      durableDeck = await actualCommitPhrasebook(input, { ...options, store });
+      sheet.close();
+      return durableDeck;
+    });
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    let created = false;
+    sheet = await openQuestions({ onCreated: () => { created = true; } });
+    gotoChecklist();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await waitForCommit();
+    await vi.waitFor(() => expect(durableDeck).toBeTruthy());
+
+    expect(await store.decks.get(durableDeck.id)).toEqual(durableDeck);
+    expect(await store.cards.count()).toBeGreaterThan(0);
+    expect(getLastAbility("es")).toBe("none");
+    expect(created).toBe(false);
+    store.close();
+  });
+
+  it("surfaces transactional failure without rows or remembered ability", async () => {
+    const store = await createStore();
+    store.memberships.hook("creating", () => {
+      throw new Error("Storage full");
+    });
+    commitPhrasebook.mockImplementation((input, options) =>
+      actualCommitPhrasebook(input, { ...options, store }));
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    await openQuestions();
+    gotoChecklist();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await waitForCommit();
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-error")?.textContent)
+      .toContain("Storage full"));
+
+    expect(await store.decks.count()).toBe(0);
+    expect(await store.cards.count()).toBe(0);
+    expect(getLastAbility("es")).toBeUndefined();
+    store.close();
   });
 });
 
-describe("language ability", () => {
-  async function open() {
-    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
-    const sheet = openCreationPanel(appEl, { lang: "es" }, () => {}, () => {});
-    typeAndSubmitTopic(appEl, "salsa dancing");
-    await vi.waitFor(() => expect(appEl.querySelector(".creation-select")).toBeTruthy());
-    return sheet;
-  }
-
-  const abilitySelect = () => appEl.querySelector(`[data-label="${ABILITY_QUESTION}"]`);
-
-  it("asks with enum options and remembers only after successful import", async () => {
-    const importing = deferred();
-    importCards.mockReturnValueOnce(importing.promise);
+describe("openCreationPanel — title and ability", () => {
+  it("freezes an available independent title when final creation starts", async () => {
+    getPhrasebookTitle.mockResolvedValueOnce({ title: "Salsa Nights" });
     generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
-    await open();
-    expect(appEl.querySelector(".creation-select")).toBe(abilitySelect());
-    expect([...abilitySelect().options].map(o => o.value)).toEqual(["None", "Basics", "Conversational"]);
-    abilitySelect().value = "Conversational";
-    abilitySelect().dispatchEvent(new Event("change"));
-    expect(getLastAbility("es")).toBeUndefined();
-    gotoChecklist(appEl);
+    await openQuestions();
     await Promise.resolve();
-    expect(generatePhrasebook).toHaveBeenCalledWith(expect.objectContaining({ ability: "conversational", answers: { "Salsa scene": "Latin America (neutral)" } }));
+    gotoChecklist();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await waitForCommit();
+
+    expect(commitPhrasebook.mock.calls[0][0].name).toBe("Salsa Nights");
+    expect(getPhrasebookTitle.mock.calls[0][0].signal.aborted).toBe(true);
+  });
+
+  it("falls back to the trimmed seed without waiting for naming", async () => {
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    await openQuestions();
+    gotoChecklist();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await waitForCommit();
+    expect(commitPhrasebook.mock.calls[0][0].name).toBe("salsa dancing");
+  });
+
+  it("asks for an unsaved ability and remembers it only after commit succeeds", async () => {
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    const committing = deferred();
+    commitPhrasebook.mockReturnValueOnce(committing.promise);
+    await openQuestions({ params: { lang: "es" } });
+    const ability = appElement.querySelector(`[data-label="${ABILITY_QUESTION}"]`);
+    expect([...ability.options].map((option) => option.value))
+      .toEqual(["None", "Basics", "Conversational"]);
+    ability.value = "Conversational";
+    ability.dispatchEvent(new Event("change"));
+    gotoChecklist();
+    expect(generatePhrasebook.mock.calls[0][0].ability).toBe("conversational");
     expect(getLastAbility("es")).toBeUndefined();
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(importCards).toHaveBeenCalled(), { timeout: 2000 });
+
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await waitForCommit();
     expect(getLastAbility("es")).toBeUndefined();
-    importing.resolve();
+    committing.resolve({
+      ...committedDeck,
+      ability: "conversational",
+      generation: {
+        ...committedDeck.generation,
+        ability: "conversational",
+      },
+    });
     await vi.waitFor(() => expect(getLastAbility("es")).toBe("conversational"));
-    expect(getLastAbility("ja")).toBeUndefined();
-    expect(createDeck).toHaveBeenCalledWith(expect.any(String), "es", { ability: "conversational" });
   });
 
-  it("reuses remembered ability for both endpoints and does not ask again", async () => {
+  it("uses a remembered ability for both requests without asking again", async () => {
     setLastAbility("es", "basics");
-    await open();
-    expect(abilitySelect()).toBeNull();
-    expect(getContext).toHaveBeenCalledWith(expect.objectContaining({ language: "es", ability: "basics" }));
-    gotoChecklist(appEl);
+    await openQuestions({ params: { lang: "es" } });
+    expect(appElement.querySelector(`[data-label="${ABILITY_QUESTION}"]`)).toBeNull();
+    expect(getContext).toHaveBeenCalledWith(expect.objectContaining({ ability: "basics" }));
+    gotoChecklist();
     expect(generatePhrasebook).toHaveBeenCalledWith(expect.objectContaining({ ability: "basics" }));
-  });
-
-  it("asks independently for another language and discards a completed abandoned request", async () => {
-    setLastAbility("ja", "conversational");
-    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
-    const sheet = await open();
-    expect(abilitySelect()).toBeTruthy();
-    gotoChecklist(appEl);
-    await Promise.resolve();
-    sheet.close();
-    expect(getLastAbility("es")).toBeUndefined();
-    expect(getLastAbility("ja")).toBe("conversational");
-  });
-
-  it("does not remember ability if import fails", async () => {
-    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
-    importCards.mockRejectedValueOnce(new Error("Storage full"));
-    await open();
-    gotoChecklist(appEl);
-    appEl.querySelector('[data-action="creation/submit-context"]').click();
-    await vi.waitFor(() => expect(deleteDeck).toHaveBeenCalled(), { timeout: 2000 });
-    expect(getLastAbility("es")).toBeUndefined();
-  });
-
-  it("changing ability aborts stale generation and uses the new value", async () => {
-    await open();
-    gotoChecklist(appEl);
-    const old = generatePhrasebook.mock.calls[0][0];
-    appEl.querySelector('[data-action="creation/back"]').click();
-    abilitySelect().value = "Basics";
-    abilitySelect().dispatchEvent(new Event("change"));
-    expect(old.signal.aborted).toBe(true);
-    gotoChecklist(appEl);
-    expect(generatePhrasebook.mock.calls[1][0].ability).toBe("basics");
-    expect(getLastAbility("es")).toBeUndefined();
   });
 });

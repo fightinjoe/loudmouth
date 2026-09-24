@@ -11,6 +11,12 @@ Always load these docs when context is relevant:
 | Fan-out design (deferred) | `docs/FANOUT_DESIGN.md` | Planner + parallel-fillers optimization for `/lookup`; load only when building the fan-out |
 | API reference | `api/README.md` | Endpoint reference, deploy/dev setup, and gateway config for the `/lookup` service; see `docs/API_DESIGN.md` for the endpoint contract itself. |
 
+## Prompt changes
+
+Changes to prompt `*.txt` files require explicit user approval before editing. After approval, run
+before-and-after regression evaluations against representative inputs and report behavior, latency,
+and token-impact differences so the effect of the prompt change is understood.
+
 ## gstack
 
 Use the /browse skill from gstack for all web browsing. Never use mcp__claude-in-chrome__* tools.

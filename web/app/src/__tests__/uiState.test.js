@@ -5,7 +5,7 @@ import {
   createHost,
   setAttrSafe,
   setListHTMLSafe,
-} from "../js/uiState.js";
+} from "../js/uiState";
 
 describe("createUIState", () => {
   it("get(ns) returns the namespace slice; get() returns full state", () => {

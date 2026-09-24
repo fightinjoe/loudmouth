@@ -4,8 +4,12 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node dev.js",
+    "predev": "npm run schema:build",
     "test": "node --test test/",
-    "eval:adversarial": "node --env-file=../.env ../evals/scripts/eval-adversarial.js"
+    "pretest": "npm run schema:build",
+    "eval:adversarial": "node --env-file=../.env ../evals/scripts/eval-adversarial.js",
+    "schema:build": "tsc -p schema/tsconfig.json",
+    "gcp-build": "npm run schema:build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -13,6 +17,9 @@
     "@google/genai": "^1.50.1",
     "openai": "^4.85.0",
     "wanakana": "^5.3.1"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   },
   "engines": {
     "node": ">=20.12"

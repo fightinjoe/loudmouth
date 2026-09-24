@@ -335,6 +335,17 @@ ruby {
   line-height: 18px;
 }
 
+.card-term-definition {
+  margin-top: 2px;
+  padding-right: 32px;
+  color: var(--fg-caption);
+  font-family: var(--font-family-manrope);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 .card-alternative {
   color: var(--fg-caption);
   font-family: var(--font-family-manrope);
@@ -856,6 +867,9 @@ ruby {
   padding: 0 20px;
   touch-action: pan-y;
   transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  min-height: 0;
+  overflow-y: auto;
+  justify-content: safe center;
 }
 
 .review-card-wrap[data-dragging] {
@@ -883,12 +897,89 @@ ruby {
   text-align: center;
 }
 
-/* The revealed answer sits BELOW the flashcard (Figma Review frames), not
-   inside it — the card holds only the prompt. Skeleton and answer are
-   stacked in the same grid cell (both always rendered) so the region's
-   height is the max of the two and never changes when toggled — only
-   their visibility swaps, so revealing never shifts the card or answer
-   position vertically. */
+.review-prompt {
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.review-chunk-gloss,
+.review-chunk-context {
+  display: block;
+}
+
+.review-chunk-context {
+  margin-top: 18px;
+  font-size: 1.375rem;
+  line-height: 1.8;
+}
+
+.review-chunk-context mark,
+.review-source-example-target mark {
+  color: var(--accent);
+  background: transparent;
+  border-bottom: 2px solid currentColor;
+}
+
+.review-answer-primary {
+  overflow-wrap: anywhere;
+}
+
+.review-source-examples {
+  margin-top: 16px;
+  color: var(--fg-body);
+  font-size: var(--text-size-body1);
+}
+
+.review-source-examples-summary {
+  cursor: pointer;
+}
+
+.review-source-example-list {
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.review-source-example {
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+}
+
+.review-source-example-target {
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.review-source-example-translation {
+  overflow-wrap: anywhere;
+}
+
+.review-chunk-teaching {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.review-chunk-teaching > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-chunk-teaching dt {
+  font-size: var(--text-size-body2);
+}
+
+.review-chunk-teaching dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+
+/* The revealed answer sits below the flashcard. Skeleton and answer stay in
+   the same grid cell so reveal and press-peek only change visibility. */
 .review-answer-region {
   display: grid;
   width: 100%;
@@ -914,6 +1005,9 @@ ruby {
   touch-action: manipulation;
 }
 .review-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   visibility: hidden;
 }
 .review-card-wrap[data-revealed="true"] .review-answer-skeleton {

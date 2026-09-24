@@ -7,5 +7,10 @@ export default defineConfig({
   test: {
     include: ['src/__tests__/**/*.{test,spec}.{js,mjs,cjs}'],
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+    server: {
+      deps: {
+        external: [/\/api\/src\/schema\//],
+      },
+    },
   },
 })

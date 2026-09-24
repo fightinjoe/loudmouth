@@ -2,15 +2,17 @@
 
 ## Current decision and scope
 
-v07 is the selected working prompt. See [last comparison and next steps](notes/phrase-breakdown-07-vs-08.md).
-The runtime source of truth is `api/src/phrase-breakdown/prompt.txt`; numbered files in `prompts/`
-are immutable experiment snapshots, not an alternate deployment source.
+The runtime source of truth is `api/src/phrase-breakdown/prompt.txt`. It implements the v2 request,
+dictionary-Word, explicit-equivalence, and Chunk-target contract. Numbered files in `prompts/` are
+immutable pre-v2 experiment snapshots, not alternate deployment sources; they can explain historical
+artifacts but are not valid candidate prompts for a current production comparison.
 
-The CLI uses the production provider adapters, request validation, response validation, and
-punctuation normalization. It does not require an HTTP server, change runtime instructions, or save
-cards. Running it makes paid calls using credentials from `api/.env`. Never include credentials in
-fixtures, prompts, reports, or artifacts. Provider SDK retries may occur; the runner itself does not
-retry failed calls. A full application smoke check is separate from prompt evaluation.
+The CLI uses the production provider adapters, v2 request validation, model-output alignment and
+assembly, and punctuation normalization. It does not require an HTTP server, change runtime
+instructions, or save cards. Running it makes paid calls using credentials from `api/.env`. Never
+include credentials in fixtures, prompts, reports, or artifacts. Provider SDK retries may occur; the
+runner itself does not retry failed calls. A full application smoke check is separate from prompt
+evaluation.
 
 ## Run and compare
 
@@ -20,15 +22,12 @@ Commands below run from the repository root with Node and API dependencies insta
 # Current production prompt: one call for each of the four fixtures
 node --env-file=api/.env api/evals/scripts/eval-phrase-breakdown.js
 
-# Compare an experimental prompt against production; three samples for each phrase and prompt
+# Compare a v2-compatible experimental prompt against production; three samples each
 node --env-file=api/.env api/evals/scripts/eval-phrase-breakdown.js \
-  --prompt=api/evals/prompts/phrase-breakdown-vocab-08.txt --repetitions=3
+  --prompt=/tmp/phrase-breakdown-v2-candidate.txt --repetitions=3
 
-# Reproduce the v07-versus-v08 comparison with frozen instructions
-node --env-file=api/.env api/evals/scripts/eval-phrase-breakdown.js \
-  --baseline-prompt=api/evals/prompts/phrase-breakdown-vocab-07.txt \
-  --prompt=api/evals/prompts/phrase-breakdown-vocab-08.txt \
-  --backend=gemini-3.5-flash-lite --repetitions=3
+# Historical v07/v08 artifacts remain replayable, but their prompts must not be sent
+# through today's validator because they produce the retired learningItems contract.
 
 # One fixture; Luna uses the existing chatgpt registry key
 node --env-file=api/.env api/evals/scripts/eval-phrase-breakdown.js \
@@ -45,10 +44,10 @@ another JSON fixture array; `--out=PATH` chooses a new artifact path and refuses
 alternate baseline/candidate order by repetition; this reduces fixed ordering bias, not all temporal
 or provider variation. No temperature/seed control is currently supplied by this runner.
 
-The promoted contract always has nested `chunks[].learningItems` and production normalization;
-old experimental `--item-format` and `--normalize-punctuation` switches are no longer needed or
-accepted. Earlier prompt shapes would require a deliberately separate experiment, not loosening
-production validation. Retained v07/v08 artifacts can still be replayed.
+The promoted contract has nested `chunks[].words`, explicit `equivalentWordIndex`, dictionary-aligned
+structured readings, and production source-span assembly. Old experimental `--item-format` and
+`--normalize-punctuation` switches are not accepted. Earlier prompt shapes belong to historical
+replay, not a reason to loosen current production validation.
 
 ## How the user and assistant collaborate in the CLI
 
@@ -58,11 +57,11 @@ production validation. Retained v07/v08 artifacts can still be replayed.
 2. **Run it.** Do not substitute predicted outputs for provider responses. One sample is a quick
    exploration; use at least three per phrase per prompt before claiming improved consistency.
 3. **Make the actual content visible.** The terminal defaults to compact chunks and meanings, with
-   each chunk's learning items directly underneath as `Text — Meaning`. Do not print a detached
-   vocabulary list that forces the learner to reconstruct associations.
-4. **Show inputs.** Include exact target text, English translation, language, and supplied context.
-   Explain whether inputs are recovered or synthetic. The user should be able to revise the phrases,
-   translation, or context rather than evaluate mysterious requests.
+   each chunk's dictionary Words and explicit Word/Chunk target directly underneath. Do not print a
+   detached vocabulary list that forces the learner to reconstruct source association or equivalence.
+4. **Show inputs.** Include the exact source snapshot—target text, occurrence translation, language,
+   and supplied active context. Explain whether inputs are recovered or synthetic. The user should be
+   able to revise the phrase, translation, or context rather than evaluate mysterious requests.
 5. **Show normalization honestly.** When chunks are removed, print raw versus normalized boundaries
    and the removal count. Preserve raw text, failed calls, findings, and post-normalization output.
    Never hide a bad raw generation, silently repair linguistic content, or discard an unfavorable sample.
@@ -88,24 +87,31 @@ In order:
 
 1. Coherent, understandable chunks without punctuation-only learning targets; larger constructions
    are preferable to unnecessary fragmentation.
-2. Exact source alignment and correct parent-child association of learning items.
-3. User-perceived latency around 3–4 seconds or less. Report model-call timings honestly: this CLI
+2. Exact UTF-16 source alignment, explicit occurrence selection for repeated surfaces, and correct
+   parent-child association of Word evidence.
+3. Correct equivalence: an unchanged lexical target such as standalone `caluroso` may use a Word
+   target, while inflection or attached particles such as `食べません`/`食べる` and `肉も`/`肉`
+   retain distinct Chunk and Word targets.
+4. User-perceived latency around 3–4 seconds or less. Report model-call timings honestly: this CLI
    measurement excludes HTTP/network-to-app and rendering overhead, and local validation is timed
    separately. Report mean/median and slowest repeated sample; one fast call is not a guarantee.
-4. Useful dictionary-form words and reusable expressions. Missing un poco or me gusta is less serious
-   than broken segmentation. Productive particles may need explanation without deserving Word cards.
-5. Accurate contextual meanings, readings, and grammatical explanations. Avoid unsupported exhaustive
-   lists, conflicting literal/contextual glosses, and context-insensitive dictionary sense inventories.
+5. Useful dictionary-form Words with consistent part of speech and canonical sense keys. Missing
+   secondary vocabulary is less serious than broken segmentation or fabricated source evidence.
+6. Accurate contextual meanings, dictionary-aligned readings, and grammatical explanations. Avoid
+   unsupported exhaustive lists, conflicting literal/contextual glosses, and context-insensitive
+   dictionary sense inventories.
 
 No Pattern section is generated. Local grammar belongs in chunk explanations; a separate on-demand
 Grammar feature is deferred. No automatic second model call or grammar fan-out is part of this flow.
 
 ## Fixtures and artifacts
 
-Each fixture has `id`, `request`, `provenance`, and `review` questions. Review questions are human
-rubrics, not sent to the model. Japanese meat/fish request fields were recovered from a phrasebook;
-Spanish weather uses a reconstructed translation with no context. Restaurant and soup are explicitly
-synthetic fixtures. Do not present reconstructed inputs as captured original requests.
+Each fixture has `id`, a validated v2 `request`, `provenance`, and `review` questions. Review questions
+are human rubrics, not sent to the model. Requests carry the occurrence translation in
+`source.snapshot` and only the active phrasebook context. Japanese meat/fish request fields were
+recovered from a phrasebook; Spanish weather uses a reconstructed translation with no context.
+Restaurant and soup are explicitly synthetic fixtures. Do not present reconstructed inputs as
+captured original requests.
 
 Artifacts are written incrementally under ignored `api/evals/artifacts/`. They include exact trusted
 instructions and serialized input, model/backend, usage and estimated cost, model-call latency,
@@ -113,10 +119,12 @@ raw responses, validation findings, normalized output, and normalization timing/
 Failures remain in the run, and any final finding yields a nonzero exit code. Replay prints recorded
 findings without revalidating, so historical PASS is not a claim about today's contract.
 
-Keep raw model output even when invalid. Production punctuation cleanup verifies every raw span,
-removes only punctuation/whitespace-only chunks with empty learningItems, preserves nested items on
-retained chunks, and rejects all-empty results. It does not merge clauses, remove arbitrary symbols,
-invent lexical items, or guess a misplaced item's parent. Source phrase text remains untouched.
+Keep raw model output even when invalid. Production punctuation cleanup verifies every raw span and
+removes only punctuation/whitespace-only chunks with empty `words` and a null
+`equivalentWordIndex`. It preserves dictionary Words on retained chunks and rejects all-empty output,
+guessed occurrence offsets, misaligned readings, invalid equivalence, and source gaps. It does not
+merge clauses, remove arbitrary symbols, invent lexical items, or trust model-generated snapshots or
+IDs. The validated request snapshot remains untouched.
 
 As requested when locking v07, pre-v07 phrase-breakdown run artifacts were removed; original API
 captures, prompt snapshots, the v07 run, and the v07/v08 comparison were retained. Do not delete other

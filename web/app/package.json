@@ -8,21 +8,27 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "predev": "npm run schema:build",
+    "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "pretest": "npm run schema:build",
     "test:e2e": "playwright test",
-    "test:all": "vitest run && playwright test"
+    "test:all": "npm test && npm run test:e2e",
+    "schema:build": "tsc -p ../../api/src/schema/tsconfig.json",
+    "typecheck": "npm run schema:build && tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.9.0",
+    "typescript": "5.9.3",
     "vite": "^6.4.1",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.1.0"
   },
   "dependencies": {
+    "@catchphrase/card-schema": "file:../../api/src/schema",
     "dexie": "^4.3.0"
   }
 }

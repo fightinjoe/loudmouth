@@ -1,129 +1,76 @@
 {
-    "cards": [
-      {
-        "lang": "zh",
-        "type": "phrase",
-        "text": "吃饭了",
-        "reading": "chī fàn le",
-        "translation": "time to eat / dinner's ready",
-        "notes": "Called out to gather the family to the table",
-        "example": {
-          "text": "妈妈说吃饭了。",
-          "reading": "Māma shuō chī fàn le.",
-          "translation": "Mom said it's time to eat."
-        }
-      },
-      {
-        "lang": "zh",
-        "type": "word",
-        "text": "好吃",
-        "reading": "hǎo chī",
-        "translation": "delicious",
-        "notes": "Literal: 'good to eat'; common compliment at the table",
-        "example": {
-          "text": "这个菜真好吃！",
-          "reading": "Zhège cài zhēn hǎo chī!",
-          "translation": "This dish is really delicious!"
-        }
-      },
-      {
-        "lang": "zh",
-        "type": "phrase",
-        "text": "我吃饱了",
-        "reading": "wǒ chī bǎo le",
-        "translation": "I'm full",
-        "notes": "饱 means full/satiated; use after a meal to decline more food",
-        "example": {
-          "text": "不用了，我吃饱了，谢谢。",
-          "reading": "Bùyòng le, wǒ chī bǎo le, xièxie.",
-          "translation": "No need, I'm full, thank you."
-        }
-      },
-      {
-        "lang": "zh",
-        "type": "phrase",
-        "text": "再来一碗",
-        "reading": "zài lái yī wǎn",
-        "translation": "one more bowl please",
-        "notes": "碗 is the measure word for bowls; swap for 盘 (pán) for plates",
-        "example": {
-          "text": "饭太好吃了，再来一碗！",
-          "reading": "Fàn tài hǎo chī le, zài lái yī wǎn!",
-          "translation": "The rice is so good, one more bowl!"
-        }
-      },
-      {
-        "lang": "zh",
-        "type": "phrase",
-        "text": "慢慢吃",
-        "reading": "màn màn chī",
-        "translation": "take your time eating",
-        "notes": "Said as a warm send-off when leaving the table before others finish"
-      },
-      {
-        "lang": "zh",
-        "type": "phrase",
-        "text": "多吃点",
-        "reading": "duō chī diǎn",
-        "translation": "eat more / have more",
-        "notes": "Common hospitable urging from a host or parent",
-        "example": {
-          "text": "别客气，多吃点！",
-          "reading": "Bié kèqi, duō chī diǎn!",
-          "translation": "Don't be shy, have more!"
-        }
-      },
-      {
-        "lang": "zh",
-        "type": "word",
-        "text": "干杯",
-        "reading": "gān bēi",
-        "translation": "cheers",
-        "notes": "Literal: 'dry the cup'; used when toasting drinks",
-        "example": {
-          "text": "大家举杯，干杯！",
-          "reading": "Dàjiā jǔ bēi, gān bēi!",
-          "translation": "Everyone raise your glasses — cheers!"
-        }
-      },
-      {
-        "lang": "zh",
-        "type": "phrase",
-        "text": "帮我传一下",
-        "reading": "bāng wǒ chuán yīxià",
-        "translation": "please pass it to me",
-        "notes": "传 means to pass/hand along; 一下 softens the request",
-        "example": {
-          "text": "能帮我传一下酱油吗？",
-          "reading": "Néng bāng wǒ chuán yīxià jiàngyóu ma?",
-          "translation": "Could you pass me the soy sauce?"
-        }
-      },
-      {
-        "lang": "zh",
-        "type": "phrase",
-        "text": "我来盛饭",
-        "reading": "wǒ lái chéng fàn",
-        "translation": "I'll serve the rice",
-        "notes": "盛饭 means to scoop rice into bowls; offering this is polite",
-        "example": {
-          "text": "你坐着，我来盛饭。",
-          "reading": "Nǐ zuòzhe, wǒ lái chéng fàn.",
-          "translation": "You sit, I'll serve the rice."
-        }
-      },
-      {
-        "lang": "zh",
-        "type": "phrase",
-        "text": "请坐",
-        "reading": "qǐng zuò",
-        "translation": "please sit down",
-        "notes": "General polite invitation; said when welcoming guests to the table",
-        "example": {
-          "text": "请坐，马上就开饭。",
-          "reading": "Qǐng zuò, mǎshàng jiù kāi fàn.",
-          "translation": "Please sit down, we're about to eat."
-        }
-      }
-    ]
-  }
+  "schemaVersion": 2,
+  "cards": [
+    {"card": {
+      "lang": "zh", "type": "phrase", "text": "吃饭了",
+      "reading": [["吃", "chī"], ["饭", "fàn"], ["了", "le"]],
+      "translation": "time to eat / dinner's ready",
+      "notes": "Called out to gather the family to the table",
+      "example": {"text": "妈妈说吃饭了。", "reading": [["妈妈", "māma"], ["说", "shuō"], ["吃", "chī"], ["饭", "fàn"], ["了", "le"], ["。", null]], "translation": "Mom said it's time to eat."}
+    }},
+    {"card": {
+      "lang": "zh", "type": "word", "text": "好吃",
+      "partOfSpeech": "adjective", "senseKey": "delicious",
+      "reading": [["好", "hǎo"], ["吃", "chī"]],
+      "translation": "delicious",
+      "notes": "Literal: 'good to eat'; common compliment at the table",
+      "example": {"text": "这个菜真好吃！", "reading": [["这个", "zhège"], ["菜", "cài"], ["真", "zhēn"], ["好", "hǎo"], ["吃", "chī"], ["！", null]], "translation": "This dish is really delicious!"}
+    }},
+    {"card": {
+      "lang": "zh", "type": "phrase", "text": "我吃饱了",
+      "reading": [["我", "wǒ"], ["吃", "chī"], ["饱", "bǎo"], ["了", "le"]],
+      "translation": "I'm full",
+      "notes": "饱 means full/satiated; use after a meal to decline more food",
+      "example": {"text": "不用了，我吃饱了，谢谢。", "reading": [["不用", "bùyòng"], ["了", "le"], ["，", null], ["我", "wǒ"], ["吃", "chī"], ["饱", "bǎo"], ["了", "le"], ["，", null], ["谢谢", "xièxie"], ["。", null]], "translation": "No need, I'm full, thank you."}
+    }},
+    {"card": {
+      "lang": "zh", "type": "phrase", "text": "再来一碗",
+      "reading": [["再", "zài"], ["来", "lái"], ["一", "yī"], ["碗", "wǎn"]],
+      "translation": "one more bowl please",
+      "notes": "碗 is the measure word for bowls; swap for 盘 (pán) for plates",
+      "example": {"text": "饭太好吃了，再来一碗！", "reading": [["饭", "fàn"], ["太", "tài"], ["好", "hǎo"], ["吃", "chī"], ["了", "le"], ["，", null], ["再", "zài"], ["来", "lái"], ["一", "yī"], ["碗", "wǎn"], ["！", null]], "translation": "The rice is so good, one more bowl!"}
+    }},
+    {"card": {
+      "lang": "zh", "type": "phrase", "text": "慢慢吃",
+      "reading": [["慢", "màn"], ["慢", "màn"], ["吃", "chī"]],
+      "translation": "take your time eating",
+      "notes": "Said as a warm send-off when leaving the table before others finish"
+    }},
+    {"card": {
+      "lang": "zh", "type": "phrase", "text": "多吃点",
+      "reading": [["多", "duō"], ["吃", "chī"], ["点", "diǎn"]],
+      "translation": "eat more / have more",
+      "notes": "Common hospitable urging from a host or parent",
+      "example": {"text": "别客气，多吃点！", "reading": [["别", "bié"], ["客气", "kèqi"], ["，", null], ["多", "duō"], ["吃", "chī"], ["点", "diǎn"], ["！", null]], "translation": "Don't be shy, have more!"}
+    }},
+    {"card": {
+      "lang": "zh", "type": "word", "text": "干杯",
+      "partOfSpeech": "interjection", "senseKey": "drinking-toast",
+      "reading": [["干", "gān"], ["杯", "bēi"]],
+      "translation": "cheers",
+      "notes": "Literal: 'dry the cup'; used when toasting drinks",
+      "example": {"text": "大家举杯，干杯！", "reading": [["大家", "dàjiā"], ["举", "jǔ"], ["杯", "bēi"], ["，", null], ["干", "gān"], ["杯", "bēi"], ["！", null]], "translation": "Everyone raise your glasses — cheers!"}
+    }},
+    {"card": {
+      "lang": "zh", "type": "phrase", "text": "帮我传一下",
+      "reading": [["帮", "bāng"], ["我", "wǒ"], ["传", "chuán"], ["一下", "yīxià"]],
+      "translation": "please pass it to me",
+      "notes": "传 means to pass/hand along; 一下 softens the request",
+      "example": {"text": "能帮我传一下酱油吗？", "reading": [["能", "néng"], ["帮", "bāng"], ["我", "wǒ"], ["传", "chuán"], ["一下", "yīxià"], ["酱油", "jiàngyóu"], ["吗", "ma"], ["？", null]], "translation": "Could you pass me the soy sauce?"}
+    }},
+    {"card": {
+      "lang": "zh", "type": "phrase", "text": "我来盛饭",
+      "reading": [["我", "wǒ"], ["来", "lái"], ["盛", "chéng"], ["饭", "fàn"]],
+      "translation": "I'll serve the rice",
+      "notes": "盛饭 means to scoop rice into bowls; offering this is polite",
+      "example": {"text": "你坐着，我来盛饭。", "reading": [["你", "nǐ"], ["坐着", "zuòzhe"], ["，", null], ["我", "wǒ"], ["来", "lái"], ["盛", "chéng"], ["饭", "fàn"], ["。", null]], "translation": "You sit, I'll serve the rice."}
+    }},
+    {"card": {
+      "lang": "zh", "type": "phrase", "text": "请坐",
+      "reading": [["请", "qǐng"], ["坐", "zuò"]],
+      "translation": "please sit down",
+      "notes": "General polite invitation; said when welcoming guests to the table",
+      "example": {"text": "请坐，马上就开饭。", "reading": [["请", "qǐng"], ["坐", "zuò"], ["，", null], ["马上", "mǎshàng"], ["就", "jiù"], ["开", "kāi"], ["饭", "fàn"], ["。", null]], "translation": "Please sit down, we're about to eat."}
+    }}
+  ]
+}

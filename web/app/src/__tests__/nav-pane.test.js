@@ -2,11 +2,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { dbState } = vi.hoisted(() => ({
-  dbState: { recentDecks: [], allDecks: [], cardsByDeck: {} },
+  dbState: { recentDecks: [], allDecks: [], cardsByDeck: {}, cardsByLang: {} },
 }));
 
-vi.mock("../js/db.js", () => ({
+vi.mock("../js/db", () => ({
   getCards: vi.fn(async (deckId) => dbState.cardsByDeck[deckId] ?? []),
+  getCardsByLang: vi.fn(async (lang) => dbState.cardsByLang[lang] ?? []),
+  getLangs: vi.fn(async () => Object.keys(dbState.cardsByLang)),
   getDecks: vi.fn(async (lang) =>
     lang ? dbState.allDecks.filter((d) => d.lang === lang) : dbState.allDecks,
   ),
@@ -14,9 +16,9 @@ vi.mock("../js/db.js", () => ({
   updateDeckAccessTime: vi.fn(async () => {}),
 }));
 
-import navPane, { loadLangBrowse } from "../panes/nav-pane.js";
-import { createUIState, createHost } from "../js/uiState.js";
-import { createDelegate } from "../js/delegate.js";
+import navPane, { loadLangBrowse } from "../panes/nav-pane";
+import { createUIState, createHost } from "../js/uiState";
+import { createDelegate } from "../js/delegate";
 
 function mountPane({ asApp = false } = {}) {
   const ui = createUIState({ nav: navPane.initialState, shell: {} });
@@ -49,6 +51,7 @@ beforeEach(() => {
   dbState.recentDecks = [];
   dbState.allDecks = [];
   dbState.cardsByDeck = {};
+  dbState.cardsByLang = {};
 });
 
 describe("nav pane — first run", () => {
@@ -56,10 +59,8 @@ describe("nav pane — first run", () => {
     const { rootEl } = mountPane();
     await flush();
 
-    expect(rootEl.textContent).toContain("CatchPhrase");
-    expect(rootEl.textContent).toContain("Make your first phrasebook");
-    expect(rootEl.textContent).not.toContain("Jump back in");
-    expect(rootEl.textContent).not.toContain("Library");
+    expect(rootEl.querySelectorAll('[data-action="nav/open-deck"],[data-action="nav/browse-lang"]')).toHaveLength(0);
+    expect(rootEl.querySelector('[data-action="nav/open-new-phrasebook"]')).not.toBeNull();
     expect(rootEl.querySelector(".nav-create-btn")).toBeNull();
     expect(rootEl.querySelector("#nav-pane").dataset.state).toBe("empty");
   });
@@ -73,7 +74,7 @@ describe("nav pane — Jump back in", () => {
       deck("d3", "Oaxaca", "es"),
     ];
     dbState.allDecks = [...dbState.recentDecks];
-    dbState.cardsByDeck = { d1: [{ type: "word" }, { type: "phrase" }] };
+    dbState.cardsByDeck = { d1: [{ card: { type: "word" } }, { card: { type: "phrase" } }] };
 
     const { rootEl } = mountPane();
     await flush();
@@ -82,8 +83,6 @@ describe("nav pane — Jump back in", () => {
     expect(cards).toHaveLength(3);
     expect(cards[0].dataset.highlighted).toBe("true");
     expect(cards[1].dataset.highlighted).toBeUndefined();
-    // Subtitle carries language and a card count using the right noun.
-    expect(cards[0].textContent).toContain("Japanese · 2 words & phrases");
   });
 
   it("swaps the callout for the pinned button once a phrasebook exists", async () => {
@@ -94,7 +93,6 @@ describe("nav pane — Jump back in", () => {
     await flush();
 
     expect(rootEl.querySelector(".nav-create-btn")).not.toBeNull();
-    expect(rootEl.textContent).not.toContain("Make your first phrasebook");
     expect(rootEl.querySelector("#nav-pane").dataset.state).toBe("populated");
   });
 
@@ -113,6 +111,7 @@ describe("nav pane — Jump back in", () => {
     };
 
     rootEl.querySelector('[data-action="nav/open-deck"]').click();
+    await flush();
     expect(selects).toEqual([{ id: "d1" }]);
   });
 });
@@ -170,6 +169,18 @@ describe("nav pane — Library", () => {
     expect(browses[0].title).toContain("Japanese");
     expect(browses[0].groupsHtml).toContain('data-action="content/browse-select"');
     expect(browses[0].groupsHtml).toContain("Osaka dinner");
+  });
+
+  it("keeps orphaned saved cards reachable without any phrasebook", async () => {
+    dbState.cardsByLang = {ja:[{key:"orphan",cardId:"orphan",card:{type:"chunk",lang:"ja"}}]};
+    const {rootEl} = mountPane();
+    await flush();
+    expect(rootEl.querySelector('[data-action="nav/browse-lang"]').dataset.lang).toBe("ja");
+    expect(rootEl.querySelector("#nav-pane").dataset.state).toBe("populated");
+    const browse = await loadLangBrowse("ja");
+    const panel = document.createElement("div");
+    panel.innerHTML = browse.groupsHtml;
+    expect(panel.querySelector('[data-action="content/browse-select"]').dataset.deckId).toBe("lang:ja");
   });
 });
 

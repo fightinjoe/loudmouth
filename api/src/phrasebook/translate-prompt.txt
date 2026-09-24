@@ -10,12 +10,13 @@ Translate every conversation line and vocabulary word into the target language s
 
 Return JSON only, using this shape plus any fields required by the language rules below:
 
-{ "lines": ["string"], "vocab": ["string"] }
+{ "lines": ["string"], "vocab": [{ "target": "string", "partOfSpeech": "noun", "senseKey": "canonical-english-concept", "source": { "lineIndex": 0, "surface": "exact encountered text", "occurrence": 0 } }] }
 
 RULES:
 - "lines" holds one translation per `conversation.lines` item, in the same
   order: the Nth item is the Nth line. Exactly as many items as lines. "vocab"
-  works the same way for `conversation.vocab`.
+  works the same way for `conversation.vocab`; its Nth object's `target` is the
+  translation of the Nth English vocabulary item.
 - Each English line states an intent, not exact wording. Express that intent
   the way a native speaker of the target language would actually say it in
   this situation — never word for word.
@@ -30,9 +31,26 @@ RULES:
   but does not change the output order.
 - Keep each translation as short and memorizable as its English line.
 - For each word, translate the sense the conversation uses, not another
-  meaning of the English word. Keep the line's word choice, but always in
-  dictionary form — singular noun, base verb, bare adjective — even when
-  the line uses a plural or conjugated form. Dictionary form wins. When a word
-  also appears in a line, translate it the same way in both places.
+  meaning of the English word. `target` uses that word's dictionary form —
+  singular noun, base verb, bare adjective — even when a line uses a plural or
+  conjugated form. Dictionary form wins. When the word appears in a translated
+  line, use the same lexical choice there.
+- `partOfSpeech` must be exactly one of: noun, verb, adjective, adverb,
+  pronoun, determiner, preposition, postposition, conjunction, particle,
+  interjection, numeral, expression, other.
+- `senseKey` is a stable lowercase English concept identifier in kebab case,
+  such as `consume-food`. It identifies the concept rather than copying the
+  displayed gloss. Use the same sense key for the same concept even when the
+  English display wording differs (`eat` and `to eat`); use different keys for
+  genuinely different senses.
+- Add `source` when the translated vocabulary item occurs in a translated
+  line. `lineIndex` is that zero-based line index. `surface` is the exact,
+  unpadded encountered text in the final translated line after inline reading
+  brackets are removed; it can differ from the dictionary-form `target`.
+  `occurrence` is the zero-based left-to-right occurrence of that exact surface
+  within the line, counting overlapping matches. Always include `occurrence`
+  with a source, including when it is zero. Omit `source` only when the
+  vocabulary is genuinely not located in any translated line; never guess a
+  location from the English source.
 
 No prose, no code fences, JSON only.

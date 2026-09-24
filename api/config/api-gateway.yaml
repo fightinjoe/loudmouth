@@ -2,7 +2,7 @@ swagger: "2.0"
 info:
   title: Catchphrase API
   description: Routes language-learning requests to a Cloud Run service with a server-selected LLM backend
-  version: "1.0"
+  version: "2.0"
 
 host: "translation-api-gateway-2qqw247r.uc.gateway.dev"
 schemes:
@@ -27,10 +27,8 @@ paths:
     post:
       summary: Distill a seed into a short English phrasebook title
       operationId: phrasebookTitle
-      consumes:
-        - application/json
-      produces:
-        - application/json
+      consumes: [application/json]
+      produces: [application/json]
       parameters:
         - in: body
           name: body
@@ -53,11 +51,12 @@ paths:
                 type: string
                 maxLength: 80
               usage:
-                type: object
+                $ref: '#/definitions/Usage'
         400:
           description: Bad request (missing/invalid field or client-selected llm)
         502:
           description: LLM request failed or returned an invalid response
+
   /phrase-breakdown:
     options:
       summary: CORS preflight
@@ -67,96 +66,26 @@ paths:
         204:
           description: CORS preflight response
     post:
-      summary: Explain a target-language utterance in contextual semantic chunks
+      summary: Explain a saved phrase occurrence as contextual chunks and dictionary Words
       operationId: phraseBreakdown
-      consumes:
-        - application/json
-      produces:
-        - application/json
+      consumes: [application/json]
+      produces: [application/json]
       parameters:
         - in: body
           name: body
           required: true
           schema:
-            type: object
-            required: [language, text, translation]
-            properties:
-              language:
-                type: string
-                enum: [zh, ja, es, cs]
-              text:
-                type: string
-                minLength: 1
-                maxLength: 2000
-              translation:
-                type: string
-                minLength: 1
-                maxLength: 2000
-              context:
-                type: string
-                maxLength: 500
+            $ref: '#/definitions/BreakdownRequest'
       responses:
         200:
-          description: Ordered source spans with contextual explanations, an optional reusable pattern, and model usage
+          description: Versioned source-aligned Chunk and Word candidates with model usage
           schema:
-            type: object
-            required: [chunks, usage]
-            properties:
-              chunks:
-                type: array
-                minItems: 1
-                maxItems: 32
-                items:
-                  type: object
-                  required: [start, end, text, gloss, role, explanation]
-                  properties:
-                    start:
-                      type: integer
-                      minimum: 0
-                      description: Inclusive JavaScript UTF-16 offset in the request text
-                    end:
-                      type: integer
-                      minimum: 1
-                      description: Exclusive JavaScript UTF-16 offset in the request text
-                    text:
-                      type: string
-                    gloss:
-                      type: string
-                      maxLength: 500
-                    role:
-                      type: string
-                      maxLength: 200
-                    explanation:
-                      type: string
-                      maxLength: 1000
-              pattern:
-                type: object
-                required: [formula, explanation]
-                properties:
-                  formula:
-                    type: string
-                    maxLength: 500
-                  explanation:
-                    type: string
-                    maxLength: 1000
-                  noteTitle:
-                    type: string
-                    maxLength: 200
-                  note:
-                    type: string
-                    maxLength: 1000
-                  example:
-                    type: string
-                    maxLength: 2000
-                  exampleTranslation:
-                    type: string
-                    maxLength: 2000
-              usage:
-                type: object
+            $ref: '#/definitions/BreakdownResponse'
         400:
           description: Bad request (missing/invalid field or client-selected llm)
         502:
           description: LLM request failed or returned an invalid response
+
   /context:
     options:
       summary: CORS preflight
@@ -168,19 +97,15 @@ paths:
     post:
       summary: Generate clarifying questions and a topic checklist
       operationId: context
-      consumes:
-        - application/json
-      produces:
-        - application/json
+      consumes: [application/json]
+      produces: [application/json]
       parameters:
         - in: body
           name: body
           required: true
           schema:
             type: object
-            required:
-              - seed
-              - language
+            required: [seed, language]
             properties:
               seed:
                 type: string
@@ -216,11 +141,12 @@ paths:
                     checked:
                       type: boolean
               usage:
-                type: object
+                $ref: '#/definitions/Usage'
         400:
           description: Bad request (missing/invalid field or client-selected llm)
         502:
           description: LLM request failed or returned an invalid response
+
   /phrasebook:
     options:
       summary: CORS preflight
@@ -232,22 +158,15 @@ paths:
     post:
       summary: Generate a bespoke phrasebook from selected context
       operationId: phrasebook
-      consumes:
-        - application/json
-      produces:
-        - application/json
+      consumes: [application/json]
+      produces: [application/json]
       parameters:
         - in: body
           name: body
           required: true
           schema:
             type: object
-            required:
-              - seed
-              - language
-              - ability
-              - answers
-              - checklist
+            required: [seed, language, ability, answers, checklist]
             properties:
               seed:
                 type: string
@@ -274,91 +193,398 @@ paths:
                   maxLength: 120
       responses:
         200:
-          description: Phrasebook title, conversation groups with per-conversation vocabulary, and model usage
+          description: Versioned phrase drafts and per-conversation Word candidates with model usage
           schema:
-            type: object
-            required:
-              - title
-              - groups
-              - usage
-            properties:
-              title:
-                type: string
-              groups:
-                type: array
-                items:
-                  type: object
-                  required:
-                    - title
-                    - cards
-                    - vocab
-                  properties:
-                    title:
-                      type: string
-                    cards:
-                      type: array
-                      items:
-                        $ref: '#/definitions/Card'
-                    vocab:
-                      type: array
-                      description: Fully normalized word cards for this conversation
-                      items:
-                        $ref: '#/definitions/Card'
-              usage:
-                type: object
+            $ref: '#/definitions/PhrasebookResponse'
         400:
           description: Bad request (missing/invalid field or client-selected llm)
         502:
           description: LLM request failed or returned an invalid response
 
 definitions:
-  Card:
+  Usage:
     type: object
-    required:
-      - lang
-      - text
-      - translation
+    required: [model, inputTokens, outputTokens, totalTokens, costUsd, durationMs]
+    additionalProperties: false
+    properties:
+      model:
+        type: string
+        minLength: 1
+      inputTokens:
+        type: integer
+        minimum: 0
+      outputTokens:
+        type: integer
+        minimum: 0
+      totalTokens:
+        type: integer
+        minimum: 0
+      costUsd:
+        type: number
+        minimum: 0
+        x-nullable: true
+      durationMs:
+        type: integer
+        minimum: 0
+
+  ReadingToken:
+    type: array
+    minItems: 2
+    maxItems: 2
+    description: Exact [base, annotation|null] pair; runtime validation enforces element types and text alignment.
+    items: {}
+
+  Snapshot:
+    type: object
+    required: [lang, text, translation]
+    additionalProperties: false
     properties:
       lang:
         type: string
         enum: [zh, ja, es, cs]
-      type:
-        type: string
-        enum: [word, phrase, sentence]
       text:
         type: string
-        description: Word or phrase in the target language
+        minLength: 1
+        maxLength: 2000
       reading:
         type: array
-        description: ReadingToken[] — [base, annotation|null] pairs (docs/CARD_SCHEMA.md)
+        minItems: 1
         items:
-          type: array
-          items: {}
+          $ref: '#/definitions/ReadingToken'
       romanization:
         type: string
+        minLength: 1
+        maxLength: 2000
       translation:
         type: string
-        description: English translation
+        minLength: 1
+        maxLength: 2000
+
+  SourceRef:
+    type: object
+    minProperties: 1
+    additionalProperties: false
+    description: Navigation hint with at least cardId or occurrenceId; runtime validation enforces that invariant.
+    properties:
+      cardId:
+        type: string
+        minLength: 1
+      occurrenceId:
+        type: string
+        minLength: 1
+
+  PhraseSource:
+    type: object
+    required: [snapshot]
+    additionalProperties: false
+    properties:
+      snapshot:
+        $ref: '#/definitions/Snapshot'
+      ref:
+        $ref: '#/definitions/SourceRef'
+
+  Span:
+    type: object
+    required: [start, end]
+    additionalProperties: false
+    properties:
+      start:
+        type: integer
+        minimum: 0
+        description: Inclusive JavaScript UTF-16 offset in snapshot.text.
+      end:
+        type: integer
+        minimum: 1
+        description: Exclusive JavaScript UTF-16 offset in snapshot.text.
+
+  Evidence:
+    type: object
+    required: [snapshot, span]
+    additionalProperties: false
+    properties:
+      snapshot:
+        $ref: '#/definitions/Snapshot'
+      ref:
+        $ref: '#/definitions/SourceRef'
+      span:
+        $ref: '#/definitions/Span'
+
+  Example:
+    type: object
+    required: [text]
+    additionalProperties: false
+    properties:
+      text:
+        type: string
+        minLength: 1
+        maxLength: 2000
+      reading:
+        type: array
+        minItems: 1
+        items:
+          $ref: '#/definitions/ReadingToken'
+      romanization:
+        type: string
+        minLength: 1
+        maxLength: 2000
+      translation:
+        type: string
+        minLength: 1
+        maxLength: 2000
+
+  Card:
+    type: object
+    required: [type, lang, text, translation]
+    additionalProperties: false
+    description: Type-discriminated Card. Runtime validation requires partOfSpeech and senseKey only for word; source, role, and explanation only for chunk; phrase has neither variant set. Swagger 2 documents the shared fields while runtime validation enforces the exact variant.
+    properties:
+      type:
+        type: string
+        enum: [word, phrase, chunk]
+      lang:
+        type: string
+        enum: [zh, ja, es, cs]
+      text:
+        type: string
+        minLength: 1
+        maxLength: 2000
+      reading:
+        type: array
+        minItems: 1
+        items:
+          $ref: '#/definitions/ReadingToken'
+      romanization:
+        type: string
+        minLength: 1
+        maxLength: 2000
+      translation:
+        type: string
+        minLength: 1
+        maxLength: 2000
       definition:
         type: string
-        description: The word's meaning; present only when disambiguation is needed
+        minLength: 1
+        maxLength: 2000
       formality:
         type: string
-        enum: [casual, polite, formal, slang]
-      context:
-        type: string
-        description: The parent conversation or vocabulary group's title
+        enum: [casual, polite, formal, slang, vulgar]
       notes:
         type: string
+        minLength: 1
+        maxLength: 2000
       example:
+        $ref: '#/definitions/Example'
+      partOfSpeech:
+        type: string
+        enum: [noun, verb, adjective, adverb, pronoun, determiner, preposition, postposition, conjunction, particle, interjection, numeral, expression, other]
+      senseKey:
+        type: string
+        minLength: 1
+        maxLength: 120
+        pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+      source:
+        $ref: '#/definitions/Evidence'
+      role:
+        type: string
+        minLength: 1
+        maxLength: 200
+      explanation:
+        type: string
+        minLength: 1
+        maxLength: 1000
+
+  Candidate:
+    type: object
+    required: [card]
+    additionalProperties: false
+    properties:
+      card:
+        $ref: '#/definitions/Card'
+      sources:
+        type: array
+        minItems: 1
+        description: Word evidence only; Phrase and Chunk candidates omit this field.
+        items:
+          $ref: '#/definitions/Evidence'
+
+  PhrasebookPhrase:
+    type: object
+    required: [id, card, speaker]
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      card:
+        $ref: '#/definitions/Card'
+      speaker:
+        type: string
+        enum: [you, partner]
+      alternative:
+        type: boolean
+        enum: [true]
+
+  PhrasebookGroup:
+    type: object
+    required: [id, title, phrases, vocab]
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      title:
+        type: string
+        minLength: 1
+        maxLength: 120
+      phrases:
+        type: array
+        minItems: 2
+        maxItems: 10
+        description: Phrase cards with server-assigned draft occurrence IDs.
+        items:
+          $ref: '#/definitions/PhrasebookPhrase'
+      vocab:
+        type: array
+        minItems: 3
+        maxItems: 6
+        description: Word Candidates; evidence occurrenceId references a phrase in this group.
+        items:
+          $ref: '#/definitions/Candidate'
+
+  PhrasebookResponse:
+    type: object
+    required: [schemaVersion, title, groups, usage]
+    additionalProperties: false
+    properties:
+      schemaVersion:
+        type: integer
+        enum: [2]
+      title:
+        type: string
+        minLength: 1
+        maxLength: 200
+      groups:
+        type: array
+        minItems: 1
+        maxItems: 8
+        items:
+          $ref: '#/definitions/PhrasebookGroup'
+      usage:
+        $ref: '#/definitions/Usage'
+
+  BreakdownGenerationContext:
+    type: object
+    required: [seed, ability, answers]
+    additionalProperties: false
+    properties:
+      seed:
+        type: string
+        minLength: 1
+        maxLength: 200
+      ability:
+        type: string
+        enum: [none, basics, conversational]
+      answers:
         type: object
-        properties:
-          text:
-            type: string
-          reading:
-            type: array
-            items:
-              type: array
-              items: {}
-          translation:
-            type: string
+        maxProperties: 5
+        additionalProperties:
+          type: string
+          minLength: 1
+          maxLength: 500
+
+  BreakdownContext:
+    type: object
+    additionalProperties: false
+    properties:
+      generation:
+        $ref: '#/definitions/BreakdownGenerationContext'
+      groupTitle:
+        type: string
+        minLength: 1
+        maxLength: 500
+      speaker:
+        type: string
+        enum: [you, partner]
+
+  BreakdownRequest:
+    type: object
+    required: [schemaVersion, source]
+    additionalProperties: false
+    properties:
+      schemaVersion:
+        type: integer
+        enum: [2]
+      source:
+        $ref: '#/definitions/PhraseSource'
+      context:
+        $ref: '#/definitions/BreakdownContext'
+
+  BreakdownTarget:
+    type: object
+    required: [kind]
+    additionalProperties: false
+    description: Runtime validation requires index only for kind=word and a Chunk card only for kind=chunk.
+    properties:
+      kind:
+        type: string
+        enum: [word, chunk]
+      index:
+        type: integer
+        minimum: 0
+      card:
+        $ref: '#/definitions/Card'
+
+  BreakdownChunk:
+    type: object
+    required: [start, end, text, gloss, role, explanation, words, target]
+    additionalProperties: false
+    properties:
+      start:
+        type: integer
+        minimum: 0
+        description: Inclusive JavaScript UTF-16 offset in request source snapshot text.
+      end:
+        type: integer
+        minimum: 1
+        description: Exclusive JavaScript UTF-16 offset in request source snapshot text.
+      text:
+        type: string
+        minLength: 1
+        maxLength: 2000
+      gloss:
+        type: string
+        minLength: 1
+        maxLength: 500
+      role:
+        type: string
+        minLength: 1
+        maxLength: 200
+      explanation:
+        type: string
+        minLength: 1
+        maxLength: 1000
+      words:
+        type: array
+        maxItems: 32
+        description: Dictionary Word candidates with exact request-source evidence.
+        items:
+          $ref: '#/definitions/Candidate'
+      target:
+        $ref: '#/definitions/BreakdownTarget'
+
+  BreakdownResponse:
+    type: object
+    required: [schemaVersion, chunks, usage]
+    additionalProperties: false
+    properties:
+      schemaVersion:
+        type: integer
+        enum: [2]
+      chunks:
+        type: array
+        minItems: 1
+        maxItems: 32
+        items:
+          $ref: '#/definitions/BreakdownChunk'
+      usage:
+        $ref: '#/definitions/Usage'

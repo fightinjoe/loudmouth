@@ -1,220 +1,432 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// The content pane's bindEvents wires a load subscriber that pulls in db,
-// tts, gestures, etc. Mock the sibling modules so we can drive the real
-// pane logic (transitions + load subscriber) in isolation and assert the
-// observable effect: stageEl.dataset.deckMode tracks the deck's mode.
-
-// loadDeckData is the DB fetch the pane runs after select/reload. We back it
-// with an in-memory deck whose `mode` we mutate to simulate a settings change.
-// vi.mock is hoisted above module init, so the shared refs go through
-// vi.hoisted so the factory can close over them safely.
-const { deckStore, loadDeckData } = vi.hoisted(() => {
-  const store = {
-    d1: { id: "d1", name: "Spanish", lang: "es", mode: "study", order: "default", system: false },
+const mocks = vi.hoisted(() => {
+  const deckStore = {
+    d1: {
+      id: "d1",
+      name: "Japanese",
+      lang: "ja",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      mode: "study",
+      order: "default",
+      readingDisplay: "reading",
+    },
+    d2: {
+      id: "d2",
+      name: "Other",
+      lang: "ja",
+      createdAt: "2026-01-02T00:00:00.000Z",
+      mode: "reverse",
+      order: "default",
+      readingDisplay: "reading",
+    },
   };
-  const fn = vi.fn(async (deckId) => {
-    if (!deckId) return { deck: null, cards: [] };
-    return { deck: { ...store[deckId] }, cards: [] };
-  });
-  return { deckStore: store, loadDeckData: fn };
+  const repeatedEntries = () => [
+    {
+      key: "occ-1",
+      cardId: "shared-card",
+      card: { type: "phrase", lang: "ja", text: "どうぞ", translation: "go ahead" },
+      membership: {
+        deckId: "d1",
+        cardId: "shared-card",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        position: 0,
+        starredAt: null,
+      },
+      occurrence: {
+        id: "occ-1",
+        deckId: "d1",
+        groupId: "group-1",
+        cardId: "shared-card",
+        position: 0,
+        translation: "go ahead",
+        speaker: "you",
+      },
+      sources: [],
+    },
+    {
+      key: "occ-2",
+      cardId: "shared-card",
+      card: { type: "phrase", lang: "ja", text: "どうぞ", translation: "after you" },
+      membership: {
+        deckId: "d1",
+        cardId: "shared-card",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        position: 0,
+        starredAt: null,
+      },
+      occurrence: {
+        id: "occ-2",
+        deckId: "d1",
+        groupId: "group-1",
+        cardId: "shared-card",
+        position: 1,
+        translation: "after you",
+        speaker: "partner",
+      },
+      sources: [],
+    },
+  ];
+  const groups = [{ id: "group-1", deckId: "d1", title: "Ordering", position: 0 }];
+  return {
+    deckStore,
+    repeatedEntries,
+    groups,
+    loadDeckData: vi.fn(),
+    commitPhrasebook: vi.fn(),
+    getReviewCards: vi.fn(),
+    toggleCardStar: vi.fn(),
+    updateDeckAccessTime: vi.fn(),
+    updateDeckEntryOrder: vi.fn(),
+  };
 });
 
-vi.mock("../panes/content-pane-load.js", () => ({ loadDeckData }));
-vi.mock("../panes/content-pane-render.js", () => ({
-  getDeckPages: () => [{ key: "vocab" }],
-  normalizePageKey: () => "vocab",
-  renderBrowseBody: () => "",
-  renderBrowseCardsHTML: () => "",
-  renderDeckBody: () => "<div data-region=\"card-list\" class=\"deck-view-list\"></div>",
-  renderDeckPager: () => "<div data-region=\"deck-pager\"></div>",
+vi.mock("../panes/content-pane-load", () => ({
+  loadDeckData: mocks.loadDeckData,
 }));
-vi.mock("../panes/content-pane-gestures.js", () => ({
-  wireContentGestures: () => ({ resetReveal: () => {}, syncPager: () => {} }),
-}));
-vi.mock("../panes/content-pane-actions.js", () => ({
-  registerCardActions: () => () => {},
-}));
-const { createDeck, importCards, updateDeckAccessTime } = vi.hoisted(() => ({
-  createDeck: vi.fn(async (name, lang, opts) => ({ id: "real-001", name, lang, ability: opts?.ability, seedId: opts?.seedId })),
-  importCards: vi.fn(async () => {}),
-  updateDeckAccessTime: vi.fn(async () => {}),
-}));
-vi.mock("../js/db.js", () => ({ updateDeckCardOrder: vi.fn(), createDeck, importCards, updateDeckAccessTime }));
 
-import contentPane from "../panes/content-pane.js";
-import { createUIState, createHost } from "../js/uiState.js";
-import { createDelegate } from "../js/delegate.js";
+vi.mock("../panes/content-pane-gestures", () => ({
+  wireContentGestures: () => ({
+    resetReveal: () => {},
+    syncPager: () => {},
+    isAnyRevealed: () => false,
+  }),
+}));
+
+vi.mock("../panes/content-pane-render", () => {
+  const rows = (entries) => entries.map((entry) => `
+    <div class="card-row-wrapper" data-entry-key="${entry.key}" data-card-id="${entry.cardId}">
+      <div class="card-row" data-action="content/open-card" data-entry-key="${entry.key}">
+        <button class="card-term">${entry.card.translation}</button>
+        ${entry.membership ? `<button class="card-star" data-action="content/star-card" data-entry-key="${entry.key}" data-card-id="${entry.cardId}" aria-pressed="${entry.membership.starredAt !== null}" data-selected="${entry.membership.starredAt !== null}"></button>` : ""}
+      </div>
+    </div>
+  `).join("");
+  const body = (deck, entries) => deck ? `
+    <button data-action="content/deck-title">${deck.name}</button>
+    ${deck.preview ? '<button data-action="content/save-preview">Save</button>' : '<button data-action="content/done">Done</button>'}
+    <p data-region="content-error" role="alert" hidden></p>
+    <div data-region="deck-pager"><section class="deck-page" data-page-key="group:group-1"><div data-region="card-list">${rows(entries)}</div></section></div>
+    <button data-action="content/review"${entries.some((entry) => entry.membership?.starredAt) ? "" : " disabled"}>Review</button>
+  ` : "";
+  return {
+    getDeckPages: (entries, groups) => [
+      ...groups.map((group) => ({ key: `group:${group.id}` })),
+      { key: "vocab" },
+    ],
+    normalizePageKey: (_entries, groups, requested) => {
+      const keys = [...groups.map((group) => `group:${group.id}`), "vocab"];
+      return keys.includes(requested) ? requested : keys[0];
+    },
+    renderBrowseBody: () => "",
+    renderBrowseCardsHTML: (_deck, entries) => rows(entries),
+    renderDeckBody: body,
+    renderDeckPager: (_deck, entries) => `<div data-region="deck-pager"><section class="deck-page" data-page-key="group:group-1"><div data-region="card-list">${rows(entries)}</div></section></div>`,
+  };
+});
+
+vi.mock("../js/db", () => ({
+  commitPhrasebook: mocks.commitPhrasebook,
+  getReviewCards: mocks.getReviewCards,
+  toggleCardStar: mocks.toggleCardStar,
+  updateDeckAccessTime: mocks.updateDeckAccessTime,
+  updateDeckEntryOrder: mocks.updateDeckEntryOrder,
+}));
+
+import contentPane from "../panes/content-pane";
+import { createDelegate } from "../js/delegate";
+import { createHost, createUIState } from "../js/uiState";
+
+const mounted = [];
 
 function mountPane() {
-  const ui = createUIState({ content: contentPane.initialState, shell: {} });
+  const ui = createUIState({
+    content: contentPane.initialState,
+    shell: { exposed: "foreground" },
+    action: null,
+    details: null,
+    nav: {},
+  });
   ui.registerTransitions(contentPane.transitions);
-  // Minimal shell/action transitions the pane may dispatch to.
   ui.registerTransitions({
-    "shell/toggle": (s) => s,
-    "action/open": (s) => s,
-    "nav/reload": (s) => s,
+    "shell/toggle": (slice) => slice,
+    "action/open": (_slice, payload) => payload,
+    "nav/reload": (slice) => slice,
+    "details/open": (_slice, payload) => payload,
   });
 
   const rootEl = document.createElement("div");
   rootEl.innerHTML = contentPane.render(contentPane.initialState);
   document.body.appendChild(rootEl);
-
   const stageEl = document.createElement("div");
+  stageEl.innerHTML = '<div class="shell-swipe-handle"></div>';
   const delegate = createDelegate(rootEl);
   const host = createHost({ ui, delegate, stageEl });
-  contentPane.bindEvents(rootEl, host);
-  return { ui, stageEl, rootEl };
+  const unbind = contentPane.bindEvents(rootEl, host);
+  const result = { ui, stageEl, rootEl, unbind };
+  mounted.push(result);
+  return result;
 }
 
-// Flush the async load subscriber (loadDeckData is async).
-const flush = () => new Promise((r) => setTimeout(r, 0));
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-describe("content pane — deck mode (card template) reactivity", () => {
-  let mounted;
-  beforeEach(() => {
-    loadDeckData.mockClear();
-    deckStore.d1.mode = "study";
-    mounted = mountPane();
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
   });
-  afterEach(() => {
-    mounted.rootEl.remove();
-  });
+  return { promise, resolve, reject };
+}
 
-  it("sets stageEl.dataset.deckMode from the loaded deck on select", async () => {
-    mounted.ui.transition("content/select-deck", { id: "d1" });
+beforeEach(() => {
+  mocks.deckStore.d1.mode = "study";
+  for (const mock of [
+    mocks.loadDeckData,
+    mocks.commitPhrasebook,
+    mocks.getReviewCards,
+    mocks.toggleCardStar,
+    mocks.updateDeckAccessTime,
+    mocks.updateDeckEntryOrder,
+  ]) mock.mockReset();
+  mocks.loadDeckData.mockImplementation(async (deckId) => {
+    const deck = mocks.deckStore[deckId];
+    if (!deck) return { deck: null, cards: [], groups: [] };
+    return {
+      deck: { ...deck },
+      cards: deckId === "d1" ? mocks.repeatedEntries() : [],
+      groups: deckId === "d1" ? mocks.groups.map((group) => ({ ...group })) : [],
+    };
+  });
+  mocks.toggleCardStar.mockResolvedValue({
+    cardId: "shared-card",
+    starredAt: "2026-03-01T00:00:00.000Z",
+  });
+  mocks.updateDeckEntryOrder.mockResolvedValue(undefined);
+  mocks.getReviewCards.mockResolvedValue([]);
+});
+
+afterEach(() => {
+  while (mounted.length) {
+    const current = mounted.pop();
+    current.unbind();
+    current.rootEl.remove();
+  }
+});
+
+
+describe("phrasebook-scoped membership stars", () => {
+  it("uses the returned timestamp and patches every occurrence of the identity", async () => {
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
-    expect(mounted.stageEl.dataset.deckMode).toBe("study");
-  });
 
-  it("re-fetches and updates deckMode when the mode changes for the already-selected deck", async () => {
-    mounted.ui.transition("content/select-deck", { id: "d1" });
-    await flush();
-    expect(mounted.stageEl.dataset.deckMode).toBe("study");
-
-    // Simulate the deck-settings sheet writing a new card template (mode) to
-    // the DB, then dispatching the reload — deckId is unchanged.
-    deckStore.d1.mode = "reverse";
-    loadDeckData.mockClear();
-    mounted.ui.transition("content/reload-deck");
+    view.rootEl.querySelector('.card-star[data-entry-key="occ-1"]').click();
     await flush();
 
-    // The bug: without a reload the guard bailed on unchanged deckId and the
-    // stale deck (mode "study") stuck. The fix re-fetches on reload.
-    expect(loadDeckData).toHaveBeenCalledWith("d1");
-    expect(mounted.stageEl.dataset.deckMode).toBe("reverse");
+    expect(mocks.toggleCardStar).toHaveBeenCalledWith("d1", { cardId: "shared-card" });
+    expect(view.ui.get("content").cards.map((entry) => entry.membership.starredAt))
+      .toEqual([
+        "2026-03-01T00:00:00.000Z",
+        "2026-03-01T00:00:00.000Z",
+      ]);
+    expect([...view.rootEl.querySelectorAll(".card-star")]
+      .map((button) => button.getAttribute("aria-pressed")))
+      .toEqual(["true", "true"]);
+    expect([...view.rootEl.querySelectorAll(".card-star")]
+      .map((button) => button.getAttribute("aria-label")))
+      .toEqual(["Unstar: go ahead", "Unstar: after you"]);
+    expect(view.rootEl.querySelector('[data-action="content/review"]').disabled).toBe(false);
   });
 
-  it("content/reload-deck bumps the reload counter so the load guard fires", () => {
-    const before = mounted.ui.get("content").reload;
-    mounted.ui.transition("content/reload-deck");
-    const after = mounted.ui.get("content").reload;
-    expect(after).toBe(before + 1);
+  it("does not patch a newly selected phrasebook after an in-flight toggle", async () => {
+    const pending = deferred();
+    mocks.toggleCardStar.mockReturnValue(pending.promise);
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+
+    view.rootEl.querySelector('.card-star[data-entry-key="occ-1"]').click();
+    expect([...view.rootEl.querySelectorAll(".card-star")].every((button) => button.disabled))
+      .toBe(true);
+    view.ui.transition("content/select-deck", { id: "d2" });
+    await flush();
+    pending.resolve({ cardId: "shared-card", starredAt: "2026-03-01T00:00:00.000Z" });
+    await flush();
+
+    expect(view.ui.get("content").deck.id).toBe("d2");
+    expect(view.ui.get("content").cards).toEqual([]);
+  });
+
+  it("keeps icons unchanged and surfaces a failed toggle", async () => {
+    mocks.toggleCardStar.mockRejectedValue(new Error("storage unavailable"));
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+
+    view.rootEl.querySelector('.card-star[data-entry-key="occ-1"]').click();
+    await flush();
+
+    expect([...view.rootEl.querySelectorAll(".card-star")]
+      .map((button) => button.getAttribute("aria-pressed")))
+      .toEqual(["false", "false"]);
+    expect(view.rootEl.querySelector('[data-region="content-error"]').textContent)
+      .toBe("storage unavailable");
   });
 });
 
-describe("content pane — Review entry point", () => {
-
-  it("content/review opens the review action pane with the deck's starred cards", async () => {
-    const { ui, rootEl } = mountPane();
-    ui.transition("content/select-deck", { id: "d1" });
+describe("review entry point", () => {
+  it("opens with the ordered unique entries returned by getReviewCards", async () => {
+    const reviewEntries = [mocks.repeatedEntries()[1]];
+    reviewEntries[0].membership.starredAt = "2026-02-01T00:00:00.000Z";
+    mocks.getReviewCards.mockResolvedValue(reviewEntries);
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
-    ui.transition("content/cards-changed", {
-      cards: [{ id: "x1", state: { starredAt: "2026-01-01T00:00:00.000Z" } }],
+    view.ui.transition("content/card-star-changed", {
+      deckId: "d1",
+      cardId: "shared-card",
+      starredAt: "2026-02-01T00:00:00.000Z",
     });
 
-    const opens = [];
-    const realTransition = ui.transition;
-    ui.transition = (verb, payload) => {
-      if (verb === "action/open") opens.push(payload);
-      return realTransition(verb, payload);
-    };
-
-    const btn = document.createElement("button");
-    btn.dataset.action = "content/review";
-    rootEl.appendChild(btn);
-    btn.click();
-
-    expect(opens).toHaveLength(1);
-    expect(opens[0].kind).toBe("review");
-    expect(opens[0].payload.deck).toEqual(expect.objectContaining({ id: "d1" }));
-    expect(opens[0].payload.cards).toEqual([expect.objectContaining({ id: "x1" })]);
-  });
-
-  it("content/review is a no-op when no cards are starred", async () => {
-    const { ui, rootEl } = mountPane();
-    ui.transition("content/select-deck", { id: "d1" });
+    view.rootEl.querySelector('[data-action="content/review"]').click();
     await flush();
 
-    const opens = [];
-    const realTransition = ui.transition;
-    ui.transition = (verb, payload) => {
-      if (verb === "action/open") opens.push(payload);
-      return realTransition(verb, payload);
-    };
+    expect(mocks.getReviewCards).toHaveBeenCalledWith("d1");
+    expect(view.ui.get("action")).toEqual({
+      kind: "review",
+      payload: { deck: expect.objectContaining({ id: "d1" }), cards: reviewEntries },
+    });
+  });
 
-    const btn = document.createElement("button");
-    btn.dataset.action = "content/review";
-    rootEl.appendChild(btn);
-    btn.click();
+  it("ignores a completed review load after navigation", async () => {
+    const pending = deferred();
+    mocks.getReviewCards.mockReturnValue(pending.promise);
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    view.ui.transition("content/card-star-changed", {
+      deckId: "d1",
+      cardId: "shared-card",
+      starredAt: "2026-02-01T00:00:00.000Z",
+    });
 
-    expect(opens).toHaveLength(0);
+    view.rootEl.querySelector('[data-action="content/review"]').click();
+    view.ui.transition("content/select-deck", { id: "d2" });
+    await flush();
+    pending.resolve([mocks.repeatedEntries()[0]]);
+    await flush();
+
+    expect(view.ui.get("action")).toBeNull();
   });
 });
 
-describe("content pane — save-preview", () => {
-  beforeEach(() => {
-    createDeck.mockClear();
-    importCards.mockClear();
-    updateDeckAccessTime.mockClear();
+describe("entry-key reordering", () => {
+  it("persists the complete repeated-occurrence order before leaving edit mode", async () => {
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    view.ui.transition("content/enter-edit");
+    view.ui.transition("content/reorder", { pageOrder: ["occ-2", "occ-1"] });
+
+    view.rootEl.querySelector('[data-action="content/done"]').click();
+    await flush();
+
+    expect(mocks.updateDeckEntryOrder).toHaveBeenCalledWith("d1", ["occ-2", "occ-1"]);
+    expect(view.ui.get("content").cards.map((entry) => entry.key))
+      .toEqual(["occ-2", "occ-1"]);
+    expect(view.ui.get("content").editMode).toBe(false);
   });
 
-  it("persists an unsaved preview deck: creates it, imports clean cards, stamps access, and selects the real deck", async () => {
-    const { ui, rootEl } = mountPane();
-    const previewDeck = {
-      id: "preview:seed-greetings-ja",
-      name: '"Greetings" phrasebook',
+  it("keeps edit mode active and shows an atomic save failure", async () => {
+    mocks.updateDeckEntryOrder.mockRejectedValue(new Error("write failed"));
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    view.ui.transition("content/enter-edit");
+    view.ui.transition("content/reorder", { pageOrder: ["occ-2", "occ-1"] });
+
+    view.rootEl.querySelector('[data-action="content/done"]').click();
+    await flush();
+
+    expect(view.ui.get("content").editMode).toBe(true);
+    expect(view.rootEl.querySelector('[data-region="content-error"]').textContent)
+      .toBe("write failed");
+  });
+});
+
+describe("preview commit", () => {
+  const draftGroups = [{
+    id: "draft-group",
+    phrases: [{
+      id: "draft-occurrence",
+      card: { type: "phrase", lang: "ja", text: "こんにちは", translation: "hello" },
+    }],
+    vocab: [],
+  }];
+  const previewDeck = {
+    id: "preview-id",
+    name: "Greetings",
+    lang: "ja",
+    ability: "basics",
+    seedId: "seed-greetings-ja",
+    mode: "study",
+    order: "default",
+    readingDisplay: "reading",
+    preview: true,
+    draftGroups,
+  };
+
+  it("commits all draft groups atomically and selects the durable deck", async () => {
+    mocks.commitPhrasebook.mockResolvedValue({ ...mocks.deckStore.d1 });
+    const view = mountPane();
+    view.ui.transition("content/loaded", { deck: previewDeck, cards: [] });
+
+    view.rootEl.querySelector('[data-action="content/save-preview"]').click();
+    await flush();
+
+    expect(mocks.commitPhrasebook).toHaveBeenCalledWith({
+      name: "Greetings",
       lang: "ja",
-      ability: "beginner",
-      preview: true,
+      ability: "basics",
       seedId: "seed-greetings-ja",
-    };
-    const previewCards = [
-      { id: "preview-0", createdAt: "1970-01-01T00:00:00.000Z", deckIds: [], lang: "ja", text: "こんにちは", translation: "hello" },
-    ];
-    ui.transition("content/loaded", { deck: previewDeck, cards: previewCards });
-
-    const btn = document.createElement("button");
-    btn.dataset.action = "content/save-preview";
-    rootEl.appendChild(btn);
-    btn.click();
-
-    await vi.waitFor(() => expect(ui.get("content").deckId).toBe("real-001"));
-
-    expect(createDeck).toHaveBeenCalledWith('"Greetings" phrasebook', "ja", {
-      ability: "beginner",
-      seedId: "seed-greetings-ja",
+      groups: draftGroups,
+      selectedIndexes: [0],
     });
-    // The preview-only id/createdAt/deckIds are stripped before persisting —
-    // importCards must assign real ones (see content-pane.js comment).
-    const [savedCards, savedDeckId] = importCards.mock.calls[0];
-    expect(savedCards).toEqual([{ lang: "ja", text: "こんにちは", translation: "hello" }]);
-    expect(savedDeckId).toBe("real-001");
-    expect(updateDeckAccessTime).toHaveBeenCalledWith("real-001");
+    expect(view.ui.get("content").deckId).toBe("d1");
   });
 
-  it("is a no-op when the current deck is not a preview", async () => {
-    const { ui, rootEl } = mountPane();
-    ui.transition("content/select-deck", { id: "d1" });
+  it("keeps the preview visible and reports a commit failure", async () => {
+    mocks.commitPhrasebook.mockRejectedValue(new Error("commit failed"));
+    const view = mountPane();
+    view.ui.transition("content/loaded", { deck: previewDeck, cards: [] });
+
+    view.rootEl.querySelector('[data-action="content/save-preview"]').click();
     await flush();
 
-    const btn = document.createElement("button");
-    btn.dataset.action = "content/save-preview";
-    rootEl.appendChild(btn);
-    btn.click();
-    await flush();
-
-    expect(createDeck).not.toHaveBeenCalled();
+    expect(view.ui.get("content").deck.id).toBe("preview-id");
+    expect(view.rootEl.querySelector('[data-region="content-error"]').textContent)
+      .toBe("commit failed");
   });
+});
+
+it("refreshes Review availability when analysis adds a starred learning target", async () => {
+  const view = mountPane();
+  view.ui.transition("content/select-deck",{id:"d1"});
+  await flush();
+  const review = view.rootEl.querySelector('[data-action="content/review"]');
+  expect(review.disabled).toBe(true);
+  const word = {
+    key:JSON.stringify(["d1","word"]),cardId:"word",
+    card:{type:"word",lang:"ja",text:"肉",translation:"meat",partOfSpeech:"noun",senseKey:"meat"},
+    membership:{deckId:"d1",cardId:"word",createdAt:"2026-03-01T00:00:00.000Z",position:0,starredAt:"2026-03-01T00:00:00.000Z"},
+    sources:[],
+  };
+  const cards = [...view.ui.get("content").cards,word];
+  view.ui.transition("content/cards-changed",{deckId:"d1",cards});
+  expect(review.disabled).toBe(false);
+  view.ui.transition("content/cards-changed",{deckId:"d1",cards:cards.map(entry=>({...entry,membership:{...entry.membership,starredAt:null}}))});
+  expect(review.disabled).toBe(true);
 });

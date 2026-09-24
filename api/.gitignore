@@ -1,4 +1,5 @@
 .env
 .env.local
 src/node_modules
+src/schema/dist
 /tmp/

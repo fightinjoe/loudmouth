@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { openNewPhrasebookPanel } from "../components/new-phrasebook-panel.js";
-import { setLastAbility } from "../js/preferences.js";
+import { openNewPhrasebookPanel } from "../components/new-phrasebook-panel";
+import { setLastAbility } from "../js/preferences";
 
 let appEl;
 

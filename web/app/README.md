@@ -9,6 +9,9 @@ A mobile-first flashcard app for Chinese and Japanese vocabulary.
 
 ## Setup
 
+Run package commands from `web/app/`, not `web/`. Use `api/src/` for API commands.
+After pulling dependency changes, run `npm ci` in both package directories.
+
 ```bash
 npm install
 ```
@@ -22,6 +25,16 @@ npm run dev
 Opens at `http://localhost:8000` by default. `VITE_DEV_PORT` in `.env.local`
 selects another port; startup fails if that port is occupied.
 
+No manual TypeScript build is needed before `npm run dev` in either package.
+Both packages run `predev` to compile the shared card schema automatically.
+Vite transpiles the production web TypeScript; API handlers remain JavaScript
+and load the compiled shared schema.
+
+Web source edits use Vite's normal hot reload. Shared-schema edits in
+`api/src/schema/index.ts` are **not continuously compiled**: restart both dev
+servers after changing that file. Run `npm run typecheck` in `web/app/` for
+strict type checking; Vite's development transpilation alone is not a type check.
+
 ## Testing against a local API
 
 By default the app calls the deployed Cloud API Gateway. To test against a
@@ -31,7 +44,7 @@ locally running API instead:
 cp .env.local.example .env.local   # sets VITE_API_URL=http://localhost:8080
 ```
 
-Then run both dev servers (in separate terminals):
+Then run both dev servers (in separate terminals, starting from the repository root):
 
 ```bash
 cd api/src && npm run dev     # serves the API on http://localhost:8080
@@ -107,6 +120,34 @@ npm run build
 Output goes to `dist/`. Includes a service worker for offline use. Fonts load
 from Google Fonts via `index.html`, not from bundled files or the service-worker
 precache. Without network access or a browser-cached font, system fallbacks render.
+
+The build automatically compiles the shared schema, runs strict TypeScript
+checking, and bundles the web app. Keep the repository's `api/src/schema/`
+directory available when building the web package: its local package dependency
+is linked using the checked-in `.npmrc` (`install-links=false`). No separately
+checked-in compiled schema is needed.
+
+## Deployment
+
+- **Web:** run `npm ci` and `npm run build` in `web/app/`, then deploy `dist/`
+  to the static host. Set `VITE_API_URL` to the intended API before building if
+  overriding the default gateway; Vite embeds it at build time.
+- **API via `api/deploy.sh`:** run the existing deployment script from `api/`.
+  No manual local compilation is required. Google's Node buildpack runs the
+  `gcp-build` hook in `api/src/package.json`, compiling `schema/dist/` before
+  pruning development dependencies. Do not disable this hook with an empty
+  `GOOGLE_NODE_RUN_SCRIPTS`. See [API deployment documentation](../../api/README.md#deployment-reference)
+  for credentials and configuration.
+- **Custom API deployment:** run `npm ci && npm run schema:build` in `api/src/`
+  during the build stage and include `schema/dist/` in the deployed artifact.
+  Compile before pruning development dependencies. Raw Functions Framework or
+  Node startup bypasses `predev` and requires this compiled output; production
+  startup deliberately does not require the TypeScript compiler.
+
+**Breaking v2 rollout:** deploy API and web together. Old content responses and
+old-format imports are rejected. The new web app deliberately deletes the legacy
+`loudmouth` local database and legacy app preferences/cache on initialization;
+there is no migration. It preserves unrelated storage and the new v2 library.
 
 ## Preview production build
 

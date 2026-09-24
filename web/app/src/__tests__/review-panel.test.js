@@ -1,141 +1,304 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeEach } from "vitest";
-import { openReviewPanel } from "../components/review-panel.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const deck = { id: "d1", name: "Dinner", lang: "ja", order: "default" };
+const { speak } = vi.hoisted(() => ({ speak: vi.fn() }));
 
-const cards = [
-  { id: "c1", lang: "ja", text: "晩ご飯", translation: "dinner", reading: [["晩", "ばん"], ["ご飯", "ごはん"]] },
-  { id: "c2", lang: "ja", text: "水", translation: "water" },
-  { id: "c3", lang: "ja", text: "お会計", translation: "check, please" },
-];
-
-let appEl;
-
-beforeEach(() => {
-  appEl = document.createElement("div");
-  document.body.appendChild(appEl);
+vi.mock("../js/tts", async () => {
+  const actual = await vi.importActual("../js/tts");
+  return { ...actual, speak };
 });
 
-function currentCardEl() {
-  return appEl.querySelector(".review-panel-inner");
+import { openReviewPanel } from "../components/review-panel";
+
+const deck = {
+  id: "d1",
+  name: "Dinner",
+  lang: "ja",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "review",
+  order: "default",
+  readingDisplay: "reading",
+};
+
+function phraseEntry({
+  key,
+  text,
+  canonicalTranslation,
+  occurrenceTranslation,
+}) {
+  return {
+    key,
+    cardId: `card-${key}`,
+    card: {
+      type: "phrase",
+      lang: "ja",
+      text,
+      translation: canonicalTranslation,
+      reading: [[text, `${text}-reading`]],
+    },
+    occurrence: {
+      id: key,
+      deckId: deck.id,
+      cardId: `card-${key}`,
+      position: 0,
+      translation: occurrenceTranslation,
+    },
+    sources: [],
+  };
 }
 
-function swipe(el, dx) {
+const dinnerPhrase = phraseEntry({
+  key: "occurrence-dinner",
+  text: "晩ご飯",
+  canonicalTranslation: "canonical dinner",
+  occurrenceTranslation: "dinner for this conversation",
+});
+
+const waterPhrase = phraseEntry({
+  key: "occurrence-water",
+  text: "水",
+  canonicalTranslation: "canonical water",
+  occurrenceTranslation: "water here",
+});
+
+const wordEntry = {
+  key: JSON.stringify([deck.id, "word-eat"]),
+  cardId: "word-eat",
+  card: {
+    type: "word",
+    lang: "ja",
+    text: "食べる",
+    reading: [["食", "た"], ["べる", null]],
+    translation: "to eat",
+    partOfSpeech: "verb",
+    senseKey: "consume-food",
+  },
+  sources: [
+    {
+      snapshot: {
+        lang: "ja",
+        text: "肉を食べません。",
+        translation: "I do not eat meat.",
+        reading: [["肉を", "にくを"], ["食べません", "たべません"], ["。", null]],
+      },
+      ref: { cardId: "deleted-parent", occurrenceId: "deleted-occurrence" },
+      span: { start: 2, end: 7 },
+    },
+    {
+      snapshot: {
+        lang: "ja",
+        text: "魚を食べる。",
+        translation: "I eat fish.",
+      },
+      span: { start: 2, end: 5 },
+    },
+  ],
+};
+
+const hostileRole = '<img src=x onerror="window.__reviewInjected=true">';
+const hostileExplanation = 'particle"><svg onload=alert(1)>';
+const hostileSourceTranslation = "<b>historical meat sentence</b>";
+const hostileReading = 'た"><img src=x onerror=alert(1)>';
+const chunkEntry = {
+  key: JSON.stringify([deck.id, "chunk-object-marker"]),
+  cardId: "chunk-object-marker",
+  card: {
+    type: "chunk",
+    lang: "ja",
+    text: "を",
+    translation: "object marker",
+    source: {
+      snapshot: {
+        lang: "ja",
+        text: "肉を食べる。",
+        translation: hostileSourceTranslation,
+        reading: [["肉を", "にくを"], ["食べる", hostileReading], ["。", null]],
+      },
+      ref: { cardId: "edited-parent", occurrenceId: "deleted-parent-occurrence" },
+      span: { start: 1, end: 2 },
+    },
+    role: hostileRole,
+    explanation: hostileExplanation,
+  },
+  sources: [],
+};
+
+let appElement;
+
+beforeEach(() => {
+  document.body.innerHTML = "";
+  appElement = document.createElement("div");
+  document.body.appendChild(appElement);
+  speak.mockClear();
+});
+
+function reviewWrap() {
+  return appElement.querySelector(".review-card-wrap");
+}
+
+function baseText(element) {
+  const clone = element.cloneNode(true);
+  clone.querySelectorAll("rt").forEach((annotation) => annotation.remove());
+  return clone.textContent;
+}
+
+function swipe(element, deltaX) {
   const start = new Event("touchstart");
   start.touches = [{ clientX: 200, clientY: 100 }];
-  el.dispatchEvent(start);
+  element.dispatchEvent(start);
 
   const move = new Event("touchmove");
-  move.touches = [{ clientX: 200 + dx, clientY: 100 }];
-  el.dispatchEvent(move);
+  move.touches = [{ clientX: 200 + deltaX, clientY: 100 }];
+  element.dispatchEvent(move);
 
   const end = new Event("touchend");
-  end.changedTouches = [{ clientX: 200 + dx, clientY: 100 }];
-  el.dispatchEvent(end);
+  end.changedTouches = [{ clientX: 200 + deltaX, clientY: 100 }];
+  element.dispatchEvent(end);
 }
 
 describe("openReviewPanel", () => {
-  it("renders the prompt hidden behind a skeleton until revealed", () => {
-    openReviewPanel(appEl, deck, cards, () => {});
-    const card = appEl.querySelector(".review-card-wrap");
-    expect(card.dataset.revealed).toBe("false");
-    expect(appEl.querySelector(".review-prompt").textContent).toBe("dinner");
+  it("reviews a Phrase with the selected occurrence interpretation", () => {
+    openReviewPanel(appElement, deck, [dinnerPhrase], () => {});
+
+    expect(appElement.querySelector(".review-prompt").textContent)
+      .toBe("dinner for this conversation");
+
+    appElement.querySelector('[data-action="review/toggle-reveal"]').click();
+    expect(reviewWrap().dataset.revealed).toBe("true");
+
+    appElement.querySelector('[data-action="review/toggle-direction"]').click();
+    expect(reviewWrap().dataset.revealed).toBe("false");
+    expect(appElement.querySelector(".review-prompt").textContent).toContain("晩ご飯");
+    expect(appElement.querySelector(".review-answer-primary").textContent)
+      .toBe("dinner for this conversation");
+
+    appElement.querySelector('[data-action="review/play"]').click();
+    expect(speak).toHaveBeenLastCalledWith("晩ご飯-reading", "ja");
   });
 
-  it("toggle-reveal flips data-revealed", () => {
-    openReviewPanel(appEl, deck, cards, () => {});
-    appEl.querySelector('[data-action="review/toggle-reveal"]').click();
-    expect(appEl.querySelector(".review-card-wrap").dataset.revealed).toBe("true");
-    appEl.querySelector('[data-action="review/toggle-reveal"]').click();
-    expect(appEl.querySelector(".review-card-wrap").dataset.revealed).toBe("false");
+  it("keeps the Word headword primary and reveals durable source snapshots in provided order", () => {
+    openReviewPanel(appElement, deck, [wordEntry], () => {});
+
+    expect(appElement.querySelector(".review-prompt").textContent).toBe("to eat");
+    appElement.querySelector('[data-action="review/toggle-reveal"]').click();
+
+    expect(baseText(appElement.querySelector(".review-answer-primary"))).toBe("食べる");
+    const examples = [...appElement.querySelectorAll(".review-source-example")];
+    expect(examples.map((example) => baseText(example.querySelector(".source-context"))))
+      .toEqual(["肉を食べません。", "魚を食べる。"]);
+    expect(examples.map((example) => example.querySelector(".review-source-example-translation").textContent))
+      .toEqual(["I do not eat meat.", "I eat fish."]);
+    expect(baseText(examples[0].querySelector("mark"))).toBe("食べません");
   });
 
-  it("toggle-direction swaps prompt and answer sides", () => {
-    openReviewPanel(appEl, deck, cards, () => {});
-    expect(appEl.querySelector(".review-prompt").textContent).toBe("dinner");
-    appEl.querySelector('[data-action="review/toggle-direction"]').click();
-    // Reversed: prompt is now the target-language text (ruby-rendered 晩ご飯).
-    expect(appEl.querySelector(".review-prompt").textContent).toContain("晩");
-    expect(appEl.querySelector(".review-answer").textContent).toBe("dinner");
+  it("omits the source disclosure when a Word has no evidence", () => {
+    openReviewPanel(
+      appElement,
+      deck,
+      [{ ...wordEntry, key: "word-without-source", sources: [] }],
+      () => {},
+    );
+    appElement.querySelector('[data-action="review/toggle-reveal"]').click();
+    expect(appElement.querySelector(".review-source-examples")).toBeNull();
   });
 
-  it("toggle-direction resets reveal state", () => {
-    openReviewPanel(appEl, deck, cards, () => {});
-    appEl.querySelector('[data-action="review/toggle-reveal"]').click();
-    expect(appEl.querySelector(".review-card-wrap").dataset.revealed).toBe("true");
-    appEl.querySelector('[data-action="review/toggle-direction"]').click();
-    expect(appEl.querySelector(".review-card-wrap").dataset.revealed).toBe("false");
+  it("masks a Chunk in full original-script context without leaking a cut ruby token", () => {
+    openReviewPanel(appElement, deck, [chunkEntry], () => {});
+
+    const masked = appElement.querySelector('[data-region="review-chunk-context"]');
+    expect(masked.querySelector("mark").textContent).toBe("____");
+    expect(baseText(masked)).toBe("肉____食べる。");
+    expect([...masked.querySelectorAll("rt")].map((node) => node.textContent))
+      .not.toContain("にくを");
+    expect(masked.querySelector("rt").textContent).toBe(hostileReading);
+
+    appElement.querySelector('[data-action="review/toggle-reveal"]').click();
+    expect(appElement.querySelector('[data-region="review-chunk-context"] mark').textContent)
+      .toBe("を");
+    expect(appElement.querySelector(".review-chunk-teaching").textContent)
+      .toContain(hostileRole);
+    expect(appElement.querySelector(".review-chunk-teaching").textContent)
+      .toContain(hostileExplanation);
+    expect(appElement.querySelector(".review-chunk-teaching").textContent)
+      .toContain(hostileSourceTranslation);
+    expect(appElement.querySelector("img")).toBeNull();
+    expect(appElement.querySelector("svg[onload]")).toBeNull();
   });
 
-  it("swiping left advances to the next card", () => {
-    openReviewPanel(appEl, deck, cards, () => {});
-    expect(appEl.querySelector(".review-prompt").textContent).toBe("dinner");
-    swipe(appEl.querySelector(".review-card-wrap"), -120);
-    expect(appEl.querySelector(".review-prompt").textContent).toBe("water");
+  it("shows Chunk context immediately in target-to-English mode but keeps its gloss in the answer", () => {
+    openReviewPanel(appElement, deck, [chunkEntry], () => {});
+    appElement.querySelector('[data-action="review/toggle-direction"]').click();
+
+    expect(reviewWrap().dataset.revealed).toBe("false");
+    expect(appElement.querySelector(".review-prompt mark").textContent).toBe("を");
+    expect(appElement.querySelector(".review-prompt").textContent)
+      .not.toContain("object marker");
+    expect(appElement.querySelector(".review-answer-primary").textContent)
+      .toBe("object marker");
   });
 
-  it("swiping right goes back to the previous card", () => {
-    openReviewPanel(appEl, deck, cards, () => {});
-    swipe(appEl.querySelector(".review-card-wrap"), -120); // -> water
-    swipe(appEl.querySelector(".review-card-wrap"), 120); // <- dinner
-    expect(appEl.querySelector(".review-prompt").textContent).toBe("dinner");
+  it("press-and-hold peeks and then remasks a Chunk without changing persistent reveal", () => {
+    openReviewPanel(appElement, deck, [chunkEntry], () => {});
+    const skeleton = appElement.querySelector(".review-answer-skeleton");
+
+    skeleton.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    expect(reviewWrap().dataset.revealed).toBe("true");
+    expect(appElement.querySelector('[data-region="review-chunk-context"] mark').textContent)
+      .toBe("を");
+
+    document.dispatchEvent(new MouseEvent("mouseup"));
+    expect(reviewWrap().dataset.revealed).toBe("false");
+    expect(appElement.querySelector('[data-region="review-chunk-context"] mark').textContent)
+      .toBe("____");
   });
 
-  it("does not loop past the last card", () => {
-    openReviewPanel(appEl, deck, cards, () => {});
-    swipe(appEl.querySelector(".review-card-wrap"), -120); // water
-    swipe(appEl.querySelector(".review-card-wrap"), -120); // check, please
-    swipe(appEl.querySelector(".review-card-wrap"), -120); // no-op, at boundary
-    expect(appEl.querySelector(".review-prompt").textContent).toBe("check, please");
+  it("speaks a Word's own pronunciation and a Chunk's full historical source", () => {
+    openReviewPanel(appElement, deck, [wordEntry, chunkEntry], () => {});
+
+    appElement.querySelector('[data-action="review/play"]').click();
+    expect(speak).toHaveBeenLastCalledWith("たべる", "ja");
+
+    swipe(reviewWrap(), -120);
+    appElement.querySelector('[data-action="review/play"]').click();
+    expect(speak).toHaveBeenLastCalledWith("肉を食べる。", "ja");
   });
 
-  it("does not loop before the first card", () => {
-    openReviewPanel(appEl, deck, cards, () => {});
-    swipe(appEl.querySelector(".review-card-wrap"), 120); // no-op, already at index 0
-    expect(appEl.querySelector(".review-prompt").textContent).toBe("dinner");
+  it("applies session order once and stops swipes at both boundaries", () => {
+    const entries = [dinnerPhrase, waterPhrase];
+    openReviewPanel(appElement, { ...deck, order: "reverse" }, entries, () => {});
+
+    expect(appElement.querySelector(".review-prompt").textContent).toBe("water here");
+    appElement.querySelector('[data-action="review/toggle-reveal"]').click();
+    expect(reviewWrap().dataset.revealed).toBe("true");
+    swipe(reviewWrap(), -120);
+    expect(appElement.querySelector(".review-prompt").textContent)
+      .toBe("dinner for this conversation");
+    expect(reviewWrap().dataset.revealed).toBe("false");
+    swipe(reviewWrap(), -120);
+    expect(appElement.querySelector(".review-prompt").textContent)
+      .toBe("dinner for this conversation");
+    swipe(reviewWrap(), 120);
+    expect(appElement.querySelector(".review-prompt").textContent).toBe("water here");
+    swipe(reviewWrap(), 120);
+    expect(appElement.querySelector(".review-prompt").textContent).toBe("water here");
+    expect(entries).toEqual([dinnerPhrase, waterPhrase]);
   });
 
-  it("a sub-threshold swipe does not advance", () => {
-    openReviewPanel(appEl, deck, cards, () => {});
-    swipe(appEl.querySelector(".review-card-wrap"), -20);
-    expect(appEl.querySelector(".review-prompt").textContent).toBe("dinner");
+  it("ignores a sub-threshold swipe", () => {
+    openReviewPanel(appElement, deck, [dinnerPhrase, waterPhrase], () => {});
+    swipe(reviewWrap(), -20);
+    expect(appElement.querySelector(".review-prompt").textContent)
+      .toBe("dinner for this conversation");
   });
 
-  it("renders an empty state for a deck with no cards", () => {
-    openReviewPanel(appEl, deck, [], () => {});
-    expect(appEl.querySelector(".review-empty")).toBeTruthy();
-    expect(appEl.querySelector(".review-prompt")).toBeNull();
-  });
+  it("dismisses through the bottom-sheet transition", () => {
+    const onDismiss = vi.fn();
+    openReviewPanel(appElement, deck, [dinnerPhrase], onDismiss);
+    const panel = appElement.querySelector(".review-panel");
 
-  it("close button fires onDismiss via the bottom-sheet close handle", () => {
-    let dismissed = false;
-    openReviewPanel(appEl, deck, cards, () => { dismissed = true; });
-    const panel = appEl.querySelector(".review-panel");
-    appEl.querySelector('[data-action="review/close"]').click();
-    expect(panel.classList.contains("bottom-sheet--visible")).toBe(false);
-    // The real dismissal (panel removal + onDismiss) is gated on a CSS
-    // `transitionend` event, which happy-dom does not fire on its own.
+    appElement.querySelector('[data-action="review/close"]').click();
     panel.dispatchEvent(new Event("transitionend"));
-    expect(dismissed).toBe(true);
-  });
 
-  it("renders hostile translation and ruby tokens literally without losing ruby markup", () => {
-    const injectedElement = '<img src=x onerror="window.__injected=true">';
-    const hostileCards = [{
-      id: "hostile",
-      lang: "ja",
-      translation: injectedElement,
-      reading: [[injectedElement, 'reading"><img src=x onerror=alert(1)>']],
-    }];
-    openReviewPanel(appEl, deck, hostileCards, () => {});
-
-    expect(appEl.querySelector("img")).toBeNull();
-    expect(appEl.querySelector(".review-prompt").textContent).toBe(injectedElement);
-    appEl.querySelector('[data-action="review/toggle-direction"]').click();
-    expect(appEl.querySelector(".review-prompt ruby")).not.toBeNull();
-    expect(appEl.querySelector(".review-prompt ruby").childNodes[0].textContent).toBe(injectedElement);
-    expect(appEl.querySelector(".review-prompt rt").textContent).toBe('reading"><img src=x onerror=alert(1)>');
-    expect(appEl.querySelector("img")).toBeNull();
+    expect(onDismiss).toHaveBeenCalledOnce();
   });
 });

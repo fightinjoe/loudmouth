@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { createDelegate } from "../js/delegate.js";
+import { createDelegate } from "../js/delegate";
 
 describe("createDelegate", () => {
   let root;

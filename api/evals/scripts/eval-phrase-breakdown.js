@@ -11,6 +11,7 @@ const {
   PHRASE_BREAKDOWN_MAX_TOKENS, PHRASE_BREAKDOWN_TIMEOUT_MS,
 } = require('../../src/phrase-breakdown');
 const { buildUsageReport } = require('../../src/pricing');
+const { validateBreakdownResponse } = require('../../src/schema');
 
 const EVALS = path.resolve(__dirname, '..');
 const HELP = `Evaluate /phrase-breakdown using real providers and production validation/normalization.
@@ -31,9 +32,10 @@ Options:
   --verbose              Include roles, explanations, provenance, and review questions
   --help                 Show this help
 
-Compact output groups Text — Meaning beneath each chunk. Raw and normalized boundaries
-are shown when normalization removes punctuation. Full responses are always saved.
-PASS means mechanical checks only, not linguistic correctness. No runner retries.
+Compact output groups dictionary Words beneath each contextual chunk and identifies its
+explicit Word or Chunk target. Raw and normalized boundaries are shown when punctuation
+normalization removes a chunk. Full responses are always saved. PASS means mechanical
+checks only, not linguistic correctness. No runner retries.
 `;
 
 async function callModel(handler, prompt, options) {
@@ -57,9 +59,17 @@ async function callModel(handler, prompt, options) {
 
 function printRecord(record, verbose = false) {
   const usage = record.usage;
-  console.log(`\n${record.request.language} | ${usage?.model ?? 'no model response'} | ${record.variant} #${record.repetition} | ${record.findings.length ? 'FAIL' : 'PASS'} mechanical${usage ? ` | ${(usage.durationMs / 1000).toFixed(2)}s | ${usage.outputTokens} output tokens` : ''}`);
-  console.log(`${record.request.text} → ${record.request.translation}`);
-  if (record.request.context) console.log(`Context: ${record.request.context}`);
+  const snapshot = record.request.source?.snapshot ?? {
+    lang: record.request.language,
+    text: record.request.text,
+    translation: record.request.translation,
+  };
+  console.log(`\n${snapshot.lang} | ${usage?.model ?? 'no model response'} | ${record.variant} #${record.repetition} | ${record.findings.length ? 'FAIL' : 'PASS'} mechanical${usage ? ` | ${(usage.durationMs / 1000).toFixed(2)}s | ${usage.outputTokens} output tokens` : ''}`);
+  console.log(`${snapshot.text} → ${snapshot.translation}`);
+  if (record.request.context) {
+    console.log(`Context: ${typeof record.request.context === 'string'
+      ? record.request.context : JSON.stringify(record.request.context)}`);
+  }
   for (const finding of record.findings) console.log(`! ${finding}`);
   if (verbose && record.provenance) console.log(`Provenance: ${record.provenance}`);
   if (record.raw != null) {
@@ -74,9 +84,24 @@ function printRecord(record, verbose = false) {
       }
       for (const [index, chunk] of data.chunks.entries()) {
         console.log(`  ${index}. ${JSON.stringify(chunk.text)} → ${chunk.gloss}`);
-        const items = chunk.learningItems;
-        if (!Array.isArray(items)) console.log('     ! Missing or invalid learningItems');
-        else if (items.length) console.log(`     Learn: ${items.map(item => `${item?.text} — ${item?.meaning}`).join(' | ')}`);
+        if (Array.isArray(chunk.words)) {
+          if (chunk.words.length) {
+            console.log(`     Words: ${chunk.words.map(candidate => {
+              const card = candidate?.card ?? candidate;
+              return `${card?.text} — ${card?.translation}`;
+            }).join(' | ')}`);
+          }
+          const rawTarget = raw.chunks?.[index]?.equivalentWordIndex;
+          const target = chunk.target?.kind === 'word'
+            ? `word[${chunk.target.index}]`
+            : chunk.target?.kind ?? (rawTarget === null
+              ? 'chunk' : Number.isSafeInteger(rawTarget) ? `word[${rawTarget}]` : 'missing');
+          console.log(`     Target: ${target}`);
+        } else {
+          const items = chunk.learningItems;
+          if (!Array.isArray(items)) console.log('     ! Missing or invalid historical learningItems');
+          else if (items.length) console.log(`     Historical learn: ${items.map(item => `${item?.text} — ${item?.meaning}`).join(' | ')}`);
+        }
         if (verbose) {
           console.log(`     Role: ${chunk.role}`);
           console.log(`     Explanation: ${chunk.explanation}`);
@@ -154,7 +179,7 @@ async function main() {
         else if (baseline !== null) prompt.instructions = baseline;
         const record = {
           caseId: fixture.id, provenance: fixture.provenance, request: fixture.request,
-          itemFormat: 'nested-items', variant, repetition, prompt, review: fixture.review,
+          itemFormat: 'v2-candidates', variant, repetition, prompt, review: fixture.review,
           findings: [], rawFindings: [],
         };
         const start = performance.now();
@@ -175,13 +200,18 @@ async function main() {
                 record.rawFindings.push(`chunks[${index}] is punctuation/whitespace-only: ${JSON.stringify(chunk.text)}`);
               } else indexMap.push(kept++);
             }
-            record.normalized = validatePhraseBreakdownResponse(reply.text, fixture.request.text, fixture.request.language);
+            const assembled = validatePhraseBreakdownResponse(reply.text, fixture.request);
+            record.normalized = validateBreakdownResponse(
+              { ...assembled, usage: record.usage },
+              fixture.request,
+            );
             record.normalization = { removed, indexMap, durationMs: performance.now() - normalizationStart };
             const seen = new Set();
             for (const chunk of record.normalized.chunks) {
-              for (const item of chunk.learningItems) {
-                const key = JSON.stringify([item.text, item.meaning]);
-                if (seen.has(key)) record.findings.push(`Repeated learning item and meaning: ${item.text}`);
+              for (const candidate of chunk.words) {
+                const card = candidate.card;
+                const key = JSON.stringify([card.lang, card.text, card.partOfSpeech, card.senseKey]);
+                if (seen.has(key)) record.findings.push(`Repeated Word identity: ${card.text} (${card.senseKey})`);
                 seen.add(key);
               }
             }

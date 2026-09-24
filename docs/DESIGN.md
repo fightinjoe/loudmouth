@@ -39,8 +39,8 @@ pane, not separate pane components.
 
 The landing page shows the product identity, recent phrasebooks, suggested phrasebooks, and a prominent
 new-phrasebook action. Returning users can start the same flow from the navigation FAB. Once the user
-has phrasebooks, navigation groups them by language and offers browse views where needed. A dynamic
-Starred collection may appear for a language with starred cards.
+has phrasebooks, navigation groups them by language and offers browse views over every retained card
+type. Language browsing has no inferred star state; starring and Review always require a phrasebook.
 
 Selecting an existing phrasebook opens it in the content pane. Selecting a suggested phrasebook opens
 its language-and-ability confirmation and then a read-only preview; **Save** commits that preview to the
@@ -74,7 +74,7 @@ finished. Final Continue reuses the pending or ready response, keeps selected co
 index, then pools, deduplicates, and caps their vocabulary before saving. It never starts a duplicate
 request. Back without changes reuses work; changing answers or the seed invalidates it.
 Confirmation shows the loading state for at least 1000 ms before saving and displaying the phrasebook,
-configured by `PHRASEBOOK_MIN_LOADING_MS` in `web/app/src/components/creation-panel.js`.
+configured by `PHRASEBOOK_MIN_LOADING_MS` in `web/app/src/components/creation-panel.ts`.
 This minimum overlaps any remaining generation time rather than adding a delay after generation.
 Background failure leaves the checklist usable until Continue surfaces it; retry preserves choices.
 Dismissal aborts outstanding requests and discards uncommitted results. Incomplete saves are rolled back.
@@ -86,10 +86,13 @@ Historical setup preferences are not inferred or migrated to the new scale.
 
 ## Phrasebook view
 
-On web, a phrasebook uses one tab and horizontally sliding page per conversation (`context`), followed
-by **Vocab** (`type: "word"`, regardless of provenance). Context-less phrases occupy a
-**Translations** page, newest-first; named conversations preserve saved card order. There is no
-separate Starred tab: stars remain persistent card controls and **Review** uses the starred study set.
+On web, a saved phrasebook renders joined library entries rather than a flat card list. Group-less
+Phrase occurrences occupy **Translations** first in their saved order, followed by one tab and
+horizontally sliding page per stored Group in group-position order. Group IDs, not titles, identify
+pages, so duplicate titles remain distinct. A **Chunks** page follows the conversation pages when the
+phrasebook has Chunk memberships, and **Vocab** contains its Word memberships last. There is no
+separate Starred tab: stars remain phrasebook-scoped membership controls and **Review** uses that
+phrasebook's starred study set.
 This web navigation does not change iOS.
 
 Tabs fit their title text with 16 px horizontal padding on each side; the strip clips partially
@@ -105,23 +108,31 @@ drags and retains active-page reorder and card editing.
 
 The visual reference is `explorations/phrasebook-navigation/PHRASEBOOK_EXPLORATION.html`: white
 surfaces, Roboto Condensed headings and tabs, and Manrope card text. Borderless cards have 16 px
-corners and 8 px gaps. Conversation cards use the speaker metadata encoded in `notes`: learner speech
-is right-aligned blue (`#dbefff`), partner speech is left-aligned neutral (`#f9fafb`), and text remains
-left-aligned on both sides. Alternatives from `notes.or` display an “or” separator and retain their
-speaker's color. Conversation pages omit repeated headings, counts, and speaker labels. Stars change
-only their icon, not card backgrounds; vocabulary remains neutral.
+corners and 8 px gaps. Each Phrase occurrence supplies its own translation, speaker, alternative flag,
+group, and position; repeated occurrences may share one durable Phrase without sharing presentation
+state. Learner speech is right-aligned blue (`#dbefff`), partner speech is left-aligned neutral
+(`#f9fafb`), and text remains left-aligned on both sides. Alternatives display an “or” separator and
+retain their speaker's color. Conversation pages omit repeated headings, counts, and speaker labels.
+Stars change only their icon, not card backgrounds; membership stars never affect another phrasebook.
 
 Card text places English above the target language without changing either line's typography.
 Japanese displays one target form according to the phrasebook's reading setting: original Japanese
 script with available furigana, or romaji using the same target-text styling. If a card has no romaji,
 it retains Japanese script and available furigana. Chinese ruby pinyin is unchanged. The standalone
 `explorations/card-styling/CARD_EXPLORATION.html` also demonstrates this order and Japanese selection.
+Compact Word cards show their optional definition below the target and any standalone reading,
+using smaller (13 px), muted text with an 8 px separation. Definitions wrap within the card and
+remain literal text. Absent definitions add no empty row; Phrase and Chunk cards do not display
+this compact definition line. This adopts the Word-definition hierarchy from the same exploration
+without changing the existing English/target typography or adding usage notes and examples.
 
-Cards can be starred for review. On web, tapping a phrase or sentence opens its breakdown; explicit
-audio buttons on the row and in details play target-language pronunciation. Vocabulary keeps
-tap-to-pronounce. In edit mode, card taps still open the editor. Phrasebook settings and card reorder
-remain available from the title menu. Generated group context is preserved on cards so conversation
-membership survives local storage and display filtering.
+Cards can be starred for review when they have a membership in the active phrasebook. Tapping a Phrase
+occurrence opens its breakdown; a Word tap pronounces its dictionary headword, and a Chunk tap
+pronounces the full preserved source snapshot. Chunk rows render that full source with the saved span
+highlighted rather than presenting an isolated fragment. In edit mode, entry-keyed card taps open the
+editor and reorder saves occurrence positions independently, so repeated Phrase appearances are not
+collapsed by card ID. Phrasebook settings remain available from the title menu. Language browsing
+includes retained Phrases, Words, and Chunks but offers no star or review control without a phrasebook.
 
 The phrasebook action bar contains **Review**. Phrasebook content is not extended from this view; a new
 situation starts a new guided phrasebook from navigation.
@@ -141,16 +152,20 @@ fragment with available readings, role, and explanation. Selected text, underlin
 share blue emphasis. **SHOW ALL** highlights every chunk and displays explanations in source order;
 **SHOW SELECTED** restores the last individual selection. Selecting a chunk exits all-mode.
 The count and toggle follow the explanations; a single-part phrase has no toggle. Reopening resets
-selection and detail scroll. Each API chunk also contains validated nested learning items. The client
-retains them in the tab cache but does not yet display, save, or star them.
+selection and detail scroll. Each API chunk displays its nested dictionary-form Words and exactly one
+primary target: either an equivalent Word or a distinct contextual Chunk. Candidate controls resolve
+the current phrasebook's durable membership state when details opens and after every toggle; the
+analysis cache never supplies card IDs or star state. With no active phrasebook, analysis remains
+available but save controls are unavailable.
 
-Opening calls `/phrase-breakdown` with the saved language, exact text, translation, and optional
-conversation context. The source remains visible during loading and errors; **Retry** makes a new
-request after failure. Valid chunk teaching and nested learning items are cached in tab-scoped
-sessionStorage under the exact request content and a schema version. Editing source, translation,
-language, or context therefore cannot reuse stale analysis. Closing aborts the client request and
-late results are ignored. Analysis is not saved into card records, exported, starred separately, or
-generated during phrasebook creation; the later learning-item card design remains unimplemented.
+Opening calls `/phrase-breakdown` with the exact occurrence snapshot, source references, and only the
+active phrasebook context. The source remains visible during loading and errors; **Retry** makes a new
+request after failure. **Regenerate** bypasses the cache while retaining the current analysis if the
+new request fails. Valid teaching and candidates are cached in tab-scoped sessionStorage under the
+serialized versioned request. Editing the request source or context therefore cannot reuse stale
+analysis. Opening, closing, retrying, regenerating, and cache clearing make no durable library writes;
+only an explicit successful star action saves or reuses a card and membership. Closing aborts the
+client request and late results are ignored.
 
 The conversation is inert while details is open. Focus enters Close; Tab stays within the modal.
 Close, Escape, or the scrim dismiss and restore focus to the original card without scrolling.
@@ -160,20 +175,31 @@ drag-to-dismiss in this variant. Native iOS behavior is unchanged.
 
 ## Review
 
-Review is a full-height action-pane mode opened from a phrasebook. Its study set is the phrasebook's
-starred cards in phrasebook order, regardless of which content tab was visible. With no starred cards,
-the action is unavailable.
+Review is a full-height action-pane mode opened from a phrasebook. Its study set contains one joined
+entry per starred membership in phrasebook display order; a repeated Phrase uses that phrasebook's
+first occurrence. Default order preserves that list, while the saved reverse or random setting is
+applied once when the review session opens. With no starred memberships, the action is unavailable.
 
-Each review card supports:
+Each target keeps its own review contract:
 
-- English-to-target or target-to-English direction, toggled for the current review session;
-- hidden-answer reveal, including press-and-hold peek while the answer remains hidden;
-- target-language audio, independent of the current direction;
-- left/right swipe navigation.
+- A **Phrase** uses the chosen occurrence's translation, so a shared Phrase in another phrasebook
+  cannot change its interpretation.
+- A **Word** presents its dictionary headword, own reading, and sense translation as the primary
+  target. After reveal, a collapsible **Source examples** section shows full preserved snapshots with
+  the encountered span highlighted and the historical source translation. Current-phrasebook
+  examples come first, followed by the remaining examples chronologically. No evidence means no
+  source section.
+- A **Chunk** always uses its full original-script source snapshot. English-to-target shows the
+  contextual gloss and masks only the selected span with a constant blank; reveal restores and
+  highlights it without leaking ruby from a partially cut reading token. Target-to-English highlights
+  the span immediately but keeps the gloss hidden until reveal. Role, explanation, and full source
+  translation appear after reveal, and audio speaks the full source phrase rather than the fragment.
 
-Changing direction hides the current answer again. Moving to another card also resets reveal state.
-Review does not loop and has no end-of-deck summary: navigation stops at the first and last card.
-Closing review returns to the same phrasebook.
+All targets support a session-only direction toggle, hidden-answer reveal, press-and-hold peek,
+direction-independent target audio, and left/right swipe navigation. Changing direction or moving to
+another entry hides the answer again. Review does not loop and has no end-of-deck summary: navigation
+stops at the first and last entry. Closing returns to the same phrasebook. Source snapshots remain
+usable after their parent Phrase, occurrence, or phrasebook is edited or deleted.
 
 ---
 

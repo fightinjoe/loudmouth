@@ -5,14 +5,12 @@ const path = require('node:path');
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, 'prompt.txt'), 'utf8');
 
-function buildPhraseBreakdownPrompt({ language, text, translation, context }) {
+function buildPhraseBreakdownPrompt(request) {
   return {
     instructions: TEMPLATE,
     input: JSON.stringify({
-      language,
-      text,
-      translation,
-      ...(context === undefined ? {} : { context }),
+      source: request.source.snapshot,
+      ...(request.context === undefined ? {} : { context: request.context }),
     }),
   };
 }

@@ -1,33 +1,33 @@
-import { describe, it, expect } from "vitest";
-import { SUGGESTED_PHRASEBOOKS, pendingSuggestions } from "../js/suggested-phrasebooks.js";
+// @vitest-environment happy-dom
+import {describe,it,expect} from 'vitest';
+import {IDBFactory,IDBKeyRange} from 'fake-indexeddb';
+import {validateCandidate} from '@catchphrase/card-schema';
+import {SUGGESTED_PHRASEBOOKS,pendingSuggestions} from '../js/suggested-phrasebooks';
+import {createDb,commitPhrasebook,getCards,getSeededDeckIds} from '../js/db';
 
-describe("SUGGESTED_PHRASEBOOKS", () => {
-  it("has a unique id per entry", () => {
-    const ids = SUGGESTED_PHRASEBOOKS.map((s) => s.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it("every entry has at least one placeholder term", () => {
-    for (const s of SUGGESTED_PHRASEBOOKS) {
-      expect(s.terms.length).toBeGreaterThan(0);
+describe('authored suggestions',()=>{
+  it('uses valid common cards in explicit groups, including ungrouped translations',()=>{
+    const ids = new Set();
+    for (const suggestion of SUGGESTED_PHRASEBOOKS) {
+      expect(ids.has(suggestion.id)).toBe(false);
+      ids.add(suggestion.id);
+      for (const group of suggestion.groups) {
+        for (const phrase of group.phrases) validateCandidate({card:phrase});
+        for (const candidate of group.vocab) validateCandidate(candidate);
+      }
     }
+    expect(SUGGESTED_PHRASEBOOKS[0].groups.map(group=>group.title)).toEqual([undefined,'General greetings','Questions']);
   });
-});
-
-describe("pendingSuggestions", () => {
-  it("returns every suggestion when nothing has been seeded", () => {
-    expect(pendingSuggestions(new Set())).toHaveLength(SUGGESTED_PHRASEBOOKS.length);
-  });
-
-  it("excludes a suggestion whose id is already in the seeded set", () => {
-    const [first] = SUGGESTED_PHRASEBOOKS;
-    const pending = pendingSuggestions(new Set([first.id]));
-    expect(pending.find((s) => s.id === first.id)).toBeUndefined();
-    expect(pending).toHaveLength(SUGGESTED_PHRASEBOOKS.length - 1);
-  });
-
-  it("returns an empty list once every suggestion has been seeded", () => {
-    const all = new Set(SUGGESTED_PHRASEBOOKS.map((s) => s.id));
-    expect(pendingSuggestions(all)).toHaveLength(0);
+  it('saves authored Words with explicit senses unstarred and hides only the saved suggestion',async()=>{
+    const store = createDb({indexedDB:new IDBFactory(),IDBKeyRange});
+    const suggestion = SUGGESTED_PHRASEBOOKS.find(item=>item.id==='seed-directions-ja');
+    const groups = suggestion.groups.map(group=>({...group,id:crypto.randomUUID(),phrases:group.phrases.map(card=>({id:crypto.randomUUID(),card}))}));
+    const deck = await commitPhrasebook({name:suggestion.title,lang:suggestion.lang,ability:'basics',seedId:suggestion.id,groups,selectedIndexes:groups.map((_,index)=>index)},{store});
+    const entries = await getCards(deck.id,store);
+    expect(entries.filter(entry=>entry.card.type==='word').map(entry=>entry.card.senseKey)).toEqual(['right-direction','left-direction']);
+    expect(entries.every(entry=>entry.membership.starredAt===null)).toBe(true);
+    expect(deck).not.toHaveProperty('generation');
+    expect(pendingSuggestions(await getSeededDeckIds(store)).map(item=>item.id)).not.toContain(suggestion.id);
+    store.close();
   });
 });

@@ -28,7 +28,7 @@ input[type=checkbox] { width:18px; height:18px; accent-color:var(--accent); }
 button { cursor:pointer; }
 :focus-visible { outline:3px solid #2672a6; outline-offset:3px; }
 #status { color:var(--muted); font-size:13px; margin:12px 0 24px; }
-.comparison { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; align-items:start; }
+.comparison { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:40px; align-items:start; }
 .direction-heading { min-height:112px; }
 .direction-heading p { font-size:13px; color:var(--muted); margin-top:6px; max-width:390px; }
 .preview-wrap { overflow:auto; padding:2px 2px 12px; }
@@ -51,23 +51,18 @@ ruby { ruby-align:center; } rt { font-size:.48em; font-weight:400; color:#506071
 .bubbles .card { text-align:left; }
 .or { width:88%; align-self:flex-end; text-align:center; color:var(--muted); font-size:calc(12px * var(--scale)); font-style:italic; margin:-5px 0; }
 .bubbles .or[data-side=left] { align-self:flex-start; background:none; }
-.vocab .preview { background:#292344; color:#fff; }
-.vocab .book-header { border:0; background:#d9ff64; color:#292344; }
-.vocab .book-header .eyebrow,.vocab .book-header p { color:#40364f; }
-.vocab .conversation { gap:0; padding:28px 20px; }
-.vocab .card { margin:0 0 14px; border:0; border-radius:30px 6px 30px 6px; background:#d9ff64; transform:rotate(-2deg); padding-top:26px; padding-bottom:26px; }
-.vocab .card:nth-child(2n) { background:#ffb5d5; transform:rotate(2deg); border-radius:6px 30px 6px 30px; }
-.vocab .card:nth-child(3n) { background:#b8cbff; transform:rotate(-1deg); border-radius:30px; }
-.vocab .target { color:#292344; font-weight:750; }
-.vocab .meaning,.vocab rt { color:#443651; }
-.vocab .star { color:#443651; }
-.vocab .star[aria-pressed=true] { color:#292344; }
 .transcript .conversation { gap:0; padding:8px 0; }
-.transcript .card { padding:22px 64px 22px 20px; border-bottom:1px solid var(--rule); }
+.transcript .card { padding:22px 48px 22px 20px; border-bottom:1px solid var(--rule); }
 .transcript .card:last-child { border-bottom:0; }
-.transcript .star { right:24px; }
 .transcript .empty { padding-inline:20px; }
-.source { margin-top:10px; color:var(--muted); font-size:calc(11px * var(--scale)); }
+.type-gallery { margin-top:56px; border-top:1px solid var(--rule); padding-top:24px; }
+.type-gallery > p { color:var(--muted); max-width:760px; margin-bottom:24px; }
+.specimens { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; align-items:start; }
+.specimen .preview { width:100%; max-width:var(--preview-width); }
+.specimen h3 { margin-bottom:8px; }
+.specimen > p { font-size:13px; color:var(--muted); margin-bottom:16px; }
+.card[data-type=word] .target { font-weight:650; }
+.definition { margin-top:8px; font-size:calc(13px * var(--scale)); color:#535c55; }
 .empty { padding:24px 0; color:var(--muted); font-size:14px; }
 .caption { font-size:12px; color:var(--muted); margin:8px 0; }
 section.notes { margin-top:56px; max-width:900px; border-top:1px solid var(--rule); padding-top:24px; }
@@ -76,7 +71,7 @@ li { margin:8px 0; }
 .grid-notes { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
 .callout { border-left:3px solid var(--accent); padding:12px 16px; background:#edf1e9; margin:20px 0; }
 code { font-size:13px; background:#e9ece4; padding:2px 4px; }
-@media(max-width:1000px) { .comparison { grid-template-columns:1fr; } .direction-heading { min-height:0; margin-bottom:14px; } .preview { max-width:100%; } }
+@media(max-width:1000px) { .comparison,.specimens { grid-template-columns:1fr; } .direction-heading { min-height:0; margin-bottom:14px; } .preview { max-width:100%; } }
 @media(max-width:540px) { main { padding:28px 16px 60px; } .controls { padding:14px; gap:12px; } .grid-notes { grid-template-columns:1fr; } }
 @media print { .controls,nav,.star { display:none; } main { padding:0; } .comparison { display:block; } .direction { break-inside:avoid; margin:24px 0; } }
 </style>
@@ -85,11 +80,11 @@ code { font-size:13px; background:#e9ece4; padding:2px 4px; }
 <main>
 <header class="intro">
 <div class="eyebrow">Catchphrase / interface studies / 001</div>
-<h1>One phrasebook.<br>Three ways to gather.</h1>
-<p>Conversation topics, vocabulary, and starred cards serve different reading rhythms. Explore each in context, with shared language and typography controls—not three competing skins for the same list.</p>
+<h1>Different cards.<br>One reading rhythm.</h1>
+<p>Words to recognize, phrases to reuse, sentences to rehearse. Keep the conversation bubbles; explore how each card type reads on its own and together in a starred collection.</p>
 <p><strong>Exploration, not a production specification.</strong> Standalone, offline, no build step. Open this file directly in a browser.</p>
 </header>
-<nav aria-label="Document"><a href="#lab">Live comparison</a><a href="#criteria">What to evaluate</a><a href="#method">Exploration method</a><a href="#handoff">iOS reference</a><a href="../../web/docs/PANE_PROTOCOL.html">Pane protocol</a><a href="../methodology.md">Shared methodology</a></nav>
+<nav aria-label="Document"><a href="#lab">A + C / In context</a><a href="#card-types">Card-type gallery</a><a href="#criteria">What to evaluate</a><a href="#method">Exploration method</a><a href="#handoff">iOS reference</a><a href="../../web/docs/PANE_PROTOCOL.html">Pane protocol</a><a href="../methodology.md">Shared methodology</a></nav>
 <section id="lab" aria-label="Live card comparison">
 <form class="controls" id="controls">
 <label>Language & reading<select id="language"><option value="es">Spanish</option><option value="zh">Chinese · pinyin</option><option value="ja-ruby">Japanese · furigana</option><option value="ja-romaji">Japanese · romanization</option></select></label>
@@ -103,24 +98,37 @@ code { font-size:13px; background:#e9ece4; padding:2px 4px; }
 </form>
 <p id="status" role="status"></p>
 <div class="comparison" id="comparison"></div>
-<p class="caption">Star any conversation or vocabulary card to add it to C; unstar it to remove it. Two cards start starred in each content set. State is local to this page and resets on reload. No audio or card-opening interaction is simulated. On small screens, previews shrink to fit; on desktop, an oversized preview scrolls inside its column.</p>
+<p class="caption">Star cards in A or the gallery to add them to C. Each content set starts with a conversation phrase, a word, a reusable phrase, and a sentence. Stars are shared across views, local to this page, and reset on reload. No audio or card-opening interaction is simulated.</p>
+</section>
+<section class="type-gallery" id="card-types" aria-labelledby="types-heading">
+<div class="eyebrow">Card anatomy / schema types</div><h2 id="types-heading">Three types. Room for nuance.</h2>
+<p>English first, target language next. Type is implicit in the content and styling, not a label on the card. Word definitions stay close to the word. Topic context and register are not displayed on cards. Usage notes and examples belong in an expanded view, not these compact cards. The controls above apply here too.</p>
+<div class="specimens" id="specimens"></div>
 </section>
 <section class="notes" id="criteria">
-<div class="eyebrow">Evaluation</div><h2>Three groupings, three reading rhythms.</h2>
-<div class="grid-notes"><div><h3>Questions to answer</h3><ul><li>A: does side alone make turn-taking clear, without assigning either role to the learner?</li><li>Does “or” connect two choices for the same speaker rather than look like another turn?</li><li>B: does the loud, borderless vocabulary collage make words memorable, or distract from reading?</li><li>C: can phrases and vocabulary sit together naturally without implying a conversation?</li><li>Do pinyin and furigana remain attached to their characters when wrapping?</li></ul></div><div><h3>Stress pass</h3><ol><li>View each language at 390 px, then long content at 320 px and 150% text.</li><li>Swap conversation sides. Both options must move together; neither gets a role label.</li><li>Hide readings and English. Check spacing with and without ruby.</li><li>Star items in A and B, then remove every item from C. Check the empty state.</li><li>Use Tab and Space to toggle stars. Reset restores the initial selection.</li></ol></div></div>
-<div class="callout"><strong>Decisions from the first pass:</strong> keep offset bubbles for conversation; remove role labels. Reject the bordered full-width treatment—it interrupts flow. Reserve the ruled list for starred cards, not dialogue. The new vocabulary collage is deliberately extreme and remains an experiment.</div>
+<div class="eyebrow">Evaluation</div><h2>Distinct content, consistent reading.</h2>
+<div class="grid-notes"><div><h3>Questions to answer</h3><ul><li>A: does side alone make turn-taking clear?</li><li>Does “or” connect choices for the same speaker?</li><li>Do English and the target language lead the eye without competing with the star?</li><li>Does a word definition help without adding unnecessary weight?</li><li>Do readings remain attached when wrapping?</li></ul></div><div><h3>Stress pass</h3><ol><li>View each language at 390 px, then long content at 320 px and 150% text.</li><li>Swap conversation sides; both alternatives must move together.</li><li>Hide readings and English; check A, C, and the gallery.</li><li>Star items in A and the gallery, then empty C.</li><li>Use Tab and Space to toggle stars. Reset restores the initial selection.</li></ol></div></div>
+<div class="callout"><strong>This iteration:</strong> English and target text lead, with unchanged typography. No type labels, topic captions, or register badges inside cards. Stars share a 4 px right inset and 44 px touch target. Keep word definitions; reserve explanations and examples for expanded cards.</div>
 </section>
 <section class="notes" id="method">
 <div class="eyebrow">Reusable format</div><h2>One question. A runnable reference.</h2>
 <p>Follow the <a href="../../web/docs/PANE_PROTOCOL.html">Pane Protocol</a> model: a live example next to the reasoning. Unlike that settled protocol, this study presents alternatives; it does not establish application rules.</p>
 <ol><li><strong>Frame:</strong> name the surface, its grouping semantics, and non-goals.</li><li><strong>Explore:</strong> keep language and typography controls shared; use identical fixtures when comparing alternatives for the same purpose. Do not confuse conversation, vocabulary, and starred collections.</li><li><strong>Stress:</strong> include long and short content, alternatives, empty collections, narrow widths, and larger type.</li><li><strong>Observe:</strong> record device/browser, settings, and the specific failure or advantage.</li><li><strong>Decide:</strong> record accepted, rejected, and unresolved ideas before porting. Keep the runnable specimens as a visual reference.</li></ol>
-<p><strong>Current scope:</strong> conversational topic groups, vocabulary, and starred cards in Spanish, simplified Chinese with ruby pinyin, and Japanese with furigana or romaji. Out of scope: details panes, swipe actions, audio, backend/schema changes, and production integration.</p>
+<p><strong>Current scope:</strong> conversational topic groups, a word / phrase / sentence gallery, and mixed starred cards in Spanish, simplified Chinese with ruby pinyin, and Japanese with furigana or romaji. Type is explicit fixture data, not inferred from punctuation: generated conversation lines remain phrases. Out of scope: details panes, swipe actions, audio, backend/schema changes, and production integration.</p>
 <p><strong>Future studies:</strong> follow the <a href="../methodology.md">shared exploration methodology</a>. Create a separate directory under <code>explorations/</code> for each concept, keeping its standalone HTML, fixtures, and assets local so studies can evolve independently.</p>
 </section>
 <section class="notes" id="handoff">
 <div class="eyebrow">Porting reference</div><h2>Preserve hierarchy, not CSS.</h2>
-<ul><li><strong>Anatomy:</strong> English above the target. Japanese shows either its original script with available furigana or romaji, never both. No speaker heading or empty reading line. Chinese pinyin and Japanese furigana use the same ruby layout; the Readings control toggles ruby annotations, not the selected script.</li><li><strong>Typography baseline:</strong> Latin target 20 px; CJK target and Japanese romaji 23 px with the same weight, color, and line height; English 14 px; ruby 0.48 em. The size control scales all text. These are exploration values, not approved native tokens.</li><li><strong>Conversation:</strong> side and tint distinguish two interchangeable voices. The swap control exchanges sides, not content or order. Star emphasis changes the icon, never speaker identity.</li><li><strong>Alternatives:</strong> the fixture uses API-shaped JSON-encoded <code>notes</code>, such as <code>{"speaker":"you","or":true}</code>. A literal “or” precedes that option on the same side as the preceding option. This study exercises adjacent alternatives; the API also allows interleaved alternatives, which need a separate grouping decision before production adoption. See <a href="../../docs/CARD_SCHEMA.md">card schema</a>.</li><li><strong>Starred collection:</strong> C combines selected phrases and words from the active fixture, retaining a small source-context caption but no speaker or “or” marker. Removing a star removes that entry; empty selection is an intentional state.</li><li><strong>Interaction:</strong> stars have 44 × 44 CSS-pixel targets and pressed state. Production plays audio on card-body taps; this artifact limits interaction to controls and stars.</li><li><strong>Reading data:</strong> hand-authored base/annotation pairs, not automatic syllable alignment. Kana and punctuation without annotations remain ordinary text. Chinese syllables are individually paired with characters so long phrases can wrap without detaching readings.</li><li><strong>Native checks still required:</strong> actual iOS Safari ruby wrapping, VoiceOver reading order, Dynamic Type, and native font metrics. Browser scaling is not Dynamic Type. Have a fluent reviewer check fixtures before using them as teaching content.</li></ul>
-<p>Production references: <code>web/app/src/components/card.js</code> and conversation styles in <code>web/app/src/styles/components.css</code>. The English-first order and exclusive Japanese script selection match production; the three visual treatments remain explorations.</p>
+<ul>
+<li><strong>Anatomy:</strong> English above the target. Japanese shows either original script with available furigana or romaji, never both. The Readings control toggles ruby annotations, not the selected script.</li>
+<li><strong>Typography:</strong> Latin target 20 px; CJK and Japanese romaji 23 px; English 14 px; ruby 0.48 em. Headwords use a stronger weight. The size control scales card text. These are exploration values, not approved native tokens.</li>
+<li><strong>Conversation:</strong> side and tint distinguish interchangeable voices. Swap exchanges sides, not order. JSON-encoded <code>notes</code> carry speaker and alternative metadata; “or” follows the same side as its options. Interleaved alternatives still need a separate grouping decision.</li>
+<li><strong>Starred collection:</strong> C combines words, phrases, and sentences. No topic context, type, speaker, or “or” marker appears on cards. Removing a star removes the entry; empty selection is intentional.</li>
+<li><strong>Interaction:</strong> stars have 44 × 44 CSS-pixel targets and pressed state. This artifact simulates only controls and stars, not production audio or details interactions.</li>
+<li><strong>Reading data:</strong> hand-authored base/annotation pairs, not automatic alignment. Unannotated kana and punctuation remain ordinary text. Chinese syllables pair with individual characters so readings stay attached while wrapping.</li>
+<li><strong>Native checks still required:</strong> iOS Safari ruby wrapping, VoiceOver order, Dynamic Type, and native font metrics. Browser scaling is not Dynamic Type. Have a fluent reviewer check fixtures before using them as teaching content. See the <a href="../../docs/CARD_SCHEMA.md">card schema</a>.</li>
+</ul>
+<p>Production references: <code>web/app/src/components/card.js</code> and conversation styles in <code>web/app/src/styles/components.css</code>. Gallery and C share the same compact anatomy: English, target, and optional word definition. Context and formality remain in fixture data but are not displayed on cards. Usage notes and examples remain in fixture data for expanded-card design; no expanded interaction is simulated here. Structured speaker metadata is never displayed as prose. These treatments remain explorations.</p>
 </section>
 </main>
 <script>
@@ -133,7 +141,7 @@ const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 const tokens = text => text.split(' ').map(pair => pair.split('|'));
 const ruby = pairs => pairs.map(([base,reading]) => reading ? `<ruby>${escape(base)}<rt>${escape(reading)}</rt></ruby>` : escape(base)).join('');
 function card(id, meaning, es, zh, ja, romaji, speaker, alternative = false) {
- return { id, meaning, es, zh:tokens(zh), ja:tokens(ja), romaji,
+ return { id, type:speaker ? 'phrase' : 'word', meaning, es, zh:tokens(zh), ja:tokens(ja), romaji,
   notes:JSON.stringify(speaker ? {speaker, ...(alternative ? {or:true} : {})} : {}) };
 }
 const fixtures = {
@@ -149,9 +157,6 @@ const fixtures = {
   ],
   vocab:[
    card('seat','seat','asiento','座|zuò 位|wèi','席|せき','seki'),
-   card('booking','reservation','reserva','预|yù 订|dìng','予約|よやく','yoyaku'),
-   card('two','two people','dos personas','两|liǎng 个|ge 人|rén','二人|ふたり','futari'),
-   card('menu','menu','carta','菜|cài 单|dān','メニュー','menyū')
   ]
  },
  stress:{
@@ -166,39 +171,61 @@ const fixtures = {
   ],
   vocab:[
    card('peanut','peanut','cacahuete','花|huā 生|shēng','ピーナッツ','pīnattsu'),
-   card('allergy-word','allergy','alergia','过|guò 敏|mǐn','アレルギー','arerugī'),
-   card('kitchen','kitchen','cocina','厨|chú 房|fáng','厨房|ちゅうぼう','chūbō'),
-   card('reaction','allergic reaction','reacción alérgica','过|guò 敏|mǐn 反|fǎn 应|yìng','アレルギー 反応|はんのう','arerugī hannō')
   ]
  }
 };
 const directions = [
  ['bubbles','A / Conversation topics','An exchange, with options','Soft sided bubbles, no role labels. “Or” joins two possible lines from the same voice. Swap sides to rehearse either part.'],
- ['vocab','B / Vocabulary','Electric word collage','Acid lime, candy pink, lilac, asymmetric shapes, and tilted cards. No borders, no chat rhythm—a deliberately wild word collection.'],
- ['transcript','C / Starred cards','Only what you picked','A quiet ruled list of phrases and words. Source captions preserve context without pretending that selected items form a dialogue.']
+ ['transcript','C / Starred cards','Different types, together','A quiet ruled list of words, phrases, and sentences. English leads, the target follows. Words retain useful definitions.']
 ];
+// Multilingual fixtures are presentation shorthand, not a new interchange shape.
+for (const fixture of Object.values(fixtures)) {
+ const word = fixture.vocab[0];
+ const phrase = Object.assign(
+  card('request','The bill, please.','La cuenta, por favor.','请|qǐng 结|jié 账|zhàng 。','お 会計|かいけい をお 願|ねが いします。','Okaikei o onegai shimasu.'),
+  {type:'phrase', formality:'polite', context:'Finishing a meal', notes:'A short request to use when you are ready to pay.'}
+ );
+ const sentence = Object.assign(
+  card('sentence','The soup is cold.','La sopa está fría.','汤|tāng 凉|liáng 了|le 。','スープが 冷|さ めています。','Sūpu ga samete imasu.'),
+  {type:'sentence', context:'Talking about the food', notes:'Describes the temperature, not the flavor.'}
+ );
+ if (fixture === fixtures.stress) {
+  Object.assign(sentence, fixture.conversation[0], {id:'sentence', type:'sentence', context:fixture.topic, notes:'State the allergy before asking staff to check the ingredients.'});
+ }
+ word.context = fixture.topic;
+ if (fixture === fixtures.everyday) word.definition = 'A place to sit, not a reservation.';
+ phrase.example = card('example','Excuse me. The bill, please.','Disculpe. La cuenta, por favor.','不|bù 好|hǎo 意|yì 思|si ， 请|qǐng 结|jié 账|zhàng 。','すみません。お 会計|かいけい をお 願|ねが いします。','Sumimasen. Okaikei o onegai shimasu.');
+ fixture.specimens = [word, phrase, sentence];
+}
+const typeDescriptions = {
+ word:['Word','A stronger headword. A definition only when the English equivalent needs disambiguation.'],
+ phrase:['Phrase','A reusable expression. English and target text only; explanations reserved for expansion.'],
+ sentence:['Sentence','A complete statement. The same English-first hierarchy, with room for longer text.']
+};
 const starred = new Set();
 function seedStars() {
  starred.clear();
  for (const [group,fixture] of Object.entries(fixtures)) {
   starred.add(`${group}:${fixture.conversation[0].id}`);
-  starred.add(`${group}:${fixture.vocab[0].id}`);
+  for (const item of fixture.specimens) starred.add(`${group}:${item.id}`);
  }
 }
 function renderCard(item, type, group) {
  const language = $('language').value, key = `${group}:${item.id}`;
- const metadata = JSON.parse(item.notes);
+ let metadata = {};
+ try { metadata = JSON.parse(item.notes) || {}; } catch { /* Plain-text usage note. */ }
  const right = (metadata.speaker === 'you') !== $('swap').checked;
  const side = right ? 'right' : 'left';
  const lang = language === 'es' ? 'es' : language === 'zh' ? 'zh-Hans' : language === 'ja-romaji' ? 'ja-Latn' : 'ja';
- const target = language === 'zh' ? ruby(item.zh) : language === 'ja-ruby' ? ruby(item.ja) : escape(language === 'es' ? item.es : item.romaji);
+ const targetText = entry => language === 'zh' ? ruby(entry.zh) : language === 'ja-ruby' ? ruby(entry.ja) : escape(language === 'es' ? entry.es : entry.romaji);
+ const target = targetText(item);
  const selected = starred.has(key);
- const source = metadata.speaker ? fixtures[group].topic : 'Vocabulary';
+ const detail = type !== 'bubbles';
  return `${type === 'bubbles' && metadata.or === true ? `<div class="or" data-side="${side}" aria-label="Alternative for the same speaker">or</div>` : ''}
-  <article class="card"${type === 'bubbles' ? ` data-side="${side}"` : ''} data-id="${escape(item.id)}">
+  <article class="card" data-type="${item.type}"${type === 'bubbles' ? ` data-side="${side}"` : ''} data-id="${escape(item.id)}">
    <div class="meaning">${escape(item.meaning)}</div>
    <div class="target" lang="${lang}">${target}</div>
-   ${type === 'transcript' ? `<div class="source">${escape(source)}</div>` : ''}
+   ${detail && item.type === 'word' && item.definition ? `<div class="definition meaning">${escape(item.definition)}</div>` : ''}
    <button class="star" type="button" data-key="${key}" aria-pressed="${selected}" aria-label="${selected ? 'Unstar' : 'Star'}: ${escape(item.meaning)}">${selected ? '★' : '☆'}</button>
   </article>`;
 }
@@ -206,27 +233,31 @@ function render() {
  const group = $('content').value, fixture = fixtures[group];
  document.documentElement.style.setProperty('--preview-width', $('width').value + 'px');
  document.documentElement.style.setProperty('--scale', $('scale').value);
- $('comparison').classList.toggle('hide-readings', !$('readings').checked);
- $('comparison').classList.toggle('hide-meanings', !$('meanings').checked);
+ document.body.classList.toggle('hide-readings', !$('readings').checked);
+ document.body.classList.toggle('hide-meanings', !$('meanings').checked);
  const languageLabel = $('language').selectedOptions[0].textContent;
  $('comparison').innerHTML = directions.map(([type,title,subtitle,description]) => {
-  const items = type === 'bubbles' ? fixture.conversation : type === 'vocab' ? fixture.vocab :
-   [...fixture.conversation,...fixture.vocab].filter(item => starred.has(`${group}:${item.id}`));
-  const heading = type === 'bubbles' ? fixture.topic : type === 'vocab' ? 'Words to keep handy' : 'Starred';
-  const count = type === 'bubbles' ? '5 turns · 1 alternative' : `${items.length} ${type === 'vocab' ? 'words' : 'selected'}`;
+  const items = type === 'bubbles' ? fixture.conversation :
+   [...fixture.conversation,...fixture.specimens].filter(item => starred.has(`${group}:${item.id}`));
+  const heading = type === 'bubbles' ? fixture.topic : 'Starred';
+  const count = type === 'bubbles' ? '5 turns · 1 alternative' : `${items.length} selected`;
   const cards = items.map(item => renderCard(item,type,group)).join('');
-  return `<section class="direction ${type}" aria-label="${title}"><header class="direction-heading"><div class="eyebrow">${title}</div><h3>${subtitle}</h3><p>${description}</p></header><div class="preview-wrap"><div class="preview"><header class="book-header"><div class="eyebrow">${escape(languageLabel)}</div><strong>${heading}</strong><p>At the restaurant · ${count}</p></header><div class="conversation">${cards || '<p class="empty">Nothing starred yet. Pick a phrase or word using its star.</p>'}</div></div></div></section>`;
+  return `<section class="direction ${type}" aria-label="${title}"><header class="direction-heading"><div class="eyebrow">${title}</div><h3>${subtitle}</h3><p>${description}</p></header><div class="preview-wrap"><div class="preview"><header class="book-header"><div class="eyebrow">${escape(languageLabel)}</div><strong>${heading}</strong><p>At the restaurant · ${count}</p></header><div class="conversation">${cards || '<p class="empty">Nothing starred yet. Pick a card in A or the gallery using its star.</p>'}</div></div></div></section>`;
  }).join('');
- $('status').textContent = `${languageLabel} · ${$('width').value} px requested width · ${Math.round(Number($('scale').value)*100)}% text · ${$('readings').checked ? 'ruby readings on' : 'ruby readings off'}${['es','ja-romaji'].includes($('language').value) ? ' (not applicable to this script)' : ''} · ${$('meanings').checked ? 'English on' : 'English off'} · ${[...fixture.conversation,...fixture.vocab].filter(item => starred.has(`${group}:${item.id}`)).length} starred`;
+ $('specimens').innerHTML = fixture.specimens.map(item => {
+  const [title,description] = typeDescriptions[item.type];
+  return `<section class="specimen" aria-label="${title} design"><h3>${title}</h3><p>${description}</p><div class="preview">${renderCard(item,'specimen',group)}</div></section>`;
+ }).join('');
+ $('status').textContent = `${languageLabel} · ${$('width').value} px requested width · ${Math.round(Number($('scale').value)*100)}% text · ${$('readings').checked ? 'ruby readings on' : 'ruby readings off'}${['es','ja-romaji'].includes($('language').value) ? ' (not applicable to this script)' : ''} · ${$('meanings').checked ? 'English on' : 'English off'} · ${[...fixture.conversation,...fixture.specimens].filter(item => starred.has(`${group}:${item.id}`)).length} starred`;
 }
 $('controls').addEventListener('submit', event => event.preventDefault());
 $('controls').addEventListener('change', render);
 $('reset').addEventListener('click', () => { HTMLFormElement.prototype.reset.call($('controls')); seedStars(); render(); });
-$('comparison').addEventListener('click', event => {
+document.querySelector('main').addEventListener('click', event => {
  const button = event.target.closest('button[data-key]');
  if (!button) return;
- const key = button.dataset.key, section = button.closest('.direction');
- const type = directions.find(([type]) => section.classList.contains(type))[0];
+ const key = button.dataset.key, section = button.closest('.direction, .specimens');
+ const type = section.classList.contains('specimens') ? 'specimens' : directions.find(([type]) => section.classList.contains(type))[0];
  const buttons = [...section.querySelectorAll('.star')], index = buttons.indexOf(button);
  if (starred.has(key)) starred.delete(key); else starred.add(key);
  render();

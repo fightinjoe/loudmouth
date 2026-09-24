@@ -1,5 +1,9 @@
 'use strict';
 
+const {
+  PARTS_OF_SPEECH,
+  validatePhrasebookResponse,
+} = require('../schema');
 const { buildUsageReport } = require('../pricing');
 const { getBackendName } = require('../llm-config');
 const {
@@ -238,13 +242,41 @@ function buildTranslationResponseJsonSchema(conversation, language) {
     properties: {
       lines: {
         type: 'array',
-        items: { type: 'string' },
+        items: { type: 'string', minLength: 1, maxLength: 2000 },
         minItems: conversation.lines.length,
         maxItems: conversation.lines.length,
       },
       vocab: {
         type: 'array',
-        items: { type: 'string' },
+        items: {
+          type: 'object',
+          properties: {
+            target: { type: 'string', minLength: 1, maxLength: 2000 },
+            partOfSpeech: { type: 'string', enum: [...PARTS_OF_SPEECH] },
+            senseKey: {
+              type: 'string',
+              minLength: 1,
+              maxLength: 120,
+              pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$',
+            },
+            source: {
+              type: 'object',
+              properties: {
+                lineIndex: {
+                  type: 'integer',
+                  minimum: 0,
+                  maximum: conversation.lines.length - 1,
+                },
+                surface: { type: 'string', minLength: 1, maxLength: 2000 },
+                occurrence: { type: 'integer', minimum: 0 },
+              },
+              required: ['lineIndex', 'surface', 'occurrence'],
+              additionalProperties: false,
+            },
+          },
+          required: ['target', 'partOfSpeech', 'senseKey'],
+          additionalProperties: false,
+        },
         minItems: conversation.vocab.length,
         maxItems: conversation.vocab.length,
       },
@@ -253,8 +285,18 @@ function buildTranslationResponseJsonSchema(conversation, language) {
     additionalProperties: false,
   };
   if (language === 'ja') {
-    responseJsonSchema.properties.lineRomanizations = responseJsonSchema.properties.lines;
-    responseJsonSchema.properties.vocabRomanizations = responseJsonSchema.properties.vocab;
+    responseJsonSchema.properties.lineRomanizations = {
+      type: 'array',
+      items: { type: 'string' },
+      minItems: conversation.lines.length,
+      maxItems: conversation.lines.length,
+    };
+    responseJsonSchema.properties.vocabRomanizations = {
+      type: 'array',
+      items: { type: 'string' },
+      minItems: conversation.vocab.length,
+      maxItems: conversation.vocab.length,
+    };
     responseJsonSchema.required.push('lineRomanizations', 'vocabRomanizations');
   }
   return responseJsonSchema;
@@ -404,8 +446,9 @@ async function performPhrasebook(
     const elapsedMs = performance.now() - startedAt;
     const totals = usageAccumulator.snapshot(backendName);
     const usage = buildUsageReport(totals.model, totals.usage, elapsedMs);
-    const cardCount = response.groups.reduce(
-      (count, group) => count + group.cards.length + group.vocab.length,
+    const validatedResponse = validatePhrasebookResponse({ ...response, usage });
+    const cardCount = validatedResponse.groups.reduce(
+      (count, group) => count + group.phrases.length + group.vocab.length,
       0,
     );
     console.log({
@@ -417,7 +460,7 @@ async function performPhrasebook(
       seed: parsedRequest.seed,
     });
     console.log({ event: 'usage', route: 'phrasebook', llm: backendName, ...usage });
-    return { ...response, usage };
+    return validatedResponse;
   } catch (error) {
     const elapsedMs = performance.now() - startedAt;
     const totals = usageAccumulator.snapshot(backendName);

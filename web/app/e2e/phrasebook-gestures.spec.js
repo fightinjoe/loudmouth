@@ -7,10 +7,45 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => !!window.__loudmouth?.ui)
   await page.evaluate(async (titles) => {
     const { db, ui } = window.__loudmouth
-    const deck = await db.createDeck('Gesture check', 'es')
-    await db.importCards(titles.flatMap(context => Array.from({ length: 12 }, (_, i) => ({
-      lang: 'es', text: `Hola ${i}`, translation: `Hello ${i}`, context,
-    }))), deck.id)
+    const groups = titles.map((title, groupIndex) => ({
+      id: crypto.randomUUID(),
+      title,
+      phrases: Array.from({ length: 12 }, (_, index) => {
+        const repeated = groupIndex === 0 && index < 2
+        return {
+          id: crypto.randomUUID(),
+          card: {
+            type: 'phrase',
+            lang: 'es',
+            text: repeated ? 'Hola de nuevo' : `Hola ${groupIndex}-${index}`,
+            translation: repeated
+              ? (index === 0 ? 'Hello again' : 'Hi again')
+              : `Hello ${groupIndex}-${index}`,
+          },
+          speaker: index % 2 === 0 ? 'you' : 'partner',
+          ...(index === 1 ? { alternative: true } : {}),
+        }
+      }),
+      vocab: groupIndex === 0
+        ? [{
+            card: {
+              type: 'word',
+              lang: 'es',
+              text: 'hola',
+              translation: 'hello',
+              partOfSpeech: 'interjection',
+              senseKey: 'greeting',
+            },
+          }]
+        : [],
+    }))
+    const deck = await db.commitPhrasebook({
+      name: 'Gesture check',
+      lang: 'es',
+      groups,
+      selectedIndexes: groups.map((_, index) => index),
+    })
+    document.body.dataset.gestureDeckId = deck.id
     ui.transition('content/select-deck', { id: deck.id })
     if (ui.get('shell').exposed === 'background') ui.transition('shell/toggle')
   }, titles)
@@ -49,6 +84,61 @@ test('tabs fit their titles and show a partial third conversation', async ({ pag
   expect(geometry[0].width).toBeLessThan(geometry[1].width)
   expect(geometry[2].left).toBeLessThan(page.viewportSize().width)
   expect(geometry[2].right).toBeGreaterThan(page.viewportSize().width)
+})
+
+test('repeated phrase occurrences keep distinct row keys through gesture reorder and reload', async ({ page }) => {
+  const activeRows = page.locator('.deck-page:not([inert]) .card-row-wrapper')
+  await expect(activeRows).toHaveCount(12)
+  const repeated = await activeRows.evaluateAll(rows => rows.slice(0, 2).map(row => ({
+    cardId: row.dataset.cardId,
+    entryKey: row.dataset.entryKey,
+  })))
+  expect(repeated[0].cardId).toBe(repeated[1].cardId)
+  expect(repeated[0].entryKey).toBeTruthy()
+  expect(repeated[1].entryKey).toBeTruthy()
+  expect(repeated[0].entryKey).not.toBe(repeated[1].entryKey)
+  await expect(activeRows.nth(0).locator('.card-term-english')).toHaveText('Hello again')
+  await expect(activeRows.nth(1).locator('.card-term-english')).toHaveText('Hi again')
+
+  await page.evaluate(() => window.__loudmouth.ui.transition('content/enter-edit'))
+  await expect(page.locator('#content-pane')).toHaveAttribute('data-edit-mode', '')
+  const firstBox = await activeRows.nth(0).boundingBox()
+  const fourthBox = await activeRows.nth(3).boundingBox()
+  expect(firstBox).not.toBeNull()
+  expect(fourthBox).not.toBeNull()
+  const x = page.viewportSize().width - 10
+  await swipe(
+    page,
+    [x, firstBox.y + firstBox.height / 2],
+    [x, fourthBox.y + fourthBox.height],
+  )
+
+  const reorderedKeys = await activeRows.evaluateAll(rows => rows.map(row => row.dataset.entryKey))
+  expect(reorderedKeys).toHaveLength(12)
+  expect(reorderedKeys.indexOf(repeated[0].entryKey)).toBeGreaterThan(0)
+  expect(new Set(reorderedKeys).size).toBe(12)
+
+  const deckId = await page.evaluate(() => document.body.dataset.gestureDeckId)
+  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await expect.poll(() => page.evaluate(async deckId => {
+    const { db } = window.__loudmouth
+    const [group] = await db.getGroups(deckId)
+    const entries = await db.getCards(deckId)
+    return entries
+      .filter(entry => entry.occurrence?.groupId === group.id)
+      .map(entry => entry.key)
+  }, deckId)).toEqual(reorderedKeys)
+
+  await page.reload()
+  await page.waitForFunction(() => !!window.__loudmouth?.ui)
+  await page.evaluate(deckId => {
+    window.__loudmouth.ui.transition('content/select-deck', { id: deckId })
+    window.__loudmouth.ui.transition('content/reload-deck')
+  }, deckId)
+  await expect(page.getByRole('tab', { name: 'Hello', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect.poll(() => page.locator('.deck-page:not([inert]) .card-row-wrapper').evaluateAll(
+    rows => rows.map(row => row.dataset.entryKey),
+  )).toEqual(reorderedKeys)
 })
 
 test('long drags and flicks navigate one page, then reveal navigation at the first page', async ({ page }) => {

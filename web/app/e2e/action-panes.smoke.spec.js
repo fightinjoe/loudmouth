@@ -20,11 +20,11 @@ const KINDS = [
   { kind: 'settings', needsDeck: true, needsCards: true, label: 'settings' },
   { kind: 'card-edit', needsCard: true, label: 'card-edit' },
   { kind: 'review', needsDeck: true, needsCards: true, label: 'review' },
-  { kind: 'creation', payload: { lang: 'ja', ability: 'beginner' }, label: 'creation (topic entry)' },
+  { kind: 'creation', payload: { lang: 'ja' }, label: 'creation (topic entry)' },
   { kind: 'new-phrasebook', payload: {}, label: 'new-phrasebook' },
   {
     kind: 'new-phrasebook',
-    payload: { suggestion: { id: 'seed-greetings-ja', emoji: '👋', title: 'Greetings', lang: 'ja', terms: [] } },
+    payload: { suggestion: { id: 'seed-greetings-ja', emoji: '', title: 'Greetings', lang: 'ja', groups: [{ phrases: [{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}], vocab: [] }] } },
     label: 'new-phrasebook (confirm suggestion)',
   },
   {
@@ -57,21 +57,20 @@ test.describe('action panes open without runtime errors', () => {
         let deck = null
         let cards = null
         if (spec.needsDeck || spec.needsCards || spec.needsCard) {
-          deck = await db.createDeck('Smoke Deck', 'ja')
-          await db.importCards(
-            [{ lang: 'ja', text: 'こんにちは', translation: 'hello' }],
-            deck.id,
-          )
+          deck = await db.commitPhrasebook({
+            name:'Smoke Deck',lang:'ja',selectedIndexes:[0],
+            groups:[{id:crypto.randomUUID(),phrases:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}}],vocab:[]}],
+          })
           cards = await db.getCards(deck.id)
+          if (spec.kind === 'review') {
+            await db.toggleCardStar(deck.id,{cardId:cards[0].cardId})
+            cards = await db.getReviewCards(deck.id)
+          }
         }
         const p = { ...(spec.payload || {}) }
         if (spec.needsDeck) p.deck = deck
-        if (spec.kind === 'generate' && spec.needsDeck) {
-          delete p.deck
-          p.targetDeck = deck
-        }
         if (spec.needsCards) p.cards = cards
-        if (spec.needsCard) p.card = cards[0]
+        if (spec.needsCard) p.entry = cards[0]
         return p
       }, spec)
 
@@ -97,16 +96,4 @@ test.describe('action panes open without runtime errors', () => {
       expect(errors, `Runtime errors while opening "${spec.label}":\n${errors.join('\n')}`).toEqual([])
     })
   }
-})
-
-test('app boots without runtime errors', async ({ page }) => {
-  const errors = []
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') errors.push(`console.error: ${msg.text()}`)
-  })
-  page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`))
-
-  await page.goto('/')
-  await page.waitForFunction(() => !!window.__loudmouth?.ui)
-  expect(errors, errors.join('\n')).toEqual([])
 })

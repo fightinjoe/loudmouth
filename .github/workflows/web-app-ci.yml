@@ -3,9 +3,9 @@ name: web-app CI
 on:
   push:
     branches: [main, claude/jovial-lalande]
-    paths: ['web/app/**', '.github/workflows/web-app-ci.yml']
+    paths: ['web/app/**', 'api/src/schema/**', '.github/workflows/web-app-ci.yml']
   pull_request:
-    paths: ['web/app/**', '.github/workflows/web-app-ci.yml']
+    paths: ['web/app/**', 'api/src/schema/**', '.github/workflows/web-app-ci.yml']
 
 defaults:
   run:
@@ -24,6 +24,7 @@ jobs:
           cache-dependency-path: web/app/package-lock.json
 
       - run: npm ci
+      - run: npm run typecheck
 
       # Unit tests (Vitest).
       - run: npm test
