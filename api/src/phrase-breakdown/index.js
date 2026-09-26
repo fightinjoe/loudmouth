@@ -79,13 +79,6 @@ function boundedString(value, field, limit) {
   return value;
 }
 
-function nonnegativeInteger(value, field) {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
-    throw new Error(`${field} must be a nonnegative integer`);
-  }
-  return value;
-}
-
 function splitsSurrogatePair(text, offset) {
   if (offset <= 0 || offset >= text.length) return false;
   const before = text.charCodeAt(offset - 1);
@@ -138,23 +131,21 @@ function parseModelResponse(raw) {
   return data;
 }
 
-function findSurfaceOccurrence(text, surface, occurrence, field) {
+function findSurfaceOccurrence(text, surface, occurrence) {
   let from = 0;
   for (let current = 0; current <= occurrence; current += 1) {
     const start = text.indexOf(surface, from);
-    if (start === -1) {
-      throw new Error(`${field} occurrence ${occurrence} does not exist in its containing chunk`);
-    }
+    if (start === -1) return undefined;
     if (current === occurrence) {
       const end = start + surface.length;
       if (splitsSurrogatePair(text, start) || splitsSurrogatePair(text, end)) {
-        throw new Error(`${field} splits a UTF-16 surrogate pair`);
+        return undefined;
       }
       return { start, end };
     }
     from = start + 1;
   }
-  throw new Error(`${field} occurrence ${occurrence} does not exist in its containing chunk`);
+  return undefined;
 }
 
 function meaningfulBounds(text, start, end) {
@@ -173,15 +164,6 @@ function buildWordCandidate(item, itemIndex, chunk, request) {
     prefix,
   );
 
-  const surface = boundedString(item.surface, `${prefix}.surface`, FIELD_LIMITS.wordSurface);
-  if (surface !== surface.trim()) {
-    throw new Error(`${prefix}.surface must not have surrounding whitespace`);
-  }
-  if (!hasMeaningfulContent(surface)) {
-    throw new Error(`${prefix}.surface must contain content other than punctuation or whitespace`);
-  }
-  const occurrence = nonnegativeInteger(item.occurrence, `${prefix}.occurrence`);
-  const localSpan = findSurfaceOccurrence(chunk.text, surface, occurrence, `${prefix}.surface`);
   const text = boundedString(item.text, `${prefix}.text`, FIELD_LIMITS.wordText);
   if ((request.source.snapshot.lang === 'ja' || request.source.snapshot.lang === 'zh')
     && parseInlineReading(text).text !== text) {
@@ -215,15 +197,31 @@ function buildWordCandidate(item, itemIndex, chunk, request) {
   }
   if (romanization !== undefined) card.romanization = romanization;
 
-  const source = {
-    snapshot: request.source.snapshot,
-    ...(request.source.ref === undefined ? {} : { ref: request.source.ref }),
-    span: {
-      start: chunk.start + localSpan.start,
-      end: chunk.start + localSpan.end,
-    },
+  // Source hints enrich a valid dictionary Word; they do not define its identity.
+  // Inflected source text may not contain the dictionary form at all.
+  let localSpan;
+  if (typeof item.surface === 'string'
+    && item.surface.length > 0
+    && item.surface.length <= FIELD_LIMITS.wordSurface
+    && item.surface === item.surface.trim()
+    && hasMeaningfulContent(item.surface)
+    && Number.isSafeInteger(item.occurrence)
+    && item.occurrence >= 0) {
+    localSpan = findSurfaceOccurrence(chunk.text, item.surface, item.occurrence);
+  }
+  const candidate = {
+    card,
+    ...(localSpan === undefined ? {} : {
+      sources: [{
+        snapshot: request.source.snapshot,
+        ...(request.source.ref === undefined ? {} : { ref: request.source.ref }),
+        span: {
+          start: chunk.start + localSpan.start,
+          end: chunk.start + localSpan.end,
+        },
+      }],
+    }),
   };
-  const candidate = { card, sources: [source] };
   validateCandidate(candidate, prefix);
   return candidate;
 }
@@ -234,7 +232,7 @@ function validateEquivalentWord(index, words, chunk, sourceText) {
   }
   const bounds = meaningfulBounds(sourceText, chunk.start, chunk.end);
   const word = words[index];
-  const coversChunk = word.sources.some(
+  const coversChunk = word.sources?.some(
     (source) => source.span.start === bounds.start && source.span.end === bounds.end,
   );
   if (!coversChunk) {
@@ -267,6 +265,7 @@ function validatePhraseBreakdownResponse(raw, requestValue) {
   });
 
   const chunks = [];
+  const flags = [];
   for (const aligned of alignChunks(sourceText, rawChunks)) {
     const { value, index } = aligned;
     if (!Array.isArray(value.words) || value.words.length > MAX_WORDS) {
@@ -293,9 +292,20 @@ function validatePhraseBreakdownResponse(raw, requestValue) {
       `chunks[${index}].explanation`,
       FIELD_LIMITS.explanation,
     );
-    const words = value.words.map((item, itemIndex) => (
-      buildWordCandidate(item, itemIndex, aligned, request)
-    ));
+    const words = value.words.map((item, itemIndex) => {
+      const candidate = buildWordCandidate(item, itemIndex, aligned, request);
+      if (candidate.sources === undefined) {
+        flags.push({
+          code: 'word-source-missing',
+          chunkIndex: chunks.length,
+          wordIndex: itemIndex,
+          reason: !Object.hasOwn(item, 'surface') && !Object.hasOwn(item, 'occurrence')
+            ? 'omitted'
+            : 'unresolved',
+        });
+      }
+      return candidate;
+    });
 
     let target;
     if (value.equivalentWordIndex === null) {
@@ -336,7 +346,7 @@ function validatePhraseBreakdownResponse(raw, requestValue) {
   if (chunks.length === 0) {
     throw new Error('response.chunks must contain at least one meaningful chunk');
   }
-  return { schemaVersion: SCHEMA_VERSION, chunks };
+  return { schemaVersion: SCHEMA_VERSION, chunks, flags };
 }
 
 async function performPhraseBreakdown(

@@ -104,6 +104,7 @@ function wordTargetBreakdown(snapshot, ref) {
   const word = wordCandidate(snapshot, { ref });
   return {
     schemaVersion: 2,
+    flags: [],
     chunks: [{
       start: 0,
       end: snapshot.text.length,
@@ -130,6 +131,7 @@ function chunkTargetBreakdown(snapshot, explanation = "Adds the topic particle."
   });
   return {
     schemaVersion: 2,
+    flags: [],
     chunks: [{
       start: 0,
       end: snapshot.text.length,
@@ -462,6 +464,33 @@ describe("durable modal lifecycle", () => {
     expect(await db.cards.get(saved.cardId)).toBeDefined();
     expect(await db.memberships.get([payload.deck.id,saved.cardId])).toMatchObject({starredAt:null});
     expect(await db.provenance.where("cardId").equals(saved.cardId).count()).toBe(1);
+  });
+
+  it("caches and stars a dictionary Word without inventing source evidence", async () => {
+    api.getPhraseBreakdown.mockImplementation(async ({source}) => {
+      const response = chunkTargetBreakdown(source.snapshot,undefined,source.ref);
+      delete response.chunks[0].words[0].sources;
+      response.flags = [{code:"word-source-missing",chunkIndex:0,wordIndex:0,reason:"unresolved"}];
+      return response;
+    });
+    const {ui,layer,payload,deck} = await mountSavedPhrase({
+      lang:"ja",text:"肉も",translation:"meat too",reading:[["肉","にく"],["も",null]],
+    });
+    layer.querySelector('[data-target-kind="word"]').click();
+    await vi.waitFor(() => expect(
+      layer.querySelector('[data-target-kind="word"]').getAttribute("aria-pressed"),
+    ).toBe("true"));
+    const saved = (await getCards(deck.id)).find(entry => entry.card.type === "word");
+    expect(saved.card.text).toBe("肉");
+    expect(saved.membership.starredAt).not.toBeNull();
+    expect(saved.sources).toEqual([]);
+    expect(await db.provenance.where("cardId").equals(saved.cardId).count()).toBe(0);
+    ui.transition("details/close");
+    ui.transition("details/open",payload);
+    await vi.waitFor(() => expect(
+      layer.querySelector('[data-target-kind="word"]')?.getAttribute("aria-pressed"),
+    ).toBe("true"));
+    expect(api.getPhraseBreakdown).toHaveBeenCalledTimes(1);
   });
 
   it("rolls back a failed candidate insert and leaves the star and inline error intact", async () => {

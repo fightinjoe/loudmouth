@@ -48,7 +48,7 @@ test('wire analysis binds all candidate evidence to the exact request snapshot',
   const snapshot = {lang:'es',text:'caluroso',translation:'hot'};
   const request = validateBreakdownRequest({schemaVersion:2,source:{snapshot}});
   const card = {type:'word',lang:'es',text:'caluroso',translation:'hot',partOfSpeech:'adjective',senseKey:'high-temperature'};
-  const response = {schemaVersion:2,chunks:[{start:0,end:8,text:'caluroso',gloss:'hot',role:'adjective',explanation:'Describes hot weather.',words:[{card,sources:[{snapshot,span:{start:0,end:8}}]}],target:{kind:'word',index:0}}],usage};
+  const response = {schemaVersion:2,chunks:[{start:0,end:8,text:'caluroso',gloss:'hot',role:'adjective',explanation:'Describes hot weather.',words:[{card,sources:[{snapshot,span:{start:0,end:8}}]}],target:{kind:'word',index:0}}],flags:[],usage};
   validateBreakdownResponse(response,request);
   const hostile = structuredClone(response);
   hostile.chunks[0].words[0].sources[0].snapshot.translation='Another interpretation';
@@ -56,6 +56,51 @@ test('wire analysis binds all candidate evidence to the exact request snapshot',
   const inflected = structuredClone(response);
   inflected.chunks[0].words[0].card.text='calor';
   assert.throws(()=>validateBreakdownResponse(inflected,request));
+});
+
+test('wire breakdown permits flagged Words without evidence but never unvalidated evidence or equivalence', () => {
+  const snapshot = {lang:'ja',text:'食べません。',translation:'I do not eat.'};
+  const request = {schemaVersion:2,source:{snapshot}};
+  const response = {
+    schemaVersion:2,
+    chunks:[{
+      start:0,end:snapshot.text.length,text:snapshot.text,
+      gloss:'do not eat',role:'negative verb',explanation:'Polite negative.',
+      words:[{card:word}],
+      target:{kind:'chunk',card:{
+        type:'chunk',lang:'ja',text:snapshot.text,translation:'do not eat',
+        source:{snapshot,span:{start:0,end:snapshot.text.length}},
+        role:'negative verb',explanation:'Polite negative.',
+      }},
+    }],
+    flags:[{code:'word-source-missing',chunkIndex:0,wordIndex:0,reason:'unresolved'}],
+    usage,
+  };
+  const validated = validateBreakdownResponse(response,request);
+  assert.equal(validated.chunks[0].words[0].card.text,'食べる');
+  assert.equal(Object.hasOwn(validated.chunks[0].words[0],'sources'),false);
+  for (const mutate of [
+    value => { value.flags = []; },
+    value => { value.flags.push({...value.flags[0]}); },
+    value => { value.flags[0].chunkIndex = 1; },
+    value => { value.flags[0].wordIndex = 1; },
+    value => { value.flags[0].reason = 'guessed'; },
+    value => { value.chunks[0].target = {kind:'word',index:0}; },
+    value => { value.chunks[0].words[0].sources = []; },
+    value => {
+      value.flags = [];
+      value.chunks[0].words[0].sources = [{
+        snapshot:{...snapshot,translation:'Different occurrence'},span:{start:0,end:5},
+      }];
+    },
+    value => {
+      value.chunks[0].words[0].sources = [{snapshot,span:{start:0,end:5}}];
+    },
+  ]) {
+    const invalid = structuredClone(response);
+    mutate(invalid);
+    assert.throws(() => validateBreakdownResponse(invalid,request));
+  }
 });
 
 test('phrasebook draft evidence cannot cross conversation groups or substitute snapshots', () => {

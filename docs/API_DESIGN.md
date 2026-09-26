@@ -313,9 +313,9 @@ flowchart LR
     subgraph CODE["DETERMINISTIC API CODE"]
         B["Validate the request<br/><br/><b>Goal:</b> Check the exact source snapshot,<br/>optional references, and bounded context"]
         C["Build safe prompt input<br/><br/><b>Goal:</b> Send the phrase and teaching<br/>context without storage IDs"]
-        E["Align the analysis to the phrase<br/><br/><b>Goal:</b> Match chunks and words to exact<br/>source spans; remove punctuation-only chunks"]
+        E["Align the analysis to the phrase<br/><br/><b>Goal:</b> Match required chunks to exact source<br/>spans; resolve optional Word evidence"]
         F["Build learning targets<br/><br/><b>Goal:</b> Derive offsets, evidence, Word and<br/>Chunk cards, and one target per chunk"]
-        G["Build the API response<br/><br/><b>Goal:</b> Validate the completed analysis<br/>and attach model usage"]
+        G["Build the API response<br/><br/><b>Goal:</b> Validate the completed analysis<br/>and attach source-quality flags and usage"]
     end
 
     subgraph PROMPT["PROBABILISTIC MODEL CALL"]
@@ -374,7 +374,7 @@ and at most 2,000 UTF-16 units. Optional generation uses a ≤200 seed, one of
 All present fields are validated, including readings. Unknown keys and old requests are rejected.
 The prompt serializes only snapshot and active context, never IDs or another book's situation.
 
-The response is `{schemaVersion:2,chunks,usage}` with 1–32 ordered meaningful chunks:
+The response is `{schemaVersion:2,chunks,flags,usage}` with 1–32 ordered meaningful chunks:
 
 ```ts
 {
@@ -387,29 +387,44 @@ The response is `{schemaVersion:2,chunks,usage}` with 1–32 ordered meaningful 
 
 Bounds are exact UTF-16 `[start,end)` offsets. Gloss is ≤500, role ≤200, explanation ≤1,000;
 strings are nonblank teaching prose. Every meaningful source character is covered, with only
-punctuation/whitespace gaps permitted. Words carry dictionary-form readings and explicit POS/senseKey,
-plus source Evidence matching the request's exact snapshot/refs and a span inside their chunk.
-Japanese/Chinese generated Words require aligned ReadingToken arrays; Spanish/Czech may omit them.
-Structural validation does not prove phonetic accuracy.
+punctuation/whitespace gaps permitted. Words carry dictionary-form readings and explicit POS/senseKey.
+Word source Evidence is optional enrichment: a valid dictionary Word survives even when its source
+hint cannot be matched. Every present Evidence must match the request's exact snapshot/refs and have
+a span inside its chunk. Japanese/Chinese generated Words require aligned ReadingToken arrays;
+Spanish/Czech may omit them. Structural validation does not prove phonetic accuracy.
 
 The model emits the smaller shape:
 
 ```ts
 {chunks: [{
   text, gloss, role, explanation, equivalentWordIndex: number | null,
-  words: [{surface, occurrence, text, translation, partOfSpeech, senseKey, reading?, romanization?}]
+  words: [{surface?, occurrence?, text, translation, partOfSpeech, senseKey, reading?, romanization?}]
 }]}
 ```
 
-Chunk text is aligned in source order. Word surface is an exact meaningful substring without
-surrounding whitespace; zero-based `occurrence` selects its left-to-right overlapping occurrence
-inside that chunk. The server derives absolute offsets, language, source snapshots and refs.
-It does not trust model IDs or snapshots, guess source positions or reuse inflected source readings
-for dictionary forms. Punctuation-only chunks with no Words are removed after alignment without
+Chunk text is aligned in source order. The prompt asks for an exact meaningful Word `surface` without
+surrounding whitespace and a zero-based `occurrence` selecting its left-to-right overlapping match
+inside that chunk. Code treats these two fields as optional evidence hints. When they identify a
+safe exact span, the server derives absolute offsets, language, source snapshots and refs. Otherwise
+it retains the validated dictionary Word without `sources`, rather than rejecting the breakdown.
+For example, `眠い` remains a Word beside the source-aligned Chunk `眠くなってきたのかも` even when the
+model incorrectly supplies dictionary-form `眠い` as the encountered surface.
+
+Each Word without evidence receives one top-level flag:
+`{code:'word-source-missing',chunkIndex,wordIndex,reason:'omitted'|'unresolved'}`. Indices address the
+returned chunks/Words after punctuation-only chunks are removed. `omitted` means both hint fields
+were absent; partial, malformed, unmatched, out-of-range, or surrogate-splitting hints are
+`unresolved`. `flags` is an empty array when every Word has evidence. Required Word content,
+including readings, POS, and senseKey, remains strict; flags cannot excuse invalid cards.
+
+The server does not trust model IDs or snapshots, guess source positions, infer inflections, or
+reuse inflected source readings for dictionary forms. Repeated surfaces still require a valid
+explicit occurrence. Punctuation-only chunks with no Words are removed after alignment without
 shifting retained offsets; Words on such chunks and all-punctuation analyses are rejected.
 
 A non-null equivalentWordIndex must index a Word whose encountered surface covers the chunk except
 edge punctuation/whitespace, and whose normalized dictionary text equals the edge-trimmed source span.
+Equivalence requires resolved evidence; a missing-source Word cannot stand in for its entire chunk.
 The prompt permits equivalence only for the same lexical learning target. Invalid equivalence is
 invalid model output, not silently repaired. `caluroso` exposes one Word target; `肉も` versus `肉`
 and `食べません` versus `食べる` expose distinct Chunk and Word targets. Null equivalence produces a
@@ -422,11 +437,13 @@ Shared `validateBreakdownResponse` validates the final wire response against the
 
 One server-selected provider call uses separate trusted instructions and JSON task content, a
 4,096-token ceiling and 15-second default deadline (alternate adapter timeout otherwise).
-There is no application-level retry. Invalid requests return `400`; provider failures, timeout,
-malformed JSON or invalid analysis return `502`. Usage follows the shared accounting contract.
+There is no application-level retry, including for missing optional evidence. Invalid requests return
+`400`; provider failures, timeout, malformed JSON, or invalid required analysis return `502`.
+Usage follows the shared accounting contract.
 
 The web cache is tab-scoped under `loudmouth-card-v2.phrase-breakdown.v1:` plus the serialized exact
-request, including refs, context and readings. Invalid cache entries are removed. Cache contains
+request, including refs, context and readings. Invalid cache entries, including older responses
+without `flags`, are removed. Cache contains
 validated analysis, never authoritative resolved library IDs/stars. Open, Retry, Regenerate, close
 and cache clearing make no durable writes. Explicit starring atomically saves/reuses a target,
 records Word evidence and toggles the active phrasebook membership. Ready/reopened targets resolve

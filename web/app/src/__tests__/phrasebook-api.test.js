@@ -5,7 +5,7 @@ afterEach(() => vi.unstubAllGlobals());
 const usage = {model:'fixture',inputTokens:0,outputTokens:0,totalTokens:0,costUsd:null,durationMs:0};
 const snapshot = {lang:'es',text:'caluroso',translation:'hot'};
 function response() {
-  return {schemaVersion:2,usage,chunks:[{start:0,end:8,text:'caluroso',gloss:'hot',role:'adjective',explanation:'Describes weather.',words:[{card:{type:'word',...snapshot,partOfSpeech:'adjective',senseKey:'high-temperature'},sources:[{snapshot,span:{start:0,end:8}}]}],target:{kind:'word',index:0}}]};
+  return {schemaVersion:2,usage,flags:[],chunks:[{start:0,end:8,text:'caluroso',gloss:'hot',role:'adjective',explanation:'Describes weather.',words:[{card:{type:'word',...snapshot,partOfSpeech:'adjective',senseKey:'high-temperature'},sources:[{snapshot,span:{start:0,end:8}}]}],target:{kind:'word',index:0}}]};
 }
 function serve(value) { vi.stubGlobal('fetch',vi.fn(async()=>({ok:true,json:async()=>value}))); }
 

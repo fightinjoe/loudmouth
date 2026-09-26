@@ -173,11 +173,6 @@ test('requires complete ordered meaningful coverage and rejects surrogate-pair s
   assert.throws(() => validatePhraseBreakdownResponse(JSON.stringify({
     chunks: [chunk('\uDE00')],
   }), emoji), /surrogate pair/);
-  assert.throws(() => validatePhraseBreakdownResponse(JSON.stringify({
-    chunks: [chunk('😀', [word('\uDE00', '\uDE00', 'bad', {
-      partOfSpeech: 'other', senseKey: 'invalid-half', reading: [['\uDE00', null]],
-    })])],
-  }), emoji), /surrogate pair/);
 });
 
 test('removes source-aligned punctuation-only chunks but never turns them into targets', () => {
@@ -268,7 +263,89 @@ test('keeps inflection and attached particles as Chunk targets beside dictionary
   );
 });
 
-test('validates model Word occurrence, sense, reading, and exact field boundaries', () => {
+test('retains dictionary Words without guessed evidence when inflection hides their headword', async () => {
+  const body = request('ja', '眠くなってきたのかも知れません。', 'They might be getting sleepy.');
+  const raw = {
+    chunks: [
+      chunk('眠くなってきたのかも', [word('眠い', '眠い', 'sleepy', {
+        partOfSpeech: 'adjective', senseKey: 'sleepy',
+        reading: [['眠', 'ねむ'], ['い', null]], romanization: 'nemui',
+      })], null, { gloss: 'it might be that they are starting to get sleepy' }),
+      chunk('知れません。', [word('知れません', '知れる', 'be known', {
+        partOfSpeech: 'verb', senseKey: 'be-known',
+        reading: [['知', 'し'], ['れる', null]], romanization: 'shireru',
+      })], null, { gloss: 'may be' }),
+    ],
+  };
+  const res = makeRes();
+  let calls = 0;
+  await handlePhraseBreakdown({ body }, res, {
+    [BACKEND]: async () => { calls += 1; return reply(raw); },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(calls, 1);
+  const sleepy = res.body.chunks[0].words[0];
+  assert.equal(sleepy.card.text, '眠い');
+  assert.deepEqual(sleepy.card.reading, [['眠', 'ねむ'], ['い', null]]);
+  assert.equal(sleepy.card.romanization, 'nemui');
+  assert.equal(Object.hasOwn(sleepy, 'sources'), false);
+  assert.deepEqual(res.body.flags, [{
+    code: 'word-source-missing', chunkIndex: 0, wordIndex: 0, reason: 'unresolved',
+  }]);
+  assert.deepEqual(res.body.chunks.map(value => value.target.kind), ['chunk', 'chunk']);
+  const start = body.source.snapshot.text.indexOf('知れません');
+  assert.deepEqual(res.body.chunks[1].words[0].sources[0].span, {
+    start, end: start + '知れません'.length,
+  });
+  assert.equal(res.body.chunks[0].target.card.source.snapshot.text, body.source.snapshot.text);
+});
+
+test('omits unresolved optional hints without weakening Word content or equivalence validation', () => {
+  const body = request('es', 'comí, comí', 'I ate, I ate');
+  const lexical = { text: 'comer', translation: 'eat', partOfSpeech: 'verb', senseKey: 'consume-food' };
+  for (const [hint, reason] of [
+    [{}, 'omitted'],
+    [{ surface: 'comer', occurrence: 0 }, 'unresolved'],
+    [{ surface: 'comí', occurrence: 2 }, 'unresolved'],
+    [{ surface: 'comí', occurrence: -1 }, 'unresolved'],
+    [{ surface: 'comí', occurrence: '0' }, 'unresolved'],
+    [{ surface: ' comí', occurrence: 0 }, 'unresolved'],
+    [{ surface: '', occurrence: 0 }, 'unresolved'],
+    [{ surface: null, occurrence: 0 }, 'unresolved'],
+    [{ occurrence: 0 }, 'unresolved'],
+    [{ surface: 'comí' }, 'unresolved'],
+  ]) {
+    const raw = { chunks: [chunk(body.source.snapshot.text, [{ ...lexical, ...hint }])] };
+    const result = validatePhraseBreakdownResponse(JSON.stringify(raw), body);
+    assert.equal(result.chunks[0].words[0].card.text, 'comer');
+    assert.equal(Object.hasOwn(result.chunks[0].words[0], 'sources'), false);
+    assert.deepEqual(result.flags, [{
+      code: 'word-source-missing', chunkIndex: 0, wordIndex: 0, reason,
+    }]);
+    raw.chunks[0].words[0].senseKey = '';
+    assert.throws(() => validatePhraseBreakdownResponse(JSON.stringify(raw), body), /senseKey/);
+  }
+  const equivalent = { chunks: [chunk('caluroso', [word('missing', 'caluroso', 'hot')], 0)] };
+  assert.throws(() => validatePhraseBreakdownResponse(
+    JSON.stringify(equivalent), request('es', 'caluroso', 'hot'),
+  ), /surface covers the chunk/);
+});
+
+test('flags returned chunk indices after punctuation removal and omits surrogate-splitting evidence', () => {
+  const result = validatePhraseBreakdownResponse(JSON.stringify({
+    chunks: [
+      chunk('!'),
+      chunk('😀', [word('\uDE00', 'smile', 'smile')]),
+    ],
+  }), request('es', '!😀', 'Smile'));
+  assert.deepEqual(result.flags, [{
+    code: 'word-source-missing', chunkIndex: 0, wordIndex: 0, reason: 'unresolved',
+  }]);
+  assert.equal(result.chunks[0].start, 1);
+  assert.equal(Object.hasOwn(result.chunks[0].words[0], 'sources'), false);
+});
+
+test('validates required Word sense, reading, and exact field boundaries', () => {
   const body = request('ja', '猫です', 'It is a cat');
   const validWord = word('猫', '猫', 'cat', {
     partOfSpeech: 'noun', senseKey: 'domestic-cat', reading: [['猫', 'ねこ']],
@@ -276,8 +353,6 @@ test('validates model Word occurrence, sense, reading, and exact field boundarie
   const valid = { chunks: [chunk('猫です', [validWord])] };
 
   for (const mutate of [
-    (value) => { value.chunks[0].words[0].occurrence = 1; },
-    (value) => { value.chunks[0].words[0].surface = ' 猫'; },
     (value) => { value.chunks[0].words[0].senseKey = 'Cat'; },
     (value) => { value.chunks[0].words[0].reading = [['猫', 'ねこ'], ['x', null]]; },
     (value) => { delete value.chunks[0].words[0].reading; },

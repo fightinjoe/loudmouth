@@ -156,9 +156,17 @@ export type BreakdownChunk = {
   target: BreakdownWordTarget | BreakdownChunkTarget;
 };
 
+export type BreakdownFlag = {
+  code: 'word-source-missing';
+  chunkIndex: number;
+  wordIndex: number;
+  reason: 'omitted' | 'unresolved';
+};
+
 export type BreakdownResponse = {
   schemaVersion: typeof SCHEMA_VERSION;
   chunks: BreakdownChunk[];
+  flags: BreakdownFlag[];
   usage: ExistingUsage;
 };
 
@@ -745,7 +753,7 @@ export function validateBreakdownResponse(
 ): BreakdownResponse {
   const request = validateBreakdownRequest(requestValue);
   const response = objectValue(value, 'response');
-  assertExactFields(response, ['schemaVersion', 'chunks', 'usage'], 'response');
+  assertExactFields(response, ['schemaVersion', 'chunks', 'flags', 'usage'], 'response');
   if (response.schemaVersion !== SCHEMA_VERSION) {
     throw new Error(`response.schemaVersion must be ${SCHEMA_VERSION}`);
   }
@@ -757,6 +765,7 @@ export function validateBreakdownResponse(
 
   const sourceText = request.source.snapshot.text;
   let cursor = 0;
+  const missingSourceCandidates = new Set<string>();
   for (let chunkIndex = 0; chunkIndex < response.chunks.length; chunkIndex += 1) {
     const prefix = `response.chunks[${chunkIndex}]`;
     const chunk = objectValue(response.chunks[chunkIndex], prefix);
@@ -800,14 +809,15 @@ export function validateBreakdownResponse(
       }
       assertGeneratedWordReading(candidate.card, `${wordPrefix}.card`);
       if (candidate.sources === undefined) {
-        throw new Error(`${wordPrefix}.sources is required for breakdown words`);
-      }
-      for (let sourceIndex = 0; sourceIndex < candidate.sources.length; sourceIndex += 1) {
-        const sourcePrefix = `${wordPrefix}.sources[${sourceIndex}]`;
-        const source = candidate.sources[sourceIndex];
-        assertSourceMatches(source, request.source, sourcePrefix);
-        if (source.span.start < start || source.span.end > end) {
-          throw new Error(`${sourcePrefix}.span must be within its containing chunk`);
+        missingSourceCandidates.add(`${chunkIndex}:${wordIndex}`);
+      } else {
+        for (let sourceIndex = 0; sourceIndex < candidate.sources.length; sourceIndex += 1) {
+          const sourcePrefix = `${wordPrefix}.sources[${sourceIndex}]`;
+          const source = candidate.sources[sourceIndex];
+          assertSourceMatches(source, request.source, sourcePrefix);
+          if (source.span.start < start || source.span.end > end) {
+            throw new Error(`${sourcePrefix}.span must be within its containing chunk`);
+          }
         }
       }
       words.push(candidate);
@@ -855,6 +865,26 @@ export function validateBreakdownResponse(
     }
   }
   assertIgnorableGap(sourceText.slice(cursor), 'response.chunks');
+  if (!Array.isArray(response.flags)) {
+    throw new Error('response.flags must be an array');
+  }
+  for (let flagIndex = 0; flagIndex < response.flags.length; flagIndex += 1) {
+    const prefix = `response.flags[${flagIndex}]`;
+    const flag = objectValue(response.flags[flagIndex], prefix);
+    assertExactFields(flag, ['code', 'chunkIndex', 'wordIndex', 'reason'], prefix);
+    if (flag.code !== 'word-source-missing') {
+      throw new Error(`${prefix}.code must be "word-source-missing"`);
+    }
+    const chunkIndex = nonnegativeInteger(flag.chunkIndex, `${prefix}.chunkIndex`);
+    const wordIndex = nonnegativeInteger(flag.wordIndex, `${prefix}.wordIndex`);
+    enumValue(flag.reason, ['omitted', 'unresolved'], `${prefix}.reason`);
+    if (!missingSourceCandidates.delete(`${chunkIndex}:${wordIndex}`)) {
+      throw new Error(`${prefix} must reference a Word without source evidence exactly once`);
+    }
+  }
+  if (missingSourceCandidates.size > 0) {
+    throw new Error('response.flags must identify every Word without source evidence');
+  }
   validateUsage(response.usage, 'response.usage');
   return value as BreakdownResponse;
 }

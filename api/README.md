@@ -81,7 +81,7 @@ units. Source may include aligned reading tokens, romanization and advisory card
 Optional context contains active-book generation `{seed,ability,answers}`, groupTitle and speaker.
 The model receives snapshot/context, never IDs. Old flat requests are rejected.
 
-Returns `{schemaVersion:2,chunks,usage}`. Each meaningful chunk contains
+Returns `{schemaVersion:2,chunks,flags,usage}`. Each meaningful chunk contains
 `{start,end,text,gloss,role,explanation,words:Candidate[],target}` with Word candidates and exactly one
 `{kind:'word',index}` or `{kind:'chunk',card:Chunk}` target. There are 1–32 ordered source-aligned
 chunks and 0–32 Words per chunk. Word sources retain exact request snapshots and selected spans;
@@ -89,6 +89,14 @@ dictionary readings align to their own headwords, never inflected source forms. 
 generated Words require readings. Every meaningful source character is covered; bounds cannot split
 surrogate pairs. Explicit equivalence collapses `caluroso` to one Word target but retains independent
 Chunk/Word targets for `食べません`/`食べる`. See API_DESIGN for model fields, offsets and all limits.
+
+Word source evidence is optional: a dictionary form such as `眠い` need not occur literally in an
+inflected source such as `眠くなってきたのかも`. Missing or unresolved surface/occurrence hints retain
+the valid Word without `sources` and add
+`{code:'word-source-missing',chunkIndex,wordIndex,reason:'omitted'|'unresolved'}` to `flags`.
+Indices refer to returned chunks and Words; `flags` is empty when none are missing evidence.
+Required card content, chunk coverage, present evidence, and explicit Word/Chunk equivalence remain
+strict. No retry or extra provider call is made for a missing source.
 
 One provider call, no automatic retry, 4,096-token ceiling and 15-second default timeout (alternate
 adapter timeout otherwise). Invalid requests return 400; invalid model output returns 502. Web
