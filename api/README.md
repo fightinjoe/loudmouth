@@ -86,8 +86,9 @@ Returns `{schemaVersion:2,chunks,flags,usage}`. Each meaningful chunk contains
 `{kind:'word',index}` or `{kind:'chunk',card:Chunk}` target. There are 1–32 ordered source-aligned
 chunks and 0–32 Words per chunk. Word sources retain exact request snapshots and selected spans;
 dictionary readings align to their own headwords, never inflected source forms. Japanese/Chinese
-generated Words require readings. Every meaningful source character is covered; bounds cannot split
-surrogate pairs. Explicit equivalence collapses `caluroso` to one Word target but retains independent
+generated Words require readings. Spanish/Czech generated Words omit readings; model-supplied
+`reading` fields (including `null`) are discarded. Every meaningful source character is covered;
+bounds cannot split surrogate pairs. Explicit equivalence collapses `caluroso` to one Word target but retains independent
 Chunk/Word targets for `食べません`/`食べる`. See API_DESIGN for model fields, offsets and all limits.
 
 Word source evidence is optional: a dictionary form such as `眠い` need not occur literally in an

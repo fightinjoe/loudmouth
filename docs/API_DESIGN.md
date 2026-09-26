@@ -391,7 +391,8 @@ punctuation/whitespace gaps permitted. Words carry dictionary-form readings and 
 Word source Evidence is optional enrichment: a valid dictionary Word survives even when its source
 hint cannot be matched. Every present Evidence must match the request's exact snapshot/refs and have
 a span inside its chunk. Japanese/Chinese generated Words require aligned ReadingToken arrays;
-Spanish/Czech may omit them. Structural validation does not prove phonetic accuracy.
+Spanish/Czech generated Words omit readings: any model-supplied `reading`, including `null`, is
+discarded before card validation. Structural validation does not prove phonetic accuracy.
 
 The model emits the smaller shape:
 

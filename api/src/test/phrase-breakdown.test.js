@@ -345,6 +345,41 @@ test('flags returned chunk indices after punctuation removal and omits surrogate
   assert.equal(Object.hasOwn(result.chunks[0].words[0], 'sources'), false);
 });
 
+test('omits model readings from Spanish and Czech Words while preserving content and evidence', () => {
+  for (const [lang, text, translation] of [
+    ['es', 'gracias', 'thanks'],
+    ['cs', 'díky', 'thanks'],
+  ]) {
+    const body = request(lang, text, translation);
+    for (const reading of [undefined, null, [], [[text, null]]]) {
+      const result = validatePhraseBreakdownResponse(JSON.stringify({
+        chunks: [chunk(text, [word(text, text, translation, {
+          reading, romanization: text,
+        })], 0)],
+      }), body);
+      assert.deepEqual(result.chunks[0].words[0], {
+        card: {
+          type: 'word', lang, text, translation,
+          partOfSpeech: 'expression', senseKey: 'example-concept', romanization: text,
+        },
+        sources: [{ snapshot: body.source.snapshot, span: { start: 0, end: text.length } }],
+      });
+      assert.deepEqual(result.chunks[0].target, { kind: 'word', index: 0 });
+      assert.deepEqual(result.flags, []);
+    }
+  }
+});
+
+test('still requires nonempty headword-aligned readings for Japanese and Chinese Words', () => {
+  for (const lang of ['ja', 'zh']) {
+    for (const reading of [undefined, null, [], [['犬', null]]]) {
+      assert.throws(() => validatePhraseBreakdownResponse(JSON.stringify({
+        chunks: [chunk('猫', [word('猫', '猫', 'cat', { reading })])],
+      }), request(lang, '猫', 'cat')), /reading/);
+    }
+  }
+});
+
 test('validates required Word sense, reading, and exact field boundaries', () => {
   const body = request('ja', '猫です', 'It is a cat');
   const validWord = word('猫', '猫', 'cat', {

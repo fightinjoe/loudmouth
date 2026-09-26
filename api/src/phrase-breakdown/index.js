@@ -183,10 +183,11 @@ function buildWordCandidate(item, itemIndex, chunk, request) {
     partOfSpeech: item.partOfSpeech,
     senseKey: item.senseKey,
   };
-  if (Object.hasOwn(item, 'reading')) {
+  if (card.lang === 'ja' || card.lang === 'zh') {
+    if (!Object.hasOwn(item, 'reading')) {
+      throw new Error(`${prefix}.reading is required for generated ${card.lang} words`);
+    }
     card.reading = validateReadingTokens(item.reading, text, `${prefix}.reading`);
-  } else if (card.lang === 'ja' || card.lang === 'zh') {
-    throw new Error(`${prefix}.reading is required for generated ${card.lang} words`);
   }
 
   let romanization;
