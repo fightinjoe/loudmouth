@@ -1,4 +1,5 @@
 import type { AppUI } from "../js/app-types";
+import { wireTabMotion } from "./content-pane-tab-motion";
 
 /** Options shared by the content pane's shell, pager, reveal, and reorder gestures. */
 export interface WireContentGesturesOptions {
@@ -12,13 +13,16 @@ export interface WireContentGesturesOptions {
 export interface SyncPagerOptions {
   animate?: boolean;
   focus?: boolean;
+  preserveStrip?: boolean;
 }
 
 /** Imperative gesture state retained by the content pane between renders. */
 export interface ContentGesturesHandle {
   resetReveal: () => void;
+  captureTabGeometry: () => void;
   syncPager: (pageKey: string | null, options?: SyncPagerOptions) => void;
   isAnyRevealed: () => boolean;
+  dispose: () => void;
 }
 
 type Axis = "h" | "v";
@@ -153,6 +157,7 @@ export function wireContentGestures({
 
   // ── Phrasebook pager ────────────────────────────────────────────────────
   const scrollAnimations = new WeakMap<HTMLElement, number>();
+  const tabMotion = wireTabMotion(rootEl);
   let observedPages: HTMLElement | null = null;
   let observedWidth = 0;
   let pageDrag: PageDrag | null = null;
@@ -192,8 +197,8 @@ export function wireContentGestures({
       }
       const progress = Math.min(1, (now - startedAt) / PAGE_DURATION);
       const eased = 1 - Math.pow(1 - progress, 3);
-      element.scrollLeft = from + (to - from) * eased;
-      if (progress < 1) {
+      element.scrollLeft = reduceMotion() ? to : from + (to - from) * eased;
+      if (progress < 1 && !reduceMotion()) {
         scrollAnimations.set(element, requestAnimationFrame(step));
       } else {
         scrollAnimations.delete(element);
@@ -217,40 +222,20 @@ export function wireContentGestures({
           || !target.isConnected
           || target.clientWidth === observedWidth) return;
         observedWidth = target.clientWidth;
-        syncPager(ui.get("content").pageKey, { animate: false });
+        syncPager(ui.get("content").pageKey, { animate: false, preserveStrip: true });
       })
     : null;
 
-  function revealTab(
-    strip: HTMLElement,
-    tab: HTMLElement,
-    index: number,
-    count: number,
-    animate: boolean,
-  ): void {
-    const stripRect = strip.getBoundingClientRect();
-    const tabRect = tab.getBoundingClientRect();
-    const centered = strip.scrollLeft
-      + tabRect.left
-      - stripRect.left
-      + (tabRect.width - strip.clientWidth) / 2;
-    const destination = index === 0
-      ? 0
-      : index === count - 1
-      ? strip.scrollWidth - strip.clientWidth
-      : centered;
-    animateScroll(strip, destination, animate);
-  }
-
   function syncPager(
     pageKey: string | null,
-    { animate = true, focus = false }: SyncPagerOptions = {},
+    { animate = true, focus = false, preserveStrip = false }: SyncPagerOptions = {},
   ): void {
     const pages = rootEl.querySelector<HTMLElement>('[data-region="deck-pages"]');
     const strip = rootEl.querySelector<HTMLElement>('[data-region="deck-tabs"]');
     handleEl.toggleAttribute("data-paging", Boolean(pages) && !isEdit());
     if (!pages || !strip) {
       watchPagerSize(null);
+      tabMotion.sync(pageKey, animate, preserveStrip);
       return;
     }
     watchPagerSize(pages);
@@ -271,7 +256,7 @@ export function wireContentGestures({
 
     const selectedTab = tabs[index];
     if (!selectedTab) return;
-    revealTab(strip, selectedTab, index, tabs.length, animate);
+    tabMotion.sync(selectedTab.dataset.pageKey ?? null, animate, preserveStrip);
     animateScroll(pages, index * pages.clientWidth, animate);
     if (focus) selectedTab.focus({ preventScroll: true });
   }
@@ -286,7 +271,7 @@ export function wireContentGestures({
   rootEl.addEventListener("keydown", (event) => {
     const tab = closestHTMLElement(event.target, ".deck-tab");
     if (!tab || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    const parent = tab.parentElement;
+    const parent = tab.closest('[data-region="deck-tabs"]');
     if (!parent) return;
     const tabs = [...parent.querySelectorAll<HTMLElement>(".deck-tab")];
     const current = tabs.indexOf(tab);
@@ -410,14 +395,6 @@ export function wireContentGestures({
     event.stopPropagation();
     suppressPageClick = false;
   }, true);
-  rootEl.addEventListener("pointerdown", (event) => {
-    const strip = closestHTMLElement(event.target, '[data-region="deck-tabs"]');
-    if (strip) stopScrollAnimation(strip);
-  }, { passive: true });
-  rootEl.addEventListener("wheel", (event) => {
-    const strip = closestHTMLElement(event.target, '[data-region="deck-tabs"]');
-    if (strip) stopScrollAnimation(strip);
-  }, { passive: true });
 
   // ── Legacy row reveal ───────────────────────────────────────────────────
   let revealStart: Point | null = null;
@@ -653,9 +630,17 @@ export function wireContentGestures({
     reorderState = null;
   });
 
+  syncPager(ui.get("content").pageKey, { animate: false });
+
   return {
     resetReveal,
+    captureTabGeometry: tabMotion.captureTabGeometry,
     syncPager,
+    dispose: () => {
+      tabMotion.dispose();
+      resizeObserver?.disconnect();
+      if (observedPages) stopScrollAnimation(observedPages);
+    },
     isAnyRevealed: () => activeSwiped !== null,
   };
 }

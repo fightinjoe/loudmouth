@@ -13,7 +13,8 @@ Catchphrase creates bespoke, situation-specific phrasebooks through a short guid
 learner describes an upcoming situation, answers a few context questions, chooses which conversations
 to prepare, and receives a phrasebook of several short two-sided conversations plus the key vocabulary
 drawn from them. The learner reviews it in short sessions. On web, each conversation has its own
-swipeable tab/page, followed by saved Chunks and Vocab. Review uses only that phrasebook's stars.
+swipeable tab/page, followed by saved Chunks and Vocab. A pinned Starred tab browses unique starred
+memberships; Review uses the same phrasebook-scoped set.
 
 ## User and problem
 
@@ -45,9 +46,10 @@ Initial product languages are Chinese and Japanese. The API also supports Spanis
    atomic operation. All initial memberships are unstarred.
 4. **Prioritize:** stars belong to the current phrasebook. Starring an analysis candidate saves its
    learning target and historical evidence; unstarring retains both.
-5. **Review:** browse occurrence-based conversation tabs, optional **Chunks**, and **Vocab**, then
-   review the current phrasebook's starred set with reveal, direction switching, pronunciation, and
-   swiping. Words use dictionary forms; Chunks retain their original source context.
+5. **Review:** browse occurrence-based conversation tabs, optional **Chunks**, and **Vocab**, or open
+   the pinned **Starred** collection. Review the current phrasebook's starred set with reveal,
+   direction switching, pronunciation, and swiping. Words use dictionary forms; Chunks retain their
+   original source context.
 
 Web Phrase cards support on-demand semantic breakdowns in the details layer. Opening analysis
 does not save cards. Explicit target stars save Words or Chunks; Regenerate refreshes disposable

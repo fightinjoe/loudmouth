@@ -163,23 +163,33 @@
 }
 
 .deck-tabs {
+  position: relative;
   display: flex;
   flex-shrink: 0;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
+  min-width: 0;
   border-bottom: 1px solid var(--border-default);
   background: var(--bg-surface);
 }
 
-.deck-tabs::-webkit-scrollbar,
+.deck-tab-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.deck-tab-scroll::-webkit-scrollbar,
 .deck-page::-webkit-scrollbar {
   display: none;
 }
 
 .deck-tab {
   flex: 0 0 auto;
-  min-width: max-content;
+  min-width: 44px;
+  min-height: 44px;
+  width: max-content;
   padding: 30px 16px 10px;
   background: var(--bg-surface);
   border: 0;
@@ -205,6 +215,90 @@
   box-shadow: inset 0 -3px 0 var(--accent);
 }
 
+.deck-pinned-slot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 0 0 auto;
+  overflow: visible;
+  background: #fff;
+}
+
+.deck-pinned-slot:empty {
+  display: none;
+}
+
+.deck-star-tab,
+.deck-star-tab[aria-selected="true"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-right: 12px;
+  padding-left: 12px;
+  background: #fff;
+  color: #0877c9;
+}
+
+.deck-star-tab[aria-selected="true"] {
+  box-shadow: inset 0 -3px 0 #1e9aff;
+}
+
+.deck-star-tab .icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.deck-star-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.deck-pinned-slot::before,
+.deck-pinned-slot::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  content: "";
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+.deck-pinned-slot::before {
+  right: 0;
+  width: 1px;
+  background: #ced7e3;
+}
+
+.deck-pinned-slot::after {
+  left: 100%;
+  width: 10px;
+  background: linear-gradient(to right, rgba(15, 24, 42, 0.09), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 12px);
+}
+
+.deck-tabs[data-scrolled] .deck-pinned-slot::before,
+.deck-tabs[data-scrolled] .deck-pinned-slot::after {
+  opacity: 1;
+}
+
+.deck-star-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-pinned-slot::before,
+  .deck-pinned-slot::after {
+    transition: none;
+  }
+}
+
 .deck-pages {
   display: flex;
   overflow-x: hidden;
@@ -227,6 +321,12 @@
 .deck-page-list {
   gap: 8px;
   padding: 20px 20px 96px;
+}
+
+.deck-page .source-context mark {
+  background: #cfe9ff;
+  color: inherit;
+  border-radius: 3px;
 }
 
 /* ── Phrase cards ── */
@@ -434,7 +534,8 @@ ruby {
 }
 
 .deck-page[data-page-kind="conversation"] [data-speaker="partner"] .card-row,
-.deck-page[data-page-kind="vocab"] .card-row {
+.deck-page[data-page-kind="vocab"] .card-row,
+.deck-page[data-page-kind="starred"] .card-row {
   background: hsl(var(--gray-50));
 }
 

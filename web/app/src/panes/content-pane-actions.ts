@@ -30,9 +30,16 @@ function setStarPending(element: HTMLElement, cardId: string, pending: boolean):
   contentRoot(element)?.querySelectorAll<HTMLButtonElement>(".card-star[data-card-id]")
     .forEach((button) => {
       if (button.dataset.cardId !== cardId) return;
-      button.disabled = pending;
-      if (pending) button.setAttribute("aria-busy", "true");
-      else button.removeAttribute("aria-busy");
+      // Native disabled blurs the focused star before collection reconciliation
+      // can move focus to its successor (or the previous topic on the last star).
+      button.disabled = pending && button !== document.activeElement;
+      if (pending) {
+        button.setAttribute("aria-busy", "true");
+        button.setAttribute("aria-disabled", "true");
+      } else {
+        button.removeAttribute("aria-busy");
+        button.removeAttribute("aria-disabled");
+      }
     });
 }
 
@@ -56,7 +63,7 @@ export function registerCardActions(
   }
 
   const starCard = async (_event: MouseEvent, element: HTMLElement): Promise<void> => {
-    if (isEdit()) return;
+    if (isEdit() || element.getAttribute("aria-busy") === "true") return;
     resetReveal();
     const slice = ui.get("content");
     const deck = slice.deck;
@@ -66,8 +73,10 @@ export function registerCardActions(
 
     const originDeckId = deck.id;
     const cardId = entry.cardId;
+    // A successful unstar can remove the clicked collection row.
+    const actionRoot = contentRoot(element) ?? element;
     showInlineError(element, null);
-    setStarPending(element, cardId, true);
+    setStarPending(actionRoot, cardId, true);
     try {
       const result = await toggleCardStar(originDeckId, { cardId });
       const current = ui.get("content");
@@ -86,7 +95,7 @@ export function registerCardActions(
     } finally {
       const current = ui.get("content");
       if (isStoredDeck(current.deck) && current.deck.id === originDeckId) {
-        setStarPending(element, cardId, false);
+        setStarPending(actionRoot, cardId, false);
       }
     }
   };

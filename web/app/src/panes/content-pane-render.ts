@@ -13,8 +13,9 @@ import type { ContentDeck } from "./content-pane";
 export const TRANSLATIONS_PAGE_KEY = "translations";
 export const CHUNKS_PAGE_KEY = "chunks";
 export const VOCAB_PAGE_KEY = "vocab";
+export const STARRED_PAGE_KEY = "starred";
 
-export type DeckPageKind = "conversation" | "chunks" | "vocab";
+export type DeckPageKind = "conversation" | "chunks" | "vocab" | "starred";
 
 export interface DeckPage {
   key: string;
@@ -93,6 +94,30 @@ export function getDeckPages(
     kind: "vocab",
     entries: entries.filter((entry) => entry.card.type === "word"),
   });
+  const starredEntries: LibraryEntry[] = [];
+  const seenMemberships = new Map<string, Set<string>>();
+  for (const page of pages) {
+    for (const entry of page.entries) {
+      const membership = entry.membership;
+      if (membership?.starredAt == null) continue;
+      let seenCards = seenMemberships.get(membership.deckId);
+      if (seenCards?.has(membership.cardId)) continue;
+      if (!seenCards) {
+        seenCards = new Set();
+        seenMemberships.set(membership.deckId, seenCards);
+      }
+      seenCards.add(membership.cardId);
+      starredEntries.push(entry);
+    }
+  }
+  if (starredEntries.length > 0) {
+    pages.unshift({
+      key: STARRED_PAGE_KEY,
+      title: "Starred",
+      kind: "starred",
+      entries: starredEntries,
+    });
+  }
   return pages;
 }
 
@@ -102,12 +127,14 @@ export function normalizePageKey(
   requestedKey: string | null,
 ): string {
   const pages = getDeckPages(entries, groups);
-  return pages.find((page) => page.key === requestedKey)?.key ?? pages[0].key;
+  return pages.find((page) => page.key === requestedKey)?.key
+    ?? pages.find((page) => page.kind !== "starred")!.key;
 }
 
 function emptyPageMessage(kind: DeckPageKind): string {
   if (kind === "vocab") return "No vocabulary in this phrasebook.";
   if (kind === "chunks") return "No chunks in this phrasebook.";
+  if (kind === "starred") return "No starred cards in this phrasebook.";
   return "No phrases in this conversation.";
 }
 
@@ -120,8 +147,35 @@ function renderPageEntries(
     return `<p class="deck-view-empty fg-secondary">${emptyPageMessage(page.kind)}</p>`;
   }
   return page.entries
-    .map((entry) => renderCardRow(entry, readingDisplay, { readOnly }))
+    .map((entry) => renderCardRow(entry, readingDisplay, {
+      readOnly,
+      conversation: page.kind !== "starred",
+    }))
     .join("");
+}
+
+function renderPageTab(page: DeckPage, activePageKey: string): string {
+  const selected = page.key === activePageKey;
+  const starred = page.kind === "starred";
+  const label = starred ? `Starred, ${page.entries.length} cards` : page.title;
+  const id = escapeHTML(encodeURIComponent(page.key));
+  return `
+    <button
+      id="deck-page-tab-${id}"
+      class="deck-tab${starred ? " deck-star-tab" : ""} tappable"
+      type="button"
+      role="tab"
+      data-action="content/set-page"
+      data-page-key="${escapeHTML(page.key)}"
+      aria-controls="deck-page-${id}"
+      aria-selected="${selected}"
+      tabindex="${selected ? "0" : "-1"}"
+      title="${escapeHTML(label)}"
+      aria-label="${escapeHTML(label)}"
+    >${starred
+      ? `${icon("star-fill")}<span class="deck-star-count" aria-hidden="true">${page.entries.length}</span>`
+      : `<span>${escapeHTML(page.title)}</span>`}</button>
+  `;
 }
 
 export function renderDeckPager(
@@ -132,38 +186,27 @@ export function renderDeckPager(
 ): string {
   const pages = getDeckPages(entries, groups);
   const activePageKey = normalizePageKey(entries, groups, requestedPageKey);
+  const starredPage = pages.find((page) => page.kind === "starred");
 
   return `
     <div class="deck-pager flex-1 min-h-0 flex-col" data-region="deck-pager">
-      <div class="deck-tabs" data-region="deck-tabs" role="tablist" aria-label="Conversation topics and vocabulary">
-        ${pages.map((page, index) => {
-          const selected = page.key === activePageKey;
-          return `
-            <button
-              id="deck-page-tab-${index}"
-              class="deck-tab tappable"
-              type="button"
-              role="tab"
-              data-action="content/set-page"
-              data-page-key="${escapeHTML(page.key)}"
-              aria-controls="deck-page-${index}"
-              aria-selected="${selected}"
-              tabindex="${selected ? "0" : "-1"}"
-              title="${escapeHTML(page.title)}"
-              aria-label="${escapeHTML(page.title)}"
-            ><span>${escapeHTML(page.title)}</span></button>
-          `;
-        }).join("")}
+      <div class="deck-tabs" data-region="deck-tabs" role="tablist" aria-label="Phrasebook pages">
+        <div class="deck-pinned-slot">${starredPage ? renderPageTab(starredPage, activePageKey) : ""}</div>
+        <div class="deck-tab-scroll" data-region="deck-tab-scroll">
+          ${pages.filter((page) => page.kind !== "starred").map((page) => renderPageTab(page, activePageKey)).join("")}
+        </div>
       </div>
+      <div class="deck-star-status" data-region="starred-status" role="status" aria-live="polite" aria-atomic="true"></div>
       <div class="deck-pages flex-1 min-h-0" data-region="deck-pages" aria-label="Swipe between conversation pages">
-        ${pages.map((page, index) => {
+        ${pages.map((page) => {
           const selected = page.key === activePageKey;
+          const id = escapeHTML(encodeURIComponent(page.key));
           return `
             <section
-              id="deck-page-${index}"
+              id="deck-page-${id}"
               class="deck-page"
               role="tabpanel"
-              aria-labelledby="deck-page-tab-${index}"
+              aria-labelledby="deck-page-tab-${id}"
               data-page-key="${escapeHTML(page.key)}"
               data-page-kind="${page.kind}"
               tabindex="0"
@@ -189,7 +232,9 @@ export function renderBrowseCardsHTML(
   entries: readonly LibraryEntry[],
   groups: readonly Group[],
 ): string {
-  const pages = getDeckPages(entries, groups).filter((page) => page.entries.length > 0);
+  const pages = getDeckPages(entries, groups).filter(
+    (page) => page.kind !== "starred" && page.entries.length > 0,
+  );
   if (pages.length === 0) {
     return '<div class="deck-view-empty text-center fg-secondary"><p>No cards in this library.</p></div>';
   }

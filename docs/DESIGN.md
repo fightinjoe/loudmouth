@@ -90,21 +90,31 @@ On web, a saved phrasebook renders joined library entries rather than a flat car
 Phrase occurrences occupy **Translations** first in their saved order, followed by one tab and
 horizontally sliding page per stored Group in group-position order. Group IDs, not titles, identify
 pages, so duplicate titles remain distinct. A **Chunks** page follows the conversation pages when the
-phrasebook has Chunk memberships, and **Vocab** contains its Word memberships last. There is no
-separate Starred tab: stars remain phrasebook-scoped membership controls and **Review** uses that
-phrasebook's starred study set.
+phrasebook has Chunk memberships, and **Vocab** contains its Word memberships last. A fixed leftmost
+**Starred** tab appears only when this phrasebook has starred memberships. It shows a solid blue star
+and the exact unique-membership count, without a visible label; its accessible name is “Starred, N
+cards.” **Review** remains a separate action over the same phrasebook-scoped study set.
 This web navigation does not change iOS.
 
-Tabs fit their title text with 16 px horizontal padding on each side; the strip clips partially
-visible tabs at the viewport edges. The first selection anchors left, the last anchors right, and
-interior selections center. Clicking or keyboard-selecting with arrows or Home/End, without looping,
-animates tabs and pages for 280 ms with cubic ease-out. Inward horizontal pointer drags starting in
+The title and tab row remain above the independently scrolling pages. Topic tabs fit their title text
+with 16 px horizontal padding on each side, inside a scroller to the right of Starred. The pinned tab
+uses an intrinsic count width, 12 px side padding, and a 6 px star/count gap. Its divider and trailing
+shadow fade over 180 ms only while the topic strip's actual offset is positive. At rest, the row is one
+white surface. The first topic anchors left beside Starred, the last anchors right, and interior
+selections center within the **full tab-row viewport**, including the pinned width, clamped to the
+available scroll range. A single topic anchors left; oversized titles follow the same boundary rules.
+Clicking or keyboard-selecting with arrows or Home/End, without looping, animates tabs and pages for
+280 ms with cubic ease-out. Starred expands and fades in over 360 ms on first appearance or initial
+phrasebook presentation; count changes do not replay its entrance. Count/font/viewport changes
+coordinate width and scroll compensation before paint, retaining alignment or a manually scrolled
+offset. Direct pointer, touch, and wheel input interrupt selection motion; selecting Starred stops
+strip motion without moving it. Reduced motion skips transitions and settles in-flight geometry.
+Inward horizontal pointer drags starting in
 the card list's 50 px left/right gutters advance one page beyond 45 px, for both flicks and long
 drags. The left gutter selects the previous page, or reveals navigation on the first page; the right
 gutter selects the next page. Shorter or cancelled drags snap back. Interior drags do not page.
-Vertical scrolling stays native, and each page retains its own position. Offscreen pages are inert;
-resizing realigns immediately, and reduced motion disables animation. Edit mode disables paging
-drags and retains active-page reorder and card editing.
+Vertical scrolling stays native, and each page retains its own position. Offscreen pages are inert.
+Edit mode disables paging drags and retains active-page reorder and card editing.
 
 The visual reference is `explorations/phrasebook-navigation/PHRASEBOOK_EXPLORATION.html`: white
 surfaces, Roboto Condensed headings and tabs, and Manrope card text. Borderless cards have 16 px
@@ -114,6 +124,17 @@ state. Learner speech is right-aligned blue (`#dbefff`), partner speech is left-
 (`#f9fafb`), and text remains left-aligned on both sides. Alternatives display an “or” separator and
 retain their speaker's color. Conversation pages omit repeated headings, counts, and speaker labels.
 Stars change only their icon, not card backgrounds; membership stars never affect another phrasebook.
+
+Starred is a neutral, full-width collection in phrasebook display order, not reconstructed dialogue.
+Each membership appears once; a repeated Phrase uses its first displayed occurrence and translation.
+Word definitions and full highlighted Chunk source snapshots remain available, along with existing
+audio, details, editing, and star actions. Starring updates every occurrence without changing the
+active page. Opening Starred remembers the previous topic and leaves the topic strip in place.
+Unstarring removes only the collection row, never the saved card, membership, or evidence. Removing a
+focused row moves focus to the next star, or the preceding star at the end. Removing the last star
+hides the tab immediately and, if Starred was active, returns to the previous topic and focuses its
+tab. Count changes are announced without moving focus; topic tab identity survives membership updates.
+The adopted web reference is `explorations/starred-access/STARRED_ACCESS.html`; iOS remains unchanged.
 
 Card text places English above the target language without changing either line's typography.
 Japanese displays one target form according to the phrasebook's reading setting: original Japanese

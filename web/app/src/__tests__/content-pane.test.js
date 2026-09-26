@@ -86,46 +86,6 @@ vi.mock("../panes/content-pane-load", () => ({
   loadDeckData: mocks.loadDeckData,
 }));
 
-vi.mock("../panes/content-pane-gestures", () => ({
-  wireContentGestures: () => ({
-    resetReveal: () => {},
-    syncPager: () => {},
-    isAnyRevealed: () => false,
-  }),
-}));
-
-vi.mock("../panes/content-pane-render", () => {
-  const rows = (entries) => entries.map((entry) => `
-    <div class="card-row-wrapper" data-entry-key="${entry.key}" data-card-id="${entry.cardId}">
-      <div class="card-row" data-action="content/open-card" data-entry-key="${entry.key}">
-        <button class="card-term">${entry.card.translation}</button>
-        ${entry.membership ? `<button class="card-star" data-action="content/star-card" data-entry-key="${entry.key}" data-card-id="${entry.cardId}" aria-pressed="${entry.membership.starredAt !== null}" data-selected="${entry.membership.starredAt !== null}"></button>` : ""}
-      </div>
-    </div>
-  `).join("");
-  const body = (deck, entries) => deck ? `
-    <button data-action="content/deck-title">${deck.name}</button>
-    ${deck.preview ? '<button data-action="content/save-preview">Save</button>' : '<button data-action="content/done">Done</button>'}
-    <p data-region="content-error" role="alert" hidden></p>
-    <div data-region="deck-pager"><section class="deck-page" data-page-key="group:group-1"><div data-region="card-list">${rows(entries)}</div></section></div>
-    <button data-action="content/review"${entries.some((entry) => entry.membership?.starredAt) ? "" : " disabled"}>Review</button>
-  ` : "";
-  return {
-    getDeckPages: (entries, groups) => [
-      ...groups.map((group) => ({ key: `group:${group.id}` })),
-      { key: "vocab" },
-    ],
-    normalizePageKey: (_entries, groups, requested) => {
-      const keys = [...groups.map((group) => `group:${group.id}`), "vocab"];
-      return keys.includes(requested) ? requested : keys[0];
-    },
-    renderBrowseBody: () => "",
-    renderBrowseCardsHTML: (_deck, entries) => rows(entries),
-    renderDeckBody: body,
-    renderDeckPager: (_deck, entries) => `<div data-region="deck-pager"><section class="deck-page" data-page-key="group:group-1"><div data-region="card-list">${rows(entries)}</div></section></div>`,
-  };
-});
-
 vi.mock("../js/db", () => ({
   commitPhrasebook: mocks.commitPhrasebook,
   getReviewCards: mocks.getReviewCards,
@@ -232,10 +192,10 @@ describe("phrasebook-scoped membership stars", () => {
         "2026-03-01T00:00:00.000Z",
         "2026-03-01T00:00:00.000Z",
       ]);
-    expect([...view.rootEl.querySelectorAll(".card-star")]
+    expect([...view.rootEl.querySelectorAll('.deck-page[data-page-kind="conversation"] .card-star')]
       .map((button) => button.getAttribute("aria-pressed")))
       .toEqual(["true", "true"]);
-    expect([...view.rootEl.querySelectorAll(".card-star")]
+    expect([...view.rootEl.querySelectorAll('.deck-page[data-page-kind="conversation"] .card-star')]
       .map((button) => button.getAttribute("aria-label")))
       .toEqual(["Unstar: go ahead", "Unstar: after you"]);
     expect(view.rootEl.querySelector('[data-action="content/review"]').disabled).toBe(false);
@@ -274,6 +234,48 @@ describe("phrasebook-scoped membership stars", () => {
       .toEqual(["false", "false"]);
     expect(view.rootEl.querySelector('[data-region="content-error"]').textContent)
       .toBe("storage unavailable");
+  });
+
+  it("retains focus during a pending unstar, then focuses the next row or previous topic", async () => {
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    const word = {
+      key: "word-entry",
+      cardId: "word",
+      card: { type: "word", lang: "ja", text: "肉", translation: "meat", partOfSpeech: "noun", senseKey: "meat" },
+      membership: { deckId: "d1", cardId: "word", position: 1, starredAt: "2026-03-01T00:00:00.000Z" },
+      sources: [],
+    };
+    view.ui.transition("content/cards-changed", {
+      cards: [...view.ui.get("content").cards.map((entry) => ({
+        ...entry,
+        membership: { ...entry.membership, starredAt: "2026-03-01T00:00:00.000Z" },
+      })), word],
+    });
+    view.ui.transition("content/set-page", { pageKey: "starred" });
+    const pending = deferred();
+    mocks.toggleCardStar.mockReturnValue(pending.promise);
+    const first = view.rootEl.querySelector('.deck-page[data-page-key="starred"] .card-star');
+    first.focus();
+    first.click();
+    first.click();
+    expect(document.activeElement).toBe(first);
+    expect(mocks.toggleCardStar).toHaveBeenCalledTimes(1);
+    pending.resolve({ cardId: "shared-card", starredAt: null });
+    await flush();
+    const next = view.rootEl.querySelector('.deck-page[data-page-key="starred"] .card-star');
+    expect(next.dataset.cardId).toBe("word");
+    expect(document.activeElement).toBe(next);
+    expect(view.rootEl.querySelector('.deck-star-count').textContent).toBe("1");
+    mocks.toggleCardStar.mockResolvedValue({ cardId: "word", starredAt: null });
+    next.click();
+    await flush();
+    expect(view.ui.get("content").pageKey).toBe("group:group-1");
+    expect(document.activeElement).toBe(view.rootEl.querySelector('.deck-tab[aria-selected="true"]'));
+    expect(view.rootEl.querySelector(".deck-star-tab")).toBeNull();
+    expect(view.ui.get("content").cards).toHaveLength(3);
+    expect([...view.rootEl.querySelectorAll(".card-star")].every((button) => !button.disabled)).toBe(true);
   });
 });
 

@@ -30,6 +30,7 @@ import {
   renderBrowseCardsHTML,
   renderDeckBody,
   renderDeckPager,
+  STARRED_PAGE_KEY,
   type ContentBrowse,
 } from "./content-pane-render";
 import { SUGGESTED_PHRASEBOOKS } from "../js/suggested-phrasebooks";
@@ -73,6 +74,7 @@ export interface ContentSlice {
   editOrder: string[] | null;
   menuOpen: boolean;
   pageKey: string | null;
+  previousPageKey: string | null;
   starPatch: ContentStarPatch | null;
   reload: number;
   browse: ContentBrowse | null;
@@ -106,10 +108,14 @@ function reconcilePageKey(
   nextEntries: readonly LibraryEntry[],
   nextGroups: readonly Group[],
   currentKey: string | null,
+  previousPageKey: string | null,
 ): string {
   const nextPages = getDeckPages(nextEntries, nextGroups);
   const currentPage = nextPages.find((page) => page.key === currentKey);
   if (currentPage) return currentPage.key;
+  if (currentKey === STARRED_PAGE_KEY) {
+    return normalizePageKey(nextEntries, nextGroups, previousPageKey);
+  }
   const previousPages = getDeckPages(previousEntries, previousGroups);
   const previousIndex = Math.max(
     0,
@@ -127,6 +133,7 @@ const initialState: ContentSlice = {
   editOrder: null,
   menuOpen: false,
   pageKey: null,
+  previousPageKey: null,
   starPatch: null,
   reload: 0,
   browse: null,
@@ -138,7 +145,7 @@ const transitions = {
     deckId: id,
     browse: null,
     ...(id !== slice.deckId
-      ? { deck: null, cards: [], groups: [], pageKey: null, starPatch: null }
+      ? { deck: null, cards: [], groups: [], pageKey: null, previousPageKey: null, starPatch: null }
       : {}),
   }),
 
@@ -160,8 +167,14 @@ const transitions = {
       menuOpen: false,
       browse: null,
       pageKey: isStoredDeck(deck)
-        ? normalizePageKey(cards, nextGroups, slice.deckId === deck.id ? slice.pageKey : null)
+        ? normalizePageKey(cards, nextGroups, slice.deckId === deck.id
+          ? slice.pageKey === STARRED_PAGE_KEY
+            && !cards.some((entry) => entry.membership?.starredAt != null)
+            ? slice.previousPageKey
+            : slice.pageKey
+          : null)
         : null,
+      previousPageKey: slice.deckId === deck?.id ? slice.previousPageKey : null,
       starPatch: null,
     };
   },
@@ -174,7 +187,9 @@ const transitions = {
       cards,
       groups: nextGroups,
       pageKey: isStoredDeck(slice.deck)
-        ? reconcilePageKey(slice.cards, slice.groups, cards, nextGroups, slice.pageKey)
+        ? reconcilePageKey(
+          slice.cards, slice.groups, cards, nextGroups, slice.pageKey, slice.previousPageKey,
+        )
         : null,
       starPatch: null,
     };
@@ -194,15 +209,24 @@ const transitions = {
         membership: { ...membership, starredAt },
       };
     });
-    return changed
-      ? { ...slice, cards, starPatch: { deckId, cardId, starredAt } }
-      : slice;
+    if (!changed) return slice;
+    const pageKey = slice.pageKey === STARRED_PAGE_KEY
+      && !cards.some((entry) => entry.membership?.starredAt != null)
+      ? normalizePageKey(cards, slice.groups, slice.previousPageKey)
+      : slice.pageKey;
+    return { ...slice, cards, pageKey, starPatch: { deckId, cardId, starredAt } };
   },
 
   "content/set-page": (slice, { pageKey }) => {
     if (!isStoredDeck(slice.deck)) return slice;
     const nextPageKey = normalizePageKey(slice.cards, slice.groups, pageKey);
-    return nextPageKey === slice.pageKey ? slice : { ...slice, pageKey: nextPageKey };
+    return nextPageKey === slice.pageKey ? slice : {
+      ...slice,
+      pageKey: nextPageKey,
+      previousPageKey: nextPageKey === STARRED_PAGE_KEY
+        ? slice.pageKey
+        : slice.previousPageKey,
+    };
   },
 
   "content/enter-edit": (slice) => isStoredDeck(slice.deck)
@@ -298,6 +322,7 @@ const contentPane = {
     }
 
     let syncPager: ContentGesturesHandle["syncPager"] = () => {};
+    let captureTabGeometry: ContentGesturesHandle["captureTabGeometry"] = () => {};
 
     function visibleEntries(slice: ContentSlice): LibraryEntry[] {
       if (!slice.editMode || !slice.editOrder) return slice.cards;
@@ -350,8 +375,112 @@ const contentPane = {
         });
     };
 
+    const updatePager = (next: ContentSlice, previous: ContentSlice, starOnly = false): void => {
+      if (!next.deck) return;
+      const pager = meatEl.querySelector<HTMLElement>('[data-region="deck-pager"]');
+      if (!pager) return;
+      const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const focusWasInPane = active !== null && rootEl.contains(active);
+      const focusedPage = active?.closest<HTMLElement>(".deck-page");
+      const focusedEntry = active?.closest<HTMLElement>("[data-entry-key]")?.dataset.entryKey;
+      const focusedStar = active?.matches(".card-star") ?? false;
+      const collectionStars = [...pager.querySelectorAll<HTMLElement>(
+        '.deck-page[data-page-key="starred"] .card-star',
+      )];
+      const focusedIndex = active ? collectionStars.indexOf(active) : -1;
+      const scrolls = capturePageScrolls();
+      captureTabGeometry();
+
+      const template = document.createElement("template");
+      template.innerHTML = renderDeckPager(
+        next.deck, visibleEntries(next), next.groups, next.pageKey,
+      );
+      const fresh = template.content;
+      const row = pager.querySelector<HTMLElement>('[data-region="deck-tabs"]');
+      const strip = pager.querySelector<HTMLElement>('[data-region="deck-tab-scroll"]');
+      const freshSlot = fresh.querySelector<HTMLElement>(".deck-pinned-slot");
+      const slot = pager.querySelector<HTMLElement>(".deck-pinned-slot");
+      if (!freshSlot) slot?.remove();
+      else if (!slot) row?.insertBefore(freshSlot, strip);
+      else {
+        const tab = slot.querySelector('[role="tab"]');
+        const freshTab = freshSlot.querySelector('[role="tab"]');
+        if (!freshTab) tab?.remove();
+        else if (!tab) slot.append(freshTab);
+        else {
+          const count = tab.querySelector(".deck-star-count");
+          const nextCount = freshTab.querySelector(".deck-star-count")?.textContent ?? "";
+          if (count && count.textContent !== nextCount) count.textContent = nextCount;
+          for (const attribute of ["aria-label", "title"]) {
+            tab.setAttribute(attribute, freshTab.getAttribute(attribute) ?? "");
+          }
+        }
+      }
+
+      // Keep keyed tabs and panels mounted: stars must not reset strip scrolling,
+      // focus, edge fades, or each page's independent vertical position.
+      for (const selector of ['[data-region="deck-tab-scroll"]', '[data-region="deck-pages"]']) {
+        const target = pager.querySelector<HTMLElement>(selector);
+        const source = fresh.querySelector<HTMLElement>(selector);
+        if (!target || !source) continue;
+        const existing = new Map([...target.children].map((element) =>
+          [(element as HTMLElement).dataset.pageKey, element as HTMLElement]));
+        const children = [...source.children] as HTMLElement[];
+        const keys = new Set(children.map((element) => element.dataset.pageKey));
+        for (const [key, element] of existing) {
+          if (!keys.has(key)) element.remove();
+        }
+        children.forEach((replacement, index) => {
+          const key = replacement.dataset.pageKey;
+          const current = existing.get(key);
+          const element = current ?? replacement;
+          if (current && current.matches('[role="tab"]')) {
+            if (current.innerHTML !== replacement.innerHTML) current.innerHTML = replacement.innerHTML;
+            for (const attribute of ["title", "aria-label"]) {
+              current.setAttribute(attribute, replacement.getAttribute(attribute) ?? "");
+            }
+          } else if (current && (!starOnly || key === STARRED_PAGE_KEY)) {
+            const list = current.querySelector<HTMLElement>('[data-region="card-list"]');
+            const nextList = replacement.querySelector<HTMLElement>('[data-region="card-list"]');
+            if (list && nextList && list.innerHTML !== nextList.innerHTML) {
+              setListHTMLSafe(list, nextList.innerHTML);
+            }
+          }
+          if (target.children[index] !== element) {
+            target.insertBefore(element, target.children[index] ?? null);
+          }
+        });
+      }
+      const status = pager.querySelector('[data-region="starred-status"]');
+      const count = pager.querySelector(".deck-star-count")?.textContent ?? "0";
+      const announcement = `${count} cards starred in this phrasebook.`;
+      if (status && status.textContent !== announcement) {
+        status.textContent = announcement;
+      }
+      restorePageScrolls(scrolls);
+      const closed = previous.pageKey === STARRED_PAGE_KEY && next.pageKey !== STARRED_PAGE_KEY;
+      syncPager(next.pageKey, {
+        animate: false,
+        preserveStrip: true,
+        focus: closed && focusWasInPane,
+      });
+      if (closed || !active || active.isConnected || !focusedPage) return;
+      const page = [...pager.querySelectorAll<HTMLElement>(".deck-page")]
+        .find((element) => element.dataset.pageKey === next.pageKey);
+      if (focusedIndex >= 0) {
+        const stars = [...page?.querySelectorAll<HTMLElement>(".card-star") ?? []];
+        stars[Math.min(focusedIndex, stars.length - 1)]?.focus({ preventScroll: true });
+      } else if (focusedEntry) {
+        const wrapper = [...page?.querySelectorAll<HTMLElement>(".card-row-wrapper") ?? []]
+          .find((element) => element.dataset.entryKey === focusedEntry);
+        wrapper?.querySelector<HTMLElement>(focusedStar ? ".card-star" : ".card-term")
+          ?.focus({ preventScroll: true });
+      }
+    };
     const unsubContent = ui.subscribe("content", (next, previous) => {
       const deckChanged = next.deck !== previous.deck;
+      const samePhrasebook = isStoredDeck(next.deck) && isStoredDeck(previous.deck)
+        && next.deck.id === previous.deck.id;
       const browseChanged = next.browse !== previous.browse;
       const cardsChanged = next.cards !== previous.cards;
       const groupsChanged = next.groups !== previous.groups;
@@ -363,7 +492,7 @@ const contentPane = {
         && !next.editMode
         && previous.editOrder !== null;
 
-      if (browseChanged || deckChanged) {
+      if (browseChanged || (deckChanged && !samePhrasebook)) {
         const scrolls = capturePageScrolls();
         meatEl.innerHTML = next.browse
           ? renderBrowseBody(next.browse)
@@ -375,8 +504,9 @@ const contentPane = {
         && next.starPatch
         && next.starPatch !== previous.starPatch) {
         patchStar(next.starPatch, next.cards);
+        updatePager(next, previous, true);
       } else if (!next.browse
-        && (cardsChanged || groupsChanged || reorderedWhileEditing || leavingEditOrder)) {
+        && (deckChanged || cardsChanged || groupsChanged || reorderedWhileEditing || leavingEditOrder)) {
         const orderedEntries = visibleEntries(next);
         if (next.deck && (isSystemDeck(next.deck) || isPreviewDeck(next.deck))) {
           const list = meatEl.querySelector<HTMLElement>(
@@ -389,25 +519,9 @@ const contentPane = {
             );
           }
         } else if (next.deck) {
-          const scrolls = capturePageScrolls();
-          const pager = meatEl.querySelector<HTMLElement>('[data-region="deck-pager"]');
-          const pagerHtml = renderDeckPager(
-            next.deck,
-            orderedEntries,
-            next.groups,
-            next.pageKey,
-          );
-          if (pager) pager.outerHTML = pagerHtml;
-          else {
-            meatEl.innerHTML = renderDeckBody(
-              next.deck,
-              orderedEntries,
-              next.groups,
-              next.pageKey,
-            );
-          }
-          restorePageScrolls(scrolls);
-          syncPager(next.pageKey, { animate: false });
+          updatePager(next, previous);
+          const title = meatEl.querySelector<HTMLElement>(".pane-header-title");
+          if (title && title.textContent !== next.deck.name) title.textContent = next.deck.name;
         }
       } else if (!next.browse && pageChanged) {
         syncPager(next.pageKey);
@@ -465,6 +579,7 @@ const contentPane = {
     const { resetReveal } = gestures;
     syncPager = gestures.syncPager;
 
+    captureTabGeometry = gestures.captureTabGeometry;
     delegate.register("content/menu", () => ui.transition("shell/toggle"));
 
     delegate.register("content/deck-title", () => {
@@ -613,6 +728,7 @@ const contentPane = {
       unsubContent();
       unsubLoad();
       unregisterCardActions();
+      gestures.dispose();
       for (const action of registeredActions) delegate.unregister(action);
     };
   },

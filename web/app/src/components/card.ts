@@ -6,6 +6,7 @@ import { renderSourceContext } from "./source-context";
 
 export interface RenderCardRowOptions {
   readOnly?: boolean;
+  conversation?: boolean;
 }
 
 /**
@@ -16,14 +17,14 @@ export interface RenderCardRowOptions {
 export function renderCardRow(
   entry: LibraryEntry,
   readingDisplay: ReadingDisplay = "reading",
-  { readOnly = false }: RenderCardRowOptions = {},
+  { readOnly = false, conversation = true }: RenderCardRowOptions = {},
 ): string {
   const { card, occurrence } = entry;
   const entryKey = escapeHTML(entry.key);
   const cardId = escapeHTML(entry.cardId);
   const isStarred = entry.membership?.starredAt != null;
-  const speaker = occurrence?.speaker;
-  const alternative = occurrence?.alternative === true;
+  const speaker = conversation ? occurrence?.speaker : undefined;
+  const alternative = conversation && occurrence?.alternative === true;
   const canStar = !readOnly && entry.membership !== undefined;
   const editActions = readOnly
     ? ""
