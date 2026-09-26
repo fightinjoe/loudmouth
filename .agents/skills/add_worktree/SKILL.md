@@ -47,18 +47,20 @@ Use a lowercase hyphen-separated task slug. Infer a short slug from a supplied t
    - Only the main checkout's ignored, untracked `api/.env` may be copied into the new worktree, with private permissions. This is the approved credential-file allowlist. Never print its contents, add it to Git, or copy other secret files automatically. Existing machine-level Google application-default credentials are not duplicated.
    - Do not copy main's web `.env.local`: it can route requests to the wrong worktree. If additional local overrides are needed, obtain explicit approval for the keys/files first.
 
-6. After installation the helper creates a detached window named `loudmouth-XYZ-short-name` in tmux session `loudmouth`: left pane runs `omp` from the worktree root, upper-right runs `npm run dev` from `web/app`, and lower-right runs `npm run dev` from `api/src`. Inspect the panes for startup failures; successful tmux command dispatch does not guarantee server readiness. If window setup fails, the worktree is retained for recovery.
-7. Confirm success output names the actual directory, branch, base commit, all three ports, and tmux window. Check that the new worktree is clean and the generated environment files are ignored. If credentials were absent, report that API startup/configuration may still need `api/.env` or existing process credentials; do not fabricate credentials or make paid API calls.
+6. After installation the helper creates a detached window named `loudmouth-XYZ-short-name` in tmux session `loudmouth`: left pane runs `omp` from the worktree root, upper-right runs `env __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=tiny npm run dev` from `web/app`, and lower-right runs `npm run dev` from `api/src`. The web command explicitly allows the advertised MagicDNS host through Vite's process-environment override, including when local `main` predates the `server.allowedHosts: ['tiny']` config. Do not set `allowedHosts: true`; keep other hosts blocked. This override must be in the process environment, not just `.env.local`. Inspect the panes for startup failures; successful tmux command dispatch does not guarantee server readiness. If window setup fails, the worktree is retained for recovery.
+7. Confirm success output names the actual directory, branch, base commit, all three ports, and tmux window. After web startup, verify `curl --noproxy '*' -H 'Host: tiny:XYZ0' http://127.0.0.1:XYZ0/` returns the app rather than Vite's blocked-host response; listening on a port alone is insufficient. Check that the new worktree is clean and the generated environment files are ignored. If credentials were absent, report that API startup/configuration may still need `api/.env` or existing process credentials; do not fabricate credentials or make paid API calls.
 
 ## Working in parallel
 
 The helper starts `omp` and both dev servers in the tmux window. For manual restarts, use:
 
 - `<new-worktree>/api/src`: `npm run dev`
-- `<new-worktree>/web/app`: `npm run dev`
+- `<new-worktree>/web/app`: `env __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=tiny npm run dev`
 - `<new-worktree>/web/app`: `npm run test:e2e` (separate `XYZ2` preview port; never reuses another worktree's server)
 
 Use the reported `http://tiny:XYZ0` web origin from remote machines (or `http://localhost:XYZ0` locally); the web app contacts `http://tiny:XYZ1`. Ports isolate browser IndexedDB, localStorage, and service-worker scope. Do not reuse the main checkout's browser origin for feature testing. The helper-owned tmux panes own their server processes: inspect their output before relying on readiness, and do not start duplicate servers via a separate supervisor. Never kill a process merely because it occupies a desired port.
+
+The allowlist adds only `tiny`; Vite's normal localhost and IP-address access remains available. If repairing an existing checkout, add `tiny` to `server.allowedHosts` in `web/app/vite.config.js`, or restart its web pane with the process-environment command above. Verify both HTTP 200 for `Host: tiny` and HTTP 403 for an unrelated hostname; never solve this error by disabling host validation.
 
 The helper leaves a partially created worktree intact on installation/configuration failure and reports its path. Repair that worktree and rerun only the failed setup step; do not blindly rerun creation, delete it, or claim it is ready. A leftover allocation lock requires checking its owner before removing it.
 

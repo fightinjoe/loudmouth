@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: true,
+      allowedHosts: ['tiny'],
       port: parsePort(env.VITE_DEV_PORT, 'VITE_DEV_PORT', 8000),
       strictPort: true,
     },

@@ -31,6 +31,7 @@ CHROMIUM_RESTRICTED_IDS = {
     600: (6000,),
 }
 LOCK_NAME = "loudmouth-add-worktree.lock"
+WEB_DEV_COMMAND = "env __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=tiny npm run dev"
 
 
 class SetupError(RuntimeError):
@@ -398,7 +399,7 @@ def open_tmux_window(result: dict[str, object]) -> str:
             "split-window", "-d", "-v", "-p", "50", "-P", "-F", "#{pane_id}",
             "-t", web, "-c", os.fspath(target / "api" / "src"),
         )
-        for pane, command in ((web, "npm run dev"), (api, "npm run dev"), (left, "omp")):
+        for pane, command in ((web, WEB_DEV_COMMAND), (api, "npm run dev"), (left, "omp")):
             tmux("send-keys", "-t", pane, "-l", command)
             tmux("send-keys", "-t", pane, "Enter")
     except (SetupError, ValueError):
@@ -544,7 +545,7 @@ def print_result(result: dict[str, object]) -> None:
         print(f"API credentials absent: main had no api/.env; API startup may require {target / 'api' / '.env'} or process credentials")
     print("tmux panes (commands sent; check server readiness in the window):")
     print(f"  OMP: {target} (omp)")
-    print(f"  Web: {target / 'web' / 'app'} (npm run dev)")
+    print(f"  Web: {target / 'web' / 'app'} ({WEB_DEV_COMMAND})")
     print(f"  API: {target / 'api' / 'src'} (npm run dev)")
 
 
