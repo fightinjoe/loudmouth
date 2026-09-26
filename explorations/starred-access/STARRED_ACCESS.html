@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Starred access · Catchphrase design reference</title>
+<style>
+:root{color-scheme:light;--ink:#0f182a;--muted:#64718b;--line:#e2e7f0;--blue:#0877c9}
+*{box-sizing:border-box}
+body{margin:0;background:#f9fafb;color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:900px;margin:auto;padding:40px 24px 72px}
+h1,h2,h3,p{margin:0}h1{font:500 clamp(36px,5vw,60px)/1.05 Georgia,serif;letter-spacing:-.04em;margin:12px 0 18px}h2{font-size:23px;letter-spacing:-.03em}h3{font-size:18px}
+.intro{max-width:780px}.intro p{color:var(--muted)}.eyebrow{color:var(--blue);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:750}
+a{color:var(--blue);text-underline-offset:3px}.links{display:flex;flex-wrap:wrap;gap:18px;margin-top:18px;font-size:13px}
+button,select{font:inherit;color:inherit}button{cursor:pointer}button,select{min-height:44px}
+button{border:1px solid var(--line);border-radius:8px;background:white;padding:8px 12px}button:hover{background:#f0f6fc}
+:focus-visible{outline:3px solid var(--blue);outline-offset:-3px}
+.controls{display:flex;flex-wrap:wrap;align-items:end;gap:12px 18px;background:white;border:1px solid var(--line);border-radius:12px;padding:16px;margin:26px 0 12px}
+label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650}select{background:white;border:1px solid #bac5d6;border-radius:6px;padding:8px;max-width:100%}
+.caption{font-size:13px;color:var(--muted);margin:12px 0 22px}#status{min-height:21px}
+.proposal{min-width:0}.proposal>header{max-width:430px;margin:0 auto 16px}.proposal>header p{font-size:13px;color:var(--muted);margin-top:8px}
+.phone{position:relative;isolation:isolate;width:390px;max-width:100%;height:700px;background:white;border:1px solid #ced7e3;border-radius:18px;overflow:hidden;font-size:14px;margin:auto}
+.base{height:100%;display:flex;flex-direction:column;min-width:0}
+.book-header{padding:16px 16px 10px;flex-shrink:0}.book-title{font-family:"Roboto Condensed","Arial Narrow",sans-serif;font-size:22px;font-weight:400;line-height:1.25;overflow-wrap:anywhere}
+.book-title small{display:block;font:400 11px/1.8 -apple-system,sans-serif;color:var(--muted);letter-spacing:.04em}
+.icon{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7}.count{font-size:.85em;font-variant-numeric:tabular-nums}
+.tab-row{display:flex;flex-shrink:0;min-width:0;border-bottom:1px solid var(--line);padding-top:12px}
+.tab-scroll{display:flex;overflow-x:auto;min-width:0;flex:1;scrollbar-width:none;overscroll-behavior-x:contain}.tab-scroll::-webkit-scrollbar{display:none}
+.tab{flex:none;border:0;border-radius:0;border-bottom:3px solid transparent;padding:10px 16px;color:var(--muted);white-space:nowrap;font-family:"Roboto Condensed","Arial Narrow",sans-serif;font-size:14px;text-transform:uppercase;background:white}
+.tab[aria-selected=true]{border-bottom-color:#1e9aff;color:var(--blue)}
+.pinned-slot{position:relative;z-index:1;flex:none;background:white}
+.pinned{display:flex;gap:6px;align-items:center;justify-content:center;min-width:44px;height:100%;padding-inline:12px;overflow:hidden}
+.pinned .icon{width:18px;height:18px;color:var(--blue);fill:currentColor}.pinned .count{flex:none}
+.pinned-slot::before,.pinned-slot::after{content:"";position:absolute;pointer-events:none;opacity:0;transition:opacity 180ms ease-out}
+.pinned-slot::before{top:0;bottom:0;right:0;width:1px;background:#ced7e3}
+.pinned-slot::after{top:0;bottom:0;left:100%;width:10px;background:linear-gradient(to right,rgba(15,24,42,.09),rgba(15,24,42,0));mask-image:linear-gradient(to bottom,transparent,#000 12px)}
+.pinned-slot.is-scrolled::before,.pinned-slot.is-scrolled::after{opacity:1}
+.viewport{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.cards{display:flex;flex-direction:column;gap:8px;padding:20px 16px 28px}
+.card{position:relative;background:#f9fafb;border-radius:16px;padding:18px 46px 18px 16px;overflow-wrap:anywhere;flex-shrink:0;min-width:0;width:100%}
+.dialogue .card{width:90%;align-self:flex-start}.dialogue .card[data-side=right]{align-self:flex-end;background:#dbefff}
+.meaning{font-size:16px;line-height:1.4;color:#64718b;margin-bottom:8px}
+.target{font-size:20px;line-height:1.55}.target:lang(zh),.target:lang(ja){font-size:22px;line-height:1.7}
+ruby{ruby-align:center}rt{font-size:.48em;color:#64718b}.definition{font-size:13px;color:var(--muted);margin-top:8px}
+.star{position:absolute;right:2px;top:6px;width:44px;height:44px;padding:10px;border:0;background:transparent;color:#8996aa;display:grid;place-items:center}
+.star[aria-pressed=true]{color:var(--blue)}.star[aria-pressed=true] .icon{fill:currentColor}
+.alternative{font-size:13px;color:var(--muted);text-align:center;width:90%;align-self:flex-start}.alternative[data-side=right]{align-self:flex-end}
+mark{background:#cfe9ff;color:inherit;border-radius:3px}.collection-intro{padding:16px 16px 0;font-size:13px;color:var(--muted)}
+.notes{margin-top:42px;border-top:1px solid var(--line);padding-top:24px;overflow-wrap:anywhere}.notes p{margin-top:12px}
+.notes table{border-collapse:collapse;width:100%;margin-top:14px;font-size:14px}.notes th,.notes td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:14px 12px}
+.notes th{width:150px}.notes ul{padding-left:20px}.notes li{margin:8px 0}.tag{display:inline-block;background:#eaf5ff;color:#075e9e;border-radius:4px;padding:2px 6px;font-size:11px;margin-bottom:8px}
+code{font-size:12px}
+@media(prefers-reduced-motion:reduce){.pinned-slot::before,.pinned-slot::after{transition:none}}
+@media(max-width:500px){main{padding:28px 12px 48px}.controls{padding:12px}.notes th{width:100px}.notes th,.notes td{padding:10px 6px}.phone{border-radius:14px}}
+</style>
+</head>
+<body><main>
+<header class="intro"><div class="eyebrow">Catchphrase / finalized design reference</div><h1>Starred, within reach.</h1><p>Browse a phrasebook’s starred cards from a fixed leftmost tab. The tab row reads as one surface at rest; its divider and shadow reveal the pinned layer only while topics scroll beneath it.</p><nav class="links" aria-label="Reference"><a href="#lab">Live specimen</a><a href="#design">Layout & state</a><a href="#positioning">Positioning & motion</a><a href="#handoff">Platform handoff</a></nav></header>
+<section id="lab" aria-label="Starred access live specimen">
+<form class="controls" id="controls">
+<label>Language<select id="language"><option value="zh">Chinese · pinyin</option><option value="ja">Japanese · furigana</option><option value="ja-romaji">Japanese · romaji</option><option value="es">Spanish</option></select></label>
+<label>Content<select id="content"><option value="normal">Dinner with friends</option><option value="long">Long phrases & tab titles</option></select></label>
+<button type="button" id="clear">Clear stars</button><button type="button" id="all">Star all</button><button type="reset">Reset specimen</button>
+</form>
+<p class="caption">Select a topic, scroll the tab strip, and star or unstar cards. Clear stars to test first-star appearance; Star all tests a larger collection. Reset restores Chinese, everyday content, three stars, and the first conversation. These controls are specimen tools, not app UI. All state is local to this page; open the HTML directly without a build or network connection.</p>
+<p class="caption" id="status" role="status" aria-live="polite"></p>
+<section class="proposal" aria-labelledby="specimen-title"><header><span class="tag">Interactive reference</span><h2 id="specimen-title">A place among the tabs</h2><p>The star stays within reach while conversation and vocabulary tabs scroll.</p></header><div class="phone" id="phone-a" aria-label="Phrasebook with pinned starred tab"></div></section>
+</section>
+<section class="notes" id="design"><div class="eyebrow">Design contract</div><h2>Layout and state</h2>
+<p><strong>Finalized for implementation; not yet adopted into the production apps.</strong> This reference specifies starred-card browsing inside a saved phrasebook, not a Review session. Keep existing card actions and phrasebook page order. Implement the behavior below using the target framework’s layout, scrolling, and accessibility primitives; the HTML structure is not an implementation requirement.</p>
+<ul>
+<li><strong>Structure:</strong> phrasebook title, one tab row, then an independently scrolling card list. Starred is the fixed leftmost tab, outside the horizontal topic scroller but part of the same navigation. Keep the existing Translations/conversation pages, optional Chunks, and Vocab order. The title and tabs do not scroll vertically with the cards.</li>
+<li><strong>Pinned tab:</strong> show a solid blue star and the exact count of unique starred memberships; no visible “Starred” label. The star stays blue regardless of the active page. Use the active-tab underline to indicate selection. The tab has an opaque white surface above the scrolling topics; its intrinsic width must grow with the count.</li>
+<li><strong>Scroll edge:</strong> the full-height divider and trailing shadow are always part of the design, never preferences. Show both only when the topic strip’s horizontal offset is greater than zero. At zero or negative elastic overscroll, hide both. This is based on actual scrolling, not the selected page. Shadow and divider do not consume layout space or intercept input.</li>
+</ul>
+<table aria-label="Starred collection transitions"><tbody>
+<tr><th>No stars</th><td>No Starred tab, reserved width, divider, or shadow.</td></tr>
+<tr><th>First star</th><td>Reveal the tab without opening it or changing the selected topic. Update every occurrence of that membership.</td></tr>
+<tr><th>Open Starred</th><td>Show the current phrasebook’s starred collection. Keep the topic strip’s current horizontal position and remember the previously active page.</td></tr>
+<tr><th>Unstar a card</th><td>Remove its collection row and update the count; retain the saved card and membership. Keep the current page unless the collection becomes empty.</td></tr>
+<tr><th>Remove last star</th><td>Remove the tab immediately. If Starred was active, return to the previous page and restore focus to its tab; otherwise keep the active page.</td></tr>
+</tbody></table>
+<p><strong>Card presentation:</strong> English appears above the target, with readings wherever supplied. Chinese uses pinyin above characters; Japanese follows the phrasebook’s script/furigana or romaji setting. Learner speech is right-aligned blue; partner speech is left-aligned neutral, with text left-aligned on both. Occurrence <code>alternative: true</code> produces “or” on the same speaker side. Starred is a neutral, full-width list, not reconstructed dialogue. Words retain definitions; Chunks show their full original-script source snapshot with the saved span highlighted. Missing optional content adds no empty rows.</p>
+</section>
+<section class="notes" id="positioning"><div class="eyebrow">Geometry and animation</div><h2>Center within the viewport. Stop at the edges.</h2>
+<ol>
+<li><strong>Interior topics:</strong> target the full phrasebook tab-row viewport’s midpoint, including the pinned tab’s occupied area. In one coordinate system, compute <code>targetScroll = currentScroll + selectedTabMidpoint − viewportMidpoint</code>, then clamp to <code>[0, max(0, contentWidth − scrollableWidth)]</code>. Equivalently, subtract half the current pinned width from the scrollable area’s midpoint. For a 390-unit viewport and a 60-unit pinned tab, the target is x = 195, not x = 225.</li>
+<li><strong>First and last topics:</strong> first targets scroll zero, aligned left beside Starred; last targets the maximum scroll offset, aligned right. A single scrolling tab aligns left. These rules also apply to oversized titles. Do not add leading/trailing spacers to force centering.</li>
+<li><strong>Dynamic geometry:</strong> measure actual viewport, tab, content, and pinned widths. Do not hard-code count width. Recompute after resize, font/layout changes, or membership changes. Preserve each page’s vertical scroll position independently.</li>
+<li><strong>One coordinated update:</strong> apply pinned width and scroll compensation together before paint/layout presentation. Track the selected tab’s visual position, not a stale scroll target. During width changes, a centered interior topic stays at the viewport center; an aligned first topic follows the strip’s left boundary; an aligned last topic stays at its right boundary. Preserve a manually scrolled offset rather than forcing recentering.</li>
+<li><strong>Interruption:</strong> a new selection starts from the current visible position. Direct pointer/touch scrolling or wheel input takes over. Selecting pinned Starred stops selection-driven strip motion without moving the strip. Avoid separate completion-time corrections that cause a jump.</li>
+</ol>
+<table aria-label="Motion specification"><tbody>
+<tr><th>Tab selection</th><td>280 ms cubic ease-out: <code>1 − (1 − progress)³</code>. Same behavior for pointer and keyboard selection.</td></tr>
+<tr><th>Starred entrance</th><td>360 ms cubic ease-out, expanding width and fading in at the left edge. Runs when the first star is added or a phrasebook with stars is initially presented. Ordinary count changes and page selection do not replay it.</td></tr>
+<tr><th>Divider + shadow</th><td>Fade together over 180 ms ease-out in both directions as the strip leaves or returns to zero.</td></tr>
+<tr><th>Reduced motion</th><td>Position immediately and skip fades/entrance motion. Enabling reduced motion during animation must settle to valid geometry without partial widths.</td></tr>
+</tbody></table>
+<p><strong>Visual reference values:</strong> star/count gap 6 px; pinned padding 12 px per side; topic padding 16 px per side; underline 3 px. Divider: 1 px, full tab height, <code>#ced7e3</code>. Shadow: 10 px wide, fading horizontally from <code>rgba(15,24,42,.09)</code> to transparent; additionally fade vertically from transparent at the top to full strength at 12 px, avoiding a hard top edge. Star blue <code>#0877c9</code>; underline <code>#1e9aff</code>. Cards have 16 px corners and 8 px gaps. The specimen’s 390 × 700 px frame is a demonstration size, not an app constraint. Adapt logical units and fonts to the platform while preserving these relationships and accessible text sizing.</p>
+</section>
+<section class="notes" id="handoff"><div class="eyebrow">Platform handoff</div><h2>Preserve behavior, not DOM structure.</h2>
+<ul>
+<li><strong>Data:</strong> stars belong to the current phrasebook’s memberships, not global cards. Count and list each starred membership once. For a repeated Phrase, use its first displayed occurrence and that occurrence’s translation. Use phrasebook display order, not star time or shuffled Review order. Use stable group/occurrence/card identities, not titles. Unstarring never deletes cards or source evidence. Follow the <a href="../../docs/CARD_SCHEMA.md#library-records-and-ownership">card schema</a>; no schema migration is required.</li>
+<li><strong>Accessibility:</strong> expose a selectable tab named “Starred, N cards,” selected state, and its associated content. Card stars expose their pressed state. Provide visible keyboard focus, nonwrapping arrows and Home/End navigation, and touch targets of at least 44 × 44 logical units or the platform minimum if larger. Removing a focused collection row moves focus to the next available star, or the preceding star at the end; the last-star rule above takes precedence. Count updates should be announced without moving focus.</li>
+<li><strong>Integration:</strong> retain tab identity across card/count updates so scrolling, focus, and edge fades are not reset. Keep offscreen content out of navigation/accessibility traversal. This HTML deliberately omits audio, details, Review, editing, persistence, and page-swipe gestures; preserve their existing platform contracts rather than treating those omissions as design decisions.</li>
+</ul>
+<p>Base contracts: <a href="../../docs/BRIEF.md">product brief</a>, <a href="../../docs/DESIGN.md#phrasebook-view">current app UX</a>, and <a href="../../web/docs/PANE_PROTOCOL.html">pane behavior</a>. This document supplies the new Starred access design; the current UX document still describes the pre-adoption app. Existing web integration points are <a href="../../web/app/src/panes/content-pane-render.ts">page/tab rendering</a>, <a href="../../web/app/src/panes/content-pane.ts">active-page and membership state</a>, and <a href="../../web/app/src/js/db.ts">joined collection selection</a>. Native implementations should map the same contract to native components.</p>
+<p id="verification"><strong>Verification boundary:</strong> desktop Chromium checks cover the remaining controls, all four language modes, narrow-screen wrapping, automatic entrance, edge visibility, alignment, membership transitions, keyboard focus, and reduced motion. For each target platform, also sample geometry during count-width changes and interrupted animations; verify accessible text sizing, reading order, and device gesture arbitration. Physical iPhone Safari, VoiceOver, and native Dynamic Type remain unverified. Fixture language is illustrative, not validated teaching content.</p>
+</section></main>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const icon = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.3.9-4.6 4.5 1.1 6.3-5.6-3-5.6 3 1.1-6.3L3 9.6l6.2-.9Z"/></svg>';
+const fixture = (id, meaning, es, zh, ja, romaji, type = 'phrase') => ({id, meaning, es, zh, ja, romaji, type});
+const cards = [
+fixture('hello','Hello! Thank you for inviting me.','¡Hola! Gracias por invitarme.','你|nǐ 好|hǎo ！ 谢|xiè 谢|xie 你|nǐ 们|men 邀|yāo 请|qǐng 我|wǒ 。','こんにちは。 招|まね いてくれてありがとうございます。','Konnichiwa. Maneite kurete arigatō gozaimasu.'),
+fixture('welcome','Welcome! Come in.','¡Bienvenido! Pasa.','欢|huān 迎|yíng ！ 请|qǐng 进|jìn 。','ようこそ！どうぞ。','Yōkoso! Dōzo.'),
+fixture('thanks','Thank you.','Gracias.','谢|xiè 谢|xie 。','ありがとうございます。','Arigatō gozaimasu.'),
+fixture('help','Can I help?','¿Puedo ayudar?','我|wǒ 可|kě 以|yǐ 帮|bāng 忙|máng 吗|ma ？','手伝|てつだ いましょうか。','Tetsudaimashō ka.'),
+fixture('here','Please put these here.','Pon esto aquí, por favor.','请|qǐng 把|bǎ 这|zhè 些|xiē 放|fàng 在|zài 这|zhè 里|lǐ 。','これをここに 置|お いてください。','Kore o koko ni oite kudasai.'),
+fixture('meat','Does this contain meat?','¿Esto lleva carne?','这|zhè 个|ge 有|yǒu 肉|ròu 吗|ma ？','これには 肉|にく が 入|はい っていますか。','Kore ni wa niku ga haitte imasu ka.'),
+fixture('yes','Yes, a little.','Sí, un poco.','有|yǒu 一|yì 点|diǎn 。','はい、 少|すこ し。','Hai, sukoshi.'),
+fixture('no','No.','No.','没|méi 有|yǒu 。','いいえ。','Iie.'),
+fixture('delicious','This is delicious!','¡Está delicioso!','这|zhè 个|ge 很|hěn 好|hǎo 吃|chī ！','とてもおいしいです！','Totemo oishii desu!'),
+fixture('more','Have some more.','Toma un poco más.','再|zài 吃|chī 一|yì 点|diǎn 。','もっとどうぞ。','Motto dōzo.'),
+fixture('little','Thank you. Just a little.','Gracias. Solo un poco.','谢|xiè 谢|xie ， 一|yì 点|diǎn 就|jiù 好|hǎo 。','ありがとうございます。 少|すこ しだけ。','Arigatō gozaimasu. Sukoshi dake.'),
+fixture('goodbye','Thank you for a lovely evening.','Gracias por una velada tan agradable.','谢|xiè 谢|xie 你|nǐ 们|men 的|de 招|zhāo 待|dài 。','今日|きょう はありがとうございました。','Kyō wa arigatō gozaimashita.'),
+fixture('again','Come again soon.','Vuelve pronto.','下|xià 次|cì 再|zài 来|lái 玩|wán 。','また 来|き てください。','Mata kite kudasai.'),
+fixture('word-meat','meat','carne','肉|ròu','肉|にく','niku','word'),
+fixture('word-friend','friend','amigo','朋|péng 友|you','友達|ともだち','tomodachi','word')
+];
+cards.find(c => c.id === 'word-meat').definition = 'Animal flesh used as food.';
+const longCard = fixture('meat','I have a peanut allergy. Could you check whether this dish contains peanuts?','Tengo alergia a los cacahuetes. ¿Podría comprobar si este plato lleva cacahuetes?','我|wǒ 对|duì 花|huā 生|shēng 过|guò 敏|mǐn 。 可|kě 以|yǐ 帮|bāng 我|wǒ 确|què 认|rèn 这|zhè 道|dào 菜|cài 里|lǐ 有|yǒu 没|méi 有|yǒu 花|huā 生|shēng 吗|ma ？','ピーナッツアレルギーがあります。この 料理|りょうり にピーナッツが 入|はい っているか 確認|かくにん していただけますか。','Pīnattsu arerugī ga arimasu. Kono ryōri ni pīnattsu ga haitte iru ka kakunin shite itadakemasu ka.');
+const chunk = {...cards.find(c => c.id === 'little'), id:'chunk-little', type:'chunk', meaning:'just a little', highlights:{es:'un poco',zh:'一点',ja:'少し'}};
+cards.push(chunk);
+const byId = new Map(cards.map(c => [c.id, c]));
+const occurrence = (id, speaker, alternative = false) => ({id, speaker, alternative});
+const groups = [
+{key:'arrival',title:'Arriving',long:'Arriving & thanking your hosts for the invitation',entries:[occurrence('hello','you'),occurrence('welcome','partner'),occurrence('thanks','you')]},
+{key:'helping',title:'Offering to help',long:'Offering to help with dinner preparations',entries:[occurrence('help','you'),occurrence('here','partner'),occurrence('thanks','you')]},
+{key:'diet',title:'Dietary needs',long:'Explaining allergies & checking the ingredients',entries:[occurrence('meat','you'),occurrence('yes','partner'),occurrence('no','partner',true),occurrence('thanks','you')]},
+{key:'food',title:'Enjoying dinner',long:'Complimenting the food & accepting another serving',entries:[occurrence('delicious','you'),occurrence('more','partner'),occurrence('little','you')]},
+{key:'leaving',title:'Saying goodbye',long:'Thanking your hosts & arranging another visit',entries:[occurrence('goodbye','you'),occurrence('again','partner'),occurrence('thanks','you')]},
+{key:'chunks',title:'Chunks',entries:[{id:'chunk-little'}]},
+{key:'vocab',title:'Vocab',entries:[{id:'word-meat'},{id:'word-friend'}]}
+];
+let stars = new Set(['hello','chunk-little','word-meat']);
+const freshState = () => ({page:'arrival',previous:'arrival',scroll:{}});
+let state = freshState();
+const selected = () => {const seen = new Set();return groups.flatMap(g => g.entries).filter(e => {if (!stars.has(e.id) || seen.has(e.id)) return false;seen.add(e.id);return true;});};
+function tokens(c) {
+ const lang = $('language').value;
+ if (lang === 'es') return [[c.es,null]];
+ // Chunks preserve original-script snapshots even in Japanese romaji mode.
+ if (lang === 'ja-romaji' && c.type !== 'chunk') return [[c.romaji,null]];
+ return c[lang === 'zh' ? 'zh' : 'ja'].split(' ').map(t => {const [base,reading] = t.split('|');return [base,reading || null];});
+}
+function target(c) {
+ const lang = $('language').value === 'es' ? 'es' : $('language').value === 'zh' ? 'zh' : 'ja';
+ const pairs = tokens(c), text = pairs.map(t => t[0]).join('');
+ const highlight = c.highlights?.[lang], start = highlight ? text.indexOf(highlight) : -1, end = start + (highlight?.length || 0);
+ let offset = 0;
+ return pairs.map(([base,reading]) => {
+  const left = offset; offset += base.length;
+  const cuts = [left,Math.max(left,Math.min(offset,start)),Math.max(left,Math.min(offset,end)),offset].sort((a,b) => a-b);
+  return cuts.slice(1).map((right,i) => {const from=cuts[i];if (right===from) return '';const fragment=esc(base.slice(from-left,right-left));const full=from===left && right===offset;const body=reading && full ? `<ruby>${fragment}<rt>${esc(reading)}</rt></ruby>` : fragment;return start>=0 && from>=start && right<=end ? `<mark>${body}</mark>` : body;}).join('');
+ }).join('');
+}
+function cardHTML(entry, flat) {
+ const c = entry.id === 'meat' && $('content').value === 'long' ? longCard : byId.get(entry.id);
+ const side = entry.speaker === 'you' ? 'right' : 'left';
+ const lang = $('language').value;
+ return `${!flat && entry.alternative ? `<div class="alternative" data-side="${side}">or</div>` : ''}<article class="card" data-card="${c.id}" data-side="${side}"><div class="meaning">${esc(c.meaning)}</div><div class="target" lang="${lang === 'ja-romaji' && c.type !== 'chunk' ? 'ja-Latn' : lang === 'es' ? 'es' : lang === 'zh' ? 'zh' : 'ja'}">${target(c)}</div>${c.definition ? `<div class="definition">${esc(c.definition)}</div>` : ''}<button type="button" class="star" data-star="${c.id}" aria-pressed="${stars.has(c.id)}" aria-label="${stars.has(c.id) ? 'Unstar' : 'Star'}: ${esc(c.meaning)}">${icon}</button></article>`;
+}
+function tabHTML(page, title, pinned = false) {
+ return `<button type="button" class="tab${pinned ? ' pinned' : ''}" role="tab" id="a-tab-${page}" data-page="${page}" aria-controls="a-panel" aria-selected="false" tabindex="-1" title="${esc(title)}">${pinned ? `${icon}<span class="count">${stars.size}</span>` : `<span>${esc(title)}</span>`}</button>`;
+}
+const phone = $('phone-a');
+phone.innerHTML = `<div class="base"><header class="book-header"><h3 class="book-title"><small>CATCHPHRASE / PHRASEBOOK</small><span id="book-name"></span></h3></header><div class="tab-row" role="tablist" aria-label="Phrasebook pages"><div class="tab-scroll" role="presentation">${groups.map(g => tabHTML(g.key,g.title)).join('')}</div></div><section class="viewport" id="a-panel" role="tabpanel" tabindex="0"></section></div>`;
+const strip = phone.querySelector('.tab-scroll');
+const panel = $('a-panel');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function updateEdge() {
+ phone.querySelector('.pinned-slot')?.classList.toggle('is-scrolled',strip.scrollLeft > 0);
+}
+strip.addEventListener('scroll',updateEdge,{passive:true});
+function remember() { state.scroll[state.page] = panel.scrollTop; }
+function render() {
+ $('book-name').textContent = $('content').value === 'long' ? 'Dinner with friends & their extended family' : 'Dinner with friends';
+ let slot = phone.querySelector('.pinned-slot');
+ if (!stars.size) slot?.remove();
+ else {
+  if (!slot) {
+   slot = document.createElement('div');
+   slot.className = 'pinned-slot';
+   slot.setAttribute('role','presentation');
+   slot.innerHTML = tabHTML('starred','Starred',true);
+   strip.before(slot);
+  }
+  slot.querySelector('.count').textContent = stars.size;
+  slot.querySelector('button').setAttribute('aria-label',`Starred, ${stars.size} ${stars.size === 1 ? 'card' : 'cards'}`);
+ }
+ for (const group of groups) {
+  const tab = $(`a-tab-${group.key}`), title = $('content').value === 'long' ? group.long || group.title : group.title;
+  tab.querySelector('span').textContent = title;
+  tab.title = title;
+ }
+ phone.querySelectorAll('[role="tab"]').forEach(tab => {
+  const active = tab.dataset.page === state.page;
+  tab.setAttribute('aria-selected',String(active));
+  tab.tabIndex = active ? 0 : -1;
+ });
+ const collection = state.page === 'starred', group = groups.find(g => g.key === state.page);
+ panel.setAttribute('aria-labelledby',`a-tab-${state.page}`);
+ panel.innerHTML = collection
+  ? `<p class="collection-intro">${stars.size} cards · from this phrasebook</p><div class="cards">${selected().map(e => cardHTML(e,true)).join('')}</div>`
+  : `<div class="cards ${group.entries[0]?.speaker ? 'dialogue' : ''}">${group.entries.map(e => cardHTML(e,false)).join('')}</div>`;
+ panel.scrollTop = state.scroll[state.page] || 0;
+ updateEdge();
+ $('status').textContent = `${stars.size} unique cards starred in this phrasebook. ${stars.size ? 'Scroll the topics to reveal the pinned tab’s divider and shadow.' : 'The starred tab is hidden. Star a card to reveal it.'}`;
+}
+const tabRow = phone.querySelector('.tab-row');
+let motionFrame = 0;
+let selectionMotion = null;
+let entranceMotion = null;
+const easeOut = progress => 1 - (1 - progress) ** 3;
+function selectedOffset() {
+ const active = strip.querySelector('[aria-selected=true]');
+ if (!active) return null;
+ const tab = active.getBoundingClientRect(), viewport = tabRow.getBoundingClientRect();
+ return tab.left + tab.width / 2 - viewport.left - viewport.width / 2;
+}
+function alignmentOffset() {
+ const current = selectedOffset();
+ if (current === null) return 0;
+ if (state.page === groups[0].key) return current + strip.scrollLeft;
+ if (state.page === groups.at(-1).key) return current + strip.scrollLeft - (strip.scrollWidth - strip.clientWidth);
+ return 0;
+}
+function isAligned() {
+ const current = selectedOffset();
+ return current !== null && Math.abs(current - alignmentOffset()) < 1;
+}
+function positionTab(offset = alignmentOffset()) {
+ const current = selectedOffset();
+ if (current !== null) {
+  // Full viewport center: equivalently, strip center minus half the pinned width.
+  strip.scrollLeft = Math.max(0,Math.min(
+   strip.scrollWidth - strip.clientWidth,
+   strip.scrollLeft + current - offset
+  ));
+ }
+ updateEdge();
+}
+function clearEntranceStyles(tab) {
+ for (const property of ['width','min-width','padding-left','padding-right','opacity']) tab.style.removeProperty(property);
+}
+function paintMotion(now) {
+ const entrance = entranceMotion;
+ let offset = entrance?.offset ?? 0;
+ if (entranceMotion) {
+  const {tab,width,started} = entranceMotion;
+  const progress = Math.max(0,Math.min(1,(now - started) / 360));
+  const amount = easeOut(progress);
+  tab.style.width = `${width * amount}px`;
+  tab.style.minWidth = '0px';
+  tab.style.paddingLeft = tab.style.paddingRight = `${12 * amount}px`;
+  tab.style.opacity = String(amount);
+  if (progress === 1) {
+   clearEntranceStyles(tab);
+   entranceMotion = null;
+  }
+ }
+ if (!entrance || entrance.followAlignment) offset = alignmentOffset();
+ if (selectionMotion) {
+  const progress = Math.max(0,Math.min(1,(now - selectionMotion.started) / 280));
+  offset = selectionMotion.from + (alignmentOffset() - selectionMotion.from) * easeOut(progress);
+  if (progress === 1) selectionMotion = null;
+ }
+ // Width and scroll compensation happen in one frame, before anything is painted.
+ positionTab(offset);
+}
+function scheduleMotion() {
+ if (motionFrame || (!selectionMotion && !entranceMotion)) return;
+ motionFrame = requestAnimationFrame(now => {
+  motionFrame = 0;
+  paintMotion(now);
+  scheduleMotion();
+ });
+}
+function stopMotionFrame() {
+ if (selectionMotion || entranceMotion) return;
+ cancelAnimationFrame(motionFrame);
+ motionFrame = 0;
+}
+function align(animate = false) {
+ const from = selectedOffset();
+ if (entranceMotion) entranceMotion.followAlignment = true;
+ selectionMotion = animate && !reducedMotion.matches && from !== null && Math.abs(from - alignmentOffset()) >= .5
+  ? {from,started:performance.now()}
+  : null;
+ if (selectionMotion) scheduleMotion();
+ else { positionTab(); stopMotionFrame(); }
+}
+function cancelEntrance() {
+ if (!entranceMotion) return;
+ const offset = selectedOffset();
+ const keepAlignment = !selectionMotion && isAligned();
+ clearEntranceStyles(entranceMotion.tab);
+ entranceMotion = null;
+ positionTab(keepAlignment ? alignmentOffset() : offset ?? 0);
+ stopMotionFrame();
+}
+function takeScrollControl() {
+ selectionMotion = null;
+ cancelEntrance();
+ stopMotionFrame();
+}
+strip.addEventListener('pointerdown',takeScrollControl,{passive:true});
+strip.addEventListener('wheel',takeScrollControl,{passive:true});
+function animateEntrance() {
+ cancelEntrance();
+ const tab = $('a-tab-starred');
+ if (!tab || reducedMotion.matches) return;
+ entranceMotion = {tab,width:tab.getBoundingClientRect().width,started:performance.now(),offset:selectedOffset() ?? 0,followAlignment:!selectionMotion && isAligned()};
+ paintMotion(entranceMotion.started);
+ scheduleMotion();
+}
+reducedMotion.addEventListener('change',() => {
+ if (!reducedMotion.matches) return;
+ const wasSelecting = selectionMotion !== null;
+ selectionMotion = null;
+ cancelEntrance();
+ if (wasSelecting) positionTab();
+ stopMotionFrame();
+});
+function focusTab() { phone.querySelector('.tab[aria-selected=true]')?.focus({preventScroll:true}); }
+function changeStars(update) {
+ const hadStars = stars.size > 0, active = document.activeElement;
+ const inPhone = phone.contains(active), removedId = active.dataset.star;
+ const index = [...panel.querySelectorAll('.star')].indexOf(active);
+ const offsetBefore = selectedOffset();
+ const keepAlignment = !selectionMotion && isAligned();
+ cancelEntrance();
+ remember();
+ update();
+ const closed = !stars.size && state.page === 'starred';
+ if (closed) state.page = state.previous;
+ render();
+ if (closed) align(true);
+ else positionTab(keepAlignment ? alignmentOffset() : offsetBefore ?? 0);
+ if (!hadStars && stars.size) animateEntrance();
+ if (!inPhone) return;
+ if (closed) { focusTab(); return; }
+ if (!removedId) return;
+ const remaining = [...panel.querySelectorAll('.star')];
+ (panel.querySelector(`[data-star="${removedId}"]`) || remaining[Math.min(Math.max(index,0),remaining.length-1)])?.focus({preventScroll:true});
+}
+function navigate(page) {
+ remember();
+ if (page === 'starred' && state.page !== 'starred') state.previous = state.page;
+ state.page = page;
+ render();
+ align(true);
+ focusTab();
+}
+phone.addEventListener('click',event => {
+ const button = event.target.closest('button');
+ if (!button) return;
+ if (button.dataset.star) {
+  const id = button.dataset.star;
+  changeStars(() => stars.has(id) ? stars.delete(id) : stars.add(id));
+ } else if (button.dataset.page) navigate(button.dataset.page);
+});
+phone.addEventListener('keydown',event => {
+ const tab = event.target.closest('[role="tab"]');
+ if (!tab || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+ event.preventDefault();
+ const tabs = [...phone.querySelectorAll('[role="tab"]')], index = tabs.indexOf(tab);
+ const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length-1 : Math.max(0,Math.min(tabs.length-1,index+(event.key === 'ArrowRight' ? 1 : -1)));
+ navigate(tabs[next].dataset.page);
+});
+$('controls').addEventListener('submit',event => event.preventDefault());
+$('controls').addEventListener('change',() => {
+ remember();
+ takeScrollControl();
+ render();
+ align();
+});
+$('clear').addEventListener('click',() => changeStars(() => stars.clear()));
+$('all').addEventListener('click',() => changeStars(() => { stars = new Set(cards.map(c => c.id)); }));
+$('controls').addEventListener('reset',() => {
+ requestAnimationFrame(() => {
+  cancelEntrance();
+  stars = new Set(['hello','chunk-little','word-meat']);
+  state = freshState();
+  strip.scrollLeft = 0;
+  render();
+  align();
+  animateEntrance();
+ });
+});
+window.addEventListener('resize',() => { takeScrollControl(); align(); });
+render();
+positionTab();
+animateEntrance();
+})();
+</script></body></html>
