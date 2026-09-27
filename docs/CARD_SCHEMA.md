@@ -61,7 +61,7 @@ Saved content is never overwritten by identity reuse. `eat` and `to eat` with th
 
 `SCHEMA_VERSION = 2`. Content batches are `{schemaVersion:2,cards:Candidate[]}`. Individual exports use the same one-Candidate envelope. Content export includes unique cards and all Word evidence, not memberships, stars or conversation structure. Any invalid candidate invalidates the entire import. Old-format imports are rejected.
 
-`/phrasebook` returns `{schemaVersion:2,title,groups,usage}`. Each group is `{id,title,phrases,vocab}`; phrases are `{id,card:Phrase,speaker:'you'|'partner',alternative?:true}` and vocab contains Word candidates. Server UUIDs are draft handles; evidence occurrence refs address phrases within the owning group and match their snapshots. Group order follows checklist index, even when titles repeat. Commit remaps selected draft refs to fresh local IDs. `/context` and `/phrasebook-title` remain unversioned setup/title envelopes.
+`/phrasebook` returns `{schemaVersion:2,title,groups,usage}`. Each group is `{id,title,phrases,vocab,featuredPhraseIds}`; phrases are `{id,card:Phrase,speaker:'you'|'partner',alternative?:true}` and vocab contains Word candidates. `featuredPhraseIds` contains unique draft phrase occurrence IDs from that group in conversation order and may be empty. The API selects contextually useful lines scored at least 4 out of 5, including learner speech and important partner replies, while returning every conversation line; scores never enter Card content. Server UUIDs are draft handles; evidence occurrence refs address phrases within the owning group and match their snapshots. Group order follows checklist index, even when titles repeat. Commit remaps selected draft refs to fresh local IDs. `/context` and `/phrasebook-title` remain unversioned setup/title envelopes.
 
 `/phrase-breakdown` accepts `{schemaVersion:2,source:PhraseSource,context?}`. Context may contain `generation:{seed,ability,answers}`, `groupTitle`, and `speaker`. Seed ≤200; ability is `none|basics|conversational`; at most five answers with labels ≤200 and values ≤500; group title ≤500. The source includes the active occurrence translation and current phrase form. IDs are not sent to the model.
 
@@ -81,16 +81,18 @@ The web uses IndexedDB `loudmouth-card-v2`, version 1:
 | decks | `{id,name,lang,createdAt,lastAccessedAt,mode,order,readingDisplay,seedId?,generation?,ability?}` |
 | groups | `{id,deckId,title,position}` |
 | memberships | `{deckId,cardId,createdAt,position,starredAt:string|null}` |
-| occurrences | `{id,deckId,groupId?,cardId,position,translation,speaker?,alternative?:true}` |
+| occurrences | `{id,deckId,groupId?,cardId,position,translation,speaker?,alternative?:true,featured?:true}` |
 | provenance | `{id,cardId,deckId,sourceKey,source:Evidence,createdAt}` |
 
-IDs are UUIDs; timestamps are ISO; positions are nonnegative integers. Card indexed lang/type equal content and creation time is immutable. Membership has one compound deck/card key and owns the star. Only Phrases have occurrences; repeated appearances share membership but retain placement, speaker and interpretation. Groups have stable IDs, not title-based identity. Word provenance is unique by card/deck/source key. Historical provenance may reference deleted decks; deckless imports use `deckId:''`. Chunk evidence is not duplicated in provenance.
+IDs are UUIDs; timestamps are ISO; positions are nonnegative integers. Card indexed lang/type equal content and creation time is immutable. Membership has one compound deck/card key and owns the star. Only Phrases have occurrences; repeated appearances share membership but retain placement, speaker, interpretation and context-specific featured selection. `featured:true` identifies a server-selected useful phrase occurrence; absence means unselected, never false or a score. Groups have stable IDs, not title-based identity. Word provenance is unique by card/deck/source key. Historical provenance may reference deleted decks; deckless imports use `deckId:''`. Chunk evidence is not duplicated in provenance.
 
 Generation settings belong to the phrasebook and are the actual sanitized creation request. Suggestions/imports never fabricate generation/audience settings. Suggested books may carry their explicitly chosen ability. Remembered ability is a separate preference updated only after successful commit.
 
 ### Atomic lifecycle
 
 Generated, cached, saved and starred are distinct properties. Generation and caching alone do not persist learning content. Initial commit saves all selected Phrases and pooled Words, unstarred, in one transaction with groups, occurrences, memberships and provenance. Generated vocabulary is capped at `min(24, selectedIndexes.length * 5)` unique Words in first-selected appearance order; preserve all selected evidence. Suggested books save all preview Words. No discarded draft refs survive. Cancellation before transaction completion and write failure leave the prior library unchanged; after successful commit the saved book remains.
+
+Generated draft groups require `featuredPhraseIds`; non-generated seeds may omit it. Commit rejects duplicate, unknown or cross-group featured IDs, including in discarded groups, before writing. Only selected groups are saved, with `featured:true` on their listed occurrences; all conversation occurrences remain available. Edit, reorder, reopen and full-library backup/restore preserve selection. Existing unscored v2 books remain readable with no inferred featured phrases: no schema reset, migration or automatic inclusion.
 
 Starring atomically validates the current deck, resolves/inserts content by identity, records new Word evidence, ensures membership and toggles its star. A new membership starts unstarred then becomes starred. Reuse never resets another membership or overwrites content. Unstarring retains cards, membership and examples. Concurrent toggles serialize; missing decks/cards and cross-language targets fail atomically. Without an active phrasebook there are no star or review controls and no inferred arbitrary membership.
 
@@ -100,7 +102,7 @@ Editing validates content and recomputes identity; collisions report “A card w
 
 Joined entries are `{key,cardId,card,membership,occurrence?,sources}`. Phrase keys identify occurrences; Word/Chunk keys identify deck/card pairs. Presentation uses occurrence translation without mutating content. Language browse has one entry per saved card keyed by card ID and no inferred active membership. Review has one entry per starred membership, selecting the first displayed Phrase occurrence. Word examples prefer the active deck then creation time and ID.
 
-Display order is group-less Translations, named groups in group order, Chunks, Vocab. Saved positions are authoritative within each bucket. New group-less occurrences prepend in incoming order. Reorder requires every current entry key exactly once, updates positions atomically, and preserves repeated Phrase occurrences. No `cardOrder` or `importIndex` ordering exists.
+Saved database ordering remains group-less Translations, named groups in group order, Chunks, Vocab. The web tab order is Vocab (the default), Phrases, Translations if present, named conversation groups, then Chunks; Starred is pinned separately. Phrases is a neutral collection of featured occurrences, deduplicated by card ID using the first featured occurrence, and may be empty for unscored books. Saved positions are authoritative within each bucket. New group-less occurrences prepend in incoming order. Reorder requires every current entry key exactly once, updates positions atomically, and preserves repeated Phrase occurrences. No `cardOrder` or `importIndex` ordering exists.
 
 ### Reset and backup
 

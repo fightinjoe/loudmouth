@@ -60,6 +60,7 @@ export interface Occurrence {
   translation: string;
   speaker?: "you" | "partner";
   alternative?: true;
+  featured?: true;
 }
 
 export interface Provenance {
@@ -92,6 +93,7 @@ export interface PhrasebookDraftGroup {
   title?: string;
   phrases: PhrasebookDraftPhrase[];
   vocab: Candidate[];
+  featuredPhraseIds?: string[];
 }
 
 export interface CommitPhrasebookInput {

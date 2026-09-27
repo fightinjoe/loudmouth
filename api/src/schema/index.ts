@@ -99,6 +99,7 @@ export type PhrasebookGroup = {
   id: string;
   title: string;
   phrases: PhrasebookPhrase[];
+  featuredPhraseIds: string[];
   vocab: Candidate[];
 };
 
@@ -580,7 +581,7 @@ export function validatePhrasebookResponse(value: unknown): PhrasebookResponse {
   for (let groupIndex = 0; groupIndex < response.groups.length; groupIndex += 1) {
     const groupPrefix = `response.groups[${groupIndex}]`;
     const group = objectValue(response.groups[groupIndex], groupPrefix);
-    assertExactFields(group, ['id', 'title', 'phrases', 'vocab'], groupPrefix);
+    assertExactFields(group, ['id', 'title', 'phrases', 'featuredPhraseIds', 'vocab'], groupPrefix);
     const groupId = nonblankString(group.id, `${groupPrefix}.id`);
     if (!UUID_PATTERN.test(groupId)) throw new Error(`${groupPrefix}.id must be a UUID`);
     if (groupIds.has(groupId)) throw new Error(`${groupPrefix}.id must be unique`);
@@ -612,6 +613,18 @@ export function validatePhrasebookResponse(value: unknown): PhrasebookResponse {
         throw new Error(`${phrasePrefix}.alternative must be true when present`);
       }
       phrases.set(phraseId, card);
+    }
+
+    if (!Array.isArray(group.featuredPhraseIds)) {
+      throw new Error(`${groupPrefix}.featuredPhraseIds must be an array`);
+    }
+    const featuredIds = new Set<string>();
+    for (let index = 0; index < group.featuredPhraseIds.length; index += 1) {
+      const prefix = `${groupPrefix}.featuredPhraseIds[${index}]`;
+      const id = nonblankString(group.featuredPhraseIds[index], prefix);
+      if (!phrases.has(id)) throw new Error(`${prefix} must reference a phrase in its owning group`);
+      if (featuredIds.has(id)) throw new Error(`${prefix} must be unique`);
+      featuredIds.add(id);
     }
 
     if (!Array.isArray(group.vocab)

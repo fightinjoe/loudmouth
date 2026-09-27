@@ -33,15 +33,17 @@ function buildPhrasebookGenerationPrompt({ seed, language, ability, answers, che
 }
 
 /**
- * @param {{ seed: string, language: string, conversation: { title: string, lines: object[], vocab: string[] } }} task
+ * @param {{ seed: string, language: string, ability: string, answers: object, conversation: { title: string, lines: object[], vocab: string[] } }} task
  * @returns {{ instructions: string, input: string }}
  */
-function buildPhrasebookTranslationPrompt({ seed, language, conversation }) {
+function buildPhrasebookTranslationPrompt({ seed, language, ability, answers, conversation }) {
   return {
     instructions: withReadingRules(TRANSLATION_TEMPLATE, language),
     input: JSON.stringify({
       seed,
       language,
+      ability,
+      answers,
       conversation: {
         title: conversation.title,
         lines: conversation.lines,

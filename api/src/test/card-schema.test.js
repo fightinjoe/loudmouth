@@ -103,7 +103,7 @@ test('wire breakdown permits flagged Words without evidence but never unvalidate
   }
 });
 
-test('phrasebook draft evidence cannot cross conversation groups or substitute snapshots', () => {
+test('phrasebook draft evidence and featured selection stay within their conversation groups', () => {
   const id = '00000000-0000-4000-8000-000000000001';
   const groupId = '00000000-0000-4000-8000-000000000002';
   const snapshot = source.snapshot;
@@ -113,11 +113,35 @@ test('phrasebook draft evidence cannot cross conversation groups or substitute s
   ],groups:[{
     id:groupId,title:'Dinner',phrases:[{id,card:{type:'phrase',...snapshot},speaker:'you'},
       {id:'00000000-0000-4000-8000-000000000004',card:{type:'phrase',lang:'ja',text:'はい。',translation:'Yes.'},speaker:'partner'}],
+    featuredPhraseIds: [id],
     vocab:[{card:word,sources:[{snapshot,ref:{occurrenceId:id},span:{start:4,end:9}}]},
       {card:{...word,text:'肉',reading:[['肉','にく']],translation:'meat',partOfSpeech:'noun',senseKey:'meat'}},
       {card:{...word,text:'魚',reading:[['魚','さかな']],translation:'fish',partOfSpeech:'noun',senseKey:'fish'}}],
   }]};
   validatePhrasebookResponse(response);
+  const noSelection = structuredClone(response);
+  noSelection.groups[0].featuredPhraseIds = [];
+  assert.deepEqual(validatePhrasebookResponse(noSelection).groups[0].featuredPhraseIds, []);
+  for (const featuredPhraseIds of [undefined, null, id, [id, id], [groupId], [''], [4]]) {
+    const invalid = structuredClone(response);
+    invalid.groups[0].featuredPhraseIds = featuredPhraseIds;
+    assert.throws(() => validatePhrasebookResponse(invalid), /featuredPhraseIds/u);
+  }
+  const foreignSelection = structuredClone(response);
+  const otherId = '00000000-0000-4000-8000-000000000005';
+  const otherGroup = {
+    ...structuredClone(response.groups[0]),
+    id: '00000000-0000-4000-8000-000000000003',
+    phrases: response.groups[0].phrases.map((phrase, index) => ({
+      ...phrase, id: `00000000-0000-4000-8000-00000000000${index + 5}`,
+    })),
+    featuredPhraseIds: [otherId],
+  };
+  otherGroup.vocab[0].sources[0].ref.occurrenceId = otherId;
+  foreignSelection.groups.push(otherGroup);
+  foreignSelection.flags.push(...response.flags.map(flag => ({ ...flag, groupIndex: 1 })));
+  foreignSelection.groups[0].featuredPhraseIds = [otherId];
+  assert.throws(() => validatePhrasebookResponse(foreignSelection), /featuredPhraseIds.*owning group/u);
   const missingFlag = structuredClone(response);
   missingFlag.flags.pop();
   assert.throws(
@@ -128,7 +152,7 @@ test('phrasebook draft evidence cannot cross conversation groups or substitute s
   wrongSnapshot.groups[0].vocab[0].sources[0].snapshot.translation = 'A different translation';
   assert.throws(()=>validatePhrasebookResponse(wrongSnapshot));
   const crossGroup = structuredClone(response);
-  crossGroup.groups.push({...structuredClone(crossGroup.groups[0]),id:'00000000-0000-4000-8000-000000000003',
+  crossGroup.groups.push({...structuredClone(crossGroup.groups[0]),id:'00000000-0000-4000-8000-000000000003',featuredPhraseIds:[],
     phrases:crossGroup.groups[0].phrases.map((phrase,index)=>({...phrase,id:`00000000-0000-4000-8000-00000000000${index+5}`}))});
   assert.throws(()=>validatePhrasebookResponse(crossGroup));
 });
@@ -139,7 +163,7 @@ test('both producers resolve the same dictionary sense despite contextual gloss 
   const produced = assemblePhrasebook({
     seed:'Dinner',language:'ja',
     conversations:[{title:'Dinner',lines:[{speaker:'you',text:'I do not eat.'}],vocab:['eat']}],
-    translations:[{lines:['食[た]べません。'],vocab:[{target:'食[た]べる',partOfSpeech:'verb',senseKey:'consume-food',source:{lineIndex:0,surface:'食べません',occurrence:0}}]}],
+    translations:[{lines:['食[た]べません。'],lineScores:[5],vocab:[{target:'食[た]べる',partOfSpeech:'verb',senseKey:'consume-food',source:{lineIndex:0,surface:'食べません',occurrence:0}}]}],
   }).groups[0].vocab[0].card;
   const request = {schemaVersion:2,source:{snapshot:{lang:'ja',text:'食べません。',translation:'I do not eat.'}}};
   const analysis = validatePhraseBreakdownResponse(JSON.stringify({chunks:[{

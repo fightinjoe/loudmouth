@@ -86,12 +86,20 @@ Historical setup preferences are not inferred or migrated to the new scale.
 
 ## Phrasebook view
 
-On web, a saved phrasebook renders joined library entries rather than a flat card list. Group-less
-Phrase occurrences occupy **Translations** first in their saved order, followed by one tab and
+On web, a saved phrasebook renders joined library entries rather than a flat card list. **Vocab** is
+the first tab and the default on opening a phrasebook, including immediately after creation. **Phrases**
+is second: a neutral, full-width collection of useful speech and important replies from the selected
+conversations, styled like Vocab rather than dialogue bubbles. Translation scores each line's contextual
+value internally from 1–5; the API selects 4–5 and the client persists that selection per occurrence.
+Phrases shows each card once, using its first selected occurrence's translation. Scores are not shown
+and selection does not star cards. Unscored older phrasebooks have an empty Phrases collection; their
+conversations remain available.
+
+Group-less Phrase occurrences occupy **Translations** next when present, followed by one tab and
 horizontally sliding page per stored Group in group-position order. Group IDs, not titles, identify
-pages, so duplicate titles remain distinct. A **Chunks** page follows the conversation pages when the
-phrasebook has Chunk memberships, and **Vocab** contains its Word memberships last. A fixed leftmost
-**Starred** tab appears only when this phrasebook has starred memberships. It shows a solid blue star
+pages, so duplicate titles remain distinct. Complete conversations retain every line, including those
+not selected for Phrases. A **Chunks** page follows when the phrasebook has Chunk memberships.
+A fixed leftmost **Starred** tab appears only when this phrasebook has starred memberships. It shows a solid blue star
 and the exact unique-membership count, without a visible label; its accessible name is “Starred, N
 cards.” **Review** remains a separate action over the same phrasebook-scoped study set.
 This web navigation does not change iOS.
@@ -125,8 +133,9 @@ state. Learner speech is right-aligned blue (`#dbefff`), partner speech is left-
 retain their speaker's color. Conversation pages omit repeated headings, counts, and speaker labels.
 Stars change only their icon, not card backgrounds; membership stars never affect another phrasebook.
 
-Starred is a neutral, full-width collection in phrasebook display order, not reconstructed dialogue.
-Each membership appears once; a repeated Phrase uses its first displayed occurrence and translation.
+Starred is a neutral, full-width collection in saved entry order (the same order as Review), not
+reconstructed dialogue or a copy of the curated Phrases list. Each membership appears once; a repeated
+Phrase uses its first saved occurrence and translation.
 Word definitions and full highlighted Chunk source snapshots remain available, along with existing
 audio, details, editing, and star actions. Starring updates every occurrence without changing the
 active page. Opening Starred remembers the previous topic and leaves the topic strip in place.

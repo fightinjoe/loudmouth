@@ -95,11 +95,14 @@ they want in the review set.
 
 ### Step by step
 
-1. **Open a phrasebook.** Selecting a recent or language-grouped phrasebook opens its content pane.
+1. **Open a phrasebook.** Selecting a recent or language-grouped phrasebook opens its content pane on
+   **Vocab**, as does completing creation.
 2. **Browse tabs.**
-   - Each named conversation has its own tab, followed by **Vocab**.
-   - Context-less phrases occupy **Translations** when present.
-   - Stars mark the review set; there is no separate Starred tab.
+   - **Vocab** is first; **Phrases** is second, showing neutral full-width cards selected by contextual
+     usefulness from both sides of the conversations. Repeated phrases appear once.
+   - Context-less phrases occupy **Translations** when present, followed by each complete named
+     conversation and optional saved **Chunks**. Filtering Phrases never removes conversation lines.
+   - Stars mark the review set; the pinned **Starred** tab appears when at least one card is starred.
 3. **Read a conversation.** Speaker metadata renders learner and partner lines on opposite sides.
    Alternatives remain in the same conversation group.
 4. **Use a card.** On web, tapping a phrase opens its breakdown. Select a phrase part or use
@@ -113,7 +116,7 @@ they want in the review set.
 
 ### Key rules
 
-- Group membership comes from each generated card's `context` and survives persistence.
+- Occurrences retain their group, speaker, translation, and optional featured selection through persistence.
 - Conversation order and vocabulary separation come from the generated groups; the learner is not
   asked to file generated cards.
 - Starring is bounded binary emphasis, not a score or progress state.

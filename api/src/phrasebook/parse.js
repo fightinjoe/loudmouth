@@ -249,7 +249,7 @@ function validateTranslationResponse(raw, conversation, language) {
   const parsed = parseModelJson(raw);
   assertExactFields(
     parsed,
-    ['lines', 'vocab', 'lineRomanizations', 'vocabRomanizations'],
+    ['lines', 'lineScores', 'vocab', 'lineRomanizations', 'vocabRomanizations'],
     'response',
   );
   if (language !== 'ja'
@@ -261,6 +261,15 @@ function validateTranslationResponse(raw, conversation, language) {
     const count = Array.isArray(parsed.lines) ? parsed.lines.length : 'non-array';
     throw new Error(`"lines" count ${count} does not match source count ${conversation.lines.length}`);
   }
+  if (!Array.isArray(parsed.lineScores) || parsed.lineScores.length !== conversation.lines.length) {
+    const count = Array.isArray(parsed.lineScores) ? parsed.lineScores.length : 'non-array';
+    throw new Error(`"lineScores" count ${count} does not match source count ${conversation.lines.length}`);
+  }
+  parsed.lineScores.forEach((score, index) => {
+    if (!Number.isInteger(score) || score < 1 || score > 5) {
+      throw new Error(`lineScores[${index}] must be an integer from 1 to 5`);
+    }
+  });
   if (!Array.isArray(parsed.vocab) || parsed.vocab.length !== conversation.vocab.length) {
     const count = Array.isArray(parsed.vocab) ? parsed.vocab.length : 'non-array';
     throw new Error(`"vocab" count ${count} does not match source count ${conversation.vocab.length}`);
@@ -269,6 +278,7 @@ function validateTranslationResponse(raw, conversation, language) {
   const sourceFlags = [];
   const result = {
     lines: parsed.lines.map((value, index) => translatedString(value, `lines[${index}]`)),
+    lineScores: parsed.lineScores,
     vocab: parsed.vocab.map((value, index) => {
       const prefix = `vocab[${index}]`;
       assertExactFields(value, ['target', 'partOfSpeech', 'senseKey', 'source'], prefix);
@@ -514,6 +524,9 @@ function assemblePhrasebook({ seed, language, conversations, translations }) {
       id: randomUUID(),
       title: conversation.title,
       phrases,
+      featuredPhraseIds: phrases
+        .filter((_, lineIndex) => translated.lineScores[lineIndex] >= 4)
+        .map(phrase => phrase.id),
       vocab,
     };
   });

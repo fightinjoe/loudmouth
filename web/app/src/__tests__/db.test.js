@@ -107,6 +107,7 @@ describe("commitPhrasebook", () => {
         id: "group-a",
         title: "Same title",
         phrases: [firstPhrase],
+        featuredPhraseIds: [],
         vocab: [
           word("hola", "hello", "greeting", [sharedFirst]),
           ...Array.from({ length: 5 }, (_, index) =>
@@ -116,11 +117,13 @@ describe("commitPhrasebook", () => {
         id: "group-b",
         title: "Discarded",
         phrases: [phrase("draft-phrase-b", "Adiós", "Goodbye", { speaker: "you" })],
+        featuredPhraseIds: ["draft-phrase-b"],
         vocab: [word("adiós", "goodbye", "farewell")],
       }, {
         id: "group-c",
         title: "Same title",
         phrases: [repeatedPhrase],
+        featuredPhraseIds: [repeatedPhrase.id],
         vocab: [
           word("hola", "hi", "greeting", [sharedSecond]),
           ...Array.from({ length: 5 }, (_, index) =>
@@ -145,6 +148,9 @@ describe("commitPhrasebook", () => {
     expect(new Set(occurrences.map((row) => row.cardId)).size).toBe(1);
     expect(occurrences.map((row) => row.translation).sort()).toEqual(["Hello", "Hi there"]);
     expect(occurrences.some((row) => row.alternative)).toBe(true);
+    expect(occurrences.filter((row) => row.featured).map((row) => row.translation)).toEqual(["Hi there"]);
+    expect(occurrences.find((row) => row.translation === "Hello")).not.toHaveProperty("featured");
+    expect(cards.every((row) => !Object.hasOwn(row.content, "featured"))).toBe(true);
     expect(cards.filter((row) => row.type === "word")).toHaveLength(10);
     expect(memberships).toHaveLength(11);
     expect(memberships.every((row) => row.starredAt === null)).toBe(true);
@@ -210,11 +216,71 @@ describe("commitPhrasebook", () => {
     const input = suggestedBook("Hostile context");
     input.groups[0].title = "Conversation";
     input.groups[0].phrases[0].speaker = "you";
+    input.groups[0].featuredPhraseIds = [];
     input.generation = {seed:"dinner",ability:"basics",answers:JSON.parse('{"__proto__":"family","constructor":"friends"}')};
     const deck = await commitPhrasebook(input, {store});
     await restoreAllData(await exportAllData(store), store);
     expect((await store.decks.get(deck.id)).generation.answers).toEqual(input.generation.answers);
     expect(Object.hasOwn((await store.decks.get(deck.id)).generation.answers, "__proto__")).toBe(true);
+  });
+
+  it.each([
+    ["missing generated selection", (group) => { delete group.featuredPhraseIds; }],
+    ["non-array selection", (group) => { group.featuredPhraseIds = "local"; }],
+    ["invalid ID type", (group) => { group.featuredPhraseIds = [1]; }],
+    ["blank ID", (group) => { group.featuredPhraseIds = [""]; }],
+    ["unknown ID", (group) => { group.featuredPhraseIds = ["missing"]; }],
+    ["cross-group ID", (group) => { group.featuredPhraseIds = ["other-phrase"]; }],
+    ["duplicate ID", (group) => { group.featuredPhraseIds = ["local", "local"]; }],
+  ])("rejects %s before committing any rows", async (_name, corrupt) => {
+    const input = {
+      name: "Selection boundaries",
+      lang: "es",
+      generation: { seed: "dinner", ability: "basics", answers: {} },
+      groups: [{
+        id: "local-group",
+        title: "Local",
+        phrases: [phrase("local", "Hola", "Hello", { speaker: "you" })],
+        vocab: [],
+        featuredPhraseIds: [],
+      }, {
+        id: "other-group",
+        title: "Other",
+        phrases: [phrase("other-phrase", "Sí", "Yes", { speaker: "partner" })],
+        vocab: [],
+        featuredPhraseIds: [],
+      }],
+      selectedIndexes: [0],
+    };
+    corrupt(input.groups[0]);
+    const before = await exportAllData(store);
+    await expect(commitPhrasebook(input, { store })).rejects.toThrow("featuredPhraseIds");
+    expect(await exportAllData(store)).toEqual(before);
+  });
+
+  it("preserves occurrence-specific selection through edits, reopen, and backup restore", async () => {
+    const input = suggestedBook("Selected");
+    input.groups[0].phrases.push(phrase("reply", "Hola", "Hi", { speaker: "partner" }));
+    input.groups[0].featuredPhraseIds = ["reply"];
+    const deck = await commitPhrasebook(input, { store });
+    const entries = await getCards(deck.id, store);
+    expect(entries[0].cardId).toBe(entries[1].cardId);
+    await updateCard(entries[1].cardId, { translation: "Hi there" }, {
+      occurrenceId: entries[1].occurrence.id,
+      store,
+    });
+    await updateDeckEntryOrder(deck.id, entries.map((entry) => entry.key).reverse(), store);
+    store.close();
+    await store.open();
+    const reopened = await getCards(deck.id, store);
+    expect(reopened.map((entry) => [entry.card.translation, entry.occurrence.featured]))
+      .toEqual([["Hi there", true], ["Hello", undefined]]);
+    const backup = await exportAllData(store);
+    const fresh = createDb({ indexedDB: new IDBFactory(), IDBKeyRange });
+    await fresh.open();
+    await restoreAllData(backup, fresh);
+    expect(await getCards(deck.id, fresh)).toEqual(reopened);
+    fresh.close();
   });
 });
 
@@ -466,6 +532,7 @@ describe("backup validation and atomic restore", () => {
         id: "backup-group",
         title: "Conversation",
         phrases: [phrase("backup-phrase", "Hola", "Hello", { speaker: "you" })],
+        featuredPhraseIds: ["backup-phrase"],
         vocab: [word("hola", "hello", "greeting", [
           evidence("Hola", "Hello", 0, 4, "backup-phrase"),
         ])],
@@ -485,6 +552,15 @@ describe("backup validation and atomic restore", () => {
     expect(await exportAllData(fresh)).toEqual(backup);
   });
 
+  it("restores unscored v2 books without inventing selected occurrences", async () => {
+    const backup = await populatedBackup();
+    delete backup.occurrences[0].featured;
+    await restoreAllData(backup, store);
+    expect(await exportAllData(store)).toEqual(backup);
+    expect((await getCards(backup.decks[0].id, store)).every((entry) => !entry.occurrence?.featured))
+      .toBe(true);
+  });
+
   it("rejects the old schema version with the exact error and preserves the library", async () => {
     const before = await populatedBackup();
     await expect(restoreAllData({ ...before, schemaVersion: 1 }, store))
@@ -493,6 +569,9 @@ describe("backup validation and atomic restore", () => {
   });
 
   it.each([
+    ["false featured flag", (backup) => { backup.occurrences[0].featured = false; }],
+    ["numeric featured flag", (backup) => { backup.occurrences[0].featured = 4; }],
+    ["null featured flag", (backup) => { backup.occurrences[0].featured = null; }],
     ["Phrase membership without an occurrence", (backup) => {
       backup.memberships.find((row) => backup.cards.find((card) =>
         card.id === row.cardId && card.type === "phrase")).starredAt = "2026-01-01T00:00:00.000Z";

@@ -27,6 +27,7 @@ test('hostile historical source stays inert through the real card lifecycle', as
     return {deckId:deck.id,entryKey:entry.key,phraseId:entry.cardId,chunkId:entries.find(entry=>entry.card.type==='chunk').cardId}
   },payload)
 
+  await page.getByRole('tab', { name: payload, exact: true }).click()
   const row = page.locator(`[data-entry-key="${entryKey}"].card-row`)
   await expect(row.locator('.card-term-english')).toHaveText(payload)
   await expect(row.locator('.card-term-target rt')).toHaveText('ねこ')

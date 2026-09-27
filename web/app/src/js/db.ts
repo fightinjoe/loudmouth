@@ -262,7 +262,7 @@ function validateDraftGroup(
   generated: boolean,
 ): PhrasebookDraftGroup {
   const group = objectValue(value, path);
-  assertExactFields(group, ["id", "title", "phrases", "vocab"], path);
+  assertExactFields(group, ["id", "title", "phrases", "vocab", "featuredPhraseIds"], path);
   const id = requiredString(group.id, `${path}.id`);
   let title: string | undefined;
   if (Object.hasOwn(group, "title")) {
@@ -282,6 +282,26 @@ function validateDraftGroup(
       throw new Error(`${path}.phrases contains duplicate id ${phrase.id}`);
     }
     phraseById.set(phrase.id, phrase);
+  }
+  let featuredPhraseIds: string[] | undefined;
+  if (Object.hasOwn(group, "featuredPhraseIds")) {
+    if (!Array.isArray(group.featuredPhraseIds)) {
+      throw new Error(`${path}.featuredPhraseIds must be an array`);
+    }
+    const seen = new Set<string>();
+    featuredPhraseIds = group.featuredPhraseIds.map((value, index) => {
+      const phraseId = requiredString(value, `${path}.featuredPhraseIds[${index}]`);
+      if (!phraseById.has(phraseId)) {
+        throw new Error(`${path}.featuredPhraseIds[${index}] must refer to a phrase in its group`);
+      }
+      if (seen.has(phraseId)) {
+        throw new Error(`${path}.featuredPhraseIds contains duplicate id ${phraseId}`);
+      }
+      seen.add(phraseId);
+      return phraseId;
+    });
+  } else if (generated) {
+    throw new Error(`${path}.featuredPhraseIds is required for generated phrasebooks`);
   }
   const vocab = group.vocab.map((candidate, index) => {
     const validated = validateCandidate(candidate, `${path}.vocab[${index}]`);
@@ -319,6 +339,7 @@ function validateDraftGroup(
     ...(title ? { title } : {}),
     phrases,
     vocab,
+    ...(featuredPhraseIds === undefined ? {} : { featuredPhraseIds }),
   };
 }
 
@@ -556,6 +577,7 @@ export async function commitPhrasebook(
             namedGroupPosition += 1;
           }
           let groupPosition = 0;
+          const featuredPhraseIds = new Set(group.draft.featuredPhraseIds);
           for (const phrase of group.phrases) {
             const card = await resolveCard(phrase.draft.card, store, now);
             if (!phraseMemberships.has(card.id)) {
@@ -579,6 +601,7 @@ export async function commitPhrasebook(
               translation: phrase.draft.card.translation,
               ...(phrase.draft.speaker ? { speaker: phrase.draft.speaker } : {}),
               ...(phrase.draft.alternative ? { alternative: true } : {}),
+              ...(featuredPhraseIds.has(phrase.draft.id) ? { featured: true } : {}),
             });
             draftRefs.set(phrase.draft.id, {
               occurrenceId: phrase.occurrenceId,
@@ -1238,7 +1261,7 @@ function validateOccurrence(value: unknown, path: string): Occurrence {
   const row = objectValue(value, path);
   assertExactFields(
     row,
-    ["id", "deckId", "groupId", "cardId", "position", "translation", "speaker", "alternative"],
+    ["id", "deckId", "groupId", "cardId", "position", "translation", "speaker", "alternative", "featured"],
     path,
   );
   const occurrence: Occurrence = {
@@ -1256,6 +1279,9 @@ function validateOccurrence(value: unknown, path: string): Occurrence {
   }
   if (Object.hasOwn(row, "alternative")) {
     occurrence.alternative = optionalTrue(row.alternative, `${path}.alternative`);
+  }
+  if (Object.hasOwn(row, "featured")) {
+    occurrence.featured = optionalTrue(row.featured, `${path}.featured`);
   }
   return occurrence;
 }

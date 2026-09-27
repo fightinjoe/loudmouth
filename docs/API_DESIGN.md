@@ -507,7 +507,8 @@ flowchart LR
 
 `/phrasebook` alternates between deterministic code and probabilistic model calls. The generation
 prompt decides what conversations and vocabulary are useful. The translation prompt decides how to
-express that content in the target language. Code owns request limits, ordering, structural checks,
+express that content in the target language and scores each line's contextual learning usefulness.
+Code owns request limits, ordering, structural checks, the score threshold for phrase selection,
 normalization, source matching, card construction, diagnostics, usage accounting, and the final
 response contract.
 
@@ -538,7 +539,7 @@ and otherwise returns the word with a `vocab-source-missing` flag.
 - `language` is required: `zh`, `ja`, `es`, or `cs`.
 - `ability` accepts exactly `none`, `basics`, or `conversational`. Missing or invalid values
   (including wrong types, casing, or whitespace) are ignored and default to `basics`. Only the
-  sanitized enum reaches the generation prompt.
+  sanitized enum reaches the generation and translation prompts.
 - `answers` is a required question-to-answer string map; an empty map is allowed. At most five entries
   are accepted, with question labels at most 200 characters and answers at most 500 characters.
 - `checklist` is a required ordered list of 1–8 selected topic strings, at most 120 characters each.
@@ -570,6 +571,7 @@ situation-specific language.
       },
       "speaker": "you"
     }],
+    "featuredPhraseIds": ["00000000-0000-4000-8000-000000000002"],
     "vocab": [{
       "card": {
         "lang": "ja", "type": "word", "text": "ヴィーガン", "translation": "vegan",
@@ -604,6 +606,19 @@ duplicate titles. Server-generated UUIDs identify groups/phrase drafts, never mo
 library IDs. Phrase drafts own `speaker` and optional `alternative:true`; an alternative requires
 an earlier same-speaker line, not immediate adjacency. Cards contain neither context nor JSON notes.
 
+Every group requires `featuredPhraseIds`: unique draft phrase IDs belonging to that group, in original
+conversation order. It may be empty. The server selects lines whose internal usefulness score is
+at least 4; both learner speech and important partner replies qualify. The complete `phrases` array
+is retained regardless of scores. Scores are not card fields and are not exposed on the wire.
+
+The translation model receives the seed, topic, sanitized ability, supplied answers, and full
+conversation. It returns required `lineScores`, exactly aligned to all translated lines, containing
+integers 1–5: 5 is essential to the goal or an important constraint, 4 is directly useful
+situation-specific speech or a reply needed to act, 3 is weak/indirect contextual value, 2 is generic
+social glue or filler, and 1 is incidental. Generic greetings/thanks normally score below the
+selection threshold unless they are the topic itself. There is no selection quota. Structural
+validation enforces alignment and integer bounds, not the semantic quality of the scores.
+
 Translated model vocabulary consists of `{target,partOfSpeech,senseKey,source?}` objects. `target`
 uses inline readings and dictionary form. `senseKey` is a canonical English concept identifier,
 such as `consume-food`, under the same policy as breakdown. Optional source is
@@ -627,8 +642,9 @@ The response keeps per-group vocabulary, including duplicates across groups, wit
 Client commit filters selected groups first, pools by conservative Word identity (language,
 NFC-trimmed headword, POS, senseKey), and caps generated vocabulary at `min(24, selectedCount * 5)`.
 It preserves first-selected content and all selected source examples, not merely the first source.
-All selected phrases and committed vocabulary are saved unstarred in one atomic transaction.
-Commit remaps selected draft references to fresh local occurrence/card IDs.
+All phrases in selected conversations and committed vocabulary are saved unstarred in one atomic
+transaction. Commit remaps draft references to fresh local occurrence/card IDs and persists featured
+selection on occurrences, not cards. Old unscored books receive no invented selection or backfill.
 
 Kanji and hanzi `base[reading]` runs become `ReadingToken` pairs; stray bracket annotations are removed.
 Japanese translation chunks additionally return `lineRomanizations` and `vocabRomanizations`, matched
@@ -663,12 +679,13 @@ client-stored cards are not rewritten; new `/phrasebook` responses use these rul
    non-empty text, alternative-line rules, and per-conversation counts; retry once on invalid output.
 4. Translate each conversation and its vocabulary in parallel. Results are assembled **by index,
    never by title text**, regardless of completion order.
-5. Validate translated line/vocabulary counts and required vocabulary fields. Normalize source
-   comparison strings and unambiguous single-match occurrence numbering. An omitted, malformed, or
-   unresolved optional source produces a flag instead of a retry; malformed required content and
-   count mismatches still retry once. Never return a partially translated phrasebook.
-6. Normalize readings, assemble common cards and evidence, aggregate flags and usage, then validate
-   the wire response.
+5. Validate translated line/vocabulary counts, a required aligned array of integer `lineScores` from
+   1–5, and required vocabulary fields. Missing scores, wrong counts, and invalid scores retry the
+   affected chunk once, just like other malformed required content. Normalize source comparison
+   strings and unambiguous single-match occurrence numbering. An omitted, malformed, or unresolved
+   optional source produces a flag instead of a retry. Never return a partially translated phrasebook.
+6. Normalize readings, assemble common cards and evidence, select group-local phrase IDs at score
+   >=4 without dropping conversation lines, aggregate flags and usage, then validate the wire response.
 
 Each logical model attempt has a 15-second budget on the default backend or the adapter's extended
 60-second budget. That budget includes up to three `429` retries with 2/4/8-second backoff. Generation
@@ -685,9 +702,9 @@ Completeness remains a prompt requirement, not a semantic validator guarantee. `
 wall-clock pipeline time, not the sum of overlapping translation durations. Usage includes reported
 token consumption from invalid responses that caused retries.
 
-On Google backends, translation calls supply a JSON response schema requiring `lines` strings and
-`vocab` objects with exactly the source item counts and no additional properties. Vocab objects
-require target/POS/senseKey; a present source requires lineIndex/surface/occurrence. Japanese also
+On Google backends, translation calls supply a JSON response schema requiring `lines` strings,
+`lineScores` integers from 1–5, and `vocab` objects with exactly the source item counts and no additional
+properties. Vocab objects require target/POS/senseKey; a present source requires lineIndex/surface/occurrence. Japanese also
 requires the corresponding romanization arrays. This constrains generation rather than repairing
 malformed JSON. Parsing, normalization, shared card validation and bounded retries remain;
 surrounding Markdown JSON fences are accepted, malformed JSON is not repaired. Other providers
@@ -695,6 +712,25 @@ ignore the schema option and retain prompt-and-validation handling. No validator
 correctness.
 
 Reading rules are inserted into `{{READING_RULES}}`; Spanish and Czech insert an empty string.
+
+#### Translation scoring live check
+
+The approved scoring change was compared against the preceding prompt with the configured
+`gemini-3.5-flash-lite` backend, using the same fixed English conversations once before and once
+after. Each response passed translation parsing, complete assembly, and shared wire validation:
+
+| Case | Latency before → after | Input tokens before → after | Output tokens before → after | Featured / complete lines |
+| --- | --- | --- | --- | --- |
+| Japanese vegan restaurant | 6,415 → 6,932 ms | 2,271 → 2,702 | 403 → 424 | 5 / 8 |
+| Chinese parcel pickup | 2,176 → 2,798 ms | 1,637 → 2,053 | 560 → 651 | 5 / 8 |
+| Spanish allergy pharmacy | 1,300 → 1,414 ms | 1,575 → 1,999 | 183 → 206 | 6 / 9 |
+
+All 25 lines were retained; greetings and thanks were excluded from the 16 featured phrases.
+Selected partner replies included bonito-stock disclosure, passport acceptance, signing instructions,
+dosage, and a driving warning. These single-run translation measurements are not end-to-end latency
+estimates or statistically reliable performance comparisons. They do not certify language quality:
+the after-run Japanese thanks contained `ごさいます` rather than `ございます`, and Chinese raw output
+included punctuation reading annotations. No native-speaker review or Czech run was performed.
 
 ### Client integration
 

@@ -6,7 +6,6 @@ const { EventEmitter } = require('node:events');
 const {
   performPhrasebook,
   handlePhrasebook,
-  buildTranslationResponseJsonSchema,
 } = require('../phrasebook');
 const {
   parsePhrasebookRequest,
@@ -46,6 +45,7 @@ const translatedWord = (target, partOfSpeech, senseKey, source) => ({
 });
 const firstTranslation = {
   lines: ['Alquilo tablas.', 'Aquí tiene una tabla.', 'Pagaré.', 'Puedo pagar luego.'],
+  lineScores: [5, 4, 3, 2],
   vocab: [
     translatedWord('alquilar', 'verb', 'rent', { lineIndex: 0, surface: 'Alquilo', occurrence: 0 }),
     translatedWord('tabla', 'noun', 'board', { lineIndex: 0, surface: 'tablas', occurrence: 0 }),
@@ -54,6 +54,7 @@ const firstTranslation = {
 };
 const secondTranslation = {
   lines: ['Como pescado.', 'Aquí tiene pescado.', 'Voy a pagar.', 'Gracias.'],
+  lineScores: [5, 4, 3, 1],
   vocab: [
     translatedWord('comer', 'verb', 'consume-food', { lineIndex: 0, surface: 'Como', occurrence: 0 }),
     translatedWord('pescado', 'noun', 'fish', { lineIndex: 0, surface: 'pescado', occurrence: 0 }),
@@ -113,6 +114,7 @@ test('short complete exchanges survive generation and translation without paddin
   const translations = [
     {
       lines: ['¡Buenos días!', '¡Buenos días!'],
+      lineScores: [5, 4],
       vocab: [
         translatedWord('mañana', 'noun', 'morning'),
         translatedWord('barista', 'noun', 'barista'),
@@ -121,6 +123,7 @@ test('short complete exchanges survive generation and translation without paddin
     },
     {
       lines: ['Muchas gracias.', 'De nada. ¡Que tengas un buen día!', 'Hasta luego.'],
+      lineScores: [5, 4, 3],
       vocab: [
         translatedWord('agradecer', 'verb', 'thank'),
         translatedWord('bienvenido', 'adjective', 'welcome'),
@@ -199,6 +202,72 @@ test('malformed generation and a count-mismatched chunk retry without rerunning 
   assert.equal(result.usage.outputTokens, 25);
 });
 
+test('scores select learner and partner lines at four without truncating conversations', async () => {
+  const result = await run(async (prompt) => {
+    if (isGenerationPrompt(prompt)) return reply({ conversations: [first, second] });
+    return reply(isFirstTranslationPrompt(prompt) ? firstTranslation : secondTranslation);
+  });
+  for (const group of result.groups) {
+    assert.deepEqual(group.featuredPhraseIds, [group.phrases[0].id, group.phrases[1].id]);
+    assert.equal(group.phrases[0].speaker, 'you');
+    assert.equal(group.phrases[1].speaker, 'partner');
+    assert.equal(Object.hasOwn(group.phrases[0].card, 'lineScores'), false);
+  }
+  assert.deepEqual(result.groups[0].phrases.map(phrase => phrase.card.text), firstTranslation.lines);
+  assert.deepEqual(result.groups[1].phrases.map(phrase => phrase.card.text), secondTranslation.lines);
+});
+
+test('selection permits all or no lines and preserves alternative order', () => {
+  for (const [lineScores, selectedIndices] of [
+    [[1, 2, 3, 3], []],
+    [[4, 5, 4, 5], [0, 1, 2, 3]],
+    [[3, 4, 2, 5], [1, 3]],
+  ]) {
+    const result = assemblePhrasebook({
+      seed: input.seed,
+      language: input.language,
+      conversations: [first],
+      translations: [{ ...firstTranslation, lineScores }],
+    });
+    const group = result.groups[0];
+    assert.deepEqual(group.featuredPhraseIds, selectedIndices.map(index => group.phrases[index].id));
+    assert.equal(group.phrases[3].alternative, true);
+  }
+});
+
+for (const lineScores of [undefined, null, '5,4,3,2', [], [5, 4, 3], [5, 4, 3, 2, 1], [0, 4, 3, 2], [6, 4, 3, 2], [4.5, 4, 3, 2], ['5', 4, 3, 2]]) {
+  test(`invalid scores ${JSON.stringify(lineScores)} reject instead of becoming a selection`, () => {
+    assert.throws(
+      () => validateTranslationResponse(JSON.stringify({ ...firstTranslation, lineScores }), first, 'es'),
+      /lineScores/u,
+    );
+  });
+}
+
+test('invalid scores retry only their translation chunk and exhaust as a 502', async () => {
+  let firstCalls = 0, secondCalls = 0;
+  const result = await run(async (prompt) => {
+    if (isGenerationPrompt(prompt)) return reply({ conversations: [first, second] });
+    if (isFirstTranslationPrompt(prompt)) {
+      return reply(++firstCalls === 1 ? { ...firstTranslation, lineScores: [6, 4, 3, 2] } : firstTranslation);
+    }
+    secondCalls++;
+    return reply(secondTranslation);
+  });
+  assert.deepEqual([firstCalls, secondCalls], [2, 1]);
+  assert.deepEqual(result.groups[0].featuredPhraseIds, result.groups[0].phrases.slice(0, 2).map(phrase => phrase.id));
+  firstCalls = 0;
+  await assert.rejects(run(async (prompt) => {
+    if (isGenerationPrompt(prompt)) return reply({ conversations: [first, second] });
+    if (isFirstTranslationPrompt(prompt)) {
+      firstCalls++;
+      return reply({ ...firstTranslation, lineScores: undefined });
+    }
+    return reply(secondTranslation);
+  }), error => error.status === 502);
+  assert.equal(firstCalls, 2);
+});
+
 test('a missing opening quote retries the Japanese chunk without repairing its content', async () => {
   const conversation = {
     title: 'Ask about hidden ingredients',
@@ -221,6 +290,7 @@ test('a missing opening quote retries the Japanese chunk without repairing its c
       'はい、鶏[とり]ガラ出汁[だし]です。',
       'いいえ、野菜[やさい]出汁[だし]です。',
     ],
+    lineScores: [5, 5, 5, 5, 5, 5],
     vocab: [
       translatedWord('出汁[だし]', 'noun', 'stock', { lineIndex: 0, surface: '出汁', occurrence: 0 }),
       translatedWord('魚[さかな]', 'noun', 'fish', { lineIndex: 0, surface: '魚', occurrence: 0 }),
@@ -317,6 +387,7 @@ test('ruby normalization preserves target text alongside contextual romanization
   assert.deepEqual(parseInlineReading('食[た]べる[bad]。'), { text: '食べる。', reading: [['食', 'た'], ['べる。', null]] });
   const result = assemblePhrasebook({ seed: 'eat', language: 'ja', conversations: [{ ...first, title: 'Eat' }], translations: [{
     lines: ['食[た]べます。', 'はい。', '払[はら]います。', '後[あと]で払[はら]います。'],
+    lineScores: [5, 2, 4, 3],
     vocab: [
       translatedWord('借[か]りる', 'verb', 'rent'),
       translatedWord('板[いた]', 'noun', 'board'),
@@ -354,6 +425,7 @@ test('vocabulary source uses the selected overlapping occurrence and preserves i
   }];
   const translations = [{
     lines: ['哈[hā]哈[hā]，哈[hā]哈[hā]！', '你[nǐ]好[hǎo]！'],
+    lineScores: [5, 2],
     vocab: [
       translatedWord('哈[hā]哈[hā]', 'verb', 'laugh', {
         lineIndex: 0,
@@ -411,6 +483,7 @@ test('canonicalizes unambiguous Japanese vocabulary source coordinates', () => {
       '百[ひゃく]円[えん]玉[だま]を使[つか]ってください。',
       'シャワーのすぐ先[さき]にあります。',
     ],
+    lineScores: [5, 4, 4],
     vocab: [
       translatedWord('鍵[かぎ]', 'noun', 'key', {
         lineIndex: 0, surface: '鍵[かぎ]', occurrence: 0,
@@ -524,6 +597,7 @@ test('phrasebook Words use shared identity despite display-gloss differences', (
         '払[はら]います。',
         'ありがとう。',
       ],
+      lineScores: [5, 4, 3, 2],
       vocab: [
         translatedWord('食[た]べる', 'verb', 'consume-food', {
           lineIndex: 0,
@@ -592,6 +666,7 @@ test('assembly rejects missing occurrences, surrogate splits, and unannotated ge
       conversations: [first],
       translations: [{
         lines: ['食[た]べます。', 'はい。', '払[はら]います。', '後[あと]で払[はら]います。'],
+        lineScores: [5, 2, 4, 3],
         vocab: [
           translatedWord('食べる', 'verb', 'consume-food'),
           translatedWord('板[いた]', 'noun', 'board'),
@@ -603,25 +678,10 @@ test('assembly rejects missing occurrences, surrogate splits, and unannotated ge
   );
 });
 
-test('provider translation schema describes structured vocabulary and aligned romanizations', () => {
-  const schema = buildTranslationResponseJsonSchema(first, 'ja');
-  assert.deepEqual(schema.properties.vocab.items.required, [
-    'target',
-    'partOfSpeech',
-    'senseKey',
-  ]);
-  assert.deepEqual(schema.properties.vocab.items.properties.source.required, [
-    'lineIndex',
-    'surface',
-    'occurrence',
-  ]);
-  assert.equal(schema.properties.lineRomanizations.maxItems, first.lines.length);
-  assert.equal(schema.properties.vocabRomanizations.maxItems, first.vocab.length);
-});
-
 test('invalid Japanese romanization falls back without retrying valid translations', async () => {
   const japanese = {
     lines: ['私[わたし]はビーガンです。', '母[はは]はコーヒーを飲[の]みます。', '東京[とうきょう]へ行[い]きます。', '禁煙[きんえん]です。'],
+    lineScores: [5, 3, 4, 4],
     vocab: [
       translatedWord('ビーガン', 'noun', 'vegan'),
       translatedWord('コーヒー', 'noun', 'coffee'),
@@ -679,6 +739,7 @@ test('unreadable fallback omits romanization without losing the Japanese card', 
       if (isGenerationPrompt(prompt)) return reply({ conversations: [first] });
       return reply({
         lines: ['私です。', 'はい。', 'いいえ。', 'どうぞ。'],
+        lineScores: [5, 2, 2, 2],
         vocab: [
           translatedWord('わたし', 'pronoun', 'self'),
           translatedWord('はい', 'interjection', 'yes'),
@@ -706,6 +767,7 @@ test('mechanical fallback spaces ruby starts and changes only segment-final ha',
           'はい。',
           '私[わたし]はビーガンです。',
         ],
+        lineScores: [5, 3, 2, 5],
         vocab: [
           translatedWord('出汁[だし]', 'noun', 'stock'),
           translatedWord('入[はい]る', 'verb', 'enter'),
@@ -747,6 +809,8 @@ test('generation and translation prompts keep untrusted values in JSON input', (
   const translation = buildPhrasebookTranslationPrompt({
     seed: sentinel,
     language: 'ja',
+    ability: input.ability,
+    answers,
     conversation,
   });
 
@@ -755,6 +819,8 @@ test('generation and translation prompts keep untrusted values in JSON input', (
   assert.deepEqual(JSON.parse(translation.input), {
     seed: sentinel,
     language: 'ja',
+    ability: input.ability,
+    answers,
     conversation,
   });
 

@@ -246,6 +246,12 @@ function buildTranslationResponseJsonSchema(conversation, language) {
         minItems: conversation.lines.length,
         maxItems: conversation.lines.length,
       },
+      lineScores: {
+        type: 'array',
+        items: { type: 'integer', minimum: 1, maximum: 5 },
+        minItems: conversation.lines.length,
+        maxItems: conversation.lines.length,
+      },
       vocab: {
         type: 'array',
         items: {
@@ -281,7 +287,7 @@ function buildTranslationResponseJsonSchema(conversation, language) {
         maxItems: conversation.vocab.length,
       },
     },
-    required: ['lines', 'vocab'],
+    required: ['lines', 'lineScores', 'vocab'],
     additionalProperties: false,
   };
   if (language === 'ja') {
@@ -316,6 +322,8 @@ async function translateConversation({
   const prompt = buildPhrasebookTranslationPrompt({
     seed: parsedRequest.seed,
     language: parsedRequest.language,
+    ability: parsedRequest.ability,
+    answers: parsedRequest.answers,
     conversation,
   });
   const responseJsonSchema = buildTranslationResponseJsonSchema(

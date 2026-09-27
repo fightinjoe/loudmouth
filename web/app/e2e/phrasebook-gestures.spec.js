@@ -49,9 +49,21 @@ test.beforeEach(async ({ page }) => {
     ui.transition('content/select-deck', { id: deck.id })
     if (ui.get('shell').exposed === 'background') ui.transition('shell/toggle')
   }, titles)
+  await expect(page.getByRole('tab', { name: 'Vocab', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: 'Hello', exact: true }).click()
   await expect(page.getByRole('tab', { name: 'Hello', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.waitForFunction(() => document.querySelector('#content-pane').getBoundingClientRect().left === 0)
+  await settlePage(page)
 })
+
+async function settlePage(page) {
+  await page.waitForFunction(() => {
+    const panel = document.querySelector('.deck-page:not([inert])')
+    const viewport = document.querySelector('.deck-pages')
+    return panel && viewport
+      && Math.abs(panel.getBoundingClientRect().left - viewport.getBoundingClientRect().left) < 1
+  })
+}
 
 async function swipe(page, from, to, { steps = 12, cancel = false } = {}) {
   const cdp = await page.context().newCDPSession(page)
@@ -73,18 +85,6 @@ async function expectPage(page, title, shell = 'foreground') {
   await expect.poll(() => page.evaluate(() => window.__loudmouth.ui.get('shell').exposed)).toBe(shell)
 }
 
-test('tabs fit their titles and show a partial third conversation', async ({ page }) => {
-  const geometry = await page.locator('.deck-tab').evaluateAll(tabs => tabs.map(tab => {
-    const text = document.createRange()
-    text.selectNodeContents(tab.querySelector('span'))
-    const rect = tab.getBoundingClientRect()
-    return { width: rect.width, textWidth: text.getBoundingClientRect().width, left: rect.left, right: rect.right }
-  }))
-  for (const tab of geometry) expect(tab.width - tab.textWidth).toBeCloseTo(32, 0)
-  expect(geometry[0].width).toBeLessThan(geometry[1].width)
-  expect(geometry[2].left).toBeLessThan(page.viewportSize().width)
-  expect(geometry[2].right).toBeGreaterThan(page.viewportSize().width)
-})
 
 test('repeated phrase occurrences keep distinct row keys through gesture reorder and reload', async ({ page }) => {
   const activeRows = page.locator('.deck-page:not([inert]) .card-row-wrapper')
@@ -135,6 +135,7 @@ test('repeated phrase occurrences keep distinct row keys through gesture reorder
     window.__loudmouth.ui.transition('content/select-deck', { id: deckId })
     window.__loudmouth.ui.transition('content/reload-deck')
   }, deckId)
+  await page.getByRole('tab', { name: 'Hello', exact: true }).click()
   await expect(page.getByRole('tab', { name: 'Hello', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect.poll(() => page.locator('.deck-page:not([inert]) .card-row-wrapper').evaluateAll(
     rows => rows.map(row => row.dataset.entryKey),
@@ -142,20 +143,23 @@ test('repeated phrase occurrences keep distinct row keys through gesture reorder
 })
 
 test('long drags and flicks navigate one page, then reveal navigation at the first page', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Vocab', exact: true }).click()
+  await settlePage(page)
   const right = page.viewportSize().width - 20
   await swipe(page, [right, 400], [70, 400])
-  await expectPage(page, titles[1])
+  await expectPage(page, 'Phrases')
   await swipe(page, [20, 400], [right, 400])
-  await expectPage(page, titles[0])
+  await expectPage(page, 'Vocab')
   await swipe(page, [right, 400], [right - 90, 400], { steps: 1 })
-  await expectPage(page, titles[1])
+  await expectPage(page, 'Phrases')
   await swipe(page, [20, 400], [110, 400], { steps: 1 })
-  await expectPage(page, titles[0])
+  await expectPage(page, 'Vocab')
   await swipe(page, [20, 400], [right, 400])
-  await expectPage(page, titles[0], 'background')
+  await expectPage(page, 'Vocab', 'background')
 })
 
 test('a slow horizontal drag keeps ownership when the finger drifts vertically', async ({ page }) => {
+  const initialScroll = await page.locator('.deck-pages').evaluate(el => el.scrollLeft)
   const cdp = await page.context().newCDPSession(page)
   const x = page.viewportSize().width - 40
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: 300 }] })
@@ -174,7 +178,7 @@ test('a slow horizontal drag keeps ownership when the finger drifts vertically',
     await page.waitForTimeout(30)
   }
   // The page must still follow the finger before release, not snap back.
-  await expect.poll(() => page.locator('.deck-pages').evaluate(el => el.scrollLeft)).toBe(100)
+  await expect.poll(() => page.locator('.deck-pages').evaluate(el => el.scrollLeft)).toBe(initialScroll + 100)
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
   await cdp.detach()
   await expectPage(page, titles[1])
@@ -192,5 +196,5 @@ test('interior, short, cancelled and vertical drags do not change conversations'
   await expectPage(page, titles[0])
   await swipe(page, [20, 500], [20, 250])
   await expectPage(page, titles[0])
-  await expect.poll(() => page.locator('[role="tabpanel"]').first().evaluate(panel => panel.scrollTop)).toBeGreaterThan(0)
+  await expect.poll(() => page.locator('[role="tabpanel"]:not([inert])').evaluate(panel => panel.scrollTop)).toBeGreaterThan(0)
 })

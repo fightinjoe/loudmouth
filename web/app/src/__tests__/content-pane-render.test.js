@@ -90,7 +90,7 @@ const groups = [
 ];
 
 describe("phrasebook joined-entry pages", () => {
-  it("preserves groupless order and duplicate-title group identity before Chunks and Vocab", () => {
+  it("opens learning collections before conversations while preserving groupless and duplicate-title group order", () => {
     const entries = [
       phrase("loose-new", "phrase-a", "newest", { position: 0 }),
       phrase("loose-old", "phrase-b", "older", { position: 1 }),
@@ -102,22 +102,24 @@ describe("phrasebook joined-entry pages", () => {
 
     const pages = getDeckPages(entries, groups);
     expect(pages.map((page) => page.key)).toEqual([
+      "vocab",
+      "phrases",
       "translations",
       "group:group-first",
       "group:group-later",
       "chunks",
-      "vocab",
     ]);
     expect(pages.map((page) => page.title)).toEqual([
+      "Vocab",
+      "Phrases",
       "Translations",
       "Ordering",
       "Ordering",
       "Chunks",
-      "Vocab",
     ]);
-    expect(pages[0].entries.map((entry) => entry.key)).toEqual(["loose-new", "loose-old"]);
-    expect(pages[1].entries.map((entry) => entry.key)).toEqual(["first-row"]);
-    expect(pages[2].entries.map((entry) => entry.key)).toEqual(["later-row"]);
+    expect(pages[2].entries.map((entry) => entry.key)).toEqual(["loose-new", "loose-old"]);
+    expect(pages[3].entries.map((entry) => entry.key)).toEqual(["first-row"]);
+    expect(pages[4].entries.map((entry) => entry.key)).toEqual(["later-row"]);
   });
 
   it("renders each repeated occurrence's interpretation, speaker, alternative, and entry key", () => {
@@ -138,7 +140,7 @@ describe("phrasebook joined-entry pages", () => {
     root.innerHTML = renderDeckBody(deck, entries, groups, "group:group-first");
 
     const tabs = [...root.querySelectorAll('[role="tab"]')];
-    expect(tabs.map((tab) => tab.textContent.trim())).toEqual(["Ordering", "Ordering", "Vocab"]);
+    expect(tabs.map((tab) => tab.textContent.trim())).toEqual(["Vocab", "Phrases", "Ordering", "Ordering"]);
     const rows = [...root.querySelectorAll('.deck-page[data-page-key="group:group-first"] .card-row-wrapper')];
     expect(rows.map((row) => row.dataset.entryKey)).toEqual(["occ-you", "occ-partner"]);
     expect(rows.map((row) => row.querySelector(".card-term-english").textContent)).toEqual([
@@ -219,7 +221,7 @@ describe("content rendering safety", () => {
 
     expect(root.querySelector("img")).toBeNull();
     expect(root.querySelector(".pane-header-title").textContent).toBe(injected);
-    expect(root.querySelector('[role="tab"]').textContent.trim()).toBe(injected);
+    expect(root.querySelector('[role="tab"][data-page-key="group:hostile-group"]').textContent.trim()).toBe(injected);
     expect(root.querySelector(".card-term-english").textContent).toBe(injected);
     expect(root.querySelector(".card-row-wrapper").dataset.entryKey).toBe(hostileKey);
     expect(root.querySelector(".card-star").dataset.cardId).toBe(hostileCardId);

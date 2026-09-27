@@ -13,9 +13,10 @@ import type { ContentDeck } from "./content-pane";
 export const TRANSLATIONS_PAGE_KEY = "translations";
 export const CHUNKS_PAGE_KEY = "chunks";
 export const VOCAB_PAGE_KEY = "vocab";
+export const PHRASES_PAGE_KEY = "phrases";
 export const STARRED_PAGE_KEY = "starred";
 
-export type DeckPageKind = "conversation" | "chunks" | "vocab" | "starred";
+export type DeckPageKind = "conversation" | "chunks" | "vocab" | "phrases" | "starred";
 
 export interface DeckPage {
   key: string;
@@ -55,7 +56,23 @@ export function getDeckPages(
 ): DeckPage[] {
   const phrases = entries.filter((entry) => entry.card.type === "phrase");
   const groupless = phrases.filter((entry) => entry.occurrence?.groupId === undefined);
-  const pages: DeckPage[] = [];
+  const seenPhrases = new Set<string>();
+  const featured = phrases.filter((entry) => {
+    if (!entry.occurrence?.featured || seenPhrases.has(entry.cardId)) return false;
+    seenPhrases.add(entry.cardId);
+    return true;
+  });
+  const pages: DeckPage[] = [{
+    key: VOCAB_PAGE_KEY,
+    title: "Vocab",
+    kind: "vocab",
+    entries: entries.filter((entry) => entry.card.type === "word"),
+  }, {
+    key: PHRASES_PAGE_KEY,
+    title: "Phrases",
+    kind: "phrases",
+    entries: featured,
+  }];
 
   if (groupless.length > 0) {
     pages.push({
@@ -88,27 +105,20 @@ export function getDeckPages(
     });
   }
 
-  pages.push({
-    key: VOCAB_PAGE_KEY,
-    title: "Vocab",
-    kind: "vocab",
-    entries: entries.filter((entry) => entry.card.type === "word"),
-  });
   const starredEntries: LibraryEntry[] = [];
   const seenMemberships = new Map<string, Set<string>>();
-  for (const page of pages) {
-    for (const entry of page.entries) {
-      const membership = entry.membership;
-      if (membership?.starredAt == null) continue;
-      let seenCards = seenMemberships.get(membership.deckId);
-      if (seenCards?.has(membership.cardId)) continue;
-      if (!seenCards) {
-        seenCards = new Set();
-        seenMemberships.set(membership.deckId, seenCards);
-      }
-      seenCards.add(membership.cardId);
-      starredEntries.push(entry);
+  // Match Review's saved entry order, independent of the learning collections.
+  for (const entry of entries) {
+    const membership = entry.membership;
+    if (membership?.starredAt == null) continue;
+    let seenCards = seenMemberships.get(membership.deckId);
+    if (seenCards?.has(membership.cardId)) continue;
+    if (!seenCards) {
+      seenCards = new Set();
+      seenMemberships.set(membership.deckId, seenCards);
     }
+    seenCards.add(membership.cardId);
+    starredEntries.push(entry);
   }
   if (starredEntries.length > 0) {
     pages.unshift({
@@ -133,6 +143,7 @@ export function normalizePageKey(
 
 function emptyPageMessage(kind: DeckPageKind): string {
   if (kind === "vocab") return "No vocabulary in this phrasebook.";
+  if (kind === "phrases") return "No highlighted phrases in this phrasebook. Explore the conversation tabs for more.";
   if (kind === "chunks") return "No chunks in this phrasebook.";
   if (kind === "starred") return "No starred cards in this phrasebook.";
   return "No phrases in this conversation.";
@@ -149,7 +160,7 @@ function renderPageEntries(
   return page.entries
     .map((entry) => renderCardRow(entry, readingDisplay, {
       readOnly,
-      conversation: page.kind !== "starred",
+      conversation: page.kind === "conversation",
     }))
     .join("");
 }
@@ -197,7 +208,7 @@ export function renderDeckPager(
         </div>
       </div>
       <div class="deck-star-status" data-region="starred-status" role="status" aria-live="polite" aria-atomic="true"></div>
-      <div class="deck-pages flex-1 min-h-0" data-region="deck-pages" aria-label="Swipe between conversation pages">
+      <div class="deck-pages flex-1 min-h-0" data-region="deck-pages" aria-label="Swipe between phrasebook pages">
         ${pages.map((page) => {
           const selected = page.key === activePageKey;
           const id = escapeHTML(encodeURIComponent(page.key));
@@ -233,7 +244,7 @@ export function renderBrowseCardsHTML(
   groups: readonly Group[],
 ): string {
   const pages = getDeckPages(entries, groups).filter(
-    (page) => page.kind !== "starred" && page.entries.length > 0,
+    (page) => page.kind !== "starred" && page.kind !== "phrases" && page.entries.length > 0,
   );
   if (pages.length === 0) {
     return '<div class="deck-view-empty text-center fg-secondary"><p>No cards in this library.</p></div>';

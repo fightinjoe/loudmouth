@@ -460,10 +460,10 @@ async function evaluateGeneration(state, handler, meta, body, formatMarker) {
   });
 }
 
-async function evaluateTranslation(state, handler, meta, { seed, language, conversation }, formatMarker) {
+async function evaluateTranslation(state, handler, meta, { seed, language, ability, answers, conversation }, formatMarker) {
   return evaluateCall(state, handler, meta, {
     stage: 'phrasebook-translation',
-    prompt: buildPhrasebookTranslationPrompt({ seed, language, conversation }),
+    prompt: buildPhrasebookTranslationPrompt({ seed, language, ability, answers, conversation }),
     validator: (raw) => validateTranslationResponse(raw, conversation, language),
     responseJsonSchema: buildTranslationResponseJsonSchema(conversation, language),
     formatMarker,
@@ -547,6 +547,8 @@ async function runBaselineLike(state, handler, selected, repetition, formatMarke
   const translations = await Promise.all(conversations.map((conversation) => evaluateTranslation(state, handler, meta, {
     seed: fixture.seed,
     language: fixture.language,
+    ability: fixture.ability,
+    answers: fixture.answers,
     conversation,
   }, formatMarker)));
   if (translations.some(({ value }) => !value)) return;
@@ -576,6 +578,8 @@ async function runFullPipeline(state, handler, meta, fixture, payload, formatMar
   const translations = await Promise.all(conversations.map((conversation) => evaluateTranslation(state, handler, meta, {
     seed,
     language: fixture.language,
+    ability: request.ability,
+    answers: request.answers,
     conversation,
   }, formatMarker)));
   if (translations.some(({ value }) => !value)) return;
@@ -605,6 +609,8 @@ async function runAttack(state, handler, selected, repetition, fixtures) {
         await evaluateTranslation(state, handler, meta, {
           seed: fixture.seed,
           language: fixture.language,
+          ability: fixture.ability,
+          answers: fixture.answers,
           conversation,
         }, fixtures.formatMarker);
       } else {

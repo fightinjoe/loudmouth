@@ -50,8 +50,13 @@ when saving. It never waits for naming or sends the title to `/phrasebook`.
 checklist topics. `answers` and `checklist` are top-level fields, not nested under a context object.
 
 Returns `{schemaVersion:2,title,groups,flags,usage}`. Each group is
-`{id,title,phrases:[{id,card:Phrase,speaker,alternative?:true}],vocab:Candidate[]}`.
+`{id,title,phrases:[{id,card:Phrase,speaker,alternative?:true}],featuredPhraseIds:string[],vocab:Candidate[]}`.
 Vocab candidates contain Word cards with explicit POS/senseKey and optional source Evidence.
+Every conversation line remains in `phrases`. Translation internally scores every line's contextual
+usefulness from 1–5 using the seed/topic, ability, and supplied answers; the API selects scores >=4
+into `featuredPhraseIds` in original order, including important partner replies. The list is required,
+unique, group-local, and may be empty. Scores are not exposed on cards. Missing, misaligned, or
+non-integer/out-of-range scores use the existing one-retry translation validation path.
 `flags` identifies vocabulary whose optional source was omitted or could not be resolved after
 normalization; those Words remain in the response. Group/phrase UUIDs are server draft handles,
 remapped at commit. Groups retain request index order, including duplicate titles. The client commits
@@ -207,6 +212,14 @@ runtime dev dependencies may have been pruned. Google documents custom build
 hooks and their dependency installation behavior in
 [Node.js buildpacks](https://docs.cloud.google.com/docs/buildpacks/nodejs).
 Do not override the build hook with an empty `GOOGLE_NODE_RUN_SCRIPTS`.
+
+The API development launcher does not watch source or prompt files: restart `npm run dev` after
+changing them. After a shared response-contract change, also restart the web app with
+`npm run dev -- --force` to rebuild Vite's cached schema dependency. Reload the browser and start
+a fresh creation flow; an in-progress flow can still hold a response fetched from the old server.
+For example, an old `/phrasebook` response has no `featuredPhraseIds` and cannot be committed by
+the current generated-phrasebook validator. Do not replace missing selection with an empty list:
+restart the stale processes so translation scoring and the filtered selection actually run.
 
 For parallel worktrees, `/add_worktree` copies only the main checkout's ignored
 `api/.env` when present and writes an ignored `api/.env.local` with `PORT=XYZ1`.
