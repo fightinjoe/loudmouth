@@ -95,7 +95,7 @@ describe('parseContextRequest', () => {
   test('rejects an unsupported language', () => {
     const parsed = parseContextRequest({ seed: 'surf vacation', language: 'fr' });
     assert.ok(parsed.error);
-    assert.deepEqual(parsed.supported, ['zh', 'ja', 'es', 'cs']);
+    assert.deepEqual(parsed.supported, ['zh', 'ja', 'es', 'cs', 'uk']);
   });
 
   test('rejects a client-selected llm', () => {
@@ -107,6 +107,13 @@ describe('parseContextRequest', () => {
     assert.ok(parseContextRequest(null).error);
     assert.ok(parseContextRequest([]).error);
   });
+});
+
+test('accepts Ukrainian context requests through the route', async () => {
+  const res = makeRes();
+  await handleContext({ body: { seed: 'ordering vegetarian food', language: 'uk' } }, res, makeRegistry());
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.checklist, JSON.parse(validModelOutput()).checklist);
 });
 
 describe('buildContextPrompt', () => {

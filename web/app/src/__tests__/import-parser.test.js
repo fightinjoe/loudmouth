@@ -49,6 +49,25 @@ describe('v2 content exchange',()=>{
     expect(reexported.cards).toEqual(expect.arrayContaining(parsed.cards));
     store.close(); restored.close();
   });
+  it('imports and reexports native Ukrainian without requiring readings',async()=>{
+    const candidates = [
+      {card:{type:'phrase',lang:'uk',text:'Де вокзал?',translation:'Where is the station?'}},
+      {card:{type:'word',lang:'uk',text:'вокзал',translation:'station',partOfSpeech:'noun',senseKey:'train-station'}},
+    ];
+    const parsed = parseCardBatch(JSON.stringify({schemaVersion:2,cards:candidates}));
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.cards).toEqual(candidates);
+    const store = createDb({indexedDB:new IDBFactory(),IDBKeyRange});
+    try {
+      await importCards(parsed.cards,null,store);
+      const reexported = parseCardBatch(toImportJson(await getCardsByLang('uk',store)));
+      expect(reexported.errors).toEqual([]);
+      expect(reexported.cards.sort((a,b)=>a.card.type.localeCompare(b.card.type)))
+        .toEqual([...candidates].sort((a,b)=>a.card.type.localeCompare(b.card.type)));
+    } finally {
+      store.close();
+    }
+  });
   it('exports repeated appearances once while merging distinct historical examples',()=>{
     const second = {...word.sources[0],snapshot:{...snapshot,translation:'No meat or fish for me.'}};
     const entry = {key:'first',cardId:'word',card:word.card,sources:word.sources};

@@ -13,7 +13,7 @@ const {
   japanesePronunciation,
 } = require('../reading');
 
-const LANGUAGES = Object.freeze(['zh', 'ja', 'es', 'cs']);
+const LANGUAGES = Object.freeze(['zh', 'ja', 'es', 'cs', 'uk']);
 const { ABILITIES, DEFAULT_ABILITY, sanitizeAbility } = require('../ability');
 
 const MAX_SEED_LENGTH = 200;
@@ -525,7 +525,7 @@ function assemblePhrasebook({ seed, language, conversations, translations }) {
       title: conversation.title,
       phrases,
       featuredPhraseIds: phrases
-        .filter((_, lineIndex) => translated.lineScores[lineIndex] >= 4)
+        .filter((phrase, lineIndex) => phrase.speaker === 'you' && translated.lineScores[lineIndex] >= 4)
         .map(phrase => phrase.id),
       vocab,
     };

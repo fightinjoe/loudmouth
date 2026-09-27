@@ -18,11 +18,17 @@ describe("openNewPhrasebookPanel", () => {
     expect(appEl.querySelector(".new-phrasebook-body").dataset.suggestion).toBe("false");
   });
 
-  it("pre-fills ability from the last-used-per-language preference when switching language", () => {
-    setLastAbility("ja", "conversational");
+  it.each(["ja", "uk"])("restores the remembered %s ability when switching languages", (lang) => {
+    setLastAbility(lang, "conversational");
     openNewPhrasebookPanel(appEl, () => {}, () => {});
     const langSelect = appEl.querySelector('[data-action="new-phrasebook/lang"]');
-    langSelect.value = "ja";
+    langSelect.value = lang;
+    langSelect.dispatchEvent(new Event("change"));
+    expect(appEl.querySelector('[data-action="new-phrasebook/ability"]').value).toBe("conversational");
+    langSelect.value = "es";
+    langSelect.dispatchEvent(new Event("change"));
+    expect(appEl.querySelector('[data-action="new-phrasebook/ability"]').value).toBe("basics");
+    langSelect.value = lang;
     langSelect.dispatchEvent(new Event("change"));
     expect(appEl.querySelector('[data-action="new-phrasebook/ability"]').value).toBe("conversational");
   });

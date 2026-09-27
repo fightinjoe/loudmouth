@@ -1,6 +1,6 @@
 # Loudmouth
 
-A mobile-first flashcard app for Chinese and Japanese vocabulary.
+A mobile-first phrasebook and flashcard app for Chinese, Japanese, Spanish, Czech and Ukrainian.
 
 ## Prerequisites
 

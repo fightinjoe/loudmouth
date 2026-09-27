@@ -26,7 +26,7 @@ const { getBackendName } = require('../llm-config');
 
 const { sanitizeAbility } = require('../ability');
 
-const LANGUAGES = ['zh', 'ja', 'es', 'cs'];
+const LANGUAGES = ['zh', 'ja', 'es', 'cs', 'uk'];
 const MAX_SEED_LENGTH = 200;
 
 // v03 hand-tests measured 194-333 output tokens across five seeds; 2,000 is

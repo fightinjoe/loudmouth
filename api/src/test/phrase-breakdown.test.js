@@ -434,6 +434,31 @@ test('calls one provider, preserves request evidence, validates the final v2 wir
   });
 });
 
+test('Ukrainian breakdown preserves Cyrillic spans and dictionary forms without ruby', async () => {
+  const body = request('uk', 'Я не їм м’яса.', 'I do not eat meat.');
+  const res = makeRes();
+  await handlePhraseBreakdown({ body }, res, {
+    [BACKEND]: async () => reply({
+      chunks: [
+        chunk('Я', [word('Я', 'я', 'I', { partOfSpeech: 'pronoun', senseKey: 'first-person' })]),
+        chunk('не їм', [word('їм', 'їсти', 'eat', { partOfSpeech: 'verb', senseKey: 'consume-food' })]),
+        chunk('м’яса', [word('м’яса', 'м’ясо', 'meat', { partOfSpeech: 'noun', senseKey: 'meat' })]),
+      ],
+    }),
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.chunks.map(({ start, end, text }) => ({ start, end, text })), [
+    { start: 0, end: 1, text: 'Я' },
+    { start: 2, end: 7, text: 'не їм' },
+    { start: 8, end: 13, text: 'м’яса' },
+  ]);
+  const meat = res.body.chunks[2].words[0];
+  assert.deepEqual(meat.card, { type: 'word', lang: 'uk', text: 'м’ясо', translation: 'meat', partOfSpeech: 'noun', senseKey: 'meat' });
+  assert.deepEqual(meat.sources[0], { snapshot: body.source.snapshot, span: { start: 8, end: 13 } });
+  assert.equal(res.body.chunks[2].target.kind, 'chunk');
+  assert.equal(res.body.chunks[2].target.card.lang, 'uk');
+});
+
 test('returns 502 for provider failures, malformed output, invalid usage, and timeouts', async () => {
   const body = request('zh', '谢谢。', 'Thank you.');
   const validOutput = {

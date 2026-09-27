@@ -16,7 +16,7 @@ Existing phrases use **`/phrase-breakdown`**.
 ```
 
 `seed` is required, trimmed, and limited to 200 characters. `language` must be one of `zh`, `ja`,
-`es`, or `cs`. Optional `ability` accepts `none`, `basics`, or `conversational`; invalid
+`es`, `cs`, or `uk` (Ukrainian). Optional `ability` accepts `none`, `basics`, or `conversational`; invalid
 values are ignored. The prompt uses known ability and leaves proficiency questions to the client.
 
 Returns `{ questions, checklist, usage }`. Questions have `label` and `options`; the **first option**
@@ -53,9 +53,11 @@ Returns `{schemaVersion:2,title,groups,flags,usage}`. Each group is
 `{id,title,phrases:[{id,card:Phrase,speaker,alternative?:true}],featuredPhraseIds:string[],vocab:Candidate[]}`.
 Vocab candidates contain Word cards with explicit POS/senseKey and optional source Evidence.
 Every conversation line remains in `phrases`. Translation internally scores every line's contextual
-usefulness from 1–5 using the seed/topic, ability, and supplied answers; the API selects scores >=4
-into `featuredPhraseIds` in original order, including important partner replies. The list is required,
-unique, group-local, and may be empty. Scores are not exposed on cards. Missing, misaligned, or
+usefulness from 1–5 using the seed/topic, ability, and supplied answers; the API selects learner
+(`speaker: "you"`) lines scoring >=4 into `featuredPhraseIds` in original order. Partner lines are
+still scored and retained, but never featured. The list is required, unique, group-local, and may be empty.
+The wire validator also enforces learner eligibility; stored client selections are not migrated.
+Scores are not exposed on cards. Missing, misaligned, or
 non-integer/out-of-range scores use the existing one-retry translation validation path.
 `flags` identifies vocabulary whose optional source was omitted or could not be resolved after
 normalization; those Words remain in the response. Group/phrase UUIDs are server draft handles,
@@ -81,7 +83,7 @@ limits, and returns no partial phrasebook. See API_DESIGN for exact bounds and d
 }
 ```
 
-Snapshot lang supports `zh`, `ja`, `es`, `cs`; exact text/translation are nonblank and ≤2,000 UTF-16
+Snapshot lang supports `zh`, `ja`, `es`, `cs`, `uk`; exact text/translation are nonblank and ≤2,000 UTF-16
 units. Source may include aligned reading tokens, romanization and advisory card/occurrence refs.
 Optional context contains active-book generation `{seed,ability,answers}`, groupTitle and speaker.
 The model receives snapshot/context, never IDs. Old flat requests are rejected.
@@ -91,10 +93,12 @@ Returns `{schemaVersion:2,chunks,flags,usage}`. Each meaningful chunk contains
 `{kind:'word',index}` or `{kind:'chunk',card:Chunk}` target. There are 1–32 ordered source-aligned
 chunks and 0–32 Words per chunk. Word sources retain exact request snapshots and selected spans;
 dictionary readings align to their own headwords, never inflected source forms. Japanese/Chinese
-generated Words require readings. Spanish/Czech generated Words omit readings; model-supplied
+generated Words require readings. Spanish/Czech/Ukrainian generated Words omit readings; model-supplied
 `reading` fields (including `null`) are discarded. Every meaningful source character is covered;
 bounds cannot split surrogate pairs. Explicit equivalence collapses `caluroso` to one Word target but retains independent
 Chunk/Word targets for `食べません`/`食べる`. See API_DESIGN for model fields, offsets and all limits.
+Ukrainian targets retain native Cyrillic, without forced romanization or ruby readings. Ukrainian
+support does not change schema version 2; deploy the API, gateway, shared schema, and web together.
 
 Word source evidence is optional: a dictionary form such as `眠い` need not occur literally in an
 inflected source such as `眠くなってきたのかも`. Missing or unresolved surface/occurrence hints retain

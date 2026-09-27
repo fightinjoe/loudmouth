@@ -58,20 +58,21 @@ export function getDeckPages(
   const groupless = phrases.filter((entry) => entry.occurrence?.groupId === undefined);
   const seenPhrases = new Set<string>();
   const featured = phrases.filter((entry) => {
-    if (!entry.occurrence?.featured || seenPhrases.has(entry.cardId)) return false;
+    if (!entry.occurrence?.featured || entry.occurrence.speaker !== "you"
+      || seenPhrases.has(entry.cardId)) return false;
     seenPhrases.add(entry.cardId);
     return true;
   });
   const pages: DeckPage[] = [{
-    key: VOCAB_PAGE_KEY,
-    title: "Vocab",
-    kind: "vocab",
-    entries: entries.filter((entry) => entry.card.type === "word"),
-  }, {
     key: PHRASES_PAGE_KEY,
     title: "Phrases",
     kind: "phrases",
     entries: featured,
+  }, {
+    key: VOCAB_PAGE_KEY,
+    title: "Vocab",
+    kind: "vocab",
+    entries: entries.filter((entry) => entry.card.type === "word"),
   }];
 
   if (groupless.length > 0) {

@@ -271,7 +271,7 @@ describe("phrasebook-scoped membership stars", () => {
     mocks.toggleCardStar.mockResolvedValue({ cardId: "word", starredAt: null });
     next.click();
     await flush();
-    expect(view.ui.get("content").pageKey).toBe("vocab");
+    expect(view.ui.get("content").pageKey).toBe("phrases");
     expect(document.activeElement).toBe(view.rootEl.querySelector('.deck-tab[aria-selected="true"]'));
     expect(view.rootEl.querySelector(".deck-star-tab")).toBeNull();
     expect(view.ui.get("content").cards).toHaveLength(3);

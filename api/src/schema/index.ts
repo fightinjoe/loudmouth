@@ -1,6 +1,6 @@
 export const SCHEMA_VERSION = 2 as const;
 
-export type Lang = 'zh' | 'ja' | 'es' | 'cs';
+export type Lang = 'zh' | 'ja' | 'es' | 'cs' | 'uk';
 export type ReadingToken = [string, string | null];
 export type PartOfSpeech =
   | 'noun'
@@ -176,7 +176,7 @@ export type CardBatch = {
   cards: Candidate[];
 };
 
-const LANGS: readonly Lang[] = ['zh', 'ja', 'es', 'cs'];
+const LANGS: readonly Lang[] = ['zh', 'ja', 'es', 'cs', 'uk'];
 export const PARTS_OF_SPEECH: readonly PartOfSpeech[] = [
   'noun',
   'verb',
@@ -593,7 +593,7 @@ export function validatePhrasebookResponse(value: unknown): PhrasebookResponse {
       throw new Error(`${groupPrefix}.phrases must contain ${MIN_PHRASES} to ${MAX_PHRASES} items`);
     }
 
-    const phrases = new Map<string, Phrase>();
+    const phrases = new Map<string, PhrasebookPhrase>();
     for (let phraseIndex = 0; phraseIndex < group.phrases.length; phraseIndex += 1) {
       const phrasePrefix = `${groupPrefix}.phrases[${phraseIndex}]`;
       const phrase = objectValue(group.phrases[phraseIndex], phrasePrefix);
@@ -612,7 +612,7 @@ export function validatePhrasebookResponse(value: unknown): PhrasebookResponse {
       if (Object.hasOwn(phrase, 'alternative') && phrase.alternative !== true) {
         throw new Error(`${phrasePrefix}.alternative must be true when present`);
       }
-      phrases.set(phraseId, card);
+      phrases.set(phraseId, phrase as PhrasebookPhrase);
     }
 
     if (!Array.isArray(group.featuredPhraseIds)) {
@@ -623,6 +623,7 @@ export function validatePhrasebookResponse(value: unknown): PhrasebookResponse {
       const prefix = `${groupPrefix}.featuredPhraseIds[${index}]`;
       const id = nonblankString(group.featuredPhraseIds[index], prefix);
       if (!phrases.has(id)) throw new Error(`${prefix} must reference a phrase in its owning group`);
+      if (phrases.get(id)!.speaker !== 'you') throw new Error(`${prefix} must reference learner speech`);
       if (featuredIds.has(id)) throw new Error(`${prefix} must be unique`);
       featuredIds.add(id);
     }
@@ -655,7 +656,7 @@ export function validatePhrasebookResponse(value: unknown): PhrasebookResponse {
           if (source.ref?.cardId !== undefined) {
             throw new Error(`${sourcePrefix}.ref.cardId is not valid for an unsaved phrase draft`);
           }
-          const phrase = phrases.get(occurrenceId);
+          const phrase = phrases.get(occurrenceId)?.card;
           if (phrase === undefined) {
             throw new Error(`${sourcePrefix}.ref.occurrenceId must reference a phrase in its owning group`);
           }

@@ -49,7 +49,7 @@ test.beforeEach(async ({ page }) => {
     ui.transition('content/select-deck', { id: deck.id })
     if (ui.get('shell').exposed === 'background') ui.transition('shell/toggle')
   }, titles)
-  await expect(page.getByRole('tab', { name: 'Vocab', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Phrases', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('tab', { name: 'Hello', exact: true }).click()
   await expect(page.getByRole('tab', { name: 'Hello', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.waitForFunction(() => document.querySelector('#content-pane').getBoundingClientRect().left === 0)
@@ -143,19 +143,19 @@ test('repeated phrase occurrences keep distinct row keys through gesture reorder
 })
 
 test('long drags and flicks navigate one page, then reveal navigation at the first page', async ({ page }) => {
-  await page.getByRole('tab', { name: 'Vocab', exact: true }).click()
+  await page.getByRole('tab', { name: 'Phrases', exact: true }).click()
   await settlePage(page)
   const right = page.viewportSize().width - 20
   await swipe(page, [right, 400], [70, 400])
-  await expectPage(page, 'Phrases')
-  await swipe(page, [20, 400], [right, 400])
   await expectPage(page, 'Vocab')
+  await swipe(page, [20, 400], [right, 400])
+  await expectPage(page, 'Phrases')
   await swipe(page, [right, 400], [right - 90, 400], { steps: 1 })
-  await expectPage(page, 'Phrases')
-  await swipe(page, [20, 400], [110, 400], { steps: 1 })
   await expectPage(page, 'Vocab')
+  await swipe(page, [20, 400], [110, 400], { steps: 1 })
+  await expectPage(page, 'Phrases')
   await swipe(page, [20, 400], [right, 400])
-  await expectPage(page, 'Vocab', 'background')
+  await expectPage(page, 'Phrases', 'background')
 })
 
 test('a slow horizontal drag keeps ownership when the finger drifts vertically', async ({ page }) => {

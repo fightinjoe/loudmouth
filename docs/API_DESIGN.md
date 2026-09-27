@@ -55,7 +55,8 @@ discarding otherwise valid content.
 
 ## Shared conventions
 
-- Supported languages: `zh`, `ja`, `es`, `cs`.
+- Supported languages: `zh`, `ja`, `es`, `cs`, `uk` (Ukrainian). Ukrainian uses native Cyrillic,
+  without required ruby readings or romanization. Schema version remains 2; API, gateway, and web deploy together.
 - Backend selection is server-owned: `LLM_BACKEND=gemini-3.5-flash-lite` by default.
   Other configuration values are `g-flash` (Gemini 3.8 Flash), `claude` (Claude Haiku 4.5),
   and `chatgpt` (GPT-5.6 Luna). `google` is not an alias.
@@ -144,7 +145,7 @@ endpoint makes one model call and does not retry invalid model output.
 ```json
 {
   "seed": "salsa dancing in Austin, TX",
-  "language": "zh | ja | es | cs"
+  "language": "zh | ja | es | cs | uk"
 }
 ```
 
@@ -391,7 +392,7 @@ punctuation/whitespace gaps permitted. Words carry dictionary-form readings and 
 Word source Evidence is optional enrichment: a valid dictionary Word survives even when its source
 hint cannot be matched. Every present Evidence must match the request's exact snapshot/refs and have
 a span inside its chunk. Japanese/Chinese generated Words require aligned ReadingToken arrays;
-Spanish/Czech generated Words omit readings: any model-supplied `reading`, including `null`, is
+Spanish/Czech/Ukrainian generated Words omit readings: any model-supplied `reading`, including `null`, is
 discarded before card validation. Structural validation does not prove phonetic accuracy.
 
 The model emits the smaller shape:
@@ -536,7 +537,7 @@ and otherwise returns the word with a `vocab-source-missing` flag.
 ```
 
 - `seed` is required, non-empty, and at most 200 characters.
-- `language` is required: `zh`, `ja`, `es`, or `cs`.
+- `language` is required: `zh`, `ja`, `es`, `cs`, or `uk`.
 - `ability` accepts exactly `none`, `basics`, or `conversational`. Missing or invalid values
   (including wrong types, casing, or whitespace) are ignored and default to `basics`. Only the
   sanitized enum reaches the generation and translation prompts.
@@ -607,9 +608,11 @@ library IDs. Phrase drafts own `speaker` and optional `alternative:true`; an alt
 an earlier same-speaker line, not immediate adjacency. Cards contain neither context nor JSON notes.
 
 Every group requires `featuredPhraseIds`: unique draft phrase IDs belonging to that group, in original
-conversation order. It may be empty. The server selects lines whose internal usefulness score is
-at least 4; both learner speech and important partner replies qualify. The complete `phrases` array
-is retained regardless of scores. Scores are not card fields and are not exposed on the wire.
+conversation order. It may be empty. The server selects only learner (`speaker: "you"`) lines whose
+internal usefulness score is at least 4. Partner lines receive scores under the same rubric but never
+qualify for selection. The wire validator enforces learner eligibility; persisted client data is not
+migrated. The complete `phrases` array is retained regardless of scores. Scores are not card fields
+and are not exposed on the wire.
 
 The translation model receives the seed, topic, sanitized ability, supplied answers, and full
 conversation. It returns required `lineScores`, exactly aligned to all translated lines, containing
@@ -684,8 +687,8 @@ client-stored cards are not rewritten; new `/phrasebook` responses use these rul
    affected chunk once, just like other malformed required content. Normalize source comparison
    strings and unambiguous single-match occurrence numbering. An omitted, malformed, or unresolved
    optional source produces a flag instead of a retry. Never return a partially translated phrasebook.
-6. Normalize readings, assemble common cards and evidence, select group-local phrase IDs at score
-   >=4 without dropping conversation lines, aggregate flags and usage, then validate the wire response.
+6. Normalize readings, assemble common cards and evidence, select group-local learner phrase IDs
+   at score >=4 without dropping conversation lines, aggregate flags and usage, then validate the wire response.
 
 Each logical model attempt has a 15-second budget on the default backend or the adapter's extended
 60-second budget. That budget includes up to three `429` retries with 2/4/8-second backoff. Generation
@@ -711,11 +714,11 @@ surrounding Markdown JSON fences are accepted, malformed JSON is not repaired. O
 ignore the schema option and retain prompt-and-validation handling. No validator proves linguistic
 correctness.
 
-Reading rules are inserted into `{{READING_RULES}}`; Spanish and Czech insert an empty string.
+Reading rules are inserted into `{{READING_RULES}}`; Spanish, Czech, and Ukrainian insert an empty string.
 
 #### Translation scoring live check
 
-The approved scoring change was compared against the preceding prompt with the configured
+The earlier scoring change (before learner-only selection) was compared against the preceding prompt with the configured
 `gemini-3.5-flash-lite` backend, using the same fixed English conversations once before and once
 after. Each response passed translation parsing, complete assembly, and shared wire validation:
 
@@ -731,6 +734,45 @@ dosage, and a driving warning. These single-run translation measurements are not
 estimates or statistically reliable performance comparisons. They do not certify language quality:
 the after-run Japanese thanks contained `ごさいます` rather than `ございます`, and Chinese raw output
 included punctuation reading annotations. No native-speaker review or Czech run was performed.
+
+#### Ukrainian and learner-only variation live check
+
+The four approved prompts were sampled before and after the language-list extension using
+`gemini-3.5-flash-lite`, identical vegetarian-food tasks, production prompt builders and validators,
+and the production translation response schema. One sample per language/stage:
+
+| Language / stage | Latency before → after (ms) | Input tokens before → after | Output tokens before → after |
+| --- | --- | --- | --- |
+| Japanese context | 5,985 → 5,666 | 1,008 → 1,014 | 291 → 292 |
+| Japanese generation | 1,214 → 1,353 | 1,393 → 1,399 | 324 → 349 |
+| Japanese translation | 1,640 → 1,504 | 2,630 → 2,664 | 344 → 355 |
+| Japanese breakdown | 1,377 → 1,439 | 1,147 → 1,183 | 411 → 350 |
+| Ukrainian context | 1,296 → 1,248 | 1,008 → 1,014 | 280 → 282 |
+| Ukrainian generation | 1,158 → 1,429 | 1,393 → 1,399 | 350 → 335 |
+| Ukrainian translation | 1,240 → 1,774 | 1,913 → 1,947 | 257 → 383 |
+| Ukrainian breakdown | 1,738 → 1,757 | 1,151 → 1,187 | 430 → 426 |
+
+Before the change, all Ukrainian endpoint request contracts rejected `uk`; those baseline calls
+were prompt-only samples, not working endpoint requests. Their translation/card assembly and
+breakdown validation rejected the unsupported language. Baseline Japanese translation failed
+dictionary Han reading validation. Every candidate passed production validation, including both
+translation wire responses after correcting the evaluation harness's incomplete usage object.
+The Japanese reading rules and 1–5 scoring rubric were unchanged.
+
+Both candidate translations kept all five lines and selected the two qualifying learner lines;
+high-scoring partner disclosures and generic thanks remained visible only in the complete dialogue.
+Ukrainian output retained Cyrillic and dictionary forms such as `їсти`; no ruby was required.
+A separate real-provider production-handler smoke returned 200 for Ukrainian context, phrasebook,
+and breakdown: 5,264 / 2,703 / 1,915 ms respectively, with 280 / 851 / 599 output tokens.
+The generated book contained two groups, eight complete lines, five featured learner lines, and nine Words.
+
+These are single samples, not a performance benchmark or native-speaker certification. In both
+Ukrainian breakdown samples the model treated the whole short sentence as one chunk and overstated
+the requirement for genitive under negation. Optional romanization and `reading: null` also appeared
+in raw Ukrainian breakdown Words; reading was discarded by the existing non-Japanese/Chinese path.
+The Japanese generation sample changed a payment amount from yen to dollars without a specified
+location. Structural checks do not establish teaching quality or cultural appropriateness.
+
 
 ### Client integration
 

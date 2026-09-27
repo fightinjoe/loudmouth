@@ -10,6 +10,7 @@ export const ttsAvailable = typeof window !== "undefined" && "speechSynthesis" i
 const LANG_MAP: Partial<Record<Lang, string>> = {
   zh: "zh-CN",
   ja: "ja-JP",
+  uk: "uk-UA",
 };
 
 /** Speaks text with the browser Web Speech API when it is available. */

@@ -552,6 +552,66 @@ describe("backup validation and atomic restore", () => {
     expect(await exportAllData(fresh)).toEqual(backup);
   });
 
+  it("preserves Ukrainian edits and the existing library across a backup round trip", async () => {
+    const existing = await createBook("Existing Spanish");
+    const existingEntries = await getCards(existing.id, store);
+    const deck = await commitPhrasebook({
+      name: "At the café",
+      lang: "uk",
+      generation: { seed: "café", ability: "basics", answers: {} },
+      groups: [{
+        id: "cafe",
+        title: "Ordering",
+        phrases: [{
+          id: "order",
+          card: { type: "phrase", lang: "uk", text: "Каву, будь ласка.", translation: "Coffee, please." },
+          speaker: "you",
+        }, {
+          id: "reply",
+          card: { type: "phrase", lang: "uk", text: "Звичайно.", translation: "Of course." },
+          speaker: "partner",
+        }],
+        featuredPhraseIds: ["order"],
+        vocab: [{
+          card: { type: "word", lang: "uk", text: "кава", translation: "coffee", partOfSpeech: "noun", senseKey: "coffee" },
+        }],
+      }],
+      selectedIndexes: [0],
+    }, { store });
+    const order = (await getCards(deck.id, store)).find((entry) => entry.occurrence?.speaker === "you");
+    await updateCard(order.cardId, { text: "Чай, будь ласка.", translation: "Tea, please." }, {
+      occurrenceId: order.occurrence.id,
+      store,
+    });
+    await toggleCardStar(deck.id, { cardId: order.cardId }, store);
+    const backup = await exportAllData(store);
+    const fresh = createDb({ indexedDB: new IDBFactory(), IDBKeyRange });
+    try {
+      await restoreAllData(backup, fresh);
+      expect(await exportAllData(fresh)).toEqual(backup);
+      expect(await getCards(existing.id, fresh)).toEqual(existingEntries);
+      expect(await fresh.decks.get(deck.id)).toMatchObject({ lang: "uk", generation: { ability: "basics" } });
+      const restored = await getCards(deck.id, fresh);
+      expect(restored.find((entry) => entry.cardId === order.cardId)).toMatchObject({
+        card: { lang: "uk", text: "Чай, будь ласка.", translation: "Tea, please." },
+        occurrence: { speaker: "you", featured: true, translation: "Tea, please." },
+      });
+      expect(restored.find((entry) => entry.occurrence?.speaker === "partner").card.text).toBe("Звичайно.");
+      expect((await getReviewCards(deck.id, fresh)).map((entry) => entry.cardId)).toEqual([order.cardId]);
+    } finally {
+      fresh.close();
+    }
+  });
+
+  it("restores historical partner featured flags without rewriting the backup", async () => {
+    const backup = await populatedBackup();
+    backup.occurrences[0].speaker = "partner";
+    await restoreAllData(backup, store);
+    expect(await exportAllData(store)).toEqual(backup);
+    expect((await getCards(backup.decks[0].id, store)).find((entry) => entry.occurrence)?.occurrence)
+      .toMatchObject({ speaker: "partner", featured: true });
+  });
+
   it("restores unscored v2 books without inventing selected occurrences", async () => {
     const backup = await populatedBackup();
     delete backup.occurrences[0].featured;

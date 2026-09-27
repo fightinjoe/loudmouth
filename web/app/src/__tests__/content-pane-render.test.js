@@ -42,6 +42,7 @@ const phrase = (key, cardId, translation, occurrence = {}) => ({
     ...(occurrence.groupId ? { groupId: occurrence.groupId } : {}),
     ...(occurrence.speaker ? { speaker: occurrence.speaker } : {}),
     ...(occurrence.alternative ? { alternative: true } : {}),
+    ...(occurrence.featured ? { featured: true } : {}),
   },
   sources: [],
 });
@@ -102,16 +103,16 @@ describe("phrasebook joined-entry pages", () => {
 
     const pages = getDeckPages(entries, groups);
     expect(pages.map((page) => page.key)).toEqual([
-      "vocab",
       "phrases",
+      "vocab",
       "translations",
       "group:group-first",
       "group:group-later",
       "chunks",
     ]);
     expect(pages.map((page) => page.title)).toEqual([
-      "Vocab",
       "Phrases",
+      "Vocab",
       "Translations",
       "Ordering",
       "Ordering",
@@ -140,7 +141,7 @@ describe("phrasebook joined-entry pages", () => {
     root.innerHTML = renderDeckBody(deck, entries, groups, "group:group-first");
 
     const tabs = [...root.querySelectorAll('[role="tab"]')];
-    expect(tabs.map((tab) => tab.textContent.trim())).toEqual(["Vocab", "Phrases", "Ordering", "Ordering"]);
+    expect(tabs.map((tab) => tab.textContent.trim())).toEqual(["Phrases", "Vocab", "Ordering", "Ordering"]);
     const rows = [...root.querySelectorAll('.deck-page[data-page-key="group:group-first"] .card-row-wrapper')];
     expect(rows.map((row) => row.dataset.entryKey)).toEqual(["occ-you", "occ-partner"]);
     expect(rows.map((row) => row.querySelector(".card-term-english").textContent)).toEqual([
@@ -150,6 +151,34 @@ describe("phrasebook joined-entry pages", () => {
     expect(rows[0].dataset.speaker).toBe("you");
     expect(rows[1].dataset.speaker).toBe("partner");
     expect(rows[1].querySelector(".card-alternative").textContent).toBe("or");
+  });
+
+  it("shows only featured learner occurrences, even when a responder shares the same card", () => {
+    const entries = [
+      phrase("partner-first", "shared", "Their interpretation", {
+        groupId: "group-first", speaker: "partner", featured: true,
+      }),
+      phrase("learner", "shared", "My interpretation", {
+        groupId: "group-first", speaker: "you", featured: true,
+      }),
+      phrase("learner-repeat", "shared", "Another occurrence", {
+        groupId: "group-later", speaker: "you", featured: true,
+      }),
+      phrase("low-value", "filler", "Routine filler", {
+        groupId: "group-first", speaker: "you",
+      }),
+      phrase("unassigned", "unknown", "No known speaker", { featured: true }),
+    ];
+    const root = document.createElement("div");
+    root.innerHTML = renderDeckBody(deck, entries, groups, null);
+    expect(root.querySelector('[role="tab"][aria-selected="true"]').dataset.pageKey).toBe("phrases");
+    const collection = root.querySelector('.deck-page[data-page-key="phrases"]');
+    expect([...collection.querySelectorAll(".card-row-wrapper")].map(row => row.dataset.entryKey))
+      .toEqual(["learner"]);
+    expect(collection.querySelector(".card-term-english").textContent).toBe("My interpretation");
+    expect(collection.querySelector("[data-speaker]")).toBeNull();
+    expect(root.querySelectorAll('.deck-page[data-page-kind="conversation"] .card-row-wrapper'))
+      .toHaveLength(5);
   });
 
   it("renders Chunks in full highlighted historical context", () => {

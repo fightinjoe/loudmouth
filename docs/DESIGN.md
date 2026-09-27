@@ -86,14 +86,16 @@ Historical setup preferences are not inferred or migrated to the new scale.
 
 ## Phrasebook view
 
-On web, a saved phrasebook renders joined library entries rather than a flat card list. **Vocab** is
-the first tab and the default on opening a phrasebook, including immediately after creation. **Phrases**
-is second: a neutral, full-width collection of useful speech and important replies from the selected
+On web, a saved phrasebook renders joined library entries rather than a flat card list. **Phrases** is
+the first tab and the default on opening a phrasebook, including immediately after creation. **Vocab**
+is second. Phrases is a neutral, full-width collection of useful learner speech from the selected
 conversations, styled like Vocab rather than dialogue bubbles. Translation scores each line's contextual
-value internally from 1–5; the API selects 4–5 and the client persists that selection per occurrence.
-Phrases shows each card once, using its first selected occurrence's translation. Scores are not shown
-and selection does not star cards. Unscored older phrasebooks have an empty Phrases collection; their
-conversations remain available.
+value internally from 1–5; the API selects learner (`speaker:"you"`) lines scored 4–5 and the client
+persists that selection per occurrence. Partner replies remain in their complete conversation tabs.
+Phrases shows each card once, using its first selected learner occurrence's translation. Existing
+stored partner selections are excluded before deduplication. Scores are not shown and selection does
+not star cards. Unscored older phrasebooks have an empty Phrases collection; their conversations remain
+available.
 
 Group-less Phrase occurrences occupy **Translations** next when present, followed by one tab and
 horizontally sliding page per stored Group in group-position order. Group IDs, not titles, identify

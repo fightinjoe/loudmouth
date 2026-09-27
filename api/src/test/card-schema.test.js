@@ -122,6 +122,9 @@ test('phrasebook draft evidence and featured selection stay within their convers
   const noSelection = structuredClone(response);
   noSelection.groups[0].featuredPhraseIds = [];
   assert.deepEqual(validatePhrasebookResponse(noSelection).groups[0].featuredPhraseIds, []);
+  const partnerSelection = structuredClone(response);
+  partnerSelection.groups[0].featuredPhraseIds = [partnerSelection.groups[0].phrases[1].id];
+  assert.throws(() => validatePhrasebookResponse(partnerSelection), /featuredPhraseIds.*learner speech/u);
   for (const featuredPhraseIds of [undefined, null, id, [id, id], [groupId], [''], [4]]) {
     const invalid = structuredClone(response);
     invalid.groups[0].featuredPhraseIds = featuredPhraseIds;

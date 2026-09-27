@@ -113,7 +113,7 @@ paths:
                 description: Situation, activity, or topic. Max 200 characters.
               language:
                 type: string
-                enum: [zh, ja, es, cs]
+                enum: [zh, ja, es, cs, uk]
       responses:
         200:
           description: Clarifying questions, checklist, and model usage
@@ -174,7 +174,7 @@ paths:
                 description: Situation, activity, or topic. Max 200 characters.
               language:
                 type: string
-                enum: [zh, ja, es, cs]
+                enum: [zh, ja, es, cs, uk]
               ability:
                 type: string
                 enum: [none, basics, conversational]
@@ -241,7 +241,7 @@ definitions:
     properties:
       lang:
         type: string
-        enum: [zh, ja, es, cs]
+        enum: [zh, ja, es, cs, uk]
       text:
         type: string
         minLength: 1
@@ -343,7 +343,7 @@ definitions:
         enum: [word, phrase, chunk]
       lang:
         type: string
-        enum: [zh, ja, es, cs]
+        enum: [zh, ja, es, cs, uk]
       text:
         type: string
         minLength: 1

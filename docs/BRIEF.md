@@ -12,8 +12,8 @@ description: >
 Catchphrase creates bespoke, situation-specific phrasebooks through a short guided conversation. A
 learner describes an upcoming situation, answers a few context questions, chooses which conversations
 to prepare, and receives a phrasebook of several short two-sided conversations plus the key vocabulary
-drawn from them. The learner reviews it in short sessions. On web, **Vocab** opens first, followed by
-**Phrases**, a curated collection drawn from the conversations. Each complete conversation remains
+drawn from them. The learner reviews it in short sessions. On web, **Phrases** opens first with a
+curated collection of useful learner speech, followed by **Vocab**. Each complete conversation remains
 available in its own swipeable tab/page, followed by saved Chunks. A pinned Starred tab browses unique
 starred memberships; Review uses the same phrasebook-scoped set.
 
@@ -24,7 +24,7 @@ partner's parents, a clinic visit, or a dance class. Generic courses and diction
 too much curriculum or too little situational help. The product's job is to help the learner say and
 understand what matters in that room.
 
-Initial product languages are Chinese and Japanese. The API also supports Spanish and Czech.
+The web app and API support Chinese, Japanese, Spanish, Czech, and Ukrainian.
 
 ## Product principles
 
@@ -47,7 +47,7 @@ Initial product languages are Chinese and Japanese. The API also supports Spanis
    atomic operation. All initial memberships are unstarred.
 4. **Prioritize:** stars belong to the current phrasebook. Starring an analysis candidate saves its
    learning target and historical evidence; unstarring retains both.
-5. **Review:** choose from **Vocab**, curated **Phrases**, occurrence-based conversation tabs, and
+5. **Review:** choose from curated learner **Phrases**, **Vocab**, occurrence-based conversation tabs, and
    optional **Chunks**, or open the pinned **Starred** collection. Review the current phrasebook's starred set with reveal,
    direction switching, pronunciation, and swiping. Words use dictionary forms; Chunks retain their
    original source context.
@@ -80,7 +80,7 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 - Guided phrasebook creation through `/context` → `/phrasebook`.
 - Dynamic context questions and a checklist of the conversations to prepare.
 - Complete phrasebook generation: several short two-sided conversations plus a vocabulary group.
-- Web Vocab-first browsing, curated Phrases, then complete conversation tabs and saved Chunks; phrasebook-scoped
+- Web learner-Phrases-first browsing, Vocab, then complete conversation tabs and saved Chunks; phrasebook-scoped
   review with reveal, direction toggle, swipe navigation, and audio. This does not change iOS.
 - Web phrase breakdowns: source-aligned semantic parts, contextual explanations, and nested
   dictionary Words. Every distinct target can be starred into the active phrasebook's review set.
@@ -103,8 +103,8 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 - **API:** Cloud Run service in `api/`. `/context` returns setup questions and conversation choices;
   `/phrasebook` generates English conversations, translates each conversation in parallel, and returns
   conversation bundles with per-topic vocabulary and server-selected phrase IDs. Translation scores
-  contextual usefulness internally from 1–5; only 4–5 qualify for the Phrases collection, without
-  removing dialogue lines or showing scores to learners. The web client starts generation after questions,
+  contextual usefulness internally from 1–5; only learner lines scored 4–5 qualify for the Phrases
+  collection, without removing dialogue lines or showing scores. The web client starts generation after questions,
   while topics are being selected, then filters bundles and pools vocabulary locally on final Continue.
   An independent `/phrasebook-title` call runs alongside context setup, generating a short English
   name without delaying creation. The client freezes that name or the seed fallback when saving.

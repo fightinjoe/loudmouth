@@ -71,6 +71,39 @@ const isFirstTranslationPrompt = (prompt) => (
   promptData(prompt).conversation?.lines[0]?.text === 'I rent boards.'
 );
 
+test('Ukrainian requests produce Cyrillic cards and partner evidence without readings', async () => {
+  const body = { ...input, language: 'uk', checklist: [first.title] };
+  const parsed = parsePhrasebookRequest(body);
+  assert.equal(parsed.error, undefined);
+  const translation = {
+    lines: ['Я орендую дошки.', 'Ось дошка.', 'Я заплачу.', 'Я можу заплатити пізніше.'],
+    lineScores: [5, 5, 3, 4],
+    vocab: [
+      translatedWord('орендувати', 'verb', 'rent', { lineIndex: 0, surface: 'орендую', occurrence: 0 }),
+      translatedWord('дошка', 'noun', 'board', { lineIndex: 1, surface: 'дошка', occurrence: 0 }),
+      translatedWord('заплатити', 'verb', 'pay', { lineIndex: 3, surface: 'заплатити', occurrence: 0 }),
+    ],
+  };
+  const result = await performPhrasebook(parsed.value, {
+    [backendName]: async prompt => reply(isGenerationPrompt(prompt) ? { conversations: [first] } : translation),
+  }, { backendName });
+  const group = result.groups[0];
+  assert.deepEqual(group.phrases.map(({ card }) => card.text), translation.lines);
+  assert.deepEqual(group.featuredPhraseIds, [group.phrases[0].id, group.phrases[3].id]);
+  assert.equal(group.phrases[1].speaker, 'partner');
+  assert.equal(group.phrases[3].alternative, true);
+  for (const { card } of [...group.phrases, ...group.vocab]) {
+    assert.equal(card.lang, 'uk');
+    assert.equal(Object.hasOwn(card, 'reading'), false);
+    assert.equal(Object.hasOwn(card, 'romanization'), false);
+  }
+  assert.deepEqual(group.vocab[1].sources[0], {
+    snapshot: { lang: 'uk', text: 'Ось дошка.', translation: 'Here is a board.' },
+    ref: { occurrenceId: group.phrases[1].id },
+    span: { start: 4, end: 9 },
+  });
+});
+
 test('interleaved alternatives from accepted conversations survive generation', async () => {
   const interleaved = {
     ...first,
@@ -202,13 +235,13 @@ test('malformed generation and a count-mismatched chunk retry without rerunning 
   assert.equal(result.usage.outputTokens, 25);
 });
 
-test('scores select learner and partner lines at four without truncating conversations', async () => {
+test('scores select only learner lines at four without truncating conversations', async () => {
   const result = await run(async (prompt) => {
     if (isGenerationPrompt(prompt)) return reply({ conversations: [first, second] });
     return reply(isFirstTranslationPrompt(prompt) ? firstTranslation : secondTranslation);
   });
   for (const group of result.groups) {
-    assert.deepEqual(group.featuredPhraseIds, [group.phrases[0].id, group.phrases[1].id]);
+    assert.deepEqual(group.featuredPhraseIds, [group.phrases[0].id]);
     assert.equal(group.phrases[0].speaker, 'you');
     assert.equal(group.phrases[1].speaker, 'partner');
     assert.equal(Object.hasOwn(group.phrases[0].card, 'lineScores'), false);
@@ -217,11 +250,12 @@ test('scores select learner and partner lines at four without truncating convers
   assert.deepEqual(result.groups[1].phrases.map(phrase => phrase.card.text), secondTranslation.lines);
 });
 
-test('selection permits all or no lines and preserves alternative order', () => {
+test('selection permits all or no learner lines and preserves alternative order', () => {
   for (const [lineScores, selectedIndices] of [
     [[1, 2, 3, 3], []],
-    [[4, 5, 4, 5], [0, 1, 2, 3]],
-    [[3, 4, 2, 5], [1, 3]],
+    [[4, 5, 4, 5], [0, 2, 3]],
+    [[3, 4, 2, 5], [3]],
+    [[3, 5, 2, 1], []],
   ]) {
     const result = assemblePhrasebook({
       seed: input.seed,
@@ -255,7 +289,7 @@ test('invalid scores retry only their translation chunk and exhaust as a 502', a
     return reply(secondTranslation);
   });
   assert.deepEqual([firstCalls, secondCalls], [2, 1]);
-  assert.deepEqual(result.groups[0].featuredPhraseIds, result.groups[0].phrases.slice(0, 2).map(phrase => phrase.id));
+  assert.deepEqual(result.groups[0].featuredPhraseIds, [result.groups[0].phrases[0].id]);
   firstCalls = 0;
   await assert.rejects(run(async (prompt) => {
     if (isGenerationPrompt(prompt)) return reply({ conversations: [first, second] });

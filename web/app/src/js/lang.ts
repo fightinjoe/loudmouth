@@ -6,6 +6,7 @@ export const LANG_FLAGS = {
   ko: "🇰🇷",
   es: "🇪🇸",
   cs: "🇨🇿",
+  uk: "🇺🇦",
   fr: "🇫🇷",
   de: "🇩🇪",
   pt: "🇵🇹",
@@ -19,6 +20,7 @@ export const LANG_NAMES = {
   ko: "Korean",
   es: "Spanish",
   cs: "Czech",
+  uk: "Ukrainian",
   fr: "French",
   de: "German",
   pt: "Portuguese",
@@ -29,8 +31,8 @@ export const LANG_NAMES = {
 export type LanguageCode = keyof typeof LANG_FLAGS;
 
 /** Languages accepted by the v2 content schema. */
-export const CONTENT_LANGUAGES = ["zh", "ja", "es", "cs"] as const satisfies readonly Lang[];
+export const CONTENT_LANGUAGES = ["zh", "ja", "es", "cs", "uk"] as const satisfies readonly Lang[];
 
 export function isContentLanguage(value: unknown): value is Lang {
-  return value === "zh" || value === "ja" || value === "es" || value === "cs";
+  return value === "zh" || value === "ja" || value === "es" || value === "cs" || value === "uk";
 }

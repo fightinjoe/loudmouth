@@ -96,10 +96,10 @@ they want in the review set.
 ### Step by step
 
 1. **Open a phrasebook.** Selecting a recent or language-grouped phrasebook opens its content pane on
-   **Vocab**, as does completing creation.
+   **Phrases**, as does completing creation.
 2. **Browse tabs.**
-   - **Vocab** is first; **Phrases** is second, showing neutral full-width cards selected by contextual
-     usefulness from both sides of the conversations. Repeated phrases appear once.
+   - **Phrases** is first, showing neutral full-width learner-speech cards selected by contextual
+     usefulness. **Vocab** is second. Repeated phrases appear once; partner replies stay in conversations.
    - Context-less phrases occupy **Translations** when present, followed by each complete named
      conversation and optional saved **Chunks**. Filtering Phrases never removes conversation lines.
    - Stars mark the review set; the pinned **Starred** tab appears when at least one card is starred.
