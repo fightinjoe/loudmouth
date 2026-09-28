@@ -219,10 +219,56 @@ test('assembles a Word target only for explicit same-form lexical equivalence', 
       partOfSpeech: 'noun', senseKey: 'heat',
     })], 0)],
   });
-  assert.throws(
-    () => validatePhraseBreakdownResponse(differentDictionaryForm, body),
-    /same normalized lexical target/,
-  );
+  const distinct = validatePhraseBreakdownResponse(differentDictionaryForm, body).chunks[0];
+  assert.equal(distinct.target.kind, 'chunk');
+  assert.equal(distinct.target.card.text, 'caluroso');
+  assert.equal(distinct.words[0].card.text, 'calor');
+});
+
+test('preserves an unaccented Spanish source and accented dictionary Word when equivalence is false', async () => {
+  const body = request('es', 'Las tablas se ven un poco des niveladas aqui.', 'The boards look a bit uneven here.', {
+    source: { ref: { cardId: 'boards', occurrenceId: 'boards-line' } },
+  });
+  const raw = {
+    chunks: [
+      chunk('Las tablas '),
+      chunk('se ven '),
+      chunk('un poco '),
+      chunk('des niveladas '),
+      chunk('aqui.', [word('aqui', 'aquí', 'here', {
+        partOfSpeech: 'adverb', senseKey: 'here',
+      })], 0, { gloss: 'here', role: 'locative adverb', explanation: 'Indicates the location.' }),
+    ],
+  };
+  const res = makeRes();
+  await handlePhraseBreakdown({ body }, res, { [BACKEND]: async () => reply(raw) });
+  assert.equal(res.statusCode, 200);
+  const here = res.body.chunks[4];
+  const start = body.source.snapshot.text.indexOf('aqui');
+  assert.deepEqual(here.target, {
+    kind: 'chunk',
+    card: {
+      type: 'chunk', lang: 'es', text: 'aqui.', translation: 'here',
+      source: { ...body.source, span: { start, end: start + 5 } },
+      role: 'locative adverb', explanation: 'Indicates the location.',
+    },
+  });
+  assert.equal(here.words[0].card.text, 'aquí');
+  assert.deepEqual(here.words[0].sources, [{ ...body.source, span: { start, end: start + 4 } }]);
+  assert.deepEqual(res.body.flags, []);
+});
+
+test('rejects malformed and out-of-range equivalence indices instead of inventing a target', () => {
+  const body = request('es', 'aqui.', 'here');
+  for (const index of [undefined, -1, 0.5, '0', 1]) {
+    const raw = { chunks: [chunk('aqui.', [word('aqui', 'aquí', 'here')], index)] };
+    // The helper defaults undefined to null; explicitly restore the malformed field.
+    raw.chunks[0].equivalentWordIndex = index;
+    assert.throws(
+      () => validatePhraseBreakdownResponse(JSON.stringify(raw), body),
+      /equivalentWordIndex/,
+    );
+  }
 });
 
 test('keeps inflection and attached particles as Chunk targets beside dictionary Words', () => {
@@ -252,15 +298,11 @@ test('keeps inflection and attached particles as Chunk targets beside dictionary
 
   const falselyEquivalent = structuredClone(raw);
   falselyEquivalent.chunks[2].equivalentWordIndex = 0;
-  assert.throws(
-    () => validatePhraseBreakdownResponse(JSON.stringify(falselyEquivalent), body),
-    /same normalized lexical target/,
-  );
+  const inflected = validatePhraseBreakdownResponse(JSON.stringify(falselyEquivalent), body);
+  assert.deepEqual(inflected, result);
   falselyEquivalent.chunks[0].equivalentWordIndex = 0;
-  assert.throws(
-    () => validatePhraseBreakdownResponse(JSON.stringify(falselyEquivalent), body),
-    /surface covers the chunk/,
-  );
+  const attached = validatePhraseBreakdownResponse(JSON.stringify(falselyEquivalent), body);
+  assert.deepEqual(attached, result);
 });
 
 test('retains dictionary Words without guessed evidence when inflection hides their headword', async () => {
@@ -326,9 +368,16 @@ test('omits unresolved optional hints without weakening Word content or equivale
     assert.throws(() => validatePhraseBreakdownResponse(JSON.stringify(raw), body), /senseKey/);
   }
   const equivalent = { chunks: [chunk('caluroso', [word('missing', 'caluroso', 'hot')], 0)] };
-  assert.throws(() => validatePhraseBreakdownResponse(
+  const unresolved = validatePhraseBreakdownResponse(
     JSON.stringify(equivalent), request('es', 'caluroso', 'hot'),
-  ), /surface covers the chunk/);
+  );
+  assert.equal(unresolved.chunks[0].target.kind, 'chunk');
+  assert.equal(unresolved.chunks[0].target.card.text, 'caluroso');
+  assert.equal(unresolved.chunks[0].words[0].card.text, 'caluroso');
+  assert.equal(Object.hasOwn(unresolved.chunks[0].words[0], 'sources'), false);
+  assert.deepEqual(unresolved.flags, [{
+    code: 'word-source-missing', chunkIndex: 0, wordIndex: 0, reason: 'unresolved',
+  }]);
 });
 
 test('flags returned chunk indices after punctuation removal and omits surrogate-splitting evidence', () => {

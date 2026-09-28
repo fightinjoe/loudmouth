@@ -51,6 +51,8 @@ interface CreationState {
   topic: string;
   contextSeed: string | null;
   questions: ContextQuestion[];
+  questionIndex: number;
+  otherQuestions: Set<number>;
   checklist: ChecklistItem[];
   answers: Record<string, string>;
   error: string | null;
@@ -86,8 +88,10 @@ export function openCreationPanel(
     topic: "",
     contextSeed: null,
     questions: [],
+    questionIndex: 0,
+    otherQuestions: new Set(),
     checklist: [],
-    answers: Object.fromEntries([]),
+    answers: Object.create(null),
     error: null,
     resumeStep: "topic",
     contextRequest: null,
@@ -191,6 +195,9 @@ export function openCreationPanel(
     inner.innerHTML = renderStep(state, lang);
     bind(sheet.panel);
     if (focusInput) focusInputIfPresent(sheet.panel);
+    if (state.step === "questions") {
+      sheet.panel.querySelector<HTMLElement>(".creation-question-label")?.focus();
+    }
   }
 
   function focusInputIfPresent(panel: HTMLElement): void {
@@ -211,8 +218,8 @@ export function openCreationPanel(
     state.resumeStep = "topic";
     state.error = null;
     if (topic === state.contextSeed) {
-      state.step = "questions";
-      rerender();
+      state.questionIndex = 0;
+      showQuestionsOrChecklist();
       return;
     }
 
@@ -220,8 +227,10 @@ export function openCreationPanel(
     invalidatePhrasebook();
     state.contextSeed = null;
     state.questions = [];
+    state.questionIndex = 0;
+    state.otherQuestions.clear();
     state.checklist = [];
-    state.answers = Object.fromEntries([]);
+    state.answers = Object.create(null);
     state.step = "generating";
     rerender();
 
@@ -247,10 +256,8 @@ export function openCreationPanel(
         });
       }
       state.checklist = normalizeChecklist(checklist);
-      state.answers = Object.fromEntries(
-        state.questions.map((question) => [question.label, question.options[0] ?? ""]),
-      );
-      state.step = "questions";
+      showQuestionsOrChecklist();
+      return;
     } catch (error) {
       if (dismissed || state.contextRequest !== request) return;
       state.contextRequest = null;
@@ -387,14 +394,38 @@ export function openCreationPanel(
     rerender();
   }
 
-  // Header back walks checklist → questions → topic, then dismisses the pane.
+  function showQuestionsOrChecklist(): void {
+    state.step = state.questions.length > 0 ? "questions" : "checklist";
+    if (state.step === "checklist") ensurePhrasebookRequest();
+    rerender();
+  }
+
+  function nextQuestion(): void {
+    const question = state.questions[state.questionIndex];
+    if (!question || !state.answers[question.label]?.trim()) return;
+    if (state.questionIndex < state.questions.length - 1) {
+      state.questionIndex += 1;
+    } else {
+      state.step = "checklist";
+      ensurePhrasebookRequest();
+    }
+    rerender();
+  }
+
+  // Back walks each question in reverse before returning to the topic.
   function goBack(): void {
     if (state.step === "checklist") {
-      state.step = "questions";
-      rerender();
+      state.questionIndex = Math.max(0, state.questions.length - 1);
+      state.step = state.questions.length > 0 ? "questions" : "topic";
+      rerender({ focusInput: state.step === "topic" });
     } else if (state.step === "questions") {
-      state.step = "topic";
-      rerender({ focusInput: true });
+      if (state.questionIndex > 0) {
+        state.questionIndex -= 1;
+        rerender();
+      } else {
+        state.step = "topic";
+        rerender({ focusInput: true });
+      }
     } else {
       sheet.close();
     }
@@ -446,22 +477,51 @@ export function openCreationPanel(
   }
 
   function bindQuestionsStep(panel: HTMLElement): void {
-    panel.querySelectorAll<HTMLSelectElement>('[data-action="creation/answer"]')
-      .forEach((select) => {
-        select.addEventListener("change", () => {
-          const label = select.dataset.label;
-          if (label === undefined || state.answers[label] === select.value) return;
-          state.answers[label] = select.value;
-          invalidatePhrasebook();
+    const question = state.questions[state.questionIndex];
+    if (!question) return;
+    const setAnswer = (value: string): void => {
+      if (state.answers[question.label] !== value) {
+        state.answers[question.label] = value;
+        invalidatePhrasebook();
+      }
+      const next = panel.querySelector<HTMLButtonElement>('[data-action="creation/next-question"]');
+      if (next) next.disabled = !value.trim();
+    };
+
+    panel.querySelectorAll<HTMLInputElement>('[data-action="creation/answer"]')
+      .forEach((radio) => {
+        radio.addEventListener("change", () => {
+          state.otherQuestions.delete(state.questionIndex);
+          setAnswer(radio.value);
+          nextQuestion();
         });
       });
 
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/to-checklist"]')
-      ?.addEventListener("click", () => {
-        state.step = "checklist";
-        ensurePhrasebookRequest();
-        rerender();
-      });
+    const otherRadio = panel.querySelector<HTMLInputElement>('[data-action="creation/other"]');
+    const otherInput = panel.querySelector<HTMLInputElement>(".creation-other-input");
+    const selectOther = (): void => {
+      if (!otherRadio || !otherInput) return;
+      otherRadio.checked = true;
+      state.otherQuestions.add(state.questionIndex);
+      setAnswer(otherInput.value.trim());
+    };
+    otherRadio?.addEventListener("change", () => {
+      selectOther();
+      otherInput?.focus();
+    });
+    otherInput?.addEventListener("focus", selectOther);
+    otherInput?.addEventListener("input", selectOther);
+    otherInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.isComposing) {
+        event.preventDefault();
+        nextQuestion();
+      }
+    });
+
+    panel.querySelector<HTMLButtonElement>('[data-action="creation/next-question"]')
+      ?.addEventListener("click", nextQuestion);
+    panel.querySelector<HTMLButtonElement>('[data-action="creation/previous-question"]')
+      ?.addEventListener("click", goBack);
   }
 
   function bindChecklistStep(panel: HTMLElement): void {
@@ -563,17 +623,35 @@ function renderTopicStep(state: Readonly<CreationState>, lang: Lang): string {
 }
 
 function renderQuestionsStep(state: Readonly<CreationState>, lang: Lang): string {
-  const questionsHTML = state.questions
-    .map((question) => renderQuestionSelect(question, state.answers[question.label]))
-    .join("");
+  const question = state.questions[state.questionIndex]!;
+  const value = state.answers[question.label];
+  const isOther = state.otherQuestions.has(state.questionIndex);
   return renderSurface(`
     ${renderHeader(lang)}
     ${renderTermLine(state.topic)}
     <div class="creation-step-body flex-col">
-      <div class="creation-questions flex-col">${questionsHTML}</div>
+      <fieldset class="creation-question">
+        <legend class="creation-question-label section-label" tabindex="-1">${escapeHTML(question.label)}</legend>
+        <p class="creation-question-progress text-body2 fg-secondary">Question ${state.questionIndex + 1} of ${state.questions.length}</p>
+        <div class="creation-radio-items flex-col">
+          ${question.options.map((option, index) => `
+            <label class="creation-radio-item flex items-center tappable">
+              <input type="radio" name="creation-answer" data-action="creation/answer" data-option="${index}" value="${escapeHTML(option)}" ${!isOther && value === option ? "checked" : ""}>
+              <span class="text-body1 fg-body">${escapeHTML(option)}</span>
+            </label>
+          `).join("")}
+          ${question.label === ABILITY_QUESTION ? "" : `
+            <div class="creation-radio-item flex items-center">
+              <input type="radio" name="creation-answer" data-action="creation/other" aria-label="Other" ${isOther ? "checked" : ""}>
+              <input class="creation-other-input text-body1" type="text" placeholder="other" aria-label="Other answer" value="${isOther ? escapeHTML(value ?? "") : ""}" autocomplete="off">
+            </div>
+          `}
+        </div>
+      </fieldset>
     </div>
-    <div class="creation-context-footer flex items-center justify-end">
-      <button class="icon-button creation-submit" data-action="creation/to-checklist" aria-label="Continue">${icon("next")}</button>
+    <div class="creation-context-footer creation-question-footer flex items-center">
+      <button class="creation-question-nav tappable" data-action="creation/previous-question">${icon("back")}<span>Previous</span></button>
+      <button class="creation-question-nav tappable" data-action="creation/next-question" ${value?.trim() ? "" : "disabled"}><span>Next</span>${icon("next")}</button>
     </div>
   `);
 }
@@ -595,20 +673,6 @@ function renderChecklistStep(state: Readonly<CreationState>, lang: Lang): string
       <button class="icon-button creation-submit" data-action="creation/submit-context" aria-label="Generate phrasebook">${icon("next")}</button>
     </div>
   `);
-}
-
-function renderQuestionSelect(question: ContextQuestion, value: string | undefined): string {
-  return `
-    <label class="creation-select-row flex-col">
-      <span class="creation-select-label">${escapeHTML(question.label)}</span>
-      <span class="creation-select-wrap flex items-center">
-        <select class="creation-select" data-action="creation/answer" data-label="${escapeHTML(question.label)}">
-          ${question.options.map((option) => `<option value="${escapeHTML(option)}" ${option === value ? "selected" : ""}>${escapeHTML(option)}</option>`).join("")}
-        </select>
-        ${icon("unfold-more", { className: "creation-select-chevron" })}
-      </span>
-    </label>
-  `;
 }
 
 function renderChecklistItem(item: ChecklistItem, index: number): string {

@@ -153,8 +153,21 @@ function typeAndSubmitTopic(topic) {
   appElement.querySelector('[data-action="creation/submit-topic"]').click();
 }
 
+function choosePreset(index = 0) {
+  appElement.querySelector(
+    `input[type="radio"][data-action="creation/answer"][data-option="${index}"]`,
+  ).click();
+}
+
 function gotoChecklist() {
-  appElement.querySelector('[data-action="creation/to-checklist"]').click();
+  for (let page = 0; page < 20; page += 1) {
+    if (appElement.querySelector('[data-action="creation/submit-context"]')) return;
+    const next = appElement.querySelector('[data-action="creation/next-question"]');
+    expect(next).not.toBeNull();
+    if (next.disabled) choosePreset();
+    else next.click();
+  }
+  throw new Error("Question navigation did not reach the checklist");
 }
 
 async function openQuestions({
@@ -166,7 +179,7 @@ async function openQuestions({
   getContext.mockResolvedValueOnce(context);
   const sheet = openCreationPanel(appElement, params, onCreated, onDismiss);
   typeAndSubmitTopic("salsa dancing");
-  await vi.waitFor(() => expect(appElement.querySelector(".creation-select")).toBeTruthy());
+  await vi.waitFor(() => expect(appElement.querySelector(".creation-question")).toBeTruthy());
   return sheet;
 }
 
@@ -202,17 +215,103 @@ describe("openCreationPanel — input and context", () => {
       },
     });
 
-    const select = appElement.querySelector(".creation-select");
+    const radio = appElement.querySelector('input[data-action="creation/answer"]');
     expect(appElement.querySelector("img")).toBeNull();
-    expect(select.closest(".creation-select-row").querySelector(".creation-select-label").textContent)
-      .toBe(hostileLabel);
-    expect(select.dataset.label).toBe(hostileLabel);
-    expect(select.value).toBe(hostileOption);
-    expect(select.querySelector("option").hasAttribute("autofocus")).toBe(false);
+    expect(appElement.querySelector(".creation-question-label").textContent).toBe(hostileLabel);
+    expect(radio.value).toBe(hostileOption);
+    expect(radio.hasAttribute("autofocus")).toBe(false);
+    expect(radio.hasAttribute("onfocus")).toBe(false);
 
     gotoChecklist();
     expect(appElement.querySelector(".creation-checklist-item").textContent).toContain(hostileLabel);
     expect(appElement.querySelector("img")).toBeNull();
+  });
+
+  it("asks one unanswered question at a time and preserves answers through Previous and Next", async () => {
+    await openQuestions({
+      context: {
+        questions: [
+          { label: "Scene", options: ["Social dancing", "Class"] },
+          { label: "Partner", options: ["Friend", "Stranger"] },
+        ],
+        checklist: sampleQuestionsResponse.checklist,
+      },
+    });
+
+    expect(appElement.querySelectorAll(".creation-question")).toHaveLength(1);
+    expect(appElement.querySelector(".creation-question-label").textContent).toBe("Scene");
+    expect(appElement.querySelector('input[type="radio"]:checked')).toBeNull();
+    expect(appElement.querySelector('[data-action="creation/next-question"]').disabled).toBe(true);
+    expect(generatePhrasebook).not.toHaveBeenCalled();
+
+    choosePreset(1);
+    expect(appElement.querySelector(".creation-question-label").textContent).toBe("Partner");
+    expect(appElement.querySelector('input[type="radio"]:checked')).toBeNull();
+    expect(appElement.querySelector('[data-action="creation/next-question"]').disabled).toBe(true);
+    expect(generatePhrasebook).not.toHaveBeenCalled();
+
+    appElement.querySelector('[data-action="creation/previous-question"]').click();
+    expect(appElement.querySelector(".creation-question-label").textContent).toBe("Scene");
+    expect(appElement.querySelector('input[type="radio"]:checked').value).toBe("Class");
+    expect(appElement.querySelector('[data-action="creation/next-question"]').disabled).toBe(false);
+    appElement.querySelector('[data-action="creation/next-question"]').click();
+    expect(appElement.querySelector(".creation-question-label").textContent).toBe("Partner");
+    expect(appElement.querySelector('input[type="radio"]:checked')).toBeNull();
+
+    choosePreset(0);
+    expect(appElement.querySelector('[data-action="creation/submit-context"]')).not.toBeNull();
+    expect(generatePhrasebook.mock.calls[0][0].answers).toEqual({
+      Scene: "Class",
+      Partner: "Friend",
+    });
+    expect(commitPhrasebook).not.toHaveBeenCalled();
+
+    appElement.querySelector('[data-action="creation/back"]').click();
+    expect(appElement.querySelector(".creation-question-label").textContent).toBe("Partner");
+    expect(appElement.querySelector('input[type="radio"]:checked').value).toBe("Friend");
+    appElement.querySelector('[data-action="creation/previous-question"]').click();
+    expect(appElement.querySelector('input[type="radio"]:checked').value).toBe("Class");
+    gotoChecklist();
+    expect(generatePhrasebook).toHaveBeenCalledTimes(1);
+  });
+
+  it("gates blank Other answers and saves escaped custom text entered without choosing its radio", async () => {
+    const customAnswer = 'Dance "socials"><img src=x onerror="window.__injected=true">';
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    await openQuestions();
+
+    const radios = [...appElement.querySelectorAll('input[type="radio"]')];
+    expect(radios.at(-1).dataset.action).toBe("creation/other");
+    let input = appElement.querySelector(".creation-other-input");
+    expect(input.placeholder).toBe("other");
+    input.value = " \t ";
+    input.dispatchEvent(new Event("input"));
+    expect(appElement.querySelector('[data-action="creation/other"]').checked).toBe(true);
+    expect(appElement.querySelector('[data-action="creation/next-question"]').disabled).toBe(true);
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(appElement.querySelector(".creation-question")).not.toBeNull();
+    expect(generatePhrasebook).not.toHaveBeenCalled();
+
+    input = appElement.querySelector(".creation-other-input");
+    input.value = `  ${customAnswer}  `;
+    input.dispatchEvent(new Event("input"));
+    expect(appElement.querySelector('[data-action="creation/next-question"]').disabled).toBe(false);
+    expect(generatePhrasebook).not.toHaveBeenCalled();
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(generatePhrasebook.mock.calls[0][0].answers).toEqual({ "Salsa scene": customAnswer });
+
+    appElement.querySelector('[data-action="creation/back"]').click();
+    input = appElement.querySelector(".creation-other-input");
+    expect(appElement.querySelector('[data-action="creation/other"]').checked).toBe(true);
+    expect(input.value.trim()).toBe(customAnswer);
+    expect(input.hasAttribute("onerror")).toBe(false);
+    expect(appElement.querySelector("img")).toBeNull();
+    appElement.querySelector('[data-action="creation/next-question"]').click();
+    expect(generatePhrasebook).toHaveBeenCalledTimes(1);
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await waitForCommit();
+    expect(commitPhrasebook.mock.calls[0][0].generation.answers)
+      .toEqual({ "Salsa scene": customAnswer });
   });
 
   it("keeps __proto__ as a literal answer key in the frozen generation request", async () => {
@@ -222,19 +321,14 @@ describe("openCreationPanel — input and context", () => {
         checklist: [{ label: "Greetings", checked: true }],
       },
     });
-    const select = appElement.querySelector(".creation-select");
-    select.value = "friends";
-    select.dispatchEvent(new Event("change"));
-    gotoChecklist();
+    choosePreset(1);
 
     const generation = generatePhrasebook.mock.calls[0][0];
     expect(Object.hasOwn(generation.answers, "__proto__")).toBe(true);
     expect(generation.answers.__proto__).toBe("friends");
 
     appElement.querySelector('[data-action="creation/back"]').click();
-    const changedSelect = appElement.querySelector(".creation-select");
-    changedSelect.value = "family";
-    changedSelect.dispatchEvent(new Event("change"));
+    choosePreset(0);
     expect(generation.signal.aborted).toBe(true);
     expect(generation.answers.__proto__).toBe("friends");
   });
@@ -294,12 +388,9 @@ describe("openCreationPanel — speculative generation", () => {
     gotoChecklist();
     const oldSignal = generatePhrasebook.mock.calls[0][0].signal;
     appElement.querySelector('[data-action="creation/back"]').click();
-    const select = appElement.querySelector(".creation-select");
-    select.value = "Cuban style";
-    select.dispatchEvent(new Event("change"));
+    choosePreset(1);
     expect(oldSignal.aborted).toBe(true);
 
-    gotoChecklist();
     oldRequest.resolve(sampleGenerateResponse);
     await Promise.resolve();
     expect(commitPhrasebook).not.toHaveBeenCalled();
@@ -307,6 +398,37 @@ describe("openCreationPanel — speculative generation", () => {
     expect(generatePhrasebook.mock.calls[1][0].answers).toEqual({ "Salsa scene": "Cuban style" });
 
     newRequest.resolve(sampleGenerateResponse);
+  });
+
+  it("invalidates speculation immediately when a retained Other answer becomes blank", async () => {
+    await openQuestions();
+    appElement.querySelector('[data-action="creation/other"]').click();
+    expect(appElement.querySelector(".creation-question")).not.toBeNull();
+    expect(appElement.querySelector('[data-action="creation/next-question"]').disabled).toBe(true);
+    let input = appElement.querySelector(".creation-other-input");
+    input.value = "Local salsa night";
+    input.dispatchEvent(new Event("input"));
+    appElement.querySelector('[data-action="creation/next-question"]').click();
+    const original = generatePhrasebook.mock.calls[0][0];
+
+    appElement.querySelector('[data-action="creation/back"]').click();
+    input = appElement.querySelector(".creation-other-input");
+    input.value = "   ";
+    input.dispatchEvent(new Event("input"));
+    expect(original.signal.aborted).toBe(true);
+    expect(original.answers).toEqual({ "Salsa scene": "Local salsa night" });
+    expect(appElement.querySelector('[data-action="creation/next-question"]').disabled).toBe(true);
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(generatePhrasebook).toHaveBeenCalledTimes(1);
+
+    input = appElement.querySelector(".creation-other-input");
+    input.value = "  Outdoor festival  ";
+    input.dispatchEvent(new Event("input"));
+    expect(generatePhrasebook).toHaveBeenCalledTimes(1);
+    appElement.querySelector('[data-action="creation/next-question"]').click();
+    expect(generatePhrasebook).toHaveBeenCalledTimes(2);
+    expect(generatePhrasebook.mock.calls[1][0].answers)
+      .toEqual({ "Salsa scene": "Outdoor festival" });
   });
 
   it("keeps background generation errors off the checklist until Continue, then retries intact", async () => {
@@ -406,10 +528,7 @@ describe("openCreationPanel — atomic commit lifetime", () => {
       },
       onCreated: (deck) => { createdDeck = deck; },
     });
-    const select = appElement.querySelector(".creation-select");
-    select.value = "Cuban style";
-    select.dispatchEvent(new Event("change"));
-    gotoChecklist();
+    choosePreset(1);
     appElement.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[2].click();
     appElement.querySelector('[data-action="creation/submit-context"]').click();
     await waitForCommit();
@@ -546,11 +665,13 @@ describe("openCreationPanel — title and ability", () => {
     const committing = deferred();
     commitPhrasebook.mockReturnValueOnce(committing.promise);
     await openQuestions({ params: { lang: "es" } });
-    const ability = appElement.querySelector(`[data-label="${ABILITY_QUESTION}"]`);
-    expect([...ability.options].map((option) => option.value))
+    expect(appElement.querySelector(".creation-question-label").textContent).toBe(ABILITY_QUESTION);
+    expect([...appElement.querySelectorAll('input[type="radio"]')].map((option) => option.value))
       .toEqual(["None", "Basics", "Conversational"]);
-    ability.value = "Conversational";
-    ability.dispatchEvent(new Event("change"));
+    expect(appElement.querySelector('input[type="radio"]:checked')).toBeNull();
+    expect(appElement.querySelector('[data-action="creation/other"]')).toBeNull();
+    expect(appElement.querySelector(".creation-other-input")).toBeNull();
+    choosePreset(2);
     gotoChecklist();
     expect(generatePhrasebook.mock.calls[0][0].ability).toBe("conversational");
     expect(getLastAbility("es")).toBeUndefined();
@@ -572,7 +693,8 @@ describe("openCreationPanel — title and ability", () => {
   it("uses a remembered ability for both requests without asking again", async () => {
     setLastAbility("es", "basics");
     await openQuestions({ params: { lang: "es" } });
-    expect(appElement.querySelector(`[data-label="${ABILITY_QUESTION}"]`)).toBeNull();
+    expect(appElement.querySelector(".creation-question-label").textContent)
+      .toBe(sampleQuestionsResponse.questions[0].label);
     expect(getContext).toHaveBeenCalledWith(expect.objectContaining({ ability: "basics" }));
     gotoChecklist();
     expect(generatePhrasebook).toHaveBeenCalledWith(expect.objectContaining({ ability: "basics" }));

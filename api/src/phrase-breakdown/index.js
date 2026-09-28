@@ -227,7 +227,7 @@ function buildWordCandidate(item, itemIndex, chunk, request) {
   return candidate;
 }
 
-function validateEquivalentWord(index, words, chunk, sourceText) {
+function isEquivalentWord(index, words, chunk, sourceText) {
   if (index >= words.length) {
     throw new Error(`chunks[${chunk.index}].equivalentWordIndex must index words`);
   }
@@ -236,13 +236,9 @@ function validateEquivalentWord(index, words, chunk, sourceText) {
   const coversChunk = word.sources?.some(
     (source) => source.span.start === bounds.start && source.span.end === bounds.end,
   );
-  if (!coversChunk) {
-    throw new Error(`chunks[${chunk.index}].equivalentWordIndex must select a word whose surface covers the chunk except edge punctuation and whitespace`);
-  }
+  if (!coversChunk) return false;
   const encountered = sourceText.slice(bounds.start, bounds.end);
-  if (normalizeIdentityText(word.card.text) !== normalizeIdentityText(encountered)) {
-    throw new Error(`chunks[${chunk.index}].equivalentWordIndex must select the same normalized lexical target as the encountered chunk`);
-  }
+  return normalizeIdentityText(word.card.text) === normalizeIdentityText(encountered);
 }
 
 function validatePhraseBreakdownResponse(raw, requestValue) {
@@ -309,7 +305,10 @@ function validatePhraseBreakdownResponse(raw, requestValue) {
     });
 
     let target;
-    if (value.equivalentWordIndex === null) {
+    // An unsupported equivalence claim cannot replace the exact source Chunk.
+    const equivalent = value.equivalentWordIndex !== null
+      && isEquivalentWord(value.equivalentWordIndex, words, aligned, sourceText);
+    if (!equivalent) {
       target = {
         kind: 'chunk',
         card: {
@@ -328,7 +327,6 @@ function validatePhraseBreakdownResponse(raw, requestValue) {
       };
       validateCandidate({ card: target.card }, `chunks[${index}].target`);
     } else {
-      validateEquivalentWord(value.equivalentWordIndex, words, aligned, sourceText);
       target = { kind: 'word', index: value.equivalentWordIndex };
     }
 

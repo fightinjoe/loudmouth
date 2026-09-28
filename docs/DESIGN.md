@@ -62,9 +62,14 @@ topic → questions → conversation checklist (generation runs) → wait if nee
 
 Topic submission calls `/context` with `{ seed, language, ability? }` (using the remembered ability
 for this language when available) and independently starts `/phrasebook-title` with `{ seed }`. 
-Otherwise the client prepends "What is your language ability?" to the returned questions, with 
-options None, Basics, Conversational. Each question initially uses its first option. Advancing 
-starts `/phrasebook` with `{ seed, language, ability, answers, checklist }`, using the selected or 
+Otherwise the client prepends "What is your language ability?" to the returned questions, with
+options None, Basics, Conversational. On web, each question occupies its own action-pane page.
+Radio lists start with no selection and use the checklist's grouped rows with circular indicators.
+Choosing a preset advances immediately. Generated questions end with an Other radio and a text box
+whose placeholder is "other"; typing selects it, and Next or Enter submits nonblank, trimmed text.
+Ability retains only its three supported choices. Previous and Next preserve answers, with Next
+disabled until the current question has an answer. Completing the last question
+starts `/phrasebook` with `{ seed, language, ability, answers, checklist }`, using the selected or
 remembered enum value and excluding the ability question from `answers`. `checklist` contains all 
 suggested topics. The learner selects 1–8 topics locally while generation runs; model selection 
 remains server-owned.

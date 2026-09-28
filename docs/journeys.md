@@ -38,30 +38,34 @@ questions, selects conversations to prepare, and receives a complete phrasebook.
    - Returning users start from the navigation pane's new-phrasebook FAB.
    - Both entry points open the same action-pane flow.
 
-2. **Choose language and ability.**
-   - The action pane first shows **New phrasebook** with target-language and learner-ability selects.
+2. **Choose language.**
+   - The action pane first shows **New phrasebook** with a target-language select.
    - Language becomes the phrasebook's immutable target language.
-   - The last ability selected for a language pre-fills that language's next phrasebook setup.
+   - Remembered ability is reused; otherwise creation asks for it before the context questions.
    - Continuing does not create or persist a phrasebook.
 
 3. **Enter the situation.**
    - The action pane moves to **Creation** at full height.
    - The learner enters a situation, activity, or topic in the `Enter word, phrase, or topic` field.
    - Continue is disabled while the trimmed field is empty.
-   - Submitting calls `/context` with `{ seed, language }` and shows a building state while the request
-     is pending.
+   - Submitting calls `/context` with `{ seed, language, ability? }` and independently requests a title.
+     A building state remains visible while context is pending.
 
 4. **Answer clarification questions.**
    - The action pane shows the entered situation under the language header.
-   - Each dynamic question is a select whose initial value is the first returned option.
+   - On web, each question has its own radio-list page with no initial selection.
+   - Choosing a preset advances automatically. Generated questions end with an Other radio and a
+     text box with placeholder "other"; nonblank text is submitted with Next or Enter.
+   - The client-owned ability question offers only None, Basics, and Conversational.
+   - Previous and Next preserve answers; Next is disabled while the current answer is empty.
    - Answers stay in local creation state. Changing an answer invalidates earlier speculative work.
-   - Continue advances to conversation selection and starts `/phrasebook` for all suggested topics.
+   - Completing the last question advances to conversation selection and starts `/phrasebook` for all suggested topics.
 
 5. **Choose conversations.**
    - The checklist presents short communicative goals returned by `/context`.
    - The endpoint's suggested checked state is preserved initially.
    - The learner may toggle items while keeping at least one and no more than eight selected.
-   - Back returns to clarification questions without discarding answers or unchanged generation work.
+   - Back returns to the last question without discarding answers or unchanged generation work.
    - Generation finishes in the background without saving or navigating away.
 
 6. **Generate the phrasebook.**
@@ -79,12 +83,12 @@ questions, selects conversations to prepare, and receives a complete phrasebook.
 ### State and failure rules
 
 - Creation state is ephemeral. Dismissing aborts outstanding requests and discards uncommitted results.
-- Back walks checklist → questions → topic; Back from topic dismisses creation.
+- Back walks checklist → individual questions in reverse → topic; Back from topic dismisses creation.
 - A context-request error returns to the topic stage on retry. A generation error returns to the
   checklist stage on retry and starts fresh generation. Previously entered choices remain available.
 - The client never exposes a partly generated or partly imported phrasebook.
-- The ability selected during setup is stored with the phrasebook. The generation call currently uses
-  `basics` explicitly.
+- The selected or remembered ability is sent to generation and stored with the phrasebook. Ability
+  is remembered for the language only after a successful commit.
 
 ## Journey 2 — Browsing and prioritizing a phrasebook
 

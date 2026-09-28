@@ -122,9 +122,12 @@ findings without revalidating, so historical PASS is not a claim about today's c
 Keep raw model output even when invalid. Production punctuation cleanup verifies every raw span and
 removes only punctuation/whitespace-only chunks with empty `words` and a null
 `equivalentWordIndex`. It preserves dictionary Words on retained chunks and rejects all-empty output,
-guessed occurrence offsets, misaligned readings, invalid equivalence, and source gaps. It does not
-merge clauses, remove arbitrary symbols, invent lexical items, or trust model-generated snapshots or
-IDs. The validated request snapshot remains untouched.
+misaligned required readings, malformed or out-of-range equivalence indices, and meaningful source
+gaps. Unresolved Word evidence hints omit evidence rather than guessing offsets. An in-range Word
+that fails equivalence checks retains its dictionary card beside an exact-source Chunk target;
+only verified equivalence produces a Word target. It does not merge clauses, remove arbitrary
+symbols, invent lexical items, or trust model-generated snapshots or IDs. The validated request
+snapshot remains untouched.
 
 As requested when locking v07, pre-v07 phrase-breakdown run artifacts were removed; original API
 captures, prompt snapshots, the v07 run, and the v07/v08 comparison were retained. Do not delete other

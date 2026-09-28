@@ -181,8 +181,8 @@ axis is required; most seeds get none.
 }
 ```
 
-A question carries no `default` field: **the first option is the default**, and the model orders each
-option list most-likely-first. The model is asked for 2–5 questions with 2–5 options each and 5–8
+A question carries no `default` field. The model orders options most-likely-first, but the web client
+requires an explicit choice rather than preselecting one. The model is asked for 2–5 questions with 2–5 options each and 5–8
 checklist items; the service clamps overflow to at most five questions, five options, and eight
 checklist items. The validator accepts one question or one checklist item, but each question must
 have at least two non-empty string options.
@@ -223,11 +223,14 @@ The creation panel:
 1. Calls `/context` with `{ seed, language, ability? }`, supplying remembered ability for that language.
 2. Calls `/phrasebook-title` with `{seed}` in parallel
 3. If ability is unknown, prepends the client-owned question "What is your language ability?" with
-   options None, Basics, Conversational. Initializes each question to its first option. The model
-   is instructed not to ask language proficiency questions. This extra question is outside the
-   model's five-question cap.
-4. On advancing, calls `/phrasebook` with the selected or remembered ability enum, copied flat
-   `answers` excluding the ability question, and all checklist labels in order.
+   options None, Basics, Conversational. On web, every question has its own radio-list page, with
+   nothing initially selected. The model is instructed not to ask language proficiency questions.
+   This extra question is outside the model's five-question cap.
+4. Choosing a preset advances to the next question. Generated questions also offer a final Other
+   radio/text input; Next or Enter submits its nonblank, trimmed text. Ability has no custom option.
+   Previous and Next preserve answers. Completing the last question calls `/phrasebook` with the
+   selected or remembered ability enum, copied flat `answers` excluding the ability question,
+   and all checklist labels in order.
 5. Preserves checklist defaults and allows local topic selection while generation runs.
 6. On final Continue, reuses the pending or ready response and commits only selected conversations
    plus their locally pooled vocabulary.
@@ -424,14 +427,18 @@ reuse inflected source readings for dictionary forms. Repeated surfaces still re
 explicit occurrence. Punctuation-only chunks with no Words are removed after alignment without
 shifting retained offsets; Words on such chunks and all-punctuation analyses are rejected.
 
-A non-null equivalentWordIndex must index a Word whose encountered surface covers the chunk except
-edge punctuation/whitespace, and whose normalized dictionary text equals the edge-trimmed source span.
-Equivalence requires resolved evidence; a missing-source Word cannot stand in for its entire chunk.
-The prompt permits equivalence only for the same lexical learning target. Invalid equivalence is
-invalid model output, not silently repaired. `caluroso` exposes one Word target; `肉も` versus `肉`
-and `食べません` versus `食べる` expose distinct Chunk and Word targets. Null equivalence produces a
-Chunk with exact source text/evidence, translation=gloss, role and explanation. Every meaningful
-chunk has one target; other distinct Words retain their own controls.
+A non-null equivalentWordIndex must be an in-range integer. It selects a Word target only when that
+Word's resolved surface covers the chunk except edge punctuation/whitespace and its normalized
+dictionary text equals the edge-trimmed source span. Normalization preserves accents and case.
+If an in-range Word lacks evidence, covers only part of the chunk, or differs from the encountered
+text, the server instead constructs the contextual Chunk target while retaining all validated Words.
+For example, source `aqui.` and dictionary Word `aquí` remain distinct targets rather than failing
+the entire breakdown. `caluroso` still exposes one Word target; `肉も` versus `肉` and `食べません`
+versus `食べる` expose distinct Chunk and Word targets. Null equivalence uses the same Chunk path.
+Chunk targets preserve exact source text/evidence, translation=gloss, role and explanation.
+Malformed or out-of-range indices, invalid Word content, and invalid required source alignment
+still reject the analysis. Every meaningful chunk has one target; other distinct Words retain
+their own controls. The shared wire validator still rejects an invalid Word target.
 
 Both producers use the pure pronunciation helpers in `api/src/reading.js`. No fragment reading is
 manufactured by cutting a source reading token; contextual rendering uses the original snapshot.
@@ -777,7 +784,8 @@ location. Structural checks do not establish teaching quality or cultural approp
 ### Client integration
 
 - Topic entry calls `/context` with `{ seed, language, ability? }`, using remembered ability.
-- Question selection uses the first option as its default, without a response `default` field.
+- Web questions start unselected on individual radio-list pages. Presets advance automatically;
+  generated questions also accept Other text via Next or Enter. Previous/Next preserve answers.
 - Advancing from questions starts one `/phrasebook` request with all checklist topics, copied flat
   `answers` excluding the client ability question, and the selected or remembered `ability`.
   Toggling topics never sends another request.
