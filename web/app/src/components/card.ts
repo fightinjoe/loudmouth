@@ -7,6 +7,8 @@ import { renderSourceContext } from "./source-context";
 export interface RenderCardRowOptions {
   readOnly?: boolean;
   conversation?: boolean;
+  wordTile?: boolean;
+  alternative?: boolean;
 }
 
 /**
@@ -17,14 +19,14 @@ export interface RenderCardRowOptions {
 export function renderCardRow(
   entry: LibraryEntry,
   readingDisplay: ReadingDisplay = "reading",
-  { readOnly = false, conversation = true }: RenderCardRowOptions = {},
+  { readOnly = false, conversation = true, wordTile = false, alternative }: RenderCardRowOptions = {},
 ): string {
   const { card, occurrence } = entry;
   const entryKey = escapeHTML(entry.key);
   const cardId = escapeHTML(entry.cardId);
   const isStarred = entry.membership?.starredAt != null;
   const speaker = conversation ? occurrence?.speaker : undefined;
-  const alternative = conversation && occurrence?.alternative === true;
+  const showAlternative = conversation && (alternative ?? occurrence?.alternative === true);
   const canStar = !readOnly && entry.membership !== undefined;
   const editActions = readOnly
     ? ""
@@ -47,13 +49,13 @@ export function renderCardRow(
 
   return `
     <div
-      class="card-row-wrapper shrink-0 overflow-hidden"
+      class="card-row-wrapper shrink-0 overflow-hidden${wordTile ? " card-word-tile" : ""}"
       ${speaker ? `data-speaker="${speaker}"` : ""}
-      ${alternative ? "data-alternative" : ""}
+      ${showAlternative ? "data-alternative" : ""}
       data-entry-key="${entryKey}"
       data-card-id="${cardId}"
     >
-      ${alternative
+      ${showAlternative
         ? `<div class="card-alternative" ${speaker ? `data-speaker="${speaker}"` : ""}>or</div>`
         : ""}
       ${editActions}

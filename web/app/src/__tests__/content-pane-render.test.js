@@ -39,10 +39,9 @@ const phrase = (key, cardId, translation, occurrence = {}) => ({
     cardId,
     position: occurrence.position ?? 0,
     translation,
-    ...(occurrence.groupId ? { groupId: occurrence.groupId } : {}),
+    ...(occurrence.groupId ? { groupId: occurrence.groupId, section: occurrence.section ?? "dialogue" } : {}),
     ...(occurrence.speaker ? { speaker: occurrence.speaker } : {}),
     ...(occurrence.alternative ? { alternative: true } : {}),
-    ...(occurrence.featured ? { featured: true } : {}),
   },
   sources: [],
 });
@@ -91,7 +90,7 @@ const groups = [
 ];
 
 describe("phrasebook joined-entry pages", () => {
-  it("opens learning collections before conversations while preserving groupless and duplicate-title group order", () => {
+  it("keeps duplicate-title topics ordered and imported content in supplemental pages", () => {
     const entries = [
       phrase("loose-new", "phrase-a", "newest", { position: 0 }),
       phrase("loose-old", "phrase-b", "older", { position: 1 }),
@@ -103,24 +102,12 @@ describe("phrasebook joined-entry pages", () => {
 
     const pages = getDeckPages(entries, groups);
     expect(pages.map((page) => page.key)).toEqual([
-      "phrases",
-      "vocab",
-      "translations",
-      "group:group-first",
-      "group:group-later",
-      "chunks",
+      "contents", "group:group-first", "group:group-later", "translations", "words", "chunks",
     ]);
-    expect(pages.map((page) => page.title)).toEqual([
-      "Phrases",
-      "Vocab",
-      "Translations",
-      "Ordering",
-      "Ordering",
-      "Chunks",
-    ]);
-    expect(pages[2].entries.map((entry) => entry.key)).toEqual(["loose-new", "loose-old"]);
-    expect(pages[3].entries.map((entry) => entry.key)).toEqual(["first-row"]);
-    expect(pages[4].entries.map((entry) => entry.key)).toEqual(["later-row"]);
+    expect(pages[0].topics.map((topic) => topic.groupId)).toEqual(["group-first", "group-later"]);
+    expect(pages[3].entries.map((entry) => entry.key)).toEqual(["loose-new", "loose-old"]);
+    expect(pages[1].dialogue.map((entry) => entry.key)).toEqual(["first-row"]);
+    expect(pages[2].dialogue.map((entry) => entry.key)).toEqual(["later-row"]);
   });
 
   it("renders each repeated occurrence's interpretation, speaker, alternative, and entry key", () => {
@@ -130,55 +117,80 @@ describe("phrasebook joined-entry pages", () => {
         position: 0,
         speaker: "you",
       }),
-      phrase("occ-partner", "shared", "after you", {
+      phrase("occ-alternative", "shared", "after you", {
         groupId: "group-first",
         position: 1,
-        speaker: "partner",
+        speaker: "you",
         alternative: true,
+      }),
+      phrase("occ-partner", "reply", "Thank you", {
+        groupId: "group-first", position: 2, speaker: "partner",
       }),
     ];
     const root = document.createElement("div");
     root.innerHTML = renderDeckBody(deck, entries, groups, "group:group-first");
 
     const tabs = [...root.querySelectorAll('[role="tab"]')];
-    expect(tabs.map((tab) => tab.textContent.trim())).toEqual(["Phrases", "Vocab", "Ordering", "Ordering"]);
+    expect(tabs.map((tab) => tab.textContent.trim())).toEqual(["Phrasebook", "Ordering", "Ordering"]);
     const rows = [...root.querySelectorAll('.deck-page[data-page-key="group:group-first"] .card-row-wrapper')];
-    expect(rows.map((row) => row.dataset.entryKey)).toEqual(["occ-you", "occ-partner"]);
+    expect(rows.map((row) => row.dataset.entryKey)).toEqual(["occ-you", "occ-alternative", "occ-partner"]);
     expect(rows.map((row) => row.querySelector(".card-term-english").textContent)).toEqual([
       "please go ahead",
       "after you",
+      "Thank you",
     ]);
     expect(rows[0].dataset.speaker).toBe("you");
-    expect(rows[1].dataset.speaker).toBe("partner");
+    expect(rows[1].dataset.speaker).toBe("you");
+    expect(rows[2].dataset.speaker).toBe("partner");
     expect(rows[1].querySelector(".card-alternative").textContent).toBe("or");
   });
 
-  it("shows only featured learner occurrences, even when a responder shares the same card", () => {
-    const entries = [
-      phrase("partner-first", "shared", "Their interpretation", {
-        groupId: "group-first", speaker: "partner", featured: true,
-      }),
-      phrase("learner", "shared", "My interpretation", {
-        groupId: "group-first", speaker: "you", featured: true,
-      }),
-      phrase("learner-repeat", "shared", "Another occurrence", {
-        groupId: "group-later", speaker: "you", featured: true,
-      }),
-      phrase("low-value", "filler", "Routine filler", {
-        groupId: "group-first", speaker: "you",
-      }),
-      phrase("unassigned", "unknown", "No known speaker", { featured: true }),
-    ];
+  it("keeps independent essentials and topic-local words without duplicating interactive cards on contents", () => {
+    const essentials = Array.from({ length: 4 }, (_, index) =>
+      phrase(`essential-${index}`, "shared", `Essential ${index}`, {
+        groupId: "group-first", section: "essentials", position: index,
+      }));
+    const words = Array.from({ length: 3 }, (_, index) => ({
+      ...word, key: `placement-${index}`,
+      wordPlacement: { id: `placement-${index}`, deckId: deck.id, groupId: "group-first", cardId: word.cardId, position: index },
+    }));
+    const entries = [...essentials, ...words,
+      phrase("dialogue", "shared", "Dialogue meaning", { groupId: "group-first", speaker: "you" })];
     const root = document.createElement("div");
     root.innerHTML = renderDeckBody(deck, entries, groups, null);
-    expect(root.querySelector('[role="tab"][aria-selected="true"]').dataset.pageKey).toBe("phrases");
-    const collection = root.querySelector('.deck-page[data-page-key="phrases"]');
-    expect([...collection.querySelectorAll(".card-row-wrapper")].map(row => row.dataset.entryKey))
-      .toEqual(["learner"]);
-    expect(collection.querySelector(".card-term-english").textContent).toBe("My interpretation");
-    expect(collection.querySelector("[data-speaker]")).toBeNull();
-    expect(root.querySelectorAll('.deck-page[data-page-kind="conversation"] .card-row-wrapper'))
-      .toHaveLength(5);
+    expect(root.querySelector('[role="tab"][aria-selected="true"]').dataset.pageKey).toBe("contents");
+    const contents = root.querySelector('.deck-page[data-page-key="contents"]');
+    expect(contents.querySelectorAll(".card-row-wrapper")).toHaveLength(0);
+    const preview = contents.querySelector(".topic-preview");
+    expect([...preview.querySelectorAll(".topic-preview-line")].map(row => row.textContent.trim()))
+      .toEqual(["Essential 0", "Essential 1", "Essential 2", "water (noun)", "water (noun)"]);
+    expect(preview.querySelector(".topic-preview-footer").textContent).toContain("4 phrases · 3 words · 1 conversation");
+    expect([...contents.querySelectorAll(".topic-view")].map(button => button.dataset.pageKey))
+      .toEqual(["group:group-first", "group:group-later"]);
+    const topic = root.querySelector('.deck-page[data-page-key="group:group-first"]');
+    expect(topic.querySelectorAll('[data-reorder-region="essentials"] .card-row-wrapper')).toHaveLength(4);
+    expect(topic.querySelector('[data-reorder-region="essentials"] [data-speaker]')).toBeNull();
+    expect(topic.querySelectorAll(".topic-word-grid .card-word-tile")).toHaveLength(3);
+    expect(topic.querySelector('[data-reorder-region="dialogue"] .card-term-english').textContent)
+      .toBe("Dialogue meaning");
+    expect(root.querySelector('.deck-page[data-page-key="group:group-later"] .topic-word-grid')).toBeNull();
+    expect(root.querySelector('[role="tab"][data-page-key="words"]')).toBeNull();
+  });
+
+  it("reserves pending art and renders ready art decoratively without a broken failed image", () => {
+    const root = document.createElement("div");
+    const illustration = { requestId: "art-1", prompt: "Watercolor", state: "pending" };
+    root.innerHTML = renderDeckBody({ ...deck, illustration }, [], [], null);
+    expect(root.querySelector(".deck-illustration")).not.toBeNull();
+    expect(root.querySelector(".deck-illustration img")).toBeNull();
+    root.innerHTML = renderDeckBody({ ...deck, illustration: {
+      ...illustration, state: "ready",
+      image: { dataUrl: "data:image/png;base64,aGVsbG8=", mediaType: "image/png", width: 1600, height: 900 },
+    } }, [], [], null);
+    expect(root.querySelector(".deck-illustration img").getAttribute("alt")).toBe("");
+    root.innerHTML = renderDeckBody({ ...deck, illustration: { ...illustration, state: "failed" } }, [], [], null);
+    expect(root.querySelector("img")).toBeNull();
+    expect(root.querySelector(".deck-illustration-unavailable").textContent).toBe("Illustration unavailable");
   });
 
   it("renders Chunks in full highlighted historical context", () => {

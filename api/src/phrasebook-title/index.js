@@ -74,9 +74,9 @@ async function performPhrasebookTitle(
     reply = await callWithTimeout(handler, prompt, { maxOutputTokens: PHRASEBOOK_TITLE_MAX_TOKENS }, effectiveTimeoutMs);
   } catch (err) {
     if (err instanceof PhrasebookTitleTimeoutError) {
-      console.error({ event: 'llm_timeout', route: 'phrasebook-title', llm: backendName, error: err.message });
+      console.error({ event: 'llm_timeout', route: 'phrasebook-title', llm: backendName, error: err.message, failureLevel: 2 });
     } else {
-      console.error({ event: 'llm_error', route: 'phrasebook-title', llm: backendName, error: err.message, stack: err.stack });
+      console.error({ event: 'llm_error', route: 'phrasebook-title', llm: backendName, error: err.message, stack: err.stack, failureLevel: 2 });
     }
     const wrapped = new Error('LLM request failed');
     wrapped.status = 502;
@@ -88,7 +88,7 @@ async function performPhrasebookTitle(
   try {
     result = validatePhrasebookTitleResponse(reply.text);
   } catch (err) {
-    console.error({ event: 'validation_error', route: 'phrasebook-title', llm: backendName, raw: reply.text, error: err.message });
+    console.error({ event: 'validation_error', route: 'phrasebook-title', llm: backendName, raw: reply.text, error: err.message, failureLevel: 2 });
     const wrapped = new Error('Invalid response from LLM');
     wrapped.status = 502;
     throw wrapped;
@@ -96,7 +96,7 @@ async function performPhrasebookTitle(
 
   const usageReport = buildUsageReport(reply.model, reply.usage, durationMs);
   const { title } = result;
-  console.log({ event: 'usage', route: 'phrasebook-title', llm: backendName, ...usageReport });
+  console.log({ event: 'usage', route: 'phrasebook-title', llm: backendName, ...usageReport, failureLevel: 0 });
 
   return { title, usage: usageReport };
 }
@@ -104,6 +104,7 @@ async function performPhrasebookTitle(
 async function handlePhrasebookTitle(req, res, registry, opts = {}) {
   const parsed = parsePhrasebookTitleRequest(req.body || {});
   if (parsed.error) {
+    console.warn({ event: 'request_invalid', route: 'phrasebook-title', failureLevel: 2, error: parsed.error });
     return res.status(400).json({
       error: parsed.error,
     });
@@ -114,6 +115,7 @@ async function handlePhrasebookTitle(req, res, registry, opts = {}) {
     return res.status(200).json(response);
   } catch (err) {
     const status = err.status || 500;
+    console.error({ event: 'request_failed', route: 'phrasebook-title', failureLevel: 2, status });
     return res.status(status).json({ error: err.message });
   }
 }

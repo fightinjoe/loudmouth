@@ -3,7 +3,7 @@
  *
  * First step of the prompt-first guided-creation split: given a seed
  * (situation, activity, or topic) and a target language, one model call
- * returns clarifying questions and a checklist of conversations to prepare.
+ * returns clarifying questions, a checklist, and a contextual image prompt.
  * The client's selections feed the /phrasebook endpoint together with the
  * seed.
  *
@@ -17,7 +17,7 @@
  *   validateContextResponse(raw)
  *        │  3. FINISH: parse + validate + clamp caps                → 502
  *        ▼
- *   200 { questions, checklist, usage }
+ *   200 { questions, checklist, imagePrompt, usage }
  */
 
 const { buildContextPrompt } = require('./prompt');
@@ -29,8 +29,7 @@ const { sanitizeAbility } = require('../ability');
 const LANGUAGES = ['zh', 'ja', 'es', 'cs', 'uk'];
 const MAX_SEED_LENGTH = 200;
 
-// v03 hand-tests measured 194-333 output tokens across five seeds; 2,000 is
-// ample headroom for the largest plausible questions+checklist response.
+// Preserve the setup call's 2,000-token budget, including its image prompt.
 const CONTEXT_MAX_TOKENS = 2000;
 
 // Latency is the primary metric (<10s). gemini-3.5-flash-lite measured
@@ -98,7 +97,7 @@ function isNonEmptyString(v) {
  * violations throw.
  *
  * @param {string} raw   model output text
- * @returns {{ response: { questions: object[], checklist: object[] }, warnings: string[] }}
+ * @returns {{ response: { questions: object[], checklist: object[], imagePrompt: string }, warnings: string[] }}
  */
 function validateContextResponse(raw) {
   let data;
@@ -115,6 +114,9 @@ function validateContextResponse(raw) {
   }
   if (!Array.isArray(data.checklist) || data.checklist.length === 0) {
     throw new Error('"checklist" must be a non-empty array');
+  }
+  if (!isNonEmptyString(data.imagePrompt) || data.imagePrompt.trim().length > 2000) {
+    throw new Error('"imagePrompt" must contain 1–2000 characters');
   }
 
   const warnings = [];
@@ -148,7 +150,7 @@ function validateContextResponse(raw) {
     checklist = checklist.slice(0, MAX_CHECKLIST);
   }
 
-  return { response: { questions, checklist }, warnings };
+  return { response: { questions, checklist, imagePrompt: data.imagePrompt.trim() }, warnings };
 }
 
 /**
@@ -158,7 +160,7 @@ function validateContextResponse(raw) {
  * @param {{ seed: string, language: string }} parsedRequest
  * @param {Record<string, Function>} registry   LLM_REGISTRY
  * @param {{ timeoutMs?: number }} [opts]
- * @returns {Promise<object>} { questions, checklist, usage }
+ * @returns {Promise<object>} { questions, checklist, imagePrompt, usage }
  */
 async function performContext(
   parsedRequest,
@@ -181,9 +183,9 @@ async function performContext(
     reply = await callWithTimeout(handler, prompt, { maxOutputTokens: CONTEXT_MAX_TOKENS }, effectiveTimeoutMs);
   } catch (err) {
     if (err instanceof ContextTimeoutError) {
-      console.error({ event: 'llm_timeout', route: 'context', llm: backendName, error: err.message });
+      console.error({ event: 'llm_timeout', route: 'context', llm: backendName, error: err.message, failureLevel: 2 });
     } else {
-      console.error({ event: 'llm_error', route: 'context', llm: backendName, error: err.message, stack: err.stack });
+      console.error({ event: 'llm_error', route: 'context', llm: backendName, error: err.message, stack: err.stack, failureLevel: 2 });
     }
     const wrapped = new Error('LLM request failed');
     wrapped.status = 502;
@@ -195,22 +197,23 @@ async function performContext(
   try {
     result = validateContextResponse(reply.text);
   } catch (err) {
-    console.error({ event: 'validation_error', route: 'context', llm: backendName, raw: reply.text, error: err.message });
+    console.error({ event: 'validation_error', route: 'context', llm: backendName, raw: reply.text, error: err.message, failureLevel: 2 });
     const wrapped = new Error('Invalid response from LLM');
     wrapped.status = 502;
     throw wrapped;
   }
 
   if (result.warnings.length > 0) {
-    console.warn({ event: 'context_clamped', llm: backendName, seed, warnings: result.warnings });
+    console.warn({ event: 'context_clamped', llm: backendName, seed, warnings: result.warnings, failureLevel: 1 });
   }
 
   const usageReport = buildUsageReport(reply.model, reply.usage, durationMs);
-  const { questions, checklist } = result.response;
-  console.log({ event: 'context_ok', llm: backendName, language, questions: questions.length, checklist: checklist.length, seed });
-  console.log({ event: 'usage', route: 'context', llm: backendName, ...usageReport });
+  const { questions, checklist, imagePrompt } = result.response;
+  const failureLevel = result.warnings.length > 0 ? 1 : 0;
+  console.log({ event: 'context_ok', llm: backendName, language, questions: questions.length, checklist: checklist.length, seed, failureLevel });
+  console.log({ event: 'usage', route: 'context', llm: backendName, ...usageReport, failureLevel });
 
-  return { questions, checklist, usage: usageReport };
+  return { questions, checklist, imagePrompt, usage: usageReport };
 }
 
 /**
@@ -222,6 +225,7 @@ async function performContext(
 async function handleContext(req, res, registry, opts = {}) {
   const parsed = parseContextRequest(req.body || {});
   if (parsed.error) {
+    console.warn({ event: 'request_invalid', route: 'context', failureLevel: 2, error: parsed.error });
     return res.status(400).json({
       error: parsed.error,
       ...(parsed.supported ? { supported: parsed.supported } : {}),
@@ -233,6 +237,7 @@ async function handleContext(req, res, registry, opts = {}) {
     return res.status(200).json(response);
   } catch (err) {
     const status = err.status || 500;
+    console.error({ event: 'request_failed', route: 'context', failureLevel: 2, status });
     return res.status(status).json({ error: err.message });
   }
 }

@@ -97,7 +97,7 @@
   pointer-events: none;
   touch-action: none;
 }
-#content-pane[data-edit-mode] #reorder-handle {
+#content-pane[data-edit-mode]:has(.deck-page:not([inert]) [data-reorder-region]) #reorder-handle {
   pointer-events: auto;
 }
 
@@ -116,6 +116,10 @@
 
 #content-pane[data-edit-mode] .card-row-reorder-handle {
   display: flex;
+}
+
+#content-pane[data-edit-mode] .deck-page[data-page-kind="starred"] .card-row-reorder-handle {
+  display: none;
 }
 
 .card-row-reorder-placeholder {
@@ -319,8 +323,113 @@
 }
 
 .deck-page-list {
+  gap: 24px;
+  max-width: 48rem;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 20px 20px calc(96px + env(safe-area-inset-bottom));
+}
+
+.deck-illustration {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.deck-illustration img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.deck-illustration-unavailable {
+  margin: 0;
+  font-size: 13px;
+}
+
+[data-region="deck-hero"]:empty {
+  display: none;
+}
+
+.topic-preview h2,
+.topic-section h2 {
+  margin: 0 0 12px;
+}
+
+.topic-preview-card {
+  border: 1px solid hsl(var(--gray-200));
+  border-radius: 16px;
+  overflow: hidden;
+  background: hsl(var(--gray-50));
+}
+
+.topic-preview-line {
+  margin: 0;
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+
+.topic-preview-line + .topic-preview-line {
+  border-top: 1px solid var(--bg-surface);
+}
+
+.topic-preview-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 20px 20px 96px;
+  padding: 8px 12px 8px 16px;
+  border-top: 1px solid hsl(var(--gray-200));
+  color: var(--fg-caption);
+  font-size: 13px;
+}
+
+.topic-preview-footer > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.topic-view {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+}
+
+.topic-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.topic-word-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+#content-pane[data-edit-mode] .topic-word-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.card-word-tile {
+  min-width: 0;
+}
+
+.card-word-tile .card-row {
+  padding: 12px;
+}
+
+.card-word-tile .card-term-definition {
+  padding-right: 0;
+}
+
+.card-term-reading {
+  overflow-wrap: anywhere;
 }
 
 .deck-page .source-context mark {
@@ -515,26 +624,26 @@ ruby {
 
 /* Conversation bubbles retain speaker offset. Partner/left is neutral,
    learner/right is blue; the star state never participates in backgrounds. */
-.deck-page[data-page-kind="conversation"] .card-row-wrapper[data-speaker] {
+.deck-page[data-page-kind="topic"] .card-row-wrapper[data-speaker] {
   width: 89%;
 }
 
-.deck-page[data-page-kind="conversation"] .card-row-wrapper[data-speaker="you"] {
+.deck-page[data-page-kind="topic"] .card-row-wrapper[data-speaker="you"] {
   align-self: flex-end;
   margin-left: auto;
 }
 
-.deck-page[data-page-kind="conversation"] .card-row-wrapper[data-speaker="partner"] {
+.deck-page[data-page-kind="topic"] .card-row-wrapper[data-speaker="partner"] {
   align-self: flex-start;
   margin-right: auto;
 }
 
-.deck-page[data-page-kind="conversation"] [data-speaker="you"] .card-row {
+.deck-page[data-page-kind="topic"] [data-speaker="you"] .card-row {
   background: var(--bg-speaker);
 }
 
-.deck-page[data-page-kind="conversation"] [data-speaker="partner"] .card-row,
-.deck-page[data-page-kind="vocab"] .card-row,
+.deck-page[data-page-kind="topic"] [data-speaker="partner"] .card-row,
+.deck-page[data-page-kind="words"] .card-row,
 .deck-page[data-page-kind="starred"] .card-row {
   background: hsl(var(--gray-50));
 }

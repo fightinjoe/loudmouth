@@ -1,10 +1,12 @@
-import type { Lang, PhrasebookResponse } from "@catchphrase/card-schema";
+import type { ContextResponse, Lang, PhrasebookResponse } from "@catchphrase/card-schema";
 import { openBottomSheet } from "./bottom-sheet";
 import type { BottomSheetHandle } from "./bottom-sheet";
 import { getContext, generatePhrasebook, getPhrasebookTitle } from "../js/phrasebook-api";
-import type { Ability, ContextResponse } from "../js/phrasebook-api";
+import type { Ability } from "../js/phrasebook-api";
 import { commitPhrasebook as persistPhrasebook } from "../js/db";
-import type { Deck, Generation } from "../js/library-types";
+import type { Deck, DeckIllustration, Generation } from "../js/library-types";
+import { createIllustrationTask } from "../js/phrasebook-illustration";
+import type { IllustrationTask } from "../js/phrasebook-illustration";
 import { LANG_FLAGS, LANG_NAMES } from "../js/lang";
 import { icon } from "./icon";
 import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header";
@@ -62,6 +64,7 @@ interface CreationState {
   frozenTitle: string | null;
   phrasebookRequest: PhrasebookRequest | null;
   commitRequest: CommitRequest | null;
+  illustrationTask: IllustrationTask | null;
 }
 
 export interface CreationPanelParams {
@@ -81,6 +84,7 @@ export function openCreationPanel(
   { lang, ability: initialAbility }: CreationPanelParams,
   onCreated: PhrasebookCreatedCallback,
   onDismiss?: () => void,
+  onIllustrationUpdated: (deckId: string, illustration: DeckIllustration) => void = () => {},
 ): BottomSheetHandle {
   const rememberedAbility = initialAbility ?? getLastAbility(lang);
   const state: CreationState = {
@@ -99,9 +103,11 @@ export function openCreationPanel(
     frozenTitle: null,
     phrasebookRequest: null,
     commitRequest: null,
+    illustrationTask: null,
   };
   let dismissed = false;
   let completed = false;
+  let committingText = false;
   let closeObserver: MutationObserver | null = null;
 
   const sheet = openBottomSheet(appElement, {
@@ -146,6 +152,9 @@ export function openCreationPanel(
     abortTitleRequest();
     invalidatePhrasebook();
     state.commitRequest?.controller.abort();
+    // An in-flight transaction decides whether this task gains a durable owner.
+    // Cancellation is deferred until that transaction has actually rolled back.
+    if (!committingText) state.illustrationTask?.cancel();
   }
 
   function abortContextRequest(): void {
@@ -225,6 +234,8 @@ export function openCreationPanel(
 
     abortContextRequest();
     invalidatePhrasebook();
+    state.illustrationTask?.cancel();
+    state.illustrationTask = null;
     state.contextSeed = null;
     state.questions = [];
     state.questionIndex = 0;
@@ -238,15 +249,14 @@ export function openCreationPanel(
     const request: ContextRequest = { controller };
     state.contextRequest = request;
     try {
-      const { questions, checklist } = await getContext({
+      const { questions, checklist, imagePrompt } = await getContext({
         seed: topic,
         language: lang,
         ...(rememberedAbility ? { ability: rememberedAbility } : {}),
         signal: controller.signal,
       });
       if (dismissed || state.contextRequest !== request) return;
-      state.contextRequest = null;
-      state.contextSeed = topic;
+      state.illustrationTask = createIllustrationTask(imagePrompt, onIllustrationUpdated);
       // This question is client-owned; model-provided options are never used.
       state.questions = questions.filter((question) => question.label !== ABILITY_QUESTION);
       if (!rememberedAbility) {
@@ -256,11 +266,14 @@ export function openCreationPanel(
         });
       }
       state.checklist = normalizeChecklist(checklist);
+      state.contextSeed = topic;
       showQuestionsOrChecklist();
+      state.contextRequest = null;
       return;
     } catch (error) {
       if (dismissed || state.contextRequest !== request) return;
       state.contextRequest = null;
+      state.contextSeed = null;
       state.error = errorMessage(error);
       state.step = "error";
     }
@@ -343,6 +356,7 @@ export function openCreationPanel(
       await commitRequest.promise;
     } finally {
       if (state.commitRequest === commitRequest) state.commitRequest = null;
+      if (dismissed && !completed) state.illustrationTask?.cancel();
     }
   }
 
@@ -364,6 +378,7 @@ export function openCreationPanel(
     }
 
     let deck: Deck;
+    committingText = true;
     try {
       deck = await persistPhrasebook({
         name: title,
@@ -371,11 +386,15 @@ export function openCreationPanel(
         generation: request.generation,
         groups: request.outcome.result.groups,
         selectedIndexes,
+        ...(state.illustrationTask ? { illustration: state.illustrationTask.snapshot() } : {}),
       }, { signal });
     } catch (error) {
       if (!dismissed) showPhrasebookError(error);
       return;
+    } finally {
+      committingText = false;
     }
+    await state.illustrationTask?.bind(deck.id);
 
     // Transaction completion is the success boundary. A dismissal that races
     // after it never deletes the committed phrasebook.

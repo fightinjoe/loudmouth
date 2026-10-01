@@ -2,9 +2,9 @@ import type { Lang } from "@catchphrase/card-schema";
 import type { Ability } from "./library-types";
 import { isAbility } from "./ability";
 
-export const LAST_DECK_KEY = "loudmouth-card-v2.lastDeckId";
-export const LANGUAGE_ABILITY_PREFIX = "loudmouth-card-v2.languageAbility.";
-export const PHRASE_BREAKDOWN_CACHE_PREFIX = "loudmouth-card-v2.phrase-breakdown.v1:";
+export const LAST_DECK_KEY = "loudmouth-topic-v3.lastDeckId";
+export const LANGUAGE_ABILITY_PREFIX = "loudmouth-topic-v3.languageAbility.";
+export const PHRASE_BREAKDOWN_CACHE_PREFIX = "loudmouth-topic-v3.phrase-breakdown.v1:";
 
 
 export function getLastDeckId(): string | null {

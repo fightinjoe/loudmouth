@@ -43,6 +43,7 @@ type PageDrag = Point & {
 };
 
 type ReorderState = {
+  region: HTMLElement;
   placeholderEl: HTMLElement;
   startIndex: number;
   currentIndex: number;
@@ -498,11 +499,6 @@ export function wireContentGestures({
   // ── Edit-mode reorder ──────────────────────────────────────────────────
   let reorderState: ReorderState | null = null;
 
-  function listRegion(): HTMLElement | null {
-    return rootEl.querySelector<HTMLElement>(
-      '.deck-page:not([inert]) [data-region="card-list"], .deck-view-list[data-region="card-list"]',
-    );
-  }
 
   function visibleRows(region: HTMLElement | null): HTMLElement[] {
     return region
@@ -512,8 +508,7 @@ export function wireContentGestures({
 
 
   function updatePlaceholderPosition(state: ReorderState, ghostMidY: number): number {
-    const region = listRegion();
-    if (!region) return state.currentIndex;
+    const region = state.region;
     const siblings = visibleRows(region).filter((row) => row !== state.placeholderEl);
     let slot = 0;
     for (let index = 0; index < siblings.length; index += 1) {
@@ -532,17 +527,18 @@ export function wireContentGestures({
     if (!isEdit()) return;
     const touch = firstTouch(event.touches);
     if (!touch) return;
-    const region = listRegion();
-    if (!region) return;
-    const allRows = visibleRows(region);
-    // The edge handle is outside inset and speaker-aligned bubbles; match its vertical row.
-    const startIndex = allRows.findIndex((row) => {
-      const rect = row.getBoundingClientRect();
+    const regions = [...rootEl.querySelectorAll<HTMLElement>(
+      '.deck-page:not([inert]) [data-reorder-region]',
+    )];
+    const row = regions.flatMap(visibleRows).find((candidate) => {
+      const rect = candidate.getBoundingClientRect();
       return touch.clientY >= rect.top && touch.clientY < rect.bottom;
     });
-    const row = allRows[startIndex];
-    if (!row) return;
+    const region = row?.closest<HTMLElement>("[data-reorder-region]");
+    if (!row || !region) return;
+    const startIndex = visibleRows(region).indexOf(row);
     reorderState = {
+      region,
       placeholderEl: row,
       startIndex,
       currentIndex: startIndex,
@@ -570,7 +566,7 @@ export function wireContentGestures({
     }
     event.preventDefault();
     if (!reorderState.active) {
-      const region = listRegion();
+      const region = reorderState.region;
       const row = reorderState.placeholderEl;
       const rect = row.getBoundingClientRect();
       const clone = row.cloneNode(true);
@@ -599,8 +595,7 @@ export function wireContentGestures({
 
   function endReorder(): void {
     if (!reorderState) return;
-    const { ghostEl, placeholderEl, startIndex, currentIndex } = reorderState;
-    const region = listRegion();
+    const { ghostEl, placeholderEl, startIndex, currentIndex, region } = reorderState;
     ghostEl?.remove();
     placeholderEl.classList.remove(REORDER_PLACEHOLDER_CLASS);
     region?.classList.remove(REORDER_REORDERING_CLASS);
@@ -617,8 +612,7 @@ export function wireContentGestures({
   reorderHandleEl.addEventListener("touchend", endReorder);
   reorderHandleEl.addEventListener("touchcancel", () => {
     if (!reorderState) return;
-    const { ghostEl, placeholderEl, startIndex } = reorderState;
-    const region = listRegion();
+    const { ghostEl, placeholderEl, startIndex, region } = reorderState;
     if (region) {
       const siblings = visibleRows(region).filter((row) => row !== placeholderEl);
       region.insertBefore(placeholderEl, siblings[startIndex] ?? null);

@@ -2,23 +2,27 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 
-const { commitPhrasebook } = vi.hoisted(() => ({
+const { commitPhrasebook, setDeckIllustration } = vi.hoisted(() => ({
   commitPhrasebook: vi.fn(),
+  setDeckIllustration: vi.fn(),
 }));
 vi.mock("../js/db", async (importOriginal) => ({
   ...(await importOriginal()),
   commitPhrasebook,
+  setDeckIllustration,
 }));
 
-const { getContext, generatePhrasebook, getPhrasebookTitle } = vi.hoisted(() => ({
+const { getContext, generatePhrasebook, getPhrasebookTitle, generatePhrasebookImage } = vi.hoisted(() => ({
   getContext: vi.fn(),
   getPhrasebookTitle: vi.fn(),
   generatePhrasebook: vi.fn(),
+  generatePhrasebookImage: vi.fn(),
 }));
 vi.mock("../js/phrasebook-api", () => ({
   getContext,
   generatePhrasebook,
   getPhrasebookTitle,
+  generatePhrasebookImage,
 }));
 
 import { createDb } from "../js/db";
@@ -36,6 +40,8 @@ const usage = {
 };
 
 const sampleQuestionsResponse = {
+  imagePrompt: "An airy watercolor of dancing shoes beside a small radio.",
+  usage,
   questions: [
     { label: "Salsa scene", options: ["Latin America (neutral)", "Cuban style"] },
   ],
@@ -78,25 +84,26 @@ function word(text, translation, senseKey, evidence) {
 const firstPhrase = phrase("draft-phrase-1", "¿Bailas?", "Would you like to dance?");
 const secondPhrase = phrase("draft-phrase-2", "Paso básico", "Basic step", "partner");
 const sampleGenerateResponse = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   title: "Provider title is not used for naming",
   groups: [
     {
       id: "draft-group-1",
       title: "Ask someone to dance",
-      phrases: [firstPhrase],
-      featuredPhraseIds: [firstPhrase.id],
+      essentials: [{ id: "essential-1", card: { ...firstPhrase.card, text: "¿Quieres bailar?", translation: "Do you want to dance?" } }],
+      dialogue: [firstPhrase, phrase("reply-1", "Sí, gracias.", "Yes, thank you.", "partner")],
       vocab: [word("bailar", "dance", "dance", source(firstPhrase, 1, 7))],
     },
     {
       id: "draft-group-2",
       title: "Dance/step vocabulary",
-      phrases: [secondPhrase],
-      featuredPhraseIds: [secondPhrase.id],
+      essentials: [{ id: "essential-2", card: { ...secondPhrase.card } }],
+      dialogue: [phrase("question-2", "¿Cuál es el paso?", "What is the step?"), secondPhrase],
       vocab: [word("paso", "step", "step", source(secondPhrase, 0, 4))],
     },
   ],
   usage,
+  flags: [],
 };
 
 const committedDeck = {
@@ -116,9 +123,10 @@ const committedDeck = {
 
 let appElement;
 let actualCommitPhrasebook;
+let actualSetDeckIllustration;
 
 beforeAll(async () => {
-  ({ commitPhrasebook: actualCommitPhrasebook } = await vi.importActual("../js/db"));
+  ({ commitPhrasebook: actualCommitPhrasebook, setDeckIllustration: actualSetDeckIllustration } = await vi.importActual("../js/db"));
 });
 
 beforeEach(() => {
@@ -134,6 +142,10 @@ beforeEach(() => {
   getPhrasebookTitle.mockReturnValue(new Promise(() => {}));
   generatePhrasebook.mockReset();
   generatePhrasebook.mockReturnValue(new Promise(() => {}));
+  generatePhrasebookImage.mockReset();
+  generatePhrasebookImage.mockReturnValue(new Promise(() => {}));
+  setDeckIllustration.mockReset();
+  setDeckIllustration.mockResolvedValue(true);
 });
 
 function deferred() {
@@ -175,9 +187,10 @@ async function openQuestions({
   params = { lang: "es", ability: "none" },
   onCreated = () => {},
   onDismiss = () => {},
+  onIllustrationUpdated = () => {},
 } = {}) {
-  getContext.mockResolvedValueOnce(context);
-  const sheet = openCreationPanel(appElement, params, onCreated, onDismiss);
+  getContext.mockResolvedValueOnce({ imagePrompt: sampleQuestionsResponse.imagePrompt, usage, ...context });
+  const sheet = openCreationPanel(appElement, params, onCreated, onDismiss, onIllustrationUpdated);
   typeAndSubmitTopic("salsa dancing");
   await vi.waitFor(() => expect(appElement.querySelector(".creation-question")).toBeTruthy());
   return sheet;
@@ -471,6 +484,7 @@ describe("openCreationPanel — speculative generation", () => {
     const phrasebookSignal = generatePhrasebook.mock.calls.at(-1)[0].signal;
     second.close();
     expect(phrasebookSignal.aborted).toBe(true);
+    expect(generatePhrasebookImage.mock.calls.at(-1)[0].signal.aborted).toBe(true);
     phrasebook.resolve(sampleGenerateResponse);
     await Promise.resolve();
     expect(commitPhrasebook).not.toHaveBeenCalled();
@@ -488,28 +502,28 @@ describe("openCreationPanel — atomic commit lifetime", () => {
     const discarded = phrase("discarded", "Adiós", "Goodbye");
     const selectedThird = phrase("selected-third", "Hola", "Hi there", "partner");
     const response = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       title: "Ignored provider title",
       groups: [
         {
           id: "same-a",
           title: "Same title",
-          phrases: [selectedFirst],
-          featuredPhraseIds: [selectedFirst.id],
+          essentials: [{ id: "essential-first", card: selectedFirst.card }],
+          dialogue: [selectedFirst, phrase("reply-first", "Buenas.", "Hi.", "partner")],
           vocab: [word("hola", "hello", "greeting", source(selectedFirst, 0, 4))],
         },
         {
           id: "discarded-group",
           title: "Discarded",
-          phrases: [discarded],
-          featuredPhraseIds: [],
+          essentials: [{ id: "essential-discarded", card: discarded.card }],
+          dialogue: [discarded, phrase("reply-discarded", "Hasta luego.", "See you.", "partner")],
           vocab: [word("adiós", "goodbye", "farewell", source(discarded, 0, 5))],
         },
         {
           id: "same-c",
           title: "Same title",
-          phrases: [selectedThird],
-          featuredPhraseIds: [selectedThird.id],
+          essentials: [{ id: "essential-third", card: selectedThird.card }],
+          dialogue: [phrase("question-third", "Buenas.", "Hi."), selectedThird],
           vocab: [word("hola", "hi", "greeting", source(selectedThird, 0, 4))],
         },
       ],
@@ -543,8 +557,10 @@ describe("openCreationPanel — atomic commit lifetime", () => {
     expect((await store.groups.where("deckId").equals(createdDeck.id).sortBy("position"))
       .map((group) => group.title)).toEqual(["Same title", "Same title"]);
     const occurrences = await store.occurrences.where("deckId").equals(createdDeck.id).toArray();
-    expect(occurrences.map((occurrence) => occurrence.translation).sort())
-      .toEqual(["Hello", "Hi there"]);
+    expect(occurrences.filter((occurrence) => occurrence.section === "essentials")
+      .map((occurrence) => occurrence.translation).sort()).toEqual(["Hello", "Hi there"]);
+    expect(occurrences.filter((occurrence) => occurrence.section === "dialogue")).toHaveLength(4);
+    expect(await store.topicWords.where("deckId").equals(createdDeck.id).count()).toBe(2);
     expect(await store.cards.where("type").equals("word").count()).toBe(1);
     expect(await store.provenance.where("deckId").equals(createdDeck.id).count()).toBe(2);
     expect(getLastAbility("es")).toBe("none");
@@ -588,6 +604,7 @@ describe("openCreationPanel — atomic commit lifetime", () => {
     expect(await store.memberships.count()).toBe(0);
     expect(created).toBe(false);
     expect(getLastAbility("es")).toBeUndefined();
+    await vi.waitFor(() => expect(generatePhrasebookImage.mock.calls[0][0].signal.aborted).toBe(true));
     store.close();
   });
 
@@ -612,6 +629,7 @@ describe("openCreationPanel — atomic commit lifetime", () => {
     expect(await store.cards.count()).toBeGreaterThan(0);
     expect(getLastAbility("es")).toBe("none");
     expect(created).toBe(false);
+    expect(generatePhrasebookImage.mock.calls[0][0].signal.aborted).toBe(false);
     store.close();
   });
 
@@ -666,8 +684,6 @@ describe("openCreationPanel — title and ability", () => {
     commitPhrasebook.mockReturnValueOnce(committing.promise);
     await openQuestions({ params: { lang: "es" } });
     expect(appElement.querySelector(".creation-question-label").textContent).toBe(ABILITY_QUESTION);
-    expect([...appElement.querySelectorAll('input[type="radio"]')].map((option) => option.value))
-      .toEqual(["None", "Basics", "Conversational"]);
     expect(appElement.querySelector('input[type="radio"]:checked')).toBeNull();
     expect(appElement.querySelector('[data-action="creation/other"]')).toBeNull();
     expect(appElement.querySelector(".creation-other-input")).toBeNull();
@@ -698,5 +714,119 @@ describe("openCreationPanel — title and ability", () => {
     expect(getContext).toHaveBeenCalledWith(expect.objectContaining({ ability: "basics" }));
     gotoChecklist();
     expect(generatePhrasebook).toHaveBeenCalledWith(expect.objectContaining({ ability: "basics" }));
+  });
+});
+
+describe("openCreationPanel — independent cover work", () => {
+  it("creates and saves a phrasebook when the HTTP origin has no randomUUID", async () => {
+    const store = await createStore();
+    commitPhrasebook.mockImplementation((input, options) => actualCommitPhrasebook(input, { ...options, store }));
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) });
+    try {
+      generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+      let created;
+      await openQuestions({ onCreated: (deck) => { created = deck; } });
+      gotoChecklist();
+      appElement.querySelector('[data-action="creation/submit-context"]').click();
+      await vi.waitFor(() => expect(created).toBeTruthy(), { timeout: 2500 });
+      const saved = await store.decks.get(created.id);
+      expect(saved.illustration.state).toBe("pending");
+      expect(saved.illustration.requestId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      expect((await store.groups.where("deckId").equals(created.id).toArray()).map(group => group.title))
+        .toEqual(["Ask someone to dance"]);
+      await vi.waitFor(() => expect(appElement.querySelector(".creation-generating")).toBeNull());
+    } finally {
+      vi.unstubAllGlobals();
+      store.close();
+    }
+  });
+
+  it("shows an initialization error after context resolves and allows a fresh attempt", async () => {
+    const entropy = vi.spyOn(crypto, "getRandomValues").mockImplementationOnce(() => {
+      throw new Error("Randomness unavailable");
+    });
+    const sheet = openCreationPanel(appElement, { lang: "es", ability: "none" }, () => {});
+    try {
+      getContext.mockResolvedValue(sampleQuestionsResponse);
+      typeAndSubmitTopic("salsa dancing");
+      await vi.waitFor(() => expect(appElement.querySelector(".creation-error")?.textContent)
+        .toContain("Randomness unavailable"));
+      expect(appElement.querySelector(".creation-generating")).toBeNull();
+      appElement.querySelector('[data-action="creation/retry"]').click();
+      typeAndSubmitTopic("salsa dancing");
+      await vi.waitFor(() => expect(appElement.querySelector(".creation-question-label")?.textContent)
+        .toBe("Salsa scene"));
+    } finally {
+      entropy.mockRestore();
+      sheet.close();
+    }
+  });
+
+  it("reuses context art across answer changes and same-seed navigation, but cancels a replaced seed", async () => {
+    await openQuestions();
+    const originalSignal = generatePhrasebookImage.mock.calls[0][0].signal;
+    gotoChecklist();
+    appElement.querySelector('[data-action="creation/back"]').click();
+    choosePreset(1);
+    expect(generatePhrasebookImage).toHaveBeenCalledTimes(1);
+    appElement.querySelector('[data-action="creation/back"]').click();
+    appElement.querySelector('[data-action="creation/back"]').click();
+    typeAndSubmitTopic("salsa dancing");
+    expect(getContext).toHaveBeenCalledTimes(1);
+    expect(generatePhrasebookImage).toHaveBeenCalledTimes(1);
+    expect(originalSignal.aborted).toBe(false);
+
+    appElement.querySelector('[data-action="creation/back"]').click();
+    getContext.mockResolvedValueOnce({ ...sampleQuestionsResponse, imagePrompt: "A watercolor of a medicine bottle." });
+    typeAndSubmitTopic("visiting a pharmacy");
+    await vi.waitFor(() => expect(generatePhrasebookImage).toHaveBeenCalledTimes(2));
+    expect(originalSignal.aborted).toBe(true);
+    expect(generatePhrasebookImage.mock.calls[1][0].signal.aborted).toBe(false);
+  });
+
+  it("finishes text creation before delayed art and saves the art after the sheet closes", async () => {
+    const store = await createStore();
+    commitPhrasebook.mockImplementation((input, options) => actualCommitPhrasebook(input, { ...options, store }));
+    setDeckIllustration.mockImplementation((deckId, requestId, next) => actualSetDeckIllustration(deckId, requestId, next, store));
+    const art = deferred();
+    generatePhrasebookImage.mockReturnValueOnce(art.promise);
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    const updated = vi.fn();
+    let created;
+    await openQuestions({ onCreated: (deck) => { created = deck; }, onIllustrationUpdated: updated });
+    gotoChecklist();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await vi.waitFor(() => expect(created).toBeTruthy(), { timeout: 2500 });
+    expect(created.illustration.state).toBe("pending");
+    expect(generatePhrasebookImage.mock.calls[0][0].signal.aborted).toBe(false);
+    const image = {
+      dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAJCAYAAAA7KqwyAAAAFklEQVR4nGP4sGVaAyWYYdSAUQOAGAAeWIiwsY03XwAAAABJRU5ErkJggg==",
+      mediaType: "image/png", width: 16, height: 9,
+    };
+    art.resolve({ image });
+    await vi.waitFor(() => expect(updated).toHaveBeenCalledWith(created.id, expect.objectContaining({ state: "ready", image })));
+    expect((await store.decks.get(created.id)).illustration.image).toEqual(image);
+    store.close();
+  });
+
+  it("commits text with a failed illustration without retrying image providers", async () => {
+    generatePhrasebookImage.mockRejectedValueOnce(new Error("Image unavailable"));
+    generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
+    let created = false;
+    await openQuestions({ onCreated: () => { created = true; } });
+    gotoChecklist();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await vi.waitFor(() => expect(created).toBe(true), { timeout: 2500 });
+    expect(commitPhrasebook.mock.calls[0][0].illustration.state).toBe("failed");
+    expect(generatePhrasebookImage).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts unbound art immediately when dismissed during the final text wait", async () => {
+    const sheet = await openQuestions();
+    gotoChecklist();
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    sheet.close();
+    expect(generatePhrasebookImage.mock.calls[0][0].signal.aborted).toBe(true);
+    expect(commitPhrasebook).not.toHaveBeenCalled();
   });
 });

@@ -30,6 +30,7 @@ import {
   renderBrowseCardsHTML,
   renderDeckBody,
   renderDeckPager,
+  renderIllustration,
   STARRED_PAGE_KEY,
   type ContentBrowse,
 } from "./content-pane-render";
@@ -87,14 +88,12 @@ export interface ContentLoadResult {
 }
 
 function previewGroups(deck: PreviewDeck): Group[] {
-  return deck.draftGroups.flatMap((group, position) => group.title === undefined
-    ? []
-    : [{
-        id: group.id,
-        deckId: deck.id,
-        title: group.title,
-        position,
-      }]);
+  return deck.draftGroups.map((group, position) => ({
+    id: group.id,
+    deckId: deck.id,
+    title: group.title,
+    position,
+  }));
 }
 
 function resolvedGroups(deck: ContentDeck | null, groups?: Group[]): Group[] {
@@ -166,7 +165,7 @@ const transitions = {
       editOrder: null,
       menuOpen: false,
       browse: null,
-      pageKey: isStoredDeck(deck)
+      pageKey: deck && !isSystemDeck(deck)
         ? normalizePageKey(cards, nextGroups, slice.deckId === deck.id
           ? slice.pageKey === STARRED_PAGE_KEY
             && !cards.some((entry) => entry.membership?.starredAt != null)
@@ -179,6 +178,13 @@ const transitions = {
     };
   },
 
+  "content/illustration-updated": (slice, { deckId, illustration }) => {
+    if (!isStoredDeck(slice.deck) || slice.deck.id !== deckId
+      || slice.deck.illustration?.requestId !== illustration.requestId
+      || (slice.deck.illustration.state === "ready" && illustration.state !== "ready")) return slice;
+    return { ...slice, deck: { ...slice.deck, illustration } };
+  },
+
   "content/cards-changed": (slice, { cards, groups, deckId }) => {
     if (deckId !== undefined && deckId !== slice.deckId) return slice;
     const nextGroups = groups ?? slice.groups;
@@ -186,7 +192,7 @@ const transitions = {
       ...slice,
       cards,
       groups: nextGroups,
-      pageKey: isStoredDeck(slice.deck)
+      pageKey: slice.deck && !isSystemDeck(slice.deck)
         ? reconcilePageKey(
           slice.cards, slice.groups, cards, nextGroups, slice.pageKey, slice.previousPageKey,
         )
@@ -218,7 +224,7 @@ const transitions = {
   },
 
   "content/set-page": (slice, { pageKey }) => {
-    if (!isStoredDeck(slice.deck)) return slice;
+    if (!slice.deck || isSystemDeck(slice.deck)) return slice;
     const nextPageKey = normalizePageKey(slice.cards, slice.groups, pageKey);
     return nextPageKey === slice.pageKey ? slice : {
       ...slice,
@@ -245,6 +251,13 @@ const transitions = {
     const pageKeys = pageOrder.filter((key, index) =>
       slice.editOrder?.includes(key) && pageOrder.indexOf(key) === index);
     if (pageKeys.length < 2) return slice;
+    const entries = pageKeys.map((key) => slice.cards.find((entry) => entry.key === key)!);
+    const first = entries[0];
+    if (entries.some((entry) =>
+      entry.card.type !== first.card.type
+      || entry.occurrence?.groupId !== first.occurrence?.groupId
+      || entry.occurrence?.section !== first.occurrence?.section
+      || entry.wordPlacement?.groupId !== first.wordPlacement?.groupId)) return slice;
     const pageSet = new Set(pageKeys);
     const current = slice.editOrder.filter((key) => pageSet.has(key));
     if (current.length !== pageKeys.length
@@ -492,7 +505,15 @@ const contentPane = {
         && !next.editMode
         && previous.editOrder !== null;
 
-      if (browseChanged || (deckChanged && !samePhrasebook)) {
+      const illustrationOnly = samePhrasebook && deckChanged
+        && !cardsChanged && !groupsChanged
+        && next.deck && previous.deck
+        && "illustration" in next.deck && "illustration" in previous.deck
+        && next.deck.illustration !== previous.deck.illustration;
+      if (illustrationOnly && next.deck && "illustration" in next.deck) {
+        const hero = meatEl.querySelector<HTMLElement>('[data-region="deck-hero"]');
+        if (hero) hero.innerHTML = renderIllustration(next.deck.illustration);
+      } else if (browseChanged || (deckChanged && !samePhrasebook)) {
         const scrolls = capturePageScrolls();
         meatEl.innerHTML = next.browse
           ? renderBrowseBody(next.browse)
@@ -508,7 +529,7 @@ const contentPane = {
       } else if (!next.browse
         && (deckChanged || cardsChanged || groupsChanged || reorderedWhileEditing || leavingEditOrder)) {
         const orderedEntries = visibleEntries(next);
-        if (next.deck && (isSystemDeck(next.deck) || isPreviewDeck(next.deck))) {
+        if (next.deck && isSystemDeck(next.deck)) {
           const list = meatEl.querySelector<HTMLElement>(
             '.deck-view-list[data-region="card-list"]',
           );
@@ -547,8 +568,10 @@ const contentPane = {
       const anchor = meatEl.querySelector<HTMLElement>('[data-action="content/deck-title"]');
       if (!anchor) return;
       const rect = anchor.getBoundingClientRect();
-      menuEl.style.top = `${rect.bottom + 4}px`;
-      menuEl.style.left = `${rect.left + rect.width / 2}px`;
+      const origin = rootEl.getBoundingClientRect();
+      // The transformed content pane is the fixed menu's containing block.
+      menuEl.style.top = `${rect.bottom - origin.top + 4}px`;
+      menuEl.style.left = `${rect.left - origin.left + rect.width / 2}px`;
     };
 
     let inflight = 0;
@@ -705,7 +728,10 @@ const contentPane = {
 
     delegate.register("content/set-page", (_event, element) => {
       const pageKey = element.dataset.pageKey;
-      if (pageKey) ui.transition("content/set-page", { pageKey });
+      if (pageKey) {
+        ui.transition("content/set-page", { pageKey });
+        if (element.matches(".topic-view")) syncPager(pageKey, { focus: true });
+      }
     });
 
     const unregisterCardActions = registerCardActions({ host, isEdit, resetReveal });

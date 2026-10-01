@@ -452,12 +452,21 @@ async function evaluateContext(state, handler, meta, body, formatMarker) {
 async function evaluateGeneration(state, handler, meta, body, formatMarker) {
   const request = parseOrRecord(state, meta, 'phrasebook-request', body, parsePhrasebookRequest);
   if (!request) return { value: null };
-  return evaluateCall(state, handler, meta, {
-    stage: 'phrasebook-generation',
-    prompt: buildPhrasebookGenerationPrompt(request),
-    validator: (raw) => validateGenerationResponse(raw, request.checklist),
-    formatMarker,
-  });
+  const conversations = [];
+  let failureLevel = 0;
+  // Exercise the production singleton contract, preserving duplicate-title indexes.
+  for (const title of request.checklist) {
+    const result = await evaluateCall(state, handler, meta, {
+      stage: 'phrasebook-generation',
+      prompt: buildPhrasebookGenerationPrompt({ ...request, checklist: [title] }),
+      validator: (raw) => validateGenerationResponse(raw, [title]),
+      formatMarker,
+    });
+    if (!result.value) return { value: null };
+    conversations.push(result.value.conversations[0]);
+    failureLevel = Math.max(failureLevel, result.value.failureLevel);
+  }
+  return { value: { conversations, failureLevel } };
 }
 
 async function evaluateTranslation(state, handler, meta, { seed, language, ability, answers, conversation }, formatMarker) {

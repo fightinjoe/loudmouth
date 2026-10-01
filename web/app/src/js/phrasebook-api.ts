@@ -1,12 +1,8 @@
-import { SCHEMA_VERSION, validatePhrasebookResponse, validateBreakdownRequest, validateBreakdownResponse } from '@catchphrase/card-schema';
-import type { Lang, BreakdownRequest, BreakdownGenerationContext, BreakdownResponse, PhrasebookResponse } from '@catchphrase/card-schema';
+import { SCHEMA_VERSION, validatePhrasebookResponse, validateBreakdownRequest, validateBreakdownResponse, validateContextResult, validatePhrasebookImageResponse } from '@catchphrase/card-schema';
+import type { Lang, BreakdownRequest, BreakdownGenerationContext, BreakdownResponse, PhrasebookResponse, ContextResponse, PhrasebookImageResponse } from '@catchphrase/card-schema';
 
 const GATEWAY_URL = import.meta.env.VITE_API_URL || 'https://translation-api-gateway-2qqw247r.uc.gateway.dev';
 export type Ability = BreakdownGenerationContext['ability'];
-export interface ContextResponse {
-  questions: {label: string; options: string[]}[];
-  checklist: {label: string; checked: boolean}[];
-}
 export interface GenerationRequest {
   seed: string; language: Lang; ability: Ability; answers: Record<string,string>; checklist: string[];
 }
@@ -33,32 +29,24 @@ async function post(path: string, body: unknown, signal?: AbortSignal): Promise<
 export async function getContext({seed,language,ability,signal}: {
   seed:string; language:Lang; ability?:Ability; signal?:AbortSignal;
 }): Promise<ContextResponse> {
-  const value = await post('/context', {seed,language,ability}, signal);
-  if (!record(value) || !Array.isArray(value.questions) || !Array.isArray(value.checklist)) {
-    throw new Error('Invalid context response');
-  }
-  const questions = value.questions.map((question: unknown) => {
-    if (!record(question) || typeof question.label !== 'string' || !Array.isArray(question.options)) {
-      throw new Error('Invalid context question');
-    }
-    const options = question.options.map((option: unknown) => {
-      if (typeof option !== 'string') throw new Error('Invalid context option');
-      return option;
-    });
-    return {label:question.label,options};
-  });
-  const checklist = value.checklist.map((item: unknown) => {
-    if (!record(item) || typeof item.label !== 'string' || typeof item.checked !== 'boolean') {
-      throw new Error('Invalid context checklist');
-    }
-    return {label:item.label,checked:item.checked};
-  });
-  return {questions,checklist};
+  return validateContextResult(await post('/context', {seed,language,ability}, signal));
 }
 export async function generatePhrasebook({seed,language,ability,answers,checklist,signal}: GenerationRequest & {
   signal?:AbortSignal;
 }): Promise<PhrasebookResponse> {
-  return validatePhrasebookResponse(await post('/phrasebook', {seed,language,ability,answers,checklist}, signal));
+  const submittedChecklist = [...checklist];
+  const result = validatePhrasebookResponse(await post('/phrasebook', {seed,language,ability,answers,checklist:submittedChecklist}, signal));
+  if (result.groups.length !== submittedChecklist.length || result.groups.some((group, index) => group.title !== submittedChecklist[index])) {
+    throw new Error('Phrasebook topics do not match the requested checklist');
+  }
+  return result;
+}
+export async function generatePhrasebookImage({prompt,signal}: {
+  prompt:string;signal?:AbortSignal;
+}): Promise<PhrasebookImageResponse> {
+  return validatePhrasebookImageResponse(await post('/phrasebook-image', {
+    prompt, output_format:'png', background:'transparent',
+  }, signal));
 }
 export async function getPhrasebookTitle({seed,signal}: {seed:string;signal?:AbortSignal}): Promise<{title:string}> {
   const value = await post('/phrasebook-title', {seed}, signal);

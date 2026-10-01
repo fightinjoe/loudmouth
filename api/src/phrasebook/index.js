@@ -4,8 +4,8 @@ const {
   PARTS_OF_SPEECH,
   validatePhrasebookResponse,
 } = require('../schema');
-const { buildUsageReport } = require('../pricing');
-const { getBackendName } = require('../llm-config');
+const { computeCostUsd } = require('../pricing');
+const { getBackendName, getPhrasebookGenerationBackendName } = require('../llm-config');
 const {
   parsePhrasebookRequest,
   validateGenerationResponse,
@@ -18,13 +18,9 @@ const {
 } = require('./prompt');
 
 const PHRASEBOOK_GENERATION_MAX_TOKENS = 6000;
-const PHRASEBOOK_TRANSLATION_MAX_TOKENS = 4000;
+const PHRASEBOOK_TRANSLATION_MAX_TOKENS = 6000;
 const PHRASEBOOK_CALL_TIMEOUT_MS = 15000;
 
-// The slow adapters advertise a 60-second timeout. In the maximum validation
-// path, generation is called twice and the parallel translation stage has two
-// serial rounds, for 4 x 60s = 240s. Backoff happens inside each logical call's
-// timeout. Five seconds of orchestration headroom keeps the request bounded.
 const PHRASEBOOK_DEADLINE_MS = 245000;
 const GENERATION_VALIDATION_RETRIES = 1;
 const TRANSLATION_VALIDATION_RETRIES = 1;
@@ -98,22 +94,34 @@ function isRateLimitError(error) {
 }
 
 function createUsageAccumulator() {
-  let model;
+  const models = new Set();
   let inputTokens = 0;
   let outputTokens = 0;
-
+  let costUsd = 0;
+  let unknownCost = false;
   return {
     add(reply) {
-      if (!model && typeof reply?.model === 'string') model = reply.model;
+      if (typeof reply?.model === 'string' && reply.model) models.add(reply.model);
       const input = reply?.usage?.inputTokens;
       const output = reply?.usage?.outputTokens;
-      if (Number.isFinite(input) && input > 0) inputTokens += input;
-      if (Number.isFinite(output) && output > 0) outputTokens += output;
+      if (Number.isSafeInteger(input) && input >= 0) inputTokens += input;
+      if (Number.isSafeInteger(output) && output >= 0) outputTokens += output;
+      const reported = reply?.costUsd ?? reply?.usage?.costUsd;
+      const cost = Number.isFinite(reported) && reported >= 0 ? reported
+        : Number.isSafeInteger(input) && input >= 0 && Number.isSafeInteger(output) && output >= 0
+          ? computeCostUsd(reply?.model, { inputTokens: input, outputTokens: output }) : null;
+      if (cost === null) unknownCost = true;
+      else costUsd += cost;
     },
-    snapshot(fallbackModel) {
+    unknown() { unknownCost = true; },
+    report(fallbackModels, durationMs) {
       return {
-        model: model || fallbackModel,
-        usage: { inputTokens, outputTokens },
+        model: [...(models.size ? models : new Set(fallbackModels))].sort().join(' + '),
+        inputTokens,
+        outputTokens,
+        totalTokens: inputTokens + outputTokens,
+        costUsd: unknownCost ? null : costUsd,
+        durationMs: Math.max(0, Math.round(durationMs)),
       };
     },
   };
@@ -134,6 +142,7 @@ async function callLlmWithRateLimitRetry({
   route,
   backendName,
   retryDelaysMs = RATE_LIMIT_RETRY_DELAYS_MS,
+  diagnostics = { failureLevel: 0 },
 }) {
   const callController = new AbortController();
   const unlink = linkAbortSignal(signal, callController);
@@ -162,14 +171,18 @@ async function callLlmWithRateLimitRetry({
         usageAccumulator.add(reply);
         return reply;
       } catch (error) {
+        if (error.reply) usageAccumulator.add(error.reply);
+        else usageAccumulator.unknown();
         if (callController.signal.aborted) {
           throw reasonForAbort(callController.signal, 'LLM request cancelled');
         }
         if (!isRateLimitError(error) || attempt >= retryDelaysMs.length) throw error;
 
+        diagnostics.failureLevel = 1;
         const delayMs = retryDelaysMs[attempt];
         console.warn({
           event: 'llm_rate_limit_retry',
+          failureLevel: 1,
           route,
           llm: backendName,
           attempt: attempt + 1,
@@ -186,7 +199,7 @@ async function callLlmWithRateLimitRetry({
   }
 }
 
-async function generateConversations({
+async function generateTopic({
   parsedRequest,
   handler,
   backendName,
@@ -194,6 +207,7 @@ async function generateConversations({
   signal,
   usageAccumulator,
   retryDelaysMs,
+  diagnostics,
 }) {
   const prompt = buildPhrasebookGenerationPrompt(parsedRequest);
   for (let attempt = 0; ; attempt++) {
@@ -207,12 +221,16 @@ async function generateConversations({
       route: 'phrasebook:generate',
       backendName,
       retryDelaysMs,
+      diagnostics,
     });
     try {
-      return validateGenerationResponse(reply.text, parsedRequest.checklist);
+      const generated = validateGenerationResponse(reply.text, parsedRequest.checklist);
+      diagnostics.failureLevel = Math.max(diagnostics.failureLevel, generated.failureLevel);
+      return generated;
     } catch (error) {
       console.error({
         event: 'validation_error',
+        failureLevel: attempt >= GENERATION_VALIDATION_RETRIES ? 2 : 1,
         route: 'phrasebook:generate',
         llm: backendName,
         attempt: attempt + 1,
@@ -222,8 +240,10 @@ async function generateConversations({
       if (attempt >= GENERATION_VALIDATION_RETRIES) {
         throw new PhrasebookValidationError('Invalid response from LLM', { cause: error });
       }
+      diagnostics.failureLevel = 1;
       console.warn({
         event: 'phrasebook_generation_retry',
+        failureLevel: 1,
         llm: backendName,
         attempt: attempt + 1,
         error: error.message,
@@ -232,80 +252,81 @@ async function generateConversations({
   }
 }
 
+async function generateConversations(args) {
+  const controller = new AbortController();
+  const unlink = linkAbortSignal(args.signal, controller);
+  const conversations = new Array(args.parsedRequest.checklist.length);
+  let nextIndex = 0;
+  let failureLevel = 0;
+  const worker = async () => {
+    try {
+      while (nextIndex < conversations.length) {
+        if (controller.signal.aborted) throw reasonForAbort(controller.signal, 'Generation cancelled');
+        const index = nextIndex++;
+        const generated = await generateTopic({
+          ...args,
+          parsedRequest: { ...args.parsedRequest, checklist: [args.parsedRequest.checklist[index]] },
+          signal: controller.signal,
+        });
+        conversations[index] = generated.conversations[0];
+        failureLevel = Math.max(failureLevel, generated.failureLevel);
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) controller.abort(error);
+      throw error;
+    }
+  };
+  try {
+    const settled = await Promise.allSettled(Array.from({ length: Math.min(4, conversations.length) }, worker));
+    const failure = settled.find(result => result.status === 'rejected');
+    if (failure) throw failure.reason;
+    return { conversations, failureLevel };
+  } finally {
+    unlink();
+  }
+}
+
 /**
  * Native JSON schema for one translation call. Array counts are pinned to the
  * generated English source so providers cannot omit or add translated items.
  */
 function buildTranslationResponseJsonSchema(conversation, language) {
-  const responseJsonSchema = {
-    type: 'object',
-    properties: {
-      lines: {
-        type: 'array',
-        items: { type: 'string', minLength: 1, maxLength: 2000 },
-        minItems: conversation.lines.length,
-        maxItems: conversation.lines.length,
-      },
-      lineScores: {
-        type: 'array',
-        items: { type: 'integer', minimum: 1, maximum: 5 },
-        minItems: conversation.lines.length,
-        maxItems: conversation.lines.length,
-      },
-      vocab: {
-        type: 'array',
-        items: {
+  const text = { type: 'string', minLength: 1, maxLength: 2000 };
+  const exactArray = (count, items) => ({ type: 'array', minItems: count, maxItems: count, items });
+  // Property insertion order is part of the approved native translation request.
+  const properties = {
+    lines: exactArray(conversation.lines.length, text),
+    essentials: exactArray(conversation.essentials.length, text),
+    vocab: exactArray(conversation.vocab.length, {
+      type: 'object',
+      additionalProperties: false,
+      required: ['target', 'partOfSpeech', 'senseKey'],
+      properties: {
+        target: text,
+        partOfSpeech: { type: 'string', enum: [...PARTS_OF_SPEECH] },
+        senseKey: { type: 'string', minLength: 1, maxLength: 120, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' },
+        source: {
           type: 'object',
-          properties: {
-            target: { type: 'string', minLength: 1, maxLength: 2000 },
-            partOfSpeech: { type: 'string', enum: [...PARTS_OF_SPEECH] },
-            senseKey: {
-              type: 'string',
-              minLength: 1,
-              maxLength: 120,
-              pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$',
-            },
-            source: {
-              type: 'object',
-              properties: {
-                lineIndex: {
-                  type: 'integer',
-                  minimum: 0,
-                  maximum: conversation.lines.length - 1,
-                },
-                surface: { type: 'string', minLength: 1, maxLength: 2000 },
-                occurrence: { type: 'integer', minimum: 0 },
-              },
-              required: ['lineIndex', 'surface', 'occurrence'],
-              additionalProperties: false,
-            },
-          },
-          required: ['target', 'partOfSpeech', 'senseKey'],
           additionalProperties: false,
+          required: ['section', 'index', 'surface', 'occurrence'],
+          properties: {
+            section: { type: 'string', enum: ['essentials', 'dialogue'] },
+            index: { type: 'integer', minimum: 0, maximum: Math.max(conversation.essentials.length, conversation.lines.length) - 1 },
+            surface: text,
+            occurrence: { type: 'integer', minimum: 0 },
+          },
         },
-        minItems: conversation.vocab.length,
-        maxItems: conversation.vocab.length,
       },
-    },
-    required: ['lines', 'lineScores', 'vocab'],
-    additionalProperties: false,
+    }),
   };
   if (language === 'ja') {
-    responseJsonSchema.properties.lineRomanizations = {
-      type: 'array',
-      items: { type: 'string' },
-      minItems: conversation.lines.length,
-      maxItems: conversation.lines.length,
-    };
-    responseJsonSchema.properties.vocabRomanizations = {
-      type: 'array',
-      items: { type: 'string' },
-      minItems: conversation.vocab.length,
-      maxItems: conversation.vocab.length,
-    };
-    responseJsonSchema.required.push('lineRomanizations', 'vocabRomanizations');
+    for (const [field, count] of [
+      ['essentialsRomanizations', conversation.essentials.length],
+      ['lineRomanizations', conversation.lines.length],
+      ['vocabRomanizations', conversation.vocab.length],
+    ]) properties[field] = exactArray(count, text);
   }
-  return responseJsonSchema;
+  return { type: 'object', additionalProperties: false, required: Object.keys(properties), properties };
 }
 
 async function translateConversation({
@@ -318,6 +339,7 @@ async function translateConversation({
   signal,
   usageAccumulator,
   retryDelaysMs,
+  diagnostics,
 }) {
   const prompt = buildPhrasebookTranslationPrompt({
     seed: parsedRequest.seed,
@@ -343,12 +365,16 @@ async function translateConversation({
       route: `phrasebook:translate:${conversationIndex}`,
       backendName,
       retryDelaysMs,
+      diagnostics,
     });
     try {
-      return validateTranslationResponse(reply.text, conversation, parsedRequest.language);
+      const translated = validateTranslationResponse(reply.text, conversation, parsedRequest.language);
+      diagnostics.failureLevel = Math.max(diagnostics.failureLevel, translated.failureLevel);
+      return translated;
     } catch (error) {
       console.error({
         event: 'validation_error',
+        failureLevel: attempt >= TRANSLATION_VALIDATION_RETRIES ? 2 : 1,
         route: `phrasebook:translate:${conversationIndex}`,
         llm: backendName,
         attempt: attempt + 1,
@@ -358,8 +384,10 @@ async function translateConversation({
       if (attempt >= TRANSLATION_VALIDATION_RETRIES) {
         throw new PhrasebookValidationError('Invalid response from LLM', { cause: error });
       }
+      diagnostics.failureLevel = 1;
       console.warn({
         event: 'phrasebook_translation_retry',
+        failureLevel: 1,
         llm: backendName,
         conversationIndex,
         attempt: attempt + 1,
@@ -405,6 +433,7 @@ async function performPhrasebook(
     timeoutMs = PHRASEBOOK_CALL_TIMEOUT_MS,
     deadlineMs = PHRASEBOOK_DEADLINE_MS,
     backendName = getBackendName(),
+    generationBackendName = getPhrasebookGenerationBackendName(),
     signal,
     retryDelaysMs = RATE_LIMIT_RETRY_DELAYS_MS,
   } = {},
@@ -412,6 +441,10 @@ async function performPhrasebook(
   const handler = registry[backendName];
   if (!handler) {
     throw new Error(`Configured LLM backend is not registered: ${backendName}`);
+  }
+  const generationHandler = registry[generationBackendName];
+  if (!generationHandler) {
+    throw new Error(`Configured generation backend is not registered: ${generationBackendName}`);
   }
   const callTimeoutMs = handler.timeoutMs || timeoutMs;
   const pipelineController = new AbortController();
@@ -423,16 +456,18 @@ async function performPhrasebook(
   }, deadlineMs);
   const usageAccumulator = createUsageAccumulator();
   const startedAt = performance.now();
+  const diagnostics = { failureLevel: 0 };
 
   try {
     const generated = await generateConversations({
       parsedRequest,
-      handler,
-      backendName,
-      callTimeoutMs,
+      handler: generationHandler,
+      backendName: generationBackendName,
+      callTimeoutMs: generationHandler.timeoutMs || timeoutMs,
       signal: pipelineController.signal,
       usageAccumulator,
       retryDelaysMs,
+      diagnostics,
     });
     const translations = await translateConversations({
       parsedRequest,
@@ -443,6 +478,7 @@ async function performPhrasebook(
       signal: pipelineController.signal,
       usageAccumulator,
       retryDelaysMs,
+      diagnostics,
     });
     const response = assemblePhrasebook({
       seed: parsedRequest.seed,
@@ -452,37 +488,37 @@ async function performPhrasebook(
     });
 
     const elapsedMs = performance.now() - startedAt;
-    const totals = usageAccumulator.snapshot(backendName);
-    const usage = buildUsageReport(totals.model, totals.usage, elapsedMs);
+    const usage = usageAccumulator.report([generationBackendName, backendName], elapsedMs);
     const validatedResponse = validatePhrasebookResponse({ ...response, usage });
+    if (validatedResponse.flags.length > 0) diagnostics.failureLevel = 1;
     const cardCount = validatedResponse.groups.reduce(
-      (count, group) => count + group.phrases.length + group.vocab.length,
+      (count, group) => count + group.essentials.length + group.dialogue.length + group.vocab.length,
       0,
     );
     console.log({
       event: 'phrasebook_ok',
+      failureLevel: diagnostics.failureLevel,
       llm: backendName,
       language: parsedRequest.language,
       groups: response.groups.length,
       cards: cardCount,
       seed: parsedRequest.seed,
     });
-    console.log({ event: 'usage', route: 'phrasebook', llm: backendName, ...usage });
+    console.log({ event: 'usage', route: 'phrasebook', llm: backendName, ...usage, failureLevel: diagnostics.failureLevel });
     return validatedResponse;
   } catch (error) {
     const elapsedMs = performance.now() - startedAt;
-    const totals = usageAccumulator.snapshot(backendName);
-    const usage = buildUsageReport(totals.model, totals.usage, elapsedMs);
-    console.log({ event: 'usage', route: 'phrasebook:failed', llm: backendName, ...usage });
+    const usage = usageAccumulator.report([generationBackendName, backendName], elapsedMs);
+    console.log({ event: 'usage', route: 'phrasebook:failed', llm: backendName, ...usage, failureLevel: 2 });
 
     if (error instanceof PhrasebookValidationError) {
       error.status = 502;
       throw error;
     }
     if (error instanceof PhrasebookTimeoutError || error instanceof PhrasebookCancelledError) {
-      console.error({ event: 'llm_timeout', route: 'phrasebook', llm: backendName, error: error.message });
+      console.error({ event: 'llm_timeout', route: 'phrasebook', llm: backendName, error: error.message, failureLevel: 2 });
     } else {
-      console.error({ event: 'llm_error', route: 'phrasebook', llm: backendName, error: error.message, stack: error.stack });
+      console.error({ event: 'llm_error', route: 'phrasebook', llm: backendName, error: error.message, stack: error.stack, failureLevel: 2 });
     }
     const wrapped = new Error('LLM request failed', { cause: error });
     wrapped.status = 502;
@@ -502,6 +538,7 @@ async function performPhrasebook(
 async function handlePhrasebook(req, res, registry, opts = {}) {
   const parsed = parsePhrasebookRequest(req.body || {});
   if (parsed.error) {
+    console.warn({ event: 'request_invalid', route: 'phrasebook', failureLevel: 2, error: parsed.error });
     return res.status(400).json({
       error: parsed.error,
       ...(parsed.supported ? { supported: parsed.supported } : {}),
@@ -530,6 +567,7 @@ async function handlePhrasebook(req, res, registry, opts = {}) {
     });
     return res.status(200).json(response);
   } catch (error) {
+    console.error({ event: 'request_failed', route: 'phrasebook', failureLevel: 2, status: error.status || 500 });
     return res.status(error.status || 500).json({ error: error.message });
   } finally {
     unlink();

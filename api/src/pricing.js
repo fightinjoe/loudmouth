@@ -4,15 +4,15 @@
  * The wrappers in src/llms/*.js report the exact model string they called (their
  * `model` field) plus token `usage`. This module turns that into a USD cost.
  *
- * PLACEHOLDER TABLE — fill in real rates below. Keys MUST be the exact model
- * strings the wrappers report. Rates are USD per 1,000,000 tokens. Any model
- * missing here, or with a null rate, yields `costUsd: null` downstream: tokens
- * are still reported, only the cost is omitted.
+ * Rates are USD per 1,000,000 tokens. Any model missing here, or with a null
+ * rate, yields `costUsd: null`: tokens are still reported.
  */
 
 const PRICING = {
   // model string (from src/llms/*.js) : { inputPer1M, outputPer1M } in USD / 1M tokens
   'gemini-3.5-flash-lite':      { inputPer1M: 0.3, outputPer1M: 2.5 },
+  // Pinned Relace endpoint, OpenRouter catalog, 2026-10-01.
+  'deepseek/deepseek-v4.1-flash': { inputPer1M: 0.0255, outputPer1M: 0.6 },
   // Promotional standard rates through 2026-12-31; update for 2027 pricing.
   'gemini-3.8-flash':           { inputPer1M: 0.75, outputPer1M: 3.75 },
   'gpt-5.6-luna':               { inputPer1M: 0.2, outputPer1M: 1.2 },

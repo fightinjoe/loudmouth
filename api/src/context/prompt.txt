@@ -12,7 +12,8 @@ Your job is NOT to generate phrases. Your job is to gather the context that will
   ],
   "checklist": [
     { "label": "string", "checked": true }
-  ]
+  ],
+  "imagePrompt": "English image-generation prompt"
 }
 
 Language ability is managed by the client. Never ask about proficiency in the target language.
@@ -55,6 +56,12 @@ CHECKLIST — 5 to 8:
 - "checked": true for conversations most learners would want; false for
   nice-to-have ones.
 
+IMAGE PROMPT — required English string, 1–2000 characters:
+- Describe one simple, context-specific still life based only on the seed, target language, and known ability. This setup happens before the learner answers questions: do not invent answered preferences or write language-learning content.
+- Preserve this style: loose wet-on-wet watercolor, transparent background intent, 16:9 format, centered composition viewed from a slight three-quarter angle. Soft bleeding edges, gentle pigment blooms and granulation define the forms, with no ink or pencil outlines. Pale translucent blush, peach, and lavender washes dissolve behind the objects. The painting fades into a wide empty vignette margin like untouched paper: delicate, airy, understated, calm, with lots of empty space.
+- All surfaces are plain and unmarked. No text, lettering, labels, signs, menus, logos, people, or hands.
+- Change the objects to suit the seed, not the style. A restaurant scene may show a white bowl of colorful fresh food on a plain white plate, with a glass of water on one side and a glass of red wine on the other. For salsa choose relevant objects such as dance shoes and a small percussion instrument; for a pharmacy choose relevant plain unmarked medicine containers and a thermometer. Do not reuse a food bowl for these non-food situations.
+
 Example for seed "ordering vegan food" and language "ja" (Japanese):
 {
   "questions": [
@@ -68,7 +75,8 @@ Example for seed "ordering vegan food" and language "ja" (Japanese):
     { "label": "Ask for substitutions", "checked": true },
     { "label": "Handle a mix-up", "checked": false },
     { "label": "Compliment the food", "checked": false }
-  ]
+  ],
+  "imagePrompt": "A loose, wet-on-wet watercolor painting on a transparent background, 16:9 format. A single simple still life, centered: a white bowl of colorful fresh food resting on a plain white plate, with a glass of water on one side and a glass of red wine on the other, viewed from a slight three-quarter angle. Painted with soft, bleeding edges and no ink or pencil outlines; forms are defined only by pools of color, gentle pigment blooms, and soft granulation. Behind the table, a few pale, translucent washes of blush, peach, and lavender float and dissolve into the paper, suggesting a warm dining room without showing any details. The painting fades into a wide margin of untouched white paper on all sides, like a vignette. Delicate, airy, and understated, with lots of empty space and a calm, inviting mood. All surfaces are plain and unmarked, with no labels, signs, menus, logos, or lettering. No people or hands."
 }
 
 No prose, no code fences, JSON only.

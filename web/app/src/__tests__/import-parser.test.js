@@ -28,7 +28,11 @@ describe('v2 content exchange',()=>{
   });
   it('round trips saved Chunk context and Word evidence without membership stars or metadata',async()=>{
     const store = createDb({indexedDB:new IDBFactory(),IDBKeyRange});
-    const deck = await commitPhrasebook({name:'Dinner',lang:'ja',groups:[{id:'draft',phrases:[{id:'phrase',card:{type:'phrase',...snapshot}}],vocab:[]}],selectedIndexes:[0]},{store});
+    const card = {type:'phrase',...snapshot};
+    const deck = await commitPhrasebook({name:'Dinner',lang:'ja',groups:[{
+      id:'draft',title:'Dietary needs',essentials:[{id:'essential',card}],vocab:[],
+      dialogue:[{id:'you',card,speaker:'you'},{id:'partner',card,speaker:'partner'}],
+    }],selectedIndexes:[0]},{store});
     await toggleCardStar(deck.id,word,store);
     await toggleCardStar(deck.id,chunk,store);
     const entries = await getCards(deck.id,store);

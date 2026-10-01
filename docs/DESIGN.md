@@ -74,15 +74,22 @@ remembered enum value and excluding the ability question from `answers`. `checkl
 suggested topics. The learner selects 1–8 topics locally while generation runs; model selection 
 remains server-owned.
 
-Nothing is persisted while answering questions or selecting conversations, even if generation has
-finished. Final Continue reuses the pending or ready response, keeps selected conversation bundles by
-index, then pools, deduplicates, and caps their vocabulary before saving. It never starts a duplicate
-request. Back without changes reuses work; changing answers or the seed invalidates it.
+Nothing is persisted while answering questions or selecting topics, even if generation has finished.
+Final Continue validates the whole v3 draft, retains selected topics by original index, and atomically
+saves their independent sections and Word placements. There is no word pooling or global cap, and no
+duplicate text request. Back without changes reuses work; answer or seed changes invalidate text work.
 Confirmation shows the loading state for at least 1000 ms before saving and displaying the phrasebook,
 configured by `PHRASEBOOK_MIN_LOADING_MS` in `web/app/src/components/creation-panel.ts`.
 This minimum overlaps any remaining generation time rather than adding a delay after generation.
 Background failure leaves the checklist usable until Continue surfaces it; retry preserves choices.
-Dismissal aborts outstanding requests and discards uncommitted results. Incomplete saves are rolled back.
+Dismissal aborts text requests and discards uncommitted results. Incomplete saves are rolled back.
+
+Context completion starts independent seed-based cover work. Answer/checklist changes reuse it;
+a new seed or dismissal before commit cancels it. Atomic text commit binds the request identity to
+the saved phrasebook, after which closing creation does not cancel it. A late result updates only
+that book's illustration and the visible hero, without remounting cards or resetting page, scroll,
+focus, or edit state. Failed art is nonfatal. Reload marks interrupted pending art failed without
+automatically restarting paid work.
 
 Ability is saved as phrasebook metadata and remembered per language only after generation and import
 succeed on final Continue. Failed saves and abandoned speculative results do not remember it. Future
@@ -91,21 +98,20 @@ Historical setup preferences are not inferred or migrated to the new scale.
 
 ## Phrasebook view
 
-On web, a saved phrasebook renders joined library entries rather than a flat card list. **Phrases** is
-the first tab and the default on opening a phrasebook, including immediately after creation. **Vocab**
-is second. Phrases is a neutral, full-width collection of useful learner speech from the selected
-conversations, styled like Vocab rather than dialogue bubbles. Translation scores each line's contextual
-value internally from 1–5; the API selects learner (`speaker:"you"`) lines scored 4–5 and the client
-persists that selection per occurrence. Partner replies remain in their complete conversation tabs.
-Phrases shows each card once, using its first selected learner occurrence's translation. Existing
-stored partner selections are excluded before deduplication. Scores are not shown and selection does
-not star cards. Unscored older phrasebooks have an empty Phrases collection; their conversations remain
-available.
+On web, saved phrasebooks open **Phrasebook**, a contents page with an optional decorative 16:9
+transparent watercolor hero. Pending art reserves its space; ready art has empty alt text and white
+surrounding space; failed art shows a subdued unavailable message. Topic previews show up to three
+essential English phrases, two words with POS, section counts, and a **View** action.
 
-Group-less Phrase occurrences occupy **Translations** next when present, followed by one tab and
-horizontally sliding page per stored Group in group-position order. Group IDs, not titles, identify
-pages, so duplicate titles remain distinct. Complete conversations retain every line, including those
-not selected for Phrases. A **Chunks** page follows when the phrasebook has Chunk memberships.
+Each stored Group then has one topic tab and horizontally sliding page, identified by Group ID rather
+than title. View selects that exact topic and focuses its tab, including when titles duplicate.
+Each topic contains **Essential phrases**, **Useful words**, and **Conversation** in that order:
+neutral full-width essentials; two-column Word tiles; complete blue learner/neutral partner dialogue.
+Essentials are independently generated occurrences, not ranked dialogue excerpts. Equal text can
+retain different meanings and presentation in different sections.
+
+Supplemental **Translations**, **Words**, and **Chunks** pages follow topics when unplaced entries
+exist. Topic Word placements are not duplicated into the supplemental Words page.
 A fixed leftmost **Starred** tab appears only when this phrasebook has starred memberships. It shows a solid blue star
 and the exact unique-membership count, without a visible label; its accessible name is “Starred, N
 cards.” **Review** remains a separate action over the same phrasebook-scoped study set.
@@ -133,16 +139,16 @@ Edit mode disables paging drags and retains active-page reorder and card editing
 
 The visual reference is `explorations/phrasebook-navigation/PHRASEBOOK_EXPLORATION.html`: white
 surfaces, Roboto Condensed headings and tabs, and Manrope card text. Borderless cards have 16 px
-corners and 8 px gaps. Each Phrase occurrence supplies its own translation, speaker, alternative flag,
-group, and position; repeated occurrences may share one durable Phrase without sharing presentation
-state. Learner speech is right-aligned blue (`#dbefff`), partner speech is left-aligned neutral
-(`#f9fafb`), and text remains left-aligned on both sides. Alternatives display an “or” separator and
-retain their speaker's color. Conversation pages omit repeated headings, counts, and speaker labels.
-Stars change only their icon, not card backgrounds; membership stars never affect another phrasebook.
+corners and 8 px gaps. Each Phrase occurrence supplies its own translation, topic, section, and
+position; repeated occurrences may share a durable Phrase without sharing presentation state.
+Only dialogue supplies speaker state. Learner speech is right-aligned blue (`#dbefff`), partner
+speech left-aligned neutral (`#f9fafb`), with text left-aligned on both. “or” appears only between
+adjacent same-speaker dialogue lines in the same topic and retains that speaker's color.
+Stars change only their icon, never card backgrounds or another phrasebook's membership.
 
 Starred is a neutral, full-width collection in saved entry order (the same order as Review), not
-reconstructed dialogue or a copy of the curated Phrases list. Each membership appears once; a repeated
-Phrase uses its first saved occurrence and translation.
+reconstructed dialogue or a copy of essentials. Each membership appears once; a repeated Phrase
+uses its first saved occurrence and translation.
 Word definitions and full highlighted Chunk source snapshots remain available, along with existing
 audio, details, editing, and star actions. Starring updates every occurrence without changing the
 active page. Opening Starred remembers the previous topic and leaves the topic strip in place.
@@ -166,10 +172,11 @@ without changing the existing English/target typography or adding usage notes an
 Cards can be starred for review when they have a membership in the active phrasebook. Tapping a Phrase
 occurrence opens its breakdown; a Word tap pronounces its dictionary headword, and a Chunk tap
 pronounces the full preserved source snapshot. Chunk rows render that full source with the saved span
-highlighted rather than presenting an isolated fragment. In edit mode, entry-keyed card taps open the
-editor and reorder saves occurrence positions independently, so repeated Phrase appearances are not
-collapsed by card ID. Phrasebook settings remain available from the title menu. Language browsing
-includes retained Phrases, Words, and Chunks but offers no star or review control without a phrasebook.
+highlighted rather than presenting an isolated fragment. In edit mode, entry-keyed card taps open
+the editor. Word tiles become one column; reorder stays inside one topic/section bucket and updates
+placements or occurrences, never canonical card identity. Contents and Starred have no reorder
+overlay. Phrasebook settings remain available from the title menu. Language browsing remains
+separate, with no star or review control without a phrasebook.
 
 The phrasebook action bar contains **Review**. Phrasebook content is not extended from this view; a new
 situation starts a new guided phrasebook from navigation.

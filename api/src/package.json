@@ -5,7 +5,7 @@
     "start": "node index.js",
     "dev": "node dev.js",
     "predev": "npm run schema:build",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "pretest": "npm run schema:build",
     "eval:adversarial": "node --env-file=../.env ../evals/scripts/eval-adversarial.js",
     "schema:build": "tsc -p schema/tsconfig.json",
@@ -16,6 +16,7 @@
     "@google-cloud/functions-framework": "^3.4.5",
     "@google/genai": "^1.50.1",
     "openai": "^4.85.0",
+    "sharp": "0.35.5",
     "wanakana": "^5.3.1"
   },
   "devDependencies": {

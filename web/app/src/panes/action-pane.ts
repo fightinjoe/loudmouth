@@ -83,53 +83,49 @@ function buildPreview(
 
   const draftGroups: PhrasebookDraftGroup[] = suggestion.groups.map((group) => ({
     id: uuid(),
-    ...(group.title === undefined ? {} : { title: group.title }),
-    phrases: group.phrases.map((card) => ({ id: uuid(), card })),
+    title: group.title,
+    essentials: group.essentials.map((card) => ({ id: uuid(), card })),
     vocab: group.vocab,
+    dialogue: group.dialogue.map((line) => ({ ...line, id: uuid() })),
   }));
 
   const cards: LibraryEntry[] = [];
-  const nonPhraseEntries = new Map<string, LibraryEntry>();
-  let grouplessPosition = 0;
   for (const group of draftGroups) {
-    for (let position = 0; position < group.phrases.length; position += 1) {
-      const phrase = group.phrases[position];
-      const cardId = cardIdFor(phrase.card);
-      const occurrencePosition = group.title === undefined ? grouplessPosition++ : position;
-      cards.push({
-        key: phrase.id,
-        cardId,
-        card: phrase.card,
-        occurrence: {
-          id: phrase.id,
-          deckId,
-          ...(group.title === undefined ? {} : { groupId: group.id }),
+    for (const section of ["essentials", "dialogue"] as const) {
+      const phrases = group[section];
+      for (let position = 0; position < phrases.length; position += 1) {
+        const phrase = phrases[position];
+        const cardId = cardIdFor(phrase.card);
+        cards.push({
+          key: phrase.id,
           cardId,
-          position: occurrencePosition,
-          translation: phrase.card.translation,
-          ...(phrase.speaker === undefined ? {} : { speaker: phrase.speaker }),
-          ...(phrase.alternative === undefined ? {} : { alternative: phrase.alternative }),
-        },
-        sources: [],
-      });
+          card: phrase.card,
+          occurrence: {
+            id: phrase.id,
+            deckId,
+            groupId: group.id,
+            section,
+            cardId,
+            position,
+            translation: phrase.card.translation,
+            ...("speaker" in phrase ? { speaker: phrase.speaker } : {}),
+            ...("alternative" in phrase ? { alternative: phrase.alternative } : {}),
+          },
+          sources: [],
+        });
+      }
     }
 
-    for (const candidate of group.vocab) {
-      const identity = cardIdentity(candidate.card);
-      const existing = nonPhraseEntries.get(identity);
-      if (existing) {
-        existing.sources.push(...(candidate.sources ?? []));
-        continue;
-      }
+    for (const [position, candidate] of group.vocab.entries()) {
       const cardId = cardIdFor(candidate.card);
-      const entry: LibraryEntry = {
-        key: JSON.stringify([deckId, cardId]),
+      const placementId = uuid();
+      cards.push({
+        key: placementId,
         cardId,
         card: candidate.card,
+        wordPlacement: { id: placementId, deckId, groupId: group.id, cardId, position },
         sources: [...(candidate.sources ?? [])],
-      };
-      nonPhraseEntries.set(identity, entry);
-      cards.push(entry);
+      });
     }
   }
 
@@ -205,6 +201,7 @@ function openKind(
           ui.transition("content/select-deck", { id: deck.id });
         },
         onDismiss,
+        (deckId, illustration) => ui.transition("content/illustration-updated", { deckId, illustration }),
       );
 
     case "new-phrasebook": {

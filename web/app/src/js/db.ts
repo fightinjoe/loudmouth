@@ -4,12 +4,12 @@ import Dexie, {
   type Transaction,
 } from "dexie";
 import {
-  SCHEMA_VERSION,
   cardIdentity,
   evidenceIdentity,
   validateCandidate,
   validateCard,
   validateEvidence,
+  validatePhrasebookImage,
   type Candidate,
   type Card,
   type Evidence,
@@ -22,6 +22,7 @@ import type {
   CommitPhrasebookInput,
   Deck,
   DeckMode,
+  DeckIllustration,
   DeckOrder,
   Generation,
   Group,
@@ -30,15 +31,17 @@ import type {
   Membership,
   Occurrence,
   PhrasebookDraftGroup,
-  PhrasebookDraftPhrase,
+  PhrasebookDraftEssential,
+  PhrasebookDraftDialogueLine,
   Provenance,
   ReadingDisplay,
+  TopicWordPlacement,
 } from "./library-types";
 
-const DATABASE_NAME = "loudmouth-card-v2";
-const LEGACY_DATABASE_NAME = "loudmouth";
-const LEGACY_LOCAL_STORAGE_PREFIX = "loudmouth.";
-const LEGACY_SESSION_CACHE_PREFIX = "loudmouth.phrase-breakdown.";
+import { LIBRARY_SCHEMA_VERSION } from "./library-types";
+import { uuid } from "./utils";
+
+const DATABASE_NAME = "loudmouth-topic-v3";
 const LANGS: readonly Lang[] = ["zh", "ja", "es", "cs", "uk"];
 const ABILITIES: readonly Ability[] = ["none", "basics", "conversational"];
 const MODES: readonly DeckMode[] = ["study", "review", "reverse"];
@@ -48,13 +51,6 @@ const MAX_CONTENT_LENGTH = 2_000;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
-export const STORAGE_RESET_BLOCKED_MESSAGE =
-  "Close other Catchphrase tabs, then reload to finish the storage reset.";
-
-interface ResettableIndexedDb {
-  deleteDatabase(name: string): IDBOpenDBRequest;
-}
-
 export class LibraryDb extends Dexie {
   cards!: Table<CardRecord, string>;
   decks!: Table<Deck, string>;
@@ -62,18 +58,10 @@ export class LibraryDb extends Dexie {
   memberships!: Table<Membership, [string, string]>;
   occurrences!: Table<Occurrence, string>;
   provenance!: Table<Provenance, string>;
-  readonly resetFactory?: ResettableIndexedDb;
+  topicWords!: Table<TopicWordPlacement, string>;
 
   constructor(options: DexieOptions = {}) {
     super(DATABASE_NAME, options);
-    const factory = options.indexedDB;
-    if (factory && "deleteDatabase" in factory
-      && typeof factory.deleteDatabase === "function") {
-      this.resetFactory = factory as DexieOptions["indexedDB"] & ResettableIndexedDb;
-    } else if (typeof indexedDB !== "undefined") {
-      this.resetFactory = indexedDB;
-    }
-
     this.version(1).stores({
       cards: "id, &identityKey, lang, type, createdAt",
       decks: "id, lang, createdAt, lastAccessedAt",
@@ -81,6 +69,7 @@ export class LibraryDb extends Dexie {
       memberships: "[deckId+cardId], deckId, cardId, [deckId+position]",
       occurrences: "id, deckId, groupId, cardId, [groupId+position]",
       provenance: "id, cardId, deckId, &[cardId+deckId+sourceKey]",
+      topicWords: "id, deckId, groupId, cardId, [deckId+groupId]",
     });
   }
 }
@@ -91,13 +80,6 @@ export function createDb(options: DexieOptions = {}): LibraryDb {
 
 export const db = createDb();
 
-function uuid(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
 
 function isoNow(): string {
   return new Date().toISOString();
@@ -173,42 +155,47 @@ function assertAbort(signal?: AbortSignal): void {
   if (signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
 }
 
-function cleanLegacyStorage(kind: "localStorage" | "sessionStorage", prefix: string): void {
-  try {
-    const storage = globalThis[kind];
-    if (!storage) return;
-    const keys: string[] = [];
-    for (let index = 0; index < storage.length; index += 1) {
-      const key = storage.key(index);
-      if (key?.startsWith(prefix)) keys.push(key);
-    }
-    for (const key of keys) storage.removeItem(key);
-  } catch {
-    // Preference/cache cleanup is best effort when storage is unavailable.
-  }
-}
-
-function deleteLegacyDatabase(factory: ResettableIndexedDb): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const request = factory.deleteDatabase(LEGACY_DATABASE_NAME);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error ?? new Error("Failed to reset legacy storage."));
-    request.onblocked = () => reject(new Error(STORAGE_RESET_BLOCKED_MESSAGE));
+export async function initializeLibrary(store: LibraryDb = db): Promise<void> {
+  await store.open();
+  await store.transaction("rw", store.decks, async () => {
+    await store.decks.filter((deck) => deck.illustration?.state === "pending")
+      .modify((deck) => {
+        if (deck.illustration?.state === "pending") {
+          deck.illustration = { ...deck.illustration, state: "failed" };
+        }
+      });
   });
 }
 
-export async function initializeLibrary(store: LibraryDb = db): Promise<void> {
-  cleanLegacyStorage(
-    "localStorage",
-    LEGACY_LOCAL_STORAGE_PREFIX,
-  );
-  cleanLegacyStorage(
-    "sessionStorage",
-    LEGACY_SESSION_CACHE_PREFIX,
-  );
-  if (!store.resetFactory) throw new Error("IndexedDB is unavailable.");
-  await deleteLegacyDatabase(store.resetFactory);
-  await store.open();
+function validateDeckIllustration(value: unknown, path: string): DeckIllustration {
+  const illustration = objectValue(value, path);
+  const state = enumValue(illustration.state, ["pending", "failed", "ready"], `${path}.state`);
+  assertExactFields(illustration,
+    state === "ready" ? ["requestId", "prompt", "state", "image"] : ["requestId", "prompt", "state"], path);
+  const requestId = requiredString(illustration.requestId, `${path}.requestId`);
+  const prompt = requiredString(illustration.prompt, `${path}.prompt`);
+  if (prompt !== prompt.trim()) throw new Error(`${path}.prompt must be trimmed`);
+  return state === "ready"
+    ? { requestId, prompt, state, image: validatePhrasebookImage(illustration.image, `${path}.image`) }
+    : { requestId, prompt, state };
+}
+
+export async function setDeckIllustration(
+  deckId: string,
+  requestId: string,
+  next: DeckIllustration,
+  store: LibraryDb = db,
+): Promise<boolean> {
+  const illustration = structuredClone(validateDeckIllustration(next, "illustration"));
+  if (illustration.requestId !== requestId) return false;
+  return store.transaction("rw", store.decks, async () => {
+    const deck = await store.decks.get(deckId);
+    if (!deck || deck.illustration?.requestId !== requestId
+      || deck.illustration.prompt !== illustration.prompt
+      || (deck.illustration.state === "ready" && illustration.state !== "ready")) return false;
+    await store.decks.update(deckId, { illustration });
+    return true;
+  });
 }
 
 function validateGeneration(value: unknown, path: string): Generation {
@@ -226,128 +213,88 @@ function validateGeneration(value: unknown, path: string): Generation {
   return { seed, ability, answers };
 }
 
-function validateDraftPhrase(
+function validateDraftEssential(
   value: unknown,
   path: string,
   lang: Lang,
-  generated: boolean,
-): PhrasebookDraftPhrase {
+  dialogue = false,
+): PhrasebookDraftEssential | PhrasebookDraftDialogueLine {
   const phrase = objectValue(value, path);
-  assertExactFields(phrase, ["id", "card", "speaker", "alternative"], path);
+  assertExactFields(phrase, dialogue ? ["id", "card", "speaker", "alternative"] : ["id", "card"], path);
   const id = requiredString(phrase.id, `${path}.id`);
   const card = validateCard(phrase.card, `${path}.card`);
   if (card.type !== "phrase") throw new Error(`${path}.card.type must be phrase`);
   if (card.lang !== lang) throw new Error(`${path}.card.lang must equal phrasebook lang`);
-  let speaker: "you" | "partner" | undefined;
-  if (Object.hasOwn(phrase, "speaker")) {
-    speaker = enumValue(phrase.speaker, ["you", "partner"], `${path}.speaker`);
-  } else if (generated) {
-    throw new Error(`${path}.speaker is required for generated phrasebooks`);
-  }
-  const alternative = Object.hasOwn(phrase, "alternative")
-    ? optionalTrue(phrase.alternative, `${path}.alternative`)
-    : undefined;
+  if (!dialogue) return { id, card };
   return {
     id,
     card,
-    ...(speaker ? { speaker } : {}),
-    ...(alternative ? { alternative } : {}),
+    speaker: enumValue(phrase.speaker, ["you", "partner"], `${path}.speaker`),
+    ...(Object.hasOwn(phrase, "alternative")
+      ? { alternative: optionalTrue(phrase.alternative, `${path}.alternative`) } : {}),
   };
 }
 
-function validateDraftGroup(
-  value: unknown,
-  path: string,
-  lang: Lang,
-  generated: boolean,
-): PhrasebookDraftGroup {
+function validateDraftGroup(value: unknown, path: string, lang: Lang): PhrasebookDraftGroup {
   const group = objectValue(value, path);
-  assertExactFields(group, ["id", "title", "phrases", "vocab", "featuredPhraseIds"], path);
+  assertExactFields(group, ["id", "title", "essentials", "vocab", "dialogue"], path);
   const id = requiredString(group.id, `${path}.id`);
-  let title: string | undefined;
-  if (Object.hasOwn(group, "title")) {
-    title = requiredString(group.title, `${path}.title`, 500);
-  } else if (generated) {
-    throw new Error(`${path}.title is required for generated phrasebooks`);
+  const title = requiredString(group.title, `${path}.title`, 500);
+  if (!Array.isArray(group.essentials) || group.essentials.length < 1 || group.essentials.length > 8) {
+    throw new Error(`${path}.essentials must contain 1–8 phrases`);
   }
-  if (!Array.isArray(group.phrases) || group.phrases.length === 0) {
-    throw new Error(`${path}.phrases must be a nonempty array`);
+  if (!Array.isArray(group.dialogue) || group.dialogue.length < 2 || group.dialogue.length > 10) {
+    throw new Error(`${path}.dialogue must contain 2–10 phrases`);
   }
-  if (!Array.isArray(group.vocab)) throw new Error(`${path}.vocab must be an array`);
-  const phrases = group.phrases.map((phrase, index) =>
-    validateDraftPhrase(phrase, `${path}.phrases[${index}]`, lang, generated));
-  const phraseById = new Map<string, PhrasebookDraftPhrase>();
-  for (const phrase of phrases) {
-    if (phraseById.has(phrase.id)) {
-      throw new Error(`${path}.phrases contains duplicate id ${phrase.id}`);
+  if (!Array.isArray(group.vocab) || group.vocab.length > 10) {
+    throw new Error(`${path}.vocab must contain 0–10 Words`);
+  }
+  const essentials = group.essentials.map((phrase, index) =>
+    validateDraftEssential(phrase, `${path}.essentials[${index}]`, lang));
+  const dialogue = group.dialogue.map((phrase, index) =>
+    validateDraftEssential(phrase, `${path}.dialogue[${index}]`, lang, true) as PhrasebookDraftDialogueLine);
+  if (new Set(dialogue.map((phrase) => phrase.speaker)).size !== 2) {
+    throw new Error(`${path}.dialogue must contain both speakers`);
+  }
+  for (const [index, line] of dialogue.entries()) {
+    if ((line.alternative === true) !== (index > 0 && dialogue[index - 1].speaker === line.speaker)) {
+      throw new Error(`${path}.dialogue[${index}].alternative must match adjacent same-speaker lines`);
     }
+  }
+  const phraseById = new Map<string, PhrasebookDraftEssential>();
+  for (const phrase of [...essentials, ...dialogue]) {
+    if (phraseById.has(phrase.id)) throw new Error(`${path} contains duplicate phrase id ${phrase.id}`);
     phraseById.set(phrase.id, phrase);
-  }
-  let featuredPhraseIds: string[] | undefined;
-  if (Object.hasOwn(group, "featuredPhraseIds")) {
-    if (!Array.isArray(group.featuredPhraseIds)) {
-      throw new Error(`${path}.featuredPhraseIds must be an array`);
-    }
-    const seen = new Set<string>();
-    featuredPhraseIds = group.featuredPhraseIds.map((value, index) => {
-      const phraseId = requiredString(value, `${path}.featuredPhraseIds[${index}]`);
-      if (!phraseById.has(phraseId)) {
-        throw new Error(`${path}.featuredPhraseIds[${index}] must refer to a phrase in its group`);
-      }
-      if (seen.has(phraseId)) {
-        throw new Error(`${path}.featuredPhraseIds contains duplicate id ${phraseId}`);
-      }
-      seen.add(phraseId);
-      return phraseId;
-    });
-  } else if (generated) {
-    throw new Error(`${path}.featuredPhraseIds is required for generated phrasebooks`);
   }
   const vocab = group.vocab.map((candidate, index) => {
     const validated = validateCandidate(candidate, `${path}.vocab[${index}]`);
-    if (validated.card.type !== "word") {
-      throw new Error(`${path}.vocab[${index}].card.type must be word`);
-    }
-    if (validated.card.lang !== lang) {
-      throw new Error(`${path}.vocab[${index}].card.lang must equal phrasebook lang`);
-    }
+    if (validated.card.type !== "word") throw new Error(`${path}.vocab[${index}].card.type must be word`);
+    if (validated.card.lang !== lang) throw new Error(`${path}.vocab[${index}].card.lang must equal phrasebook lang`);
     for (const [sourceIndex, source] of (validated.sources ?? []).entries()) {
-      const draftOccurrenceId = source.ref?.occurrenceId;
-      const draftPhrase = draftOccurrenceId ? phraseById.get(draftOccurrenceId) : undefined;
+      const draftPhrase = source.ref?.occurrenceId ? phraseById.get(source.ref.occurrenceId) : undefined;
       if (source.ref && (!draftPhrase || Object.hasOwn(source.ref, "cardId"))) {
-        throw new Error(
-          `${path}.vocab[${index}].sources[${sourceIndex}].ref must contain only the occurrenceId of a phrase in its group`,
-        );
+        throw new Error(`${path}.vocab[${index}].sources[${sourceIndex}].ref must contain only the occurrenceId of a phrase in its group`);
       }
       if (draftPhrase) {
         const snapshot = source.snapshot;
         const card = draftPhrase.card;
-        const sameReading = JSON.stringify(snapshot.reading) === JSON.stringify(card.reading);
         if (snapshot.lang !== card.lang || snapshot.text !== card.text
-          || snapshot.translation !== card.translation
-          || snapshot.romanization !== card.romanization || !sameReading) {
-          throw new Error(
-            `${path}.vocab[${index}].sources[${sourceIndex}].snapshot must exactly match its draft phrase`,
-          );
+          || snapshot.translation !== card.translation || snapshot.romanization !== card.romanization
+          || JSON.stringify(snapshot.reading) !== JSON.stringify(card.reading)) {
+          throw new Error(`${path}.vocab[${index}].sources[${sourceIndex}].snapshot must exactly match its draft phrase`);
         }
       }
     }
     return validated;
   });
-  return {
-    id,
-    ...(title ? { title } : {}),
-    phrases,
-    vocab,
-    ...(featuredPhraseIds === undefined ? {} : { featuredPhraseIds }),
-  };
+  return { id, title, essentials, vocab, dialogue };
 }
 
 function validateCommitInput(value: unknown): CommitPhrasebookInput {
   const input = objectValue(value, "input");
   assertExactFields(
     input,
-    ["name", "lang", "generation", "ability", "seedId", "groups", "selectedIndexes"],
+    ["name", "lang", "generation", "ability", "seedId", "illustration", "groups", "selectedIndexes"],
     "input",
   );
   const name = requiredString(input.name, "input.name", 500);
@@ -361,17 +308,19 @@ function validateCommitInput(value: unknown): CommitPhrasebookInput {
   const seedId = Object.hasOwn(input, "seedId")
     ? requiredString(input.seedId, "input.seedId", 500)
     : undefined;
-  if (!Array.isArray(input.groups) || input.groups.length === 0) {
-    throw new Error("input.groups must be a nonempty array");
+  const illustration = Object.hasOwn(input, "illustration")
+    ? validateDeckIllustration(input.illustration, "input.illustration") : undefined;
+  if (!Array.isArray(input.groups) || input.groups.length < 1 || input.groups.length > 8) {
+    throw new Error("input.groups must contain 1–8 topics");
   }
   const groups = input.groups.map((group, index) =>
-    validateDraftGroup(group, `input.groups[${index}]`, lang, generation !== undefined));
+    validateDraftGroup(group, `input.groups[${index}]`, lang));
   const groupIds = new Set<string>();
   const phraseIds = new Set<string>();
   for (const group of groups) {
     if (groupIds.has(group.id)) throw new Error(`input.groups contains duplicate id ${group.id}`);
     groupIds.add(group.id);
-    for (const phrase of group.phrases) {
+    for (const phrase of [...group.essentials, ...group.dialogue]) {
       if (phraseIds.has(phrase.id)) {
         throw new Error(`input.groups contains duplicate phrase id ${phrase.id}`);
       }
@@ -397,8 +346,9 @@ function validateCommitInput(value: unknown): CommitPhrasebookInput {
     ...(generation ? { generation } : {}),
     ...(ability ? { ability } : {}),
     ...(seedId ? { seedId } : {}),
+    ...(illustration ? { illustration } : {}),
     groups,
-    selectedIndexes,
+    selectedIndexes: selectedIndexes.sort((left, right) => left - right),
   };
 }
 
@@ -468,13 +418,15 @@ async function addProvenance(
 }
 
 interface PreparedDraftPhrase {
-  draft: PhrasebookDraftPhrase;
+  draft: PhrasebookDraftEssential | PhrasebookDraftDialogueLine;
   occurrenceId: string;
+  section: "essentials" | "dialogue";
+  position: number;
 }
 
 interface PreparedDraftGroup {
   draft: PhrasebookDraftGroup;
-  groupId?: string;
+  groupId: string;
   phrases: PreparedDraftPhrase[];
 }
 
@@ -511,8 +463,13 @@ export async function commitPhrasebook(
   const selected = input.selectedIndexes.map((index) => input.groups[index]);
   const prepared: PreparedDraftGroup[] = selected.map((draft) => ({
     draft,
-    ...(draft.title ? { groupId: uuid() } : {}),
-    phrases: draft.phrases.map((phrase) => ({ draft: phrase, occurrenceId: uuid() })),
+    groupId: uuid(),
+    phrases: [
+      ...draft.essentials.map((phrase, position): PreparedDraftPhrase =>
+        ({ draft: phrase, occurrenceId: uuid(), section: "essentials", position })),
+      ...draft.dialogue.map((phrase, position): PreparedDraftPhrase =>
+        ({ draft: phrase, occurrenceId: uuid(), section: "dialogue", position })),
+    ],
   }));
   const now = isoNow();
   const deck: Deck = {
@@ -526,21 +483,8 @@ export async function commitPhrasebook(
     ...(input.generation ? { generation: input.generation } : {}),
     ...(input.ability ? { ability: input.ability } : {}),
     ...(input.seedId ? { seedId: input.seedId } : {}),
+    ...(input.illustration ? { illustration: input.illustration } : {}),
   };
-
-  const pooledWords = new Map<string, { card: Card; sources: Evidence[] }>();
-  for (const group of selected) {
-    for (const candidate of group.vocab) {
-      const identity = cardIdentity(candidate.card);
-      const existing = pooledWords.get(identity);
-      if (existing) existing.sources.push(...(candidate.sources ?? []));
-      else pooledWords.set(identity, { card: candidate.card, sources: [...(candidate.sources ?? [])] });
-    }
-  }
-  const wordLimit = input.generation
-    ? Math.min(24, input.selectedIndexes.length * 5)
-    : pooledWords.size;
-  const words = [...pooledWords.values()].slice(0, wordLimit);
 
   let activeTransaction: Transaction | undefined;
   const abortTransaction = (): void => activeTransaction?.abort();
@@ -555,29 +499,24 @@ export async function commitPhrasebook(
         store.memberships,
         store.occurrences,
         store.provenance,
+        store.topicWords,
       ],
       async () => {
         activeTransaction = Dexie.currentTransaction ?? undefined;
         assertAbort(signal);
         await store.decks.add(deck);
         const draftRefs = new Map<string, ResolvedDraftRef>();
-        let namedGroupPosition = 0;
-        let grouplessPosition = 0;
+        let groupPosition = 0;
         let phraseMembershipPosition = 0;
         const phraseMemberships = new Set<string>();
 
         for (const group of prepared) {
-          if (group.groupId && group.draft.title) {
-            await store.groups.add({
-              id: group.groupId,
-              deckId: deck.id,
-              title: group.draft.title,
-              position: namedGroupPosition,
-            });
-            namedGroupPosition += 1;
-          }
-          let groupPosition = 0;
-          const featuredPhraseIds = new Set(group.draft.featuredPhraseIds);
+          await store.groups.add({
+            id: group.groupId,
+            deckId: deck.id,
+            title: group.draft.title,
+            position: groupPosition++,
+          });
           for (const phrase of group.phrases) {
             const card = await resolveCard(phrase.draft.card, store, now);
             if (!phraseMemberships.has(card.id)) {
@@ -591,41 +530,40 @@ export async function commitPhrasebook(
               phraseMembershipPosition += 1;
               phraseMemberships.add(card.id);
             }
-            const position = group.groupId ? groupPosition : grouplessPosition;
             await store.occurrences.add({
               id: phrase.occurrenceId,
               deckId: deck.id,
-              ...(group.groupId ? { groupId: group.groupId } : {}),
+              groupId: group.groupId,
+              section: phrase.section,
               cardId: card.id,
-              position,
+              position: phrase.position,
               translation: phrase.draft.card.translation,
-              ...(phrase.draft.speaker ? { speaker: phrase.draft.speaker } : {}),
-              ...(phrase.draft.alternative ? { alternative: true } : {}),
-              ...(featuredPhraseIds.has(phrase.draft.id) ? { featured: true } : {}),
+              ...("speaker" in phrase.draft ? { speaker: phrase.draft.speaker } : {}),
+              ...("alternative" in phrase.draft && phrase.draft.alternative ? { alternative: true } : {}),
             });
             draftRefs.set(phrase.draft.id, {
               occurrenceId: phrase.occurrenceId,
               cardId: card.id,
             });
-            groupPosition += 1;
-            if (!group.groupId) grouplessPosition += 1;
           }
         }
 
         let wordPosition = 0;
-        for (const word of words) {
-          const card = await resolveCard(word.card, store, now);
-          await ensureMembership(deck.id, card.id, wordPosition, now, store);
-          for (const source of word.sources) {
-            await addProvenance(
-              card.id,
-              deck.id,
-              remapDraftEvidence(source, draftRefs),
-              now,
-              store,
-            );
+        const wordMemberships = new Set<string>();
+        for (const group of prepared) {
+          for (const [position, word] of group.draft.vocab.entries()) {
+            const card = await resolveCard(word.card, store, now);
+            if (!wordMemberships.has(card.id)) {
+              await ensureMembership(deck.id, card.id, wordPosition++, now, store);
+              wordMemberships.add(card.id);
+            }
+            await store.topicWords.add({
+              id: uuid(), deckId: deck.id, groupId: group.groupId, cardId: card.id, position,
+            });
+            for (const source of word.sources ?? []) {
+              await addProvenance(card.id, deck.id, remapDraftEvidence(source, draftRefs), now, store);
+            }
           }
-          wordPosition += 1;
         }
         assertAbort(signal);
       },
@@ -728,10 +666,11 @@ function provenanceOrder(deckId: string, left: Provenance, right: Provenance): n
 
 
 export async function getCards(deckId: string, store: LibraryDb = db): Promise<LibraryEntry[]> {
-  const [memberships, occurrences, groups] = await Promise.all([
+  const [memberships, occurrences, groups, topicWords] = await Promise.all([
     store.memberships.where("deckId").equals(deckId).toArray(),
     store.occurrences.where("deckId").equals(deckId).toArray(),
     store.groups.where("deckId").equals(deckId).toArray(),
+    store.topicWords.where("deckId").equals(deckId).toArray(),
   ]);
   const cardIds = [...new Set(memberships.map((membership) => membership.cardId))];
   const records = (await store.cards.bulkGet(cardIds))
@@ -777,13 +716,33 @@ export async function getCards(deckId: string, store: LibraryDb = db): Promise<L
     const rightGroup = groupById.get(rightOccurrence.groupId ?? "");
     return (leftGroup?.position ?? Number.MAX_SAFE_INTEGER)
       - (rightGroup?.position ?? Number.MAX_SAFE_INTEGER)
+      || (leftOccurrence.section === rightOccurrence.section ? 0
+        : leftOccurrence.section === "essentials" ? -1 : 1)
       || leftOccurrence.position - rightOccurrence.position
       || leftOccurrence.id.localeCompare(rightOccurrence.id);
   });
+  const placedWordIds = new Set(topicWords.map((placement) => placement.cardId));
+  const wordEntries = topicWords.flatMap((wordPlacement): LibraryEntry[] => {
+    const membership = membershipByCard.get(wordPlacement.cardId);
+    const record = cardById.get(wordPlacement.cardId);
+    if (!membership || record?.content.type !== "word") return [];
+    return [{
+      key: wordPlacement.id,
+      cardId: record.id,
+      card: record.content,
+      membership,
+      wordPlacement,
+      sources: (sourcesByCard.get(record.id) ?? [])
+        .sort((left, right) => provenanceOrder(deckId, left, right)).map((row) => row.source),
+    }];
+  }).sort((left, right) =>
+    (groupById.get(left.wordPlacement!.groupId)?.position ?? 0)
+      - (groupById.get(right.wordPlacement!.groupId)?.position ?? 0)
+      || left.wordPlacement!.position - right.wordPlacement!.position);
 
   const nonPhraseEntries = memberships.flatMap((membership): LibraryEntry[] => {
     const record = cardById.get(membership.cardId);
-    if (!record || record.content.type === "phrase") return [];
+    if (!record || record.content.type === "phrase" || placedWordIds.has(record.id)) return [];
     const sources = (sourcesByCard.get(record.id) ?? [])
       .sort((left, right) => provenanceOrder(deckId, left, right))
       .map((row) => row.source);
@@ -801,7 +760,7 @@ export async function getCards(deckId: string, store: LibraryDb = db): Promise<L
   const words = nonPhraseEntries
     .filter((entry) => entry.card.type === "word")
     .sort((left, right) => (left.membership?.position ?? 0) - (right.membership?.position ?? 0));
-  return [...phraseEntries, ...chunks, ...words];
+  return [...phraseEntries, ...wordEntries, ...chunks, ...words];
 }
 
 export async function getCardsByLang(lang: Lang, store: LibraryDb = db): Promise<LibraryEntry[]> {
@@ -833,12 +792,11 @@ export async function getReviewCards(
   store: LibraryDb = db,
 ): Promise<LibraryEntry[]> {
   const entries = await getCards(deckId, store);
-  const seenPhrases = new Set<string>();
+  const seen = new Set<string>();
   return entries.filter((entry) => {
     if (!entry.membership?.starredAt) return false;
-    if (entry.card.type !== "phrase") return true;
-    if (seenPhrases.has(entry.cardId)) return false;
-    seenPhrases.add(entry.cardId);
+    if (seen.has(entry.cardId)) return false;
+    seen.add(entry.cardId);
     return true;
   });
 }
@@ -1031,6 +989,48 @@ export async function toggleCardStar(
   );
 }
 
+function entryBucket(entry: LibraryEntry): string {
+  if (entry.occurrence) return `phrase:${entry.occurrence.groupId ?? ""}:${entry.occurrence.section ?? ""}`;
+  if (entry.wordPlacement) return `word:${entry.wordPlacement.groupId}`;
+  return entry.card.type;
+}
+
+async function normalizeDeckPositions(deckId: string, store: LibraryDb): Promise<void> {
+  const occurrences = await store.occurrences.where("deckId").equals(deckId).sortBy("position");
+  const occurrenceBuckets = new Map<string, Occurrence[]>();
+  for (const row of occurrences) {
+    const bucket = `${row.groupId ?? ""}:${row.section ?? ""}`;
+    const rows = occurrenceBuckets.get(bucket) ?? [];
+    rows.push(row);
+    occurrenceBuckets.set(bucket, rows);
+  }
+  for (const rows of occurrenceBuckets.values()) {
+    for (const [position, row] of rows.entries()) {
+      row.position = position;
+      if (row.section === "dialogue" && position > 0 && rows[position - 1].speaker === row.speaker) {
+        row.alternative = true;
+      } else {
+        delete row.alternative;
+      }
+      await store.occurrences.put(row);
+    }
+  }
+  const words = await store.topicWords.where("deckId").equals(deckId).sortBy("position");
+  const wordPositions = new Map<string, number>();
+  for (const row of words) {
+    const position = wordPositions.get(row.groupId) ?? 0;
+    await store.topicWords.update(row.id, { position });
+    wordPositions.set(row.groupId, position + 1);
+  }
+  const memberships = await store.memberships.where("deckId").equals(deckId).sortBy("position");
+  const records = await store.cards.bulkGet(memberships.map((row) => row.cardId));
+  const positions: Record<Card["type"], number> = { phrase: 0, word: 0, chunk: 0 };
+  for (const [index, row] of memberships.entries()) {
+    const record = records[index];
+    if (record) await store.memberships.update([deckId, row.cardId], { position: positions[record.type]++ });
+  }
+}
+
 export async function updateDeckEntryOrder(
   deckId: string,
   entryKeys: readonly string[],
@@ -1048,6 +1048,7 @@ export async function updateDeckEntryOrder(
       store.memberships,
       store.occurrences,
       store.provenance,
+      store.topicWords,
     ],
     async () => {
       if (!await store.decks.get(deckId)) throw new Error(`Deck ${deckId} does not exist.`);
@@ -1057,22 +1058,28 @@ export async function updateDeckEntryOrder(
         || entryKeys.some((key) => !entryByKey.has(key))) {
         throw new Error("entryKeys must contain every current entry exactly once.");
       }
+      const ordered = entryKeys.map((key) => entryByKey.get(key)!);
+      if (ordered.some((entry, index) => entryBucket(entry) !== entryBucket(entries[index]))) {
+        throw new Error("Entries may only be reordered within their topic and section.");
+      }
       const bucketPositions = new Map<string, number>();
-      for (const key of entryKeys) {
-        const entry = entryByKey.get(key);
-        if (!entry) throw new Error(`Unknown entry key ${key}.`);
+      const membershipPositions: Record<Card["type"], number> = { phrase: 0, word: 0, chunk: 0 };
+      const seenMemberships = new Set<string>();
+      for (const entry of ordered) {
+        const bucket = entryBucket(entry);
+        const position = bucketPositions.get(bucket) ?? 0;
         if (entry.occurrence) {
-          const bucket = `phrase:${entry.occurrence.groupId ?? ""}`;
-          const position = bucketPositions.get(bucket) ?? 0;
           await store.occurrences.update(entry.occurrence.id, { position });
-          bucketPositions.set(bucket, position + 1);
-        } else if (entry.membership) {
-          const bucket = entry.card.type;
-          const position = bucketPositions.get(bucket) ?? 0;
-          await store.memberships.update([deckId, entry.cardId], { position });
-          bucketPositions.set(bucket, position + 1);
+        } else if (entry.wordPlacement) {
+          await store.topicWords.update(entry.wordPlacement.id, { position });
+        }
+        bucketPositions.set(bucket, position + 1);
+        if (entry.membership && !seenMemberships.has(entry.cardId)) {
+          await store.memberships.update([deckId, entry.cardId], { position: membershipPositions[entry.card.type]++ });
+          seenMemberships.add(entry.cardId);
         }
       }
+      await normalizeDeckPositions(deckId, store);
     },
   );
 }
@@ -1098,6 +1105,13 @@ export async function updateCard(
       : [...commonEditable, "text", "reading", "romanization"];
     assertExactFields(fields, editable, "fields");
     const updatedValue: Record<string, unknown> = { ...record.content };
+    const occurrence = options.occurrenceId ? await store.occurrences.get(options.occurrenceId) : undefined;
+    if (options.occurrenceId) {
+      if (record.type !== "phrase" || !occurrence || occurrence.cardId !== cardId) {
+        throw new Error(`Occurrence ${options.occurrenceId} does not belong to this Phrase.`);
+      }
+      updatedValue.translation = occurrence.translation;
+    }
     for (const [field, value] of Object.entries(fields)) {
       if (value === undefined) delete updatedValue[field];
       else updatedValue[field] = value;
@@ -1118,15 +1132,9 @@ export async function updateCard(
         throw new Error("A card with this identity already exists.");
       }
     }
-    if (options.occurrenceId) {
-      if (content.type !== "phrase") {
-        throw new Error("occurrenceId is allowed only when editing a Phrase.");
-      }
-      const occurrence = await store.occurrences.get(options.occurrenceId);
-      if (!occurrence || occurrence.cardId !== cardId) {
-        throw new Error(`Occurrence ${options.occurrenceId} does not belong to this card.`);
-      }
+    if (occurrence) {
       await store.occurrences.update(occurrence.id, { translation: content.translation });
+      content.translation = record.content.translation;
     }
     await store.cards.update(cardId, { identityKey, content });
   });
@@ -1137,29 +1145,26 @@ export async function removeCardFromDeck(
   deckId: string,
   store: LibraryDb = db,
 ): Promise<void> {
-  await store.transaction("rw", store.memberships, store.occurrences, async () => {
+  await store.transaction("rw", [store.cards, store.memberships, store.occurrences, store.topicWords], async () => {
     await store.memberships.delete([deckId, cardId]);
-    const occurrences = await store.occurrences
-      .where("deckId")
-      .equals(deckId)
-      .filter((occurrence) => occurrence.cardId === cardId)
-      .primaryKeys();
-    await store.occurrences.bulkDelete(occurrences);
+    await store.occurrences.where("deckId").equals(deckId).filter((row) => row.cardId === cardId).delete();
+    await store.topicWords.where("deckId").equals(deckId).filter((row) => row.cardId === cardId).delete();
+    await normalizeDeckPositions(deckId, store);
   });
 }
 
 export async function deleteCard(cardId: string, store: LibraryDb = db): Promise<void> {
   await store.transaction(
     "rw",
-    store.cards,
-    store.memberships,
-    store.occurrences,
-    store.provenance,
+    [store.cards, store.memberships, store.occurrences, store.provenance, store.topicWords],
     async () => {
+      const deckIds = (await store.memberships.where("cardId").equals(cardId).toArray()).map((row) => row.deckId);
       await store.memberships.where("cardId").equals(cardId).delete();
       await store.occurrences.where("cardId").equals(cardId).delete();
+      await store.topicWords.where("cardId").equals(cardId).delete();
       await store.provenance.where("cardId").equals(cardId).delete();
       await store.cards.delete(cardId);
+      for (const deckId of deckIds) await normalizeDeckPositions(deckId, store);
     },
   );
 }
@@ -1167,14 +1172,12 @@ export async function deleteCard(cardId: string, store: LibraryDb = db): Promise
 export async function deleteDeck(deckId: string, store: LibraryDb = db): Promise<void> {
   await store.transaction(
     "rw",
-    store.decks,
-    store.groups,
-    store.memberships,
-    store.occurrences,
+    [store.decks, store.groups, store.memberships, store.occurrences, store.topicWords],
     async () => {
       await store.groups.where("deckId").equals(deckId).delete();
       await store.memberships.where("deckId").equals(deckId).delete();
       await store.occurrences.where("deckId").equals(deckId).delete();
+      await store.topicWords.where("deckId").equals(deckId).delete();
       await store.decks.delete(deckId);
     },
   );
@@ -1184,7 +1187,7 @@ function validateDeck(value: unknown, path: string): Deck {
   const row = objectValue(value, path);
   assertExactFields(
     row,
-    ["id", "name", "lang", "createdAt", "lastAccessedAt", "mode", "order", "readingDisplay", "generation", "ability", "seedId"],
+    ["id", "name", "lang", "createdAt", "lastAccessedAt", "mode", "order", "readingDisplay", "generation", "ability", "seedId", "illustration"],
     path,
   );
   const deck: Deck = {
@@ -1207,6 +1210,9 @@ function validateDeck(value: unknown, path: string): Deck {
   }
   if (Object.hasOwn(row, "seedId")) {
     deck.seedId = requiredString(row.seedId, `${path}.seedId`, 500);
+  }
+  if (Object.hasOwn(row, "illustration")) {
+    deck.illustration = validateDeckIllustration(row.illustration, `${path}.illustration`);
   }
   return deck;
 }
@@ -1261,7 +1267,7 @@ function validateOccurrence(value: unknown, path: string): Occurrence {
   const row = objectValue(value, path);
   assertExactFields(
     row,
-    ["id", "deckId", "groupId", "cardId", "position", "translation", "speaker", "alternative", "featured"],
+    ["id", "deckId", "groupId", "section", "cardId", "position", "translation", "speaker", "alternative"],
     path,
   );
   const occurrence: Occurrence = {
@@ -1273,6 +1279,7 @@ function validateOccurrence(value: unknown, path: string): Occurrence {
   };
   if (Object.hasOwn(row, "groupId")) {
     occurrence.groupId = uuidString(row.groupId, `${path}.groupId`);
+    occurrence.section = enumValue(row.section, ["essentials", "dialogue"], `${path}.section`);
   }
   if (Object.hasOwn(row, "speaker")) {
     occurrence.speaker = enumValue(row.speaker, ["you", "partner"], `${path}.speaker`);
@@ -1280,10 +1287,27 @@ function validateOccurrence(value: unknown, path: string): Occurrence {
   if (Object.hasOwn(row, "alternative")) {
     occurrence.alternative = optionalTrue(row.alternative, `${path}.alternative`);
   }
-  if (Object.hasOwn(row, "featured")) {
-    occurrence.featured = optionalTrue(row.featured, `${path}.featured`);
+  if (!occurrence.groupId && Object.hasOwn(row, "section")) {
+    throw new Error(`${path}.section requires a group`);
+  }
+  if (occurrence.section === "dialogue") {
+    if (!occurrence.speaker) throw new Error(`${path}.speaker is required for dialogue`);
+  } else if (occurrence.speaker || occurrence.alternative) {
+    throw new Error(`${path} may have speaker/alternative only in dialogue`);
   }
   return occurrence;
+}
+
+function validateTopicWord(value: unknown, path: string): TopicWordPlacement {
+  const row = objectValue(value, path);
+  assertExactFields(row, ["id", "deckId", "groupId", "cardId", "position"], path);
+  return {
+    id: uuidString(row.id, `${path}.id`),
+    deckId: uuidString(row.deckId, `${path}.deckId`),
+    groupId: uuidString(row.groupId, `${path}.groupId`),
+    cardId: uuidString(row.cardId, `${path}.cardId`),
+    position: nonnegativeInteger(row.position, `${path}.position`),
+  };
 }
 
 function validateProvenance(value: unknown, path: string): Provenance {
@@ -1323,6 +1347,8 @@ function validateBackupGraph(backup: LibraryBackup): void {
   assertUnique(backup.decks.map((row) => row.id), "backup.decks ids");
   assertUnique(backup.groups.map((row) => row.id), "backup.groups ids");
   assertUnique(backup.occurrences.map((row) => row.id), "backup.occurrences ids");
+  assertUnique(backup.topicWords.map((row) => row.id), "backup.topicWords ids");
+  assertUnique([...backup.occurrences, ...backup.topicWords].map((row) => row.id), "backup entry ids");
   assertUnique(backup.provenance.map((row) => row.id), "backup.provenance ids");
   assertUnique(
     backup.memberships.map((row) => JSON.stringify([row.deckId, row.cardId])),
@@ -1373,6 +1399,14 @@ function validateBackupGraph(backup: LibraryBackup): void {
       }
     }
   }
+  for (const placement of backup.topicWords) {
+    const card = cards.get(placement.cardId);
+    const group = groups.get(placement.groupId);
+    if (card?.type !== "word" || !group || group.deckId !== placement.deckId
+      || !memberships.has(JSON.stringify([placement.deckId, placement.cardId]))) {
+      throw new Error(`Topic Word ${placement.id} requires a Word membership and an owned group.`);
+    }
+  }
   for (const membership of backup.memberships) {
     const card = cards.get(membership.cardId);
     if (card?.type === "phrase"
@@ -1388,12 +1422,24 @@ function validateBackupGraph(backup: LibraryBackup): void {
       `Group-less occurrences in deck ${deck.id}`,
     );
     for (const group of backup.groups.filter((row) => row.deckId === deck.id)) {
+      for (const section of ["essentials", "dialogue"] as const) {
+        const rows = deckOccurrences.filter((row) => row.groupId === group.id && row.section === section)
+          .sort((left, right) => left.position - right.position);
+        assertContiguousPositions(rows, `${section} in group ${group.id}`);
+        if (section === "dialogue") {
+          for (const [index, row] of rows.entries()) {
+            if ((row.alternative === true) !== (index > 0 && rows[index - 1].speaker === row.speaker)) {
+              throw new Error(`Dialogue alternatives in group ${group.id} must match adjacency.`);
+            }
+          }
+        }
+      }
       assertContiguousPositions(
-        deckOccurrences.filter((row) => row.groupId === group.id),
-        `Occurrences in group ${group.id}`,
+        backup.topicWords.filter((row) => row.groupId === group.id),
+        `Words in group ${group.id}`,
       );
     }
-    for (const type of ["word", "chunk"] as const) {
+    for (const type of ["phrase", "word", "chunk"] as const) {
       assertContiguousPositions(
         backup.memberships.filter((membership) => cards.get(membership.cardId)?.type === type
           && membership.deckId === deck.id),
@@ -1443,11 +1489,11 @@ function validateLibraryBackup(value: unknown): LibraryBackup {
   const data = objectValue(value, "backup");
   assertExactFields(
     data,
-    ["schemaVersion", "cards", "decks", "groups", "memberships", "occurrences", "provenance"],
+    ["schemaVersion", "cards", "decks", "groups", "memberships", "occurrences", "topicWords", "provenance"],
     "backup",
   );
-  if (data.schemaVersion !== SCHEMA_VERSION) {
-    throw new Error("Unsupported library schema version; expected 2.");
+  if (data.schemaVersion !== LIBRARY_SCHEMA_VERSION) {
+    throw new Error("Unsupported library schema version; expected 3.");
   }
   const collection = <T>(
     raw: unknown,
@@ -1458,12 +1504,13 @@ function validateLibraryBackup(value: unknown): LibraryBackup {
     return raw.map((item, index) => validator(item, `${path}[${index}]`));
   };
   const backup: LibraryBackup = {
-    schemaVersion: SCHEMA_VERSION,
+    schemaVersion: LIBRARY_SCHEMA_VERSION,
     cards: collection(data.cards, "backup.cards", validateCardRecord),
     decks: collection(data.decks, "backup.decks", validateDeck),
     groups: collection(data.groups, "backup.groups", validateGroup),
     memberships: collection(data.memberships, "backup.memberships", validateMembership),
     occurrences: collection(data.occurrences, "backup.occurrences", validateOccurrence),
+    topicWords: collection(data.topicWords, "backup.topicWords", validateTopicWord),
     provenance: collection(data.provenance, "backup.provenance", validateProvenance),
   };
   validateBackupGraph(backup);
@@ -1480,14 +1527,16 @@ export async function exportAllData(store: LibraryDb = db): Promise<LibraryBacku
       store.memberships,
       store.occurrences,
       store.provenance,
+      store.topicWords,
     ],
     async () => ({
-      schemaVersion: SCHEMA_VERSION,
+      schemaVersion: LIBRARY_SCHEMA_VERSION,
       cards: await store.cards.toArray(),
       decks: await store.decks.toArray(),
       groups: await store.groups.toArray(),
       memberships: await store.memberships.toArray(),
       occurrences: await store.occurrences.toArray(),
+      topicWords: await store.topicWords.toArray(),
       provenance: await store.provenance.toArray(),
     }),
   );
@@ -1504,11 +1553,13 @@ export async function restoreAllData(value: unknown, store: LibraryDb = db): Pro
       store.memberships,
       store.occurrences,
       store.provenance,
+      store.topicWords,
     ],
     async () => {
       await Promise.all([
         store.provenance.clear(),
         store.occurrences.clear(),
+        store.topicWords.clear(),
         store.memberships.clear(),
         store.groups.clear(),
         store.cards.clear(),
@@ -1519,6 +1570,7 @@ export async function restoreAllData(value: unknown, store: LibraryDb = db): Pro
       await store.groups.bulkAdd(backup.groups);
       await store.memberships.bulkAdd(backup.memberships);
       await store.occurrences.bulkAdd(backup.occurrences);
+      await store.topicWords.bulkAdd(backup.topicWords);
       await store.provenance.bulkAdd(backup.provenance);
     },
   );

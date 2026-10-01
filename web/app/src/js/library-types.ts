@@ -5,7 +5,18 @@ import type {
   Evidence,
   Lang,
   Phrase,
+  PhrasebookImage,
 } from "@catchphrase/card-schema";
+
+export const LIBRARY_SCHEMA_VERSION = 3 as const;
+
+export type DeckIllustration = {
+  requestId: string;
+  prompt: string;
+} & (
+  | { state: "pending" | "failed" }
+  | { state: "ready"; image: PhrasebookImage }
+);
 
 export type DeckMode = "study" | "review" | "reverse";
 export type DeckOrder = "default" | "random" | "reverse";
@@ -25,6 +36,7 @@ export interface Deck {
   generation?: Generation;
   ability?: Ability;
   seedId?: string;
+  illustration?: DeckIllustration;
 }
 
 export interface CardRecord {
@@ -55,12 +67,20 @@ export interface Occurrence {
   id: string;
   deckId: string;
   groupId?: string;
+  section?: "essentials" | "dialogue";
   cardId: string;
   position: number;
   translation: string;
   speaker?: "you" | "partner";
   alternative?: true;
-  featured?: true;
+}
+
+export interface TopicWordPlacement {
+  id: string;
+  deckId: string;
+  groupId: string;
+  cardId: string;
+  position: number;
 }
 
 export interface Provenance {
@@ -78,22 +98,26 @@ export interface LibraryEntry {
   card: Card;
   membership?: Membership;
   occurrence?: Occurrence;
+  wordPlacement?: TopicWordPlacement;
   sources: Evidence[];
 }
 
-export interface PhrasebookDraftPhrase {
+export interface PhrasebookDraftEssential {
   id: string;
   card: Phrase;
-  speaker?: "you" | "partner";
+}
+
+export interface PhrasebookDraftDialogueLine extends PhrasebookDraftEssential {
+  speaker: "you" | "partner";
   alternative?: true;
 }
 
 export interface PhrasebookDraftGroup {
   id: string;
-  title?: string;
-  phrases: PhrasebookDraftPhrase[];
+  title: string;
+  essentials: PhrasebookDraftEssential[];
   vocab: Candidate[];
-  featuredPhraseIds?: string[];
+  dialogue: PhrasebookDraftDialogueLine[];
 }
 
 export interface CommitPhrasebookInput {
@@ -102,16 +126,18 @@ export interface CommitPhrasebookInput {
   generation?: Generation;
   ability?: Ability;
   seedId?: string;
+  illustration?: DeckIllustration;
   groups: PhrasebookDraftGroup[];
   selectedIndexes: readonly number[];
 }
 
 export interface LibraryBackup {
-  schemaVersion: 2;
+  schemaVersion: typeof LIBRARY_SCHEMA_VERSION;
   cards: CardRecord[];
   decks: Deck[];
   groups: Group[];
   memberships: Membership[];
   occurrences: Occurrence[];
+  topicWords: TopicWordPlacement[];
   provenance: Provenance[];
 }

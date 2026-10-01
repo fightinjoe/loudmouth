@@ -2,11 +2,13 @@ const { handlePhrasebookTitle } = require('./phrasebook-title');
 const { handleContext } = require('./context');
 const { handlePhrasebook } = require('./phrasebook');
 const { handlePhraseBreakdown } = require('./phrase-breakdown');
-const { getBackendName, LLM_REGISTRY } = require('./llm-config');
+const { handlePhrasebookImage } = require('./phrasebook-image');
+const { getBackendName, getPhrasebookGenerationBackendName, LLM_REGISTRY } = require('./llm-config');
 
 // Fail during process startup rather than on the first request when the
 // configured backend name is invalid.
 getBackendName();
+getPhrasebookGenerationBackendName();
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +23,7 @@ exports.translate = async (req, res) => {
     return res.status(204).send('');
   }
   if (req.method !== 'POST') {
+    console.warn({ event: 'request_invalid', route: req.path || '/', failureLevel: 2, status: 405 });
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -40,6 +43,10 @@ exports.translate = async (req, res) => {
   if (path === '/phrasebook') {
     return handlePhrasebook(req, res, LLM_REGISTRY);
   }
+  if (path === '/phrasebook-image') {
+    return handlePhrasebookImage(req, res);
+  }
 
+  console.warn({ event: 'request_invalid', route: path, failureLevel: 2, status: 404 });
   return res.status(404).json({ error: `Unknown path: ${path}` });
 };

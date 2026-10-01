@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => {
         id: "occ-1",
         deckId: "d1",
         groupId: "group-1",
+        section: "dialogue",
         cardId: "shared-card",
         position: 0,
         translation: "go ahead",
@@ -60,6 +61,7 @@ const mocks = vi.hoisted(() => {
         id: "occ-2",
         deckId: "d1",
         groupId: "group-1",
+        section: "dialogue",
         cardId: "shared-card",
         position: 1,
         translation: "after you",
@@ -192,10 +194,10 @@ describe("phrasebook-scoped membership stars", () => {
         "2026-03-01T00:00:00.000Z",
         "2026-03-01T00:00:00.000Z",
       ]);
-    expect([...view.rootEl.querySelectorAll('.deck-page[data-page-kind="conversation"] .card-star')]
+    expect([...view.rootEl.querySelectorAll('.deck-page[data-page-kind="topic"] .card-star')]
       .map((button) => button.getAttribute("aria-pressed")))
       .toEqual(["true", "true"]);
-    expect([...view.rootEl.querySelectorAll('.deck-page[data-page-kind="conversation"] .card-star')]
+    expect([...view.rootEl.querySelectorAll('.deck-page[data-page-kind="topic"] .card-star')]
       .map((button) => button.getAttribute("aria-label")))
       .toEqual(["Unstar: go ahead", "Unstar: after you"]);
     expect(view.rootEl.querySelector('[data-action="content/review"]').disabled).toBe(false);
@@ -271,7 +273,7 @@ describe("phrasebook-scoped membership stars", () => {
     mocks.toggleCardStar.mockResolvedValue({ cardId: "word", starredAt: null });
     next.click();
     await flush();
-    expect(view.ui.get("content").pageKey).toBe("phrases");
+    expect(view.ui.get("content").pageKey).toBe("contents");
     expect(document.activeElement).toBe(view.rootEl.querySelector('.deck-tab[aria-selected="true"]'));
     expect(view.rootEl.querySelector(".deck-star-tab")).toBeNull();
     expect(view.ui.get("content").cards).toHaveLength(3);
@@ -362,11 +364,16 @@ describe("entry-key reordering", () => {
 describe("preview commit", () => {
   const draftGroups = [{
     id: "draft-group",
-    phrases: [{
+    title: "Greetings",
+    essentials: [{
       id: "draft-occurrence",
       card: { type: "phrase", lang: "ja", text: "こんにちは", translation: "hello" },
     }],
     vocab: [],
+    dialogue: [
+      { id: "draft-you", card: { type: "phrase", lang: "ja", text: "こんにちは", translation: "hello" }, speaker: "you" },
+      { id: "draft-partner", card: { type: "phrase", lang: "ja", text: "どうぞ", translation: "come in" }, speaker: "partner" },
+    ],
   }];
   const previewDeck = {
     id: "preview-id",
@@ -431,4 +438,100 @@ it("refreshes Review availability when analysis adds a starred learning target",
   expect(review.disabled).toBe(false);
   view.ui.transition("content/cards-changed",{deckId:"d1",cards:cards.map(entry=>({...entry,membership:{...entry.membership,starredAt:null}}))});
   expect(review.disabled).toBe(true);
+});
+
+describe("topic navigation and independent sections", () => {
+  it("opens the requested duplicate-title topic and transfers focus to its tab", async () => {
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    view.ui.transition("content/cards-changed", {
+      cards: view.ui.get("content").cards,
+      groups: [...mocks.groups, { ...mocks.groups[0], id: "group-2", position: 1 }],
+    });
+    const buttons = [...view.rootEl.querySelectorAll(".topic-view")];
+    buttons[1].click();
+    expect(view.ui.get("content").pageKey).toBe("group:group-2");
+    expect(document.activeElement.dataset.pageKey).toBe("group:group-2");
+    expect(view.rootEl.querySelector('.deck-page[data-page-key="contents"]').inert).toBe(true);
+  });
+
+  it("opens essential analysis with its real occurrence and group, without inventing a speaker", async () => {
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    const entry = mocks.repeatedEntries()[0];
+    delete entry.occurrence.speaker;
+    entry.occurrence.section = "essentials";
+    view.ui.transition("content/cards-changed", { cards: [entry] });
+    view.rootEl.querySelector(".topic-view").click();
+    view.rootEl.querySelector(".card-term").click();
+    expect(view.ui.get("details").entry.occurrence).toEqual(entry.occurrence);
+    expect(view.ui.get("details").entry.occurrence).not.toHaveProperty("speaker");
+    expect(view.ui.get("details").group.id).toBe("group-1");
+  });
+
+  it("rejects reordering across essential and dialogue buckets", async () => {
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    const cards = mocks.repeatedEntries();
+    cards[0].occurrence.section = "essentials";
+    delete cards[0].occurrence.speaker;
+    view.ui.transition("content/cards-changed", { cards });
+    view.ui.transition("content/enter-edit");
+    view.ui.transition("content/reorder", { pageOrder: ["occ-2", "occ-1"] });
+    expect(view.ui.get("content").editOrder).toEqual(["occ-1", "occ-2"]);
+  });
+});
+
+describe("illustration completion ownership", () => {
+  it("patches only the hero while preserving edit order, selected topic, mounted cards, scroll and focus", async () => {
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    const pending = { requestId: "cover-1", prompt: "Watercolor", state: "pending" };
+    const current = view.ui.get("content");
+    view.ui.transition("content/loaded", { ...current, deck: { ...current.deck, illustration: pending } });
+    view.rootEl.querySelector(".topic-view").click();
+    view.ui.transition("content/enter-edit");
+    view.ui.transition("content/reorder", { pageOrder: ["occ-2", "occ-1"] });
+    const page = view.rootEl.querySelector('.deck-page[data-page-key="group:group-1"]');
+    const card = page.querySelector(".card-term");
+    card.focus();
+    page.scrollTop = 112;
+    const order = view.ui.get("content").editOrder;
+    const ready = { ...pending, state: "ready", image: {
+      dataUrl: "data:image/png;base64,aGVsbG8=", mediaType: "image/png", width: 1600, height: 900,
+    } };
+    view.ui.transition("content/illustration-updated", { deckId: "d1", illustration: ready });
+    expect(view.ui.get("content").editMode).toBe(true);
+    expect(view.ui.get("content").editOrder).toBe(order);
+    expect(view.ui.get("content").pageKey).toBe("group:group-1");
+    expect(page.scrollTop).toBe(112);
+    expect(page.querySelector(".card-term")).toBe(card);
+    expect(document.activeElement).toBe(card);
+    expect(view.rootEl.querySelector(".deck-illustration img").getAttribute("src")).toBe(ready.image.dataUrl);
+    view.ui.transition("content/illustration-updated", { deckId: "d1", illustration: { ...pending, state: "failed" } });
+    expect(view.ui.get("content").deck.illustration).toBe(ready);
+  });
+
+  it("ignores superseded requests and completions for a switched deck", async () => {
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    const current = view.ui.get("content");
+    const pending = { requestId: "current", prompt: "Watercolor", state: "pending" };
+    view.ui.transition("content/loaded", { ...current, deck: { ...current.deck, illustration: pending } });
+    const before = view.ui.get("content");
+    view.ui.transition("content/illustration-updated", {
+      deckId: "d1", illustration: { ...pending, requestId: "superseded", state: "failed" },
+    });
+    expect(view.ui.get("content")).toBe(before);
+    view.ui.transition("content/select-deck", { id: "d2" });
+    await flush();
+    const switched = view.ui.get("content");
+    view.ui.transition("content/illustration-updated", { deckId: "d1", illustration: { ...pending, state: "failed" } });
+    expect(view.ui.get("content")).toBe(switched);
+  });
 });

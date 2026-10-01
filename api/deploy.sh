@@ -10,6 +10,7 @@ REGION="${GCP_LOCATION:-us-central1}"
 # like us-central1 — kept separate from REGION, which the gateway/Cloud Run use.
 VERTEX_LOCATION="${GCP_VERTEX_LOCATION:-global}"
 LLM_BACKEND="${LLM_BACKEND:-gemini-3.5-flash-lite}"
+PHRASEBOOK_GENERATION_BACKEND="${PHRASEBOOK_GENERATION_BACKEND:-deepseek-v4.1-flash}"
 SERVICE_NAME="translation-api"
 SA_NAME="translation-api-sa"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
@@ -21,6 +22,7 @@ echo "==> Project:  ${PROJECT_ID}"
 echo "==> Region:   ${REGION}"
 echo "==> Vertex:   ${VERTEX_LOCATION}"
 echo "==> LLM:      ${LLM_BACKEND}"
+echo "==> English:  ${PHRASEBOOK_GENERATION_BACKEND}"
 
 # ---------------------------------------------------------------------------
 # 1. Enable required APIs
@@ -40,7 +42,7 @@ gcloud services enable \
 echo ""
 echo "==> Checking secrets..."
 
-for SECRET in anthropic-api-key openai-api-key; do
+for SECRET in anthropic-api-key openai-api-key openrouter-api-key fal-key; do
   if ! gcloud secrets describe "${SECRET}" --project="${PROJECT_ID}" &>/dev/null; then
     echo "    Creating secret: ${SECRET}"
     gcloud secrets create "${SECRET}" \
@@ -50,7 +52,8 @@ for SECRET in anthropic-api-key openai-api-key; do
     echo "    *** ACTION REQUIRED ***"
     echo "    Secret '${SECRET}' was created but has no value."
     echo "    Add the API key with:"
-    echo "    echo -n 'YOUR_KEY_HERE' | gcloud secrets versions add ${SECRET} --data-file=- --project=${PROJECT_ID}"
+    echo "    read -rs -p 'API key: ' SECRET_VALUE; echo"
+    echo "    printf '%s' \"\$SECRET_VALUE\" | gcloud secrets versions add ${SECRET} --data-file=- --project=${PROJECT_ID}; unset SECRET_VALUE"
     echo ""
   else
     echo "    Secret already exists: ${SECRET}"
@@ -82,7 +85,7 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --condition=None \
   --quiet
 
-for SECRET in anthropic-api-key openai-api-key; do
+for SECRET in anthropic-api-key openai-api-key openrouter-api-key fal-key; do
   gcloud secrets add-iam-policy-binding "${SECRET}" \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="roles/secretmanager.secretAccessor" \
@@ -108,8 +111,8 @@ gcloud run deploy "${SERVICE_NAME}" \
   --no-allow-unauthenticated \
   --timeout="300s" \
   --service-account="${SA_EMAIL}" \
-  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=${REGION},GCP_VERTEX_LOCATION=${VERTEX_LOCATION},LLM_BACKEND=${LLM_BACKEND}" \
-  --set-secrets="ANTHROPIC_API_KEY=anthropic-api-key:latest,OPENAI_API_KEY=openai-api-key:latest" \
+  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=${REGION},GCP_VERTEX_LOCATION=${VERTEX_LOCATION},LLM_BACKEND=${LLM_BACKEND},PHRASEBOOK_GENERATION_BACKEND=${PHRASEBOOK_GENERATION_BACKEND}" \
+  --set-secrets="ANTHROPIC_API_KEY=anthropic-api-key:latest,OPENAI_API_KEY=openai-api-key:latest,OPENROUTER_API_KEY=openrouter-api-key:latest,FAL_KEY=fal-key:latest" \
   --project="${PROJECT_ID}"
 
 # ---------------------------------------------------------------------------

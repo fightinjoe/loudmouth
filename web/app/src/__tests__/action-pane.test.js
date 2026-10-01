@@ -10,6 +10,7 @@ vi.mock("../js/db", () => ({
   updateCard: vi.fn(),
   deleteCard: vi.fn(),
   commitPhrasebook: vi.fn(),
+  setDeckIllustration: vi.fn(),
 }));
 
 import actionPane from "../panes/action-pane";
@@ -54,7 +55,7 @@ const suggestion = {
   lang: "ja",
   groups: [{
     title: "On the street",
-    phrases: [{
+    essentials: [{
       lang: "ja",
       type: "phrase",
       text: "まっすぐ行ってください",
@@ -72,76 +73,20 @@ const suggestion = {
         senseKey: "right-direction",
       },
     }],
+    dialogue: [
+      {speaker:"you",card:{lang:"ja",type:"phrase",text:"駅はどこですか",translation:"Where is the station?",reading:[["駅","えき"],["はどこですか",null]]}},
+      {speaker:"partner",card:{lang:"ja",type:"phrase",text:"まっすぐ行ってください",translation:"Please go straight.",reading:[["まっすぐ",null],["行","い"],["ってください",null]]}},
+    ],
   }],
 };
 
 describe("action pane — suggested phrasebook preview", () => {
-  it("builds fresh draft groups and joined preview entries without saved metadata", () => {
-    const { ui, rootEl } = mountPane();
-
-    ui.transition("action/open", {
-      kind: "new-phrasebook",
-      payload: { suggestion },
-    });
-
-    const ability = rootEl.querySelector('[data-action="new-phrasebook/ability"]');
-    ability.value = "conversational";
-    ability.dispatchEvent(new Event("change"));
-    const createButton = rootEl.querySelector('[data-action="new-phrasebook/create"]');
-    createButton.click();
-
-    const content = ui.get("content");
-    expect(content.deck).toEqual(expect.objectContaining({
-      name: "Directions",
-      lang: "ja",
-      ability: "conversational",
-      preview: true,
-      seedId: "seed-directions-ja",
-    }));
-    expect(content.deck).not.toHaveProperty("createdAt");
-    expect(content.deck).not.toHaveProperty("generation");
-    expect(content.deck).not.toHaveProperty("system");
-    expect(content.deck.id).toMatch(/^[0-9a-f-]{36}$/i);
-
-    expect(content.deck.draftGroups).toHaveLength(1);
-    const draftGroup = content.deck.draftGroups[0];
-    expect(draftGroup).toEqual(expect.objectContaining({
-      title: "On the street",
-      phrases: [expect.objectContaining({ card: suggestion.groups[0].phrases[0] })],
-      vocab: suggestion.groups[0].vocab,
-    }));
-    expect(draftGroup.id).toMatch(/^[0-9a-f-]{36}$/i);
-    expect(draftGroup.phrases[0].id).toMatch(/^[0-9a-f-]{36}$/i);
-
-    expect(content.cards).toHaveLength(2);
-    const phraseEntry = content.cards.find((entry) => entry.card.type === "phrase");
-    expect(phraseEntry).toEqual(expect.objectContaining({
-      key: draftGroup.phrases[0].id,
-      card: suggestion.groups[0].phrases[0],
-      sources: [],
-      occurrence: expect.objectContaining({
-        id: draftGroup.phrases[0].id,
-        deckId: content.deck.id,
-        groupId: draftGroup.id,
-        translation: "please go straight",
-      }),
-    }));
-    expect(phraseEntry).not.toHaveProperty("membership");
-    expect(phraseEntry).not.toHaveProperty("deckIds");
-
-    const wordEntry = content.cards.find((entry) => entry.card.type === "word");
-    expect(wordEntry.card).toEqual(suggestion.groups[0].vocab[0].card);
-    expect(wordEntry.sources).toEqual([]);
-    expect(wordEntry).not.toHaveProperty("membership");
-
-  });
-
-  it("assigns distinct occurrence IDs to repeated phrase drafts", () => {
+  it("keeps section occurrences and repeated topic words distinct while sharing canonical cards", () => {
     const repeated = {
       ...suggestion,
       groups: [
-        { title: "First", phrases: [suggestion.groups[0].phrases[0]], vocab: [] },
-        { title: "Second", phrases: [suggestion.groups[0].phrases[0]], vocab: [] },
+        { ...suggestion.groups[0], title: "Same title" },
+        { ...suggestion.groups[0], title: "Same title" },
       ],
     };
     const { ui, rootEl } = mountPane();
@@ -153,8 +98,21 @@ describe("action pane — suggested phrasebook preview", () => {
 
     const { deck, cards } = ui.get("content");
     expect(new Set(deck.draftGroups.map((group) => group.id)).size).toBe(2);
-    expect(new Set(cards.map((entry) => entry.key)).size).toBe(2);
-    expect(new Set(cards.map((entry) => entry.cardId)).size).toBe(1);
+    expect(new Set(cards.map((entry) => entry.key)).size).toBe(8);
+    const essential = cards.filter((entry) => entry.occurrence?.section === "essentials");
+    const dialogue = cards.filter((entry) => entry.occurrence?.section === "dialogue");
+    expect(essential).toHaveLength(2);
+    expect(dialogue).toHaveLength(4);
+    expect(essential.every((entry) => !("speaker" in entry.occurrence))).toBe(true);
+    expect(dialogue.map((entry) => entry.occurrence.speaker)).toEqual(["you","partner","you","partner"]);
+    expect(essential[0].cardId).toBe(dialogue[1].cardId);
+    expect(essential[0].occurrence.translation).toBe("please go straight");
+    expect(dialogue[1].occurrence.translation).toBe("Please go straight.");
+    const words = cards.filter((entry) => entry.wordPlacement);
+    expect(words).toHaveLength(2);
+    expect(words[0].cardId).toBe(words[1].cardId);
+    expect(words.map((entry) => entry.wordPlacement.groupId)).toEqual(deck.draftGroups.map((group) => group.id));
+    expect(words.map((entry) => entry.wordPlacement.position)).toEqual([0,0]);
   });
 });
 

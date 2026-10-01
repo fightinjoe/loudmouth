@@ -1,4 +1,5 @@
 export const SCHEMA_VERSION = 2 as const;
+export const PHRASEBOOK_SCHEMA_VERSION = 3 as const;
 
 export type Lang = 'zh' | 'ja' | 'es' | 'cs' | 'uk';
 export type ReadingToken = [string, string | null];
@@ -88,9 +89,12 @@ export type ExistingUsage = {
   durationMs: number;
 };
 
-export type PhrasebookPhrase = {
+export type PhrasebookEssential = {
   id: string;
   card: Phrase;
+};
+
+export type PhrasebookDialogueLine = PhrasebookEssential & {
   speaker: 'you' | 'partner';
   alternative?: true;
 };
@@ -98,24 +102,53 @@ export type PhrasebookPhrase = {
 export type PhrasebookGroup = {
   id: string;
   title: string;
-  phrases: PhrasebookPhrase[];
-  featuredPhraseIds: string[];
+  essentials: PhrasebookEssential[];
   vocab: Candidate[];
+  dialogue: PhrasebookDialogueLine[];
 };
 
 export type PhrasebookFlag = {
   code: 'vocab-source-missing';
   groupIndex: number;
   vocabIndex: number;
-  reason: 'omitted' | 'unresolved';
+  reason: 'unresolved';
 };
 
 export type PhrasebookResponse = {
-  schemaVersion: typeof SCHEMA_VERSION;
+  schemaVersion: typeof PHRASEBOOK_SCHEMA_VERSION;
   title: string;
   groups: PhrasebookGroup[];
   flags: PhrasebookFlag[];
   usage: ExistingUsage;
+};
+
+export type ContextResponse = {
+  questions: { label: string; options: string[] }[];
+  checklist: { label: string; checked: boolean }[];
+  imagePrompt: string;
+  usage: ExistingUsage;
+};
+
+export type PhrasebookImage = {
+  dataUrl: string;
+  mediaType: 'image/png';
+  width: number;
+  height: number;
+};
+
+export type PhrasebookImageResponse = {
+  image: PhrasebookImage;
+  usage: {
+    model: string;
+    costUsd: number | null;
+    durationMs: number;
+    stages: {
+      provider: string;
+      model: string;
+      costUsd: number | null;
+      durationMs: number;
+    }[];
+  };
 };
 
 export type BreakdownGenerationContext = {
@@ -205,10 +238,10 @@ const MAX_SENSE_KEY = 120;
 const MAX_GROUP_TITLE = 120;
 const MAX_PHRASEBOOK_TITLE = 200;
 const MAX_GROUPS = 8;
-const MIN_PHRASES = 2;
-const MAX_PHRASES = 10;
-const MIN_VOCAB = 3;
-const MAX_VOCAB = 6;
+const MAX_ESSENTIALS = 8;
+const MIN_DIALOGUE = 2;
+const MAX_DIALOGUE = 10;
+const MAX_VOCAB = 10;
 const MAX_CHUNKS = 32;
 const MAX_WORDS_PER_CHUNK = 32;
 const SENSE_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -564,155 +597,210 @@ export function evidenceIdentity(evidence: unknown): string {
 export function validatePhrasebookResponse(value: unknown): PhrasebookResponse {
   const response = objectValue(value, 'response');
   assertExactFields(response, ['schemaVersion', 'title', 'groups', 'flags', 'usage'], 'response');
-  if (response.schemaVersion !== SCHEMA_VERSION) {
-    throw new Error(`response.schemaVersion must be ${SCHEMA_VERSION}`);
+  if (response.schemaVersion !== PHRASEBOOK_SCHEMA_VERSION) {
+    throw new Error(`response.schemaVersion must be ${PHRASEBOOK_SCHEMA_VERSION}`);
   }
   requiredString(response.title, 'response.title', MAX_PHRASEBOOK_TITLE);
-  if (!Array.isArray(response.groups)
-    || response.groups.length < 1
-    || response.groups.length > MAX_GROUPS) {
+  if (!Array.isArray(response.groups) || response.groups.length < 1 || response.groups.length > MAX_GROUPS) {
     throw new Error(`response.groups must contain 1 to ${MAX_GROUPS} groups`);
   }
 
-  const groupIds = new Set<string>();
-  const phraseIds = new Set<string>();
+  const ids = new Set<string>();
+  const uniqueId = (value: unknown, prefix: string): string => {
+    const id = nonblankString(value, prefix);
+    if (!UUID_PATTERN.test(id)) throw new Error(`${prefix} must be a UUID`);
+    if (ids.has(id.toLowerCase())) throw new Error(`${prefix} must be globally unique`);
+    ids.add(id.toLowerCase());
+    return id;
+  };
   let responseLang: Lang | undefined;
+  const checkLanguage = (card: Card, prefix: string): void => {
+    if (responseLang !== undefined && responseLang !== card.lang) {
+      throw new Error(`${prefix}.lang must match the other response cards`);
+    }
+    responseLang = card.lang;
+    if (card.lang === 'ja' && card.romanization !== undefined
+      && (!/\p{Script=Latin}/u.test(card.romanization)
+        || !/^[\p{Script=Latin}\p{M}\p{N}\p{P}\p{Zs}]+$/u.test(card.romanization))) {
+      throw new Error(`${prefix}.romanization must be Latin romanization`);
+    }
+  };
   const missingSourceCandidates = new Set<string>();
   for (let groupIndex = 0; groupIndex < response.groups.length; groupIndex += 1) {
     const groupPrefix = `response.groups[${groupIndex}]`;
     const group = objectValue(response.groups[groupIndex], groupPrefix);
-    assertExactFields(group, ['id', 'title', 'phrases', 'featuredPhraseIds', 'vocab'], groupPrefix);
-    const groupId = nonblankString(group.id, `${groupPrefix}.id`);
-    if (!UUID_PATTERN.test(groupId)) throw new Error(`${groupPrefix}.id must be a UUID`);
-    if (groupIds.has(groupId)) throw new Error(`${groupPrefix}.id must be unique`);
-    groupIds.add(groupId);
+    assertExactFields(group, ['id', 'title', 'essentials', 'vocab', 'dialogue'], groupPrefix);
+    uniqueId(group.id, `${groupPrefix}.id`);
     requiredString(group.title, `${groupPrefix}.title`, MAX_GROUP_TITLE);
-    if (!Array.isArray(group.phrases)
-      || group.phrases.length < MIN_PHRASES
-      || group.phrases.length > MAX_PHRASES) {
-      throw new Error(`${groupPrefix}.phrases must contain ${MIN_PHRASES} to ${MAX_PHRASES} items`);
-    }
-
-    const phrases = new Map<string, PhrasebookPhrase>();
-    for (let phraseIndex = 0; phraseIndex < group.phrases.length; phraseIndex += 1) {
-      const phrasePrefix = `${groupPrefix}.phrases[${phraseIndex}]`;
-      const phrase = objectValue(group.phrases[phraseIndex], phrasePrefix);
-      assertExactFields(phrase, ['id', 'card', 'speaker', 'alternative'], phrasePrefix);
-      const phraseId = nonblankString(phrase.id, `${phrasePrefix}.id`);
-      if (!UUID_PATTERN.test(phraseId)) throw new Error(`${phrasePrefix}.id must be a UUID`);
-      if (phraseIds.has(phraseId)) throw new Error(`${phrasePrefix}.id must be globally unique`);
-      phraseIds.add(phraseId);
-      const card = validateCard(phrase.card, `${phrasePrefix}.card`);
-      if (card.type !== 'phrase') throw new Error(`${phrasePrefix}.card.type must be "phrase"`);
-      if (responseLang !== undefined && responseLang !== card.lang) {
-        throw new Error(`${phrasePrefix}.card.lang must match the other response cards`);
+    const phrases = new Map<string, Phrase>();
+    for (const section of ['essentials', 'dialogue'] as const) {
+      const entries = group[section];
+      const minimum = section === 'essentials' ? 1 : MIN_DIALOGUE;
+      const maximum = section === 'essentials' ? MAX_ESSENTIALS : MAX_DIALOGUE;
+      if (!Array.isArray(entries) || entries.length < minimum || entries.length > maximum) {
+        throw new Error(`${groupPrefix}.${section} must contain ${minimum} to ${maximum} items`);
       }
-      responseLang = card.lang;
-      enumValue(phrase.speaker, SPEAKERS, `${phrasePrefix}.speaker`);
-      if (Object.hasOwn(phrase, 'alternative') && phrase.alternative !== true) {
-        throw new Error(`${phrasePrefix}.alternative must be true when present`);
+      const speakers = new Set<string>();
+      let previousSpeaker: string | undefined;
+      for (let index = 0; index < entries.length; index += 1) {
+        const prefix = `${groupPrefix}.${section}[${index}]`;
+        const phrase = objectValue(entries[index], prefix);
+        assertExactFields(phrase, section === 'essentials' ? ['id', 'card'] : ['id', 'card', 'speaker', 'alternative'], prefix);
+        const id = uniqueId(phrase.id, `${prefix}.id`);
+        const card = validateCard(phrase.card, `${prefix}.card`);
+        if (card.type !== 'phrase') throw new Error(`${prefix}.card.type must be "phrase"`);
+        checkLanguage(card, `${prefix}.card`);
+        if (section === 'dialogue') {
+          const speaker = enumValue(phrase.speaker, SPEAKERS, `${prefix}.speaker`);
+          const alternative = speaker === previousSpeaker;
+          if (alternative ? phrase.alternative !== true : Object.hasOwn(phrase, 'alternative')) {
+            throw new Error(`${prefix}.alternative must occur exactly on adjacent same-speaker lines`);
+          }
+          previousSpeaker = speaker;
+          speakers.add(speaker);
+        }
+        phrases.set(id, card);
       }
-      phrases.set(phraseId, phrase as PhrasebookPhrase);
+      if (section === 'dialogue' && speakers.size !== 2) {
+        throw new Error(`${groupPrefix}.dialogue must contain both speakers`);
+      }
     }
-
-    if (!Array.isArray(group.featuredPhraseIds)) {
-      throw new Error(`${groupPrefix}.featuredPhraseIds must be an array`);
-    }
-    const featuredIds = new Set<string>();
-    for (let index = 0; index < group.featuredPhraseIds.length; index += 1) {
-      const prefix = `${groupPrefix}.featuredPhraseIds[${index}]`;
-      const id = nonblankString(group.featuredPhraseIds[index], prefix);
-      if (!phrases.has(id)) throw new Error(`${prefix} must reference a phrase in its owning group`);
-      if (phrases.get(id)!.speaker !== 'you') throw new Error(`${prefix} must reference learner speech`);
-      if (featuredIds.has(id)) throw new Error(`${prefix} must be unique`);
-      featuredIds.add(id);
-    }
-
-    if (!Array.isArray(group.vocab)
-      || group.vocab.length < MIN_VOCAB
-      || group.vocab.length > MAX_VOCAB) {
-      throw new Error(`${groupPrefix}.vocab must contain ${MIN_VOCAB} to ${MAX_VOCAB} items`);
+    if (!Array.isArray(group.vocab) || group.vocab.length > MAX_VOCAB) {
+      throw new Error(`${groupPrefix}.vocab must contain 0 to ${MAX_VOCAB} items`);
     }
     for (let vocabIndex = 0; vocabIndex < group.vocab.length; vocabIndex += 1) {
-      const vocabPrefix = `${groupPrefix}.vocab[${vocabIndex}]`;
-      const candidate = validateCandidate(group.vocab[vocabIndex], vocabPrefix);
-      if (candidate.card.type !== 'word') throw new Error(`${vocabPrefix}.card.type must be "word"`);
-      if (responseLang !== undefined && responseLang !== candidate.card.lang) {
-        throw new Error(`${vocabPrefix}.card.lang must match the other response cards`);
+      const prefix = `${groupPrefix}.vocab[${vocabIndex}]`;
+      const candidate = validateCandidate(group.vocab[vocabIndex], prefix);
+      if (candidate.card.type !== 'word') throw new Error(`${prefix}.card.type must be "word"`);
+      checkLanguage(candidate.card, `${prefix}.card`);
+      assertGeneratedWordReading(candidate.card, `${prefix}.card`);
+      if ((candidate.card.lang === 'ja' || candidate.card.lang === 'zh')
+        && candidate.card.reading?.some(([base, annotation]) => annotation === null && /\p{Script=Han}/u.test(base))) {
+        throw new Error(`${prefix}.card.reading must annotate every dictionary-form Han character`);
       }
-      responseLang = candidate.card.lang;
-      assertGeneratedWordReading(candidate.card, `${vocabPrefix}.card`);
-      if (candidate.sources === undefined) {
-        missingSourceCandidates.add(`${groupIndex}:${vocabIndex}`);
-      }
-      if (candidate.sources !== undefined) {
-        for (let sourceIndex = 0; sourceIndex < candidate.sources.length; sourceIndex += 1) {
-          const sourcePrefix = `${vocabPrefix}.sources[${sourceIndex}]`;
-          const source = candidate.sources[sourceIndex];
-          const occurrenceId = source.ref?.occurrenceId;
-          if (occurrenceId === undefined) {
-            throw new Error(`${sourcePrefix}.ref.occurrenceId is required for phrasebook evidence`);
-          }
-          if (source.ref?.cardId !== undefined) {
-            throw new Error(`${sourcePrefix}.ref.cardId is not valid for an unsaved phrase draft`);
-          }
-          const phrase = phrases.get(occurrenceId)?.card;
-          if (phrase === undefined) {
-            throw new Error(`${sourcePrefix}.ref.occurrenceId must reference a phrase in its owning group`);
-          }
-          const expectedSnapshot: Snapshot = {
-            lang: phrase.lang,
-            text: phrase.text,
-            translation: phrase.translation,
-            ...(phrase.reading === undefined ? {} : { reading: phrase.reading }),
-            ...(phrase.romanization === undefined ? {} : { romanization: phrase.romanization }),
-          };
-          if (!sameSnapshot(source.snapshot, expectedSnapshot)) {
-            throw new Error(`${sourcePrefix}.snapshot must exactly match its referenced phrase`);
-          }
+      if (candidate.sources === undefined) missingSourceCandidates.add(`${groupIndex}:${vocabIndex}`);
+      for (let sourceIndex = 0; sourceIndex < (candidate.sources?.length ?? 0); sourceIndex += 1) {
+        const sourcePrefix = `${prefix}.sources[${sourceIndex}]`;
+        const source = candidate.sources![sourceIndex];
+        const occurrenceId = source.ref?.occurrenceId;
+        if (occurrenceId === undefined) throw new Error(`${sourcePrefix}.ref.occurrenceId is required`);
+        if (source.ref?.cardId !== undefined) throw new Error(`${sourcePrefix}.ref.cardId is not valid for an unsaved phrase draft`);
+        const phrase = phrases.get(occurrenceId);
+        if (phrase === undefined) throw new Error(`${sourcePrefix}.ref.occurrenceId must reference a phrase in its owning group`);
+        const expectedSnapshot: Snapshot = {
+          lang: phrase.lang, text: phrase.text, translation: phrase.translation,
+          ...(phrase.reading === undefined ? {} : { reading: phrase.reading }),
+          ...(phrase.romanization === undefined ? {} : { romanization: phrase.romanization }),
+        };
+        if (!sameSnapshot(source.snapshot, expectedSnapshot)) {
+          throw new Error(`${sourcePrefix}.snapshot must exactly match its referenced phrase`);
         }
       }
     }
   }
-  if (!Array.isArray(response.flags)) {
-    throw new Error('response.flags must be an array');
-  }
+  if (!Array.isArray(response.flags)) throw new Error('response.flags must be an array');
   const seenFlags = new Set<string>();
-  for (let flagIndex = 0; flagIndex < response.flags.length; flagIndex += 1) {
-    const flagPrefix = `response.flags[${flagIndex}]`;
-    const flag = objectValue(response.flags[flagIndex], flagPrefix);
-    assertExactFields(flag, ['code', 'groupIndex', 'vocabIndex', 'reason'], flagPrefix);
-    if (flag.code !== 'vocab-source-missing') {
-      throw new Error(`${flagPrefix}.code must be "vocab-source-missing"`);
-    }
-    const groupIndex = nonnegativeInteger(flag.groupIndex, `${flagPrefix}.groupIndex`);
-    const vocabIndex = nonnegativeInteger(flag.vocabIndex, `${flagPrefix}.vocabIndex`);
-    const group = response.groups[groupIndex];
-    if (group === undefined) {
-      throw new Error(`${flagPrefix} must reference vocabulary in this response`);
-    }
-    const groupValue = objectValue(group, `response.groups[${groupIndex}]`);
-    if (!Array.isArray(groupValue.vocab) || vocabIndex >= groupValue.vocab.length) {
-      throw new Error(`${flagPrefix} must reference vocabulary in this response`);
-    }
-    enumValue(flag.reason, ['omitted', 'unresolved'], `${flagPrefix}.reason`);
-    const identity = `${groupIndex}:${vocabIndex}:${flag.code}`;
-    if (seenFlags.has(identity)) throw new Error(`${flagPrefix} duplicates an earlier flag`);
+  for (let index = 0; index < response.flags.length; index += 1) {
+    const prefix = `response.flags[${index}]`;
+    const flag = objectValue(response.flags[index], prefix);
+    assertExactFields(flag, ['code', 'groupIndex', 'vocabIndex', 'reason'], prefix);
+    if (flag.code !== 'vocab-source-missing') throw new Error(`${prefix}.code must be "vocab-source-missing"`);
+    const groupIndex = nonnegativeInteger(flag.groupIndex, `${prefix}.groupIndex`);
+    const vocabIndex = nonnegativeInteger(flag.vocabIndex, `${prefix}.vocabIndex`);
+    enumValue(flag.reason, ['unresolved'], `${prefix}.reason`);
+    const identity = `${groupIndex}:${vocabIndex}`;
+    if (seenFlags.has(identity)) throw new Error(`${prefix} duplicates an earlier flag`);
     seenFlags.add(identity);
-    const candidate = objectValue(
-      groupValue.vocab[vocabIndex],
-      `response.groups[${groupIndex}].vocab[${vocabIndex}]`,
-    );
-    const missingSourceIdentity = `${groupIndex}:${vocabIndex}`;
-    if (!missingSourceCandidates.delete(missingSourceIdentity)) {
-      throw new Error(`${flagPrefix} must reference vocabulary without source evidence`);
-    }
-  }
-  if (missingSourceCandidates.size > 0) {
-    throw new Error('response.flags must identify every vocabulary item without source evidence');
+    if (!missingSourceCandidates.has(identity)) throw new Error(`${prefix} must reference vocabulary without source evidence`);
   }
   validateUsage(response.usage, 'response.usage');
   return value as PhrasebookResponse;
+}
+
+export function validateContextResult(value: unknown): ContextResponse {
+  const response = objectValue(value, 'response');
+  assertExactFields(response, ['questions', 'checklist', 'imagePrompt', 'usage'], 'response');
+  if (!Array.isArray(response.questions) || response.questions.length < 1 || response.questions.length > 5) {
+    throw new Error('response.questions must contain 1 to 5 questions');
+  }
+  response.questions.forEach((entry, index) => {
+    const prefix = `response.questions[${index}]`;
+    const question = objectValue(entry, prefix);
+    assertExactFields(question, ['label', 'options'], prefix);
+    requiredString(question.label, `${prefix}.label`, MAX_CONTENT_STRING);
+    if (!Array.isArray(question.options) || question.options.length < 2 || question.options.length > 5) {
+      throw new Error(`${prefix}.options must contain 2 to 5 options`);
+    }
+    question.options.forEach((option, optionIndex) => requiredString(option, `${prefix}.options[${optionIndex}]`, MAX_CONTENT_STRING));
+  });
+  if (!Array.isArray(response.checklist) || response.checklist.length < 1 || response.checklist.length > 8) {
+    throw new Error('response.checklist must contain 1 to 8 topics');
+  }
+  response.checklist.forEach((entry, index) => {
+    const prefix = `response.checklist[${index}]`;
+    const item = objectValue(entry, prefix);
+    assertExactFields(item, ['label', 'checked'], prefix);
+    requiredString(item.label, `${prefix}.label`, MAX_GROUP_TITLE);
+    if (typeof item.checked !== 'boolean') throw new Error(`${prefix}.checked must be a boolean`);
+  });
+  const prompt = requiredString(response.imagePrompt, 'response.imagePrompt', 2000);
+  if (prompt !== prompt.trim()) throw new Error('response.imagePrompt must be trimmed');
+  validateUsage(response.usage, 'response.usage');
+  return value as ContextResponse;
+}
+
+export function validatePhrasebookImage(value: unknown, prefix = 'image'): PhrasebookImage {
+  const image = objectValue(value, prefix);
+  assertExactFields(image, ['dataUrl', 'mediaType', 'width', 'height'], prefix);
+  if (image.mediaType !== 'image/png') throw new Error(`${prefix}.mediaType must be "image/png"`);
+  const header = 'data:image/png;base64,';
+  const dataUrl = requiredString(image.dataUrl, `${prefix}.dataUrl`, header.length + 8 * 1024 * 1024);
+  if (!dataUrl.startsWith(header)) throw new Error(`${prefix}.dataUrl must be a PNG data URI`);
+  const encoded = dataUrl.slice(header.length);
+  if (!encoded.startsWith('iVBORw0KGgo') || encoded.length % 4 !== 0
+    || !/^[A-Za-z0-9+/]+={0,2}$/u.test(encoded)) {
+    throw new Error(`${prefix}.dataUrl must contain PNG-signature base64 bytes`);
+  }
+  const padding = encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0;
+  const bytes = encoded.length / 4 * 3 - padding;
+  if (bytes < 33 || bytes > 6 * 1024 * 1024) throw new Error(`${prefix}.dataUrl exceeds PNG byte bounds`);
+  const width = nonnegativeInteger(image.width, `${prefix}.width`);
+  const height = nonnegativeInteger(image.height, `${prefix}.height`);
+  if (!width || !height || width * height > 4_000_000 || Math.abs(width / height - 16 / 9) > 0.03) {
+    throw new Error(`${prefix} must have bounded 16:9 dimensions`);
+  }
+  return value as PhrasebookImage;
+}
+
+export function validatePhrasebookImageResponse(value: unknown): PhrasebookImageResponse {
+  const response = objectValue(value, 'response');
+  assertExactFields(response, ['image', 'usage'], 'response');
+  validatePhrasebookImage(response.image, 'response.image');
+  const usage = objectValue(response.usage, 'response.usage');
+  assertExactFields(usage, ['model', 'costUsd', 'durationMs', 'stages'], 'response.usage');
+  requiredString(usage.model, 'response.usage.model', MAX_CONTENT_STRING);
+  const cost = (value: unknown, prefix: string): number | null => {
+    if (value !== null && (typeof value !== 'number' || !Number.isFinite(value) || value < 0)) {
+      throw new Error(`${prefix} must be a nonnegative finite number or null`);
+    }
+    return value as number | null;
+  };
+  cost(usage.costUsd, 'response.usage.costUsd');
+  nonnegativeInteger(usage.durationMs, 'response.usage.durationMs');
+  if (!Array.isArray(usage.stages) || usage.stages.length !== 2) throw new Error('response.usage.stages must contain both provider stages');
+  let total: number | null = 0;
+  usage.stages.forEach((entry, index) => {
+    const prefix = `response.usage.stages[${index}]`;
+    const stage = objectValue(entry, prefix);
+    assertExactFields(stage, ['provider', 'model', 'costUsd', 'durationMs'], prefix);
+    requiredString(stage.provider, `${prefix}.provider`, MAX_CONTENT_STRING);
+    requiredString(stage.model, `${prefix}.model`, MAX_CONTENT_STRING);
+    nonnegativeInteger(stage.durationMs, `${prefix}.durationMs`);
+    const stageCost = cost(stage.costUsd, `${prefix}.costUsd`);
+    total = total === null || stageCost === null ? null : total + stageCost;
+  });
+  if (usage.costUsd !== total) throw new Error('response.usage.costUsd must sum known stage costs, or be null if any is unknown');
+  return value as PhrasebookImageResponse;
 }
 
 export function validateBreakdownRequest(value: unknown): BreakdownRequest {

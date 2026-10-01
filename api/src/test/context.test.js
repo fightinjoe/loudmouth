@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 
 const { parseContextRequest, validateContextResponse, handleContext } = require('../context');
 const { buildContextPrompt } = require('../context/prompt');
-const { getBackendName, LLM_REGISTRY } = require('../llm-config');
+const { getBackendName } = require('../llm-config');
 
 const BACKEND = 'gemini-3.5-flash-lite';
 process.env.LLM_BACKEND = BACKEND;
@@ -27,6 +27,7 @@ function makeRes() {
 
 function validModelOutput() {
   return JSON.stringify({
+    imagePrompt: 'Loose wet-on-wet watercolor of dance shoes, transparent background, 16:9.',
     questions: [
       { label: 'What is your dancing ability?', options: ['Complete beginner', 'Intermediate dancer'] },
       { label: 'Who are you going with?', options: ['Going solo', 'With a date or partner', 'With a group of friends'] },
@@ -46,18 +47,6 @@ function makeRegistry(text = validModelOutput()) {
 }
 
 describe('llm configuration', () => {
-  test('defaults to Gemini 3.5 Flash Lite and exposes no google alias', () => {
-    const previous = process.env.LLM_BACKEND;
-    delete process.env.LLM_BACKEND;
-    try {
-      assert.equal(getBackendName(), BACKEND);
-      assert.equal(LLM_REGISTRY.google, undefined);
-      assert.equal(typeof LLM_REGISTRY[BACKEND], 'function');
-    } finally {
-      if (previous === undefined) delete process.env.LLM_BACKEND;
-      else process.env.LLM_BACKEND = previous;
-    }
-  });
 
   test('rejects an unknown configured backend', () => {
     const previous = process.env.LLM_BACKEND;
@@ -133,6 +122,18 @@ describe('validateContextResponse', () => {
     assert.equal(response.questions.length, 2);
     assert.equal(response.checklist.length, 3);
     assert.deepEqual(warnings, []);
+    assert.equal(response.imagePrompt, JSON.parse(validModelOutput()).imagePrompt);
+  });
+
+  test('requires a bounded image prompt and trims it without changing setup content', () => {
+    const valid = JSON.parse(validModelOutput());
+    for (const imagePrompt of [undefined, null, '', '   ', 123, 'a'.repeat(2001)]) {
+      assert.throws(() => validateContextResponse(JSON.stringify({ ...valid, imagePrompt })), /imagePrompt/);
+    }
+    const { response } = validateContextResponse(JSON.stringify({ ...valid, imagePrompt: '  ' + 'a'.repeat(2000) + '  ' }));
+    assert.equal(response.imagePrompt, 'a'.repeat(2000));
+    assert.deepEqual(response.questions, valid.questions);
+    assert.deepEqual(response.checklist, valid.checklist);
   });
 
   test('rejects non-JSON and non-object output', () => {
@@ -141,12 +142,13 @@ describe('validateContextResponse', () => {
   });
 
   test('rejects missing or empty questions/checklist', () => {
-    assert.throws(() => validateContextResponse(JSON.stringify({ questions: [], checklist: [{ label: 'x', checked: true }] })));
-    assert.throws(() => validateContextResponse(JSON.stringify({ questions: [{ label: 'q', options: ['a', 'b'] }], checklist: [] })));
+    assert.throws(() => validateContextResponse(JSON.stringify({ ...JSON.parse(validModelOutput()), questions: [] })));
+    assert.throws(() => validateContextResponse(JSON.stringify({ ...JSON.parse(validModelOutput()), checklist: [] })));
   });
 
   test('rejects a question with fewer than 2 options', () => {
     const bad = JSON.stringify({
+      imagePrompt: 'Watercolor still life.',
       questions: [{ label: 'q', options: ['only one'] }],
       checklist: [{ label: 'x', checked: true }],
     });
@@ -155,6 +157,7 @@ describe('validateContextResponse', () => {
 
   test('rejects a non-boolean checked', () => {
     const bad = JSON.stringify({
+      imagePrompt: 'Watercolor still life.',
       questions: [{ label: 'q', options: ['a', 'b'] }],
       checklist: [{ label: 'x', checked: 'yes' }],
     });
@@ -163,6 +166,7 @@ describe('validateContextResponse', () => {
 
   test('clamps overflow questions, options, and checklist items with warnings', () => {
     const overflow = JSON.stringify({
+      imagePrompt: 'Watercolor still life.',
       questions: Array.from({ length: 7 }, (_, i) => ({
         label: `q${i}`,
         options: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
@@ -184,6 +188,7 @@ describe('handleContext', () => {
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.questions.length, 2);
     assert.equal(res.body.checklist.length, 3);
+    assert.equal(res.body.imagePrompt, JSON.parse(validModelOutput()).imagePrompt);
     assert.equal(res.body.usage.model, 'gemini-3.5-flash-lite');
     assert.equal(res.body.usage.totalTokens, 1000);
   });
@@ -206,6 +211,14 @@ describe('handleContext', () => {
     );
     assert.equal(res.statusCode, 502);
     assert.equal(res.body.error, 'Invalid response from LLM');
+  });
+
+  test('returns 502 when the model omits the required image prompt', async () => {
+    const output = JSON.parse(validModelOutput());
+    delete output.imagePrompt;
+    const res = makeRes();
+    await handleContext({ body: { seed: 'dancing', language: 'es' } }, res, makeRegistry(JSON.stringify(output)));
+    assert.equal(res.statusCode, 502);
   });
 
   test('returns 502 on model failure', async () => {

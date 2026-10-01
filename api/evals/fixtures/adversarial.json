@@ -75,6 +75,7 @@
       "payload": "literal",
       "conversation": {
         "title": "Ask for a dance",
+        "essentials": ["Would you like to dance?", "I am a beginner."],
         "lines": [
           { "speaker": "you", "text": "Would you like to dance?" },
           { "speaker": "partner", "text": "Yes, I would." },

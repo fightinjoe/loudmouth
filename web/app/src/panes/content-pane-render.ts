@@ -1,4 +1,4 @@
-import type { Group, LibraryEntry, ReadingDisplay } from "../js/library-types";
+import type { DeckIllustration, Group, LibraryEntry } from "../js/library-types";
 import { escapeHTML } from "../js/utils";
 import { renderCardRow } from "../components/card";
 import { icon } from "../components/icon";
@@ -12,18 +12,24 @@ import type { ContentDeck } from "./content-pane";
 
 export const TRANSLATIONS_PAGE_KEY = "translations";
 export const CHUNKS_PAGE_KEY = "chunks";
-export const VOCAB_PAGE_KEY = "vocab";
-export const PHRASES_PAGE_KEY = "phrases";
+export const WORDS_PAGE_KEY = "words";
+export const CONTENTS_PAGE_KEY = "contents";
 export const STARRED_PAGE_KEY = "starred";
 
-export type DeckPageKind = "conversation" | "chunks" | "vocab" | "phrases" | "starred";
-
-export interface DeckPage {
+export interface TopicPage {
+  kind: "topic";
   key: string;
   title: string;
-  kind: DeckPageKind;
-  entries: LibraryEntry[];
+  groupId: string;
+  essentials: LibraryEntry[];
+  vocab: LibraryEntry[];
+  dialogue: LibraryEntry[];
 }
+
+export type DeckPage =
+  | { kind: "contents"; key: string; title: string; topics: TopicPage[] }
+  | TopicPage
+  | { kind: "translations" | "words" | "chunks" | "starred"; key: string; title: string; entries: LibraryEntry[] };
 
 function isPreview(deck: ContentDeck): boolean {
   return "preview" in deck && deck.preview;
@@ -46,66 +52,39 @@ export function renderHeader(deck: ContentDeck | null): string {
   });
 }
 
-/**
- * Builds the stable entry-key page model. Group IDs, not titles, identify
- * conversation pages so duplicate titles remain distinct and ordered.
- */
+/** Group IDs keep equal-title topics distinct; row identities remain occurrence-local. */
 export function getDeckPages(
   entries: readonly LibraryEntry[] = [],
   groups: readonly Group[] = [],
 ): DeckPage[] {
   const phrases = entries.filter((entry) => entry.card.type === "phrase");
-  const groupless = phrases.filter((entry) => entry.occurrence?.groupId === undefined);
-  const seenPhrases = new Set<string>();
-  const featured = phrases.filter((entry) => {
-    if (!entry.occurrence?.featured || entry.occurrence.speaker !== "you"
-      || seenPhrases.has(entry.cardId)) return false;
-    seenPhrases.add(entry.cardId);
-    return true;
-  });
-  const pages: DeckPage[] = [{
-    key: PHRASES_PAGE_KEY,
-    title: "Phrases",
-    kind: "phrases",
-    entries: featured,
-  }, {
-    key: VOCAB_PAGE_KEY,
-    title: "Vocab",
-    kind: "vocab",
-    entries: entries.filter((entry) => entry.card.type === "word"),
-  }];
-
-  if (groupless.length > 0) {
-    pages.push({
-      key: TRANSLATIONS_PAGE_KEY,
-      title: "Translations",
-      kind: "conversation",
-      entries: [...groupless],
-    });
-  }
-
-  const orderedGroups = [...groups].sort(
-    (left, right) => left.position - right.position || left.id.localeCompare(right.id),
-  );
-  for (const group of orderedGroups) {
-    pages.push({
+  const topics: TopicPage[] = [...groups]
+    .sort((left, right) => left.position - right.position || left.id.localeCompare(right.id))
+    .map((group) => ({
+      kind: "topic",
       key: `group:${group.id}`,
       title: group.title,
-      kind: "conversation",
-      entries: phrases.filter((entry) => entry.occurrence?.groupId === group.id),
-    });
-  }
-
-  const chunks = entries.filter((entry) => entry.card.type === "chunk");
-  if (chunks.length > 0) {
-    pages.push({
-      key: CHUNKS_PAGE_KEY,
-      title: "Chunks",
-      kind: "chunks",
-      entries: [...chunks],
-    });
-  }
-
+      groupId: group.id,
+      essentials: phrases.filter((entry) =>
+        entry.occurrence?.groupId === group.id && entry.occurrence.section === "essentials"),
+      vocab: entries.filter((entry) =>
+        entry.card.type === "word" && entry.wordPlacement?.groupId === group.id),
+      dialogue: phrases.filter((entry) =>
+        entry.occurrence?.groupId === group.id && entry.occurrence.section === "dialogue"),
+    }));
+  const pages: DeckPage[] = [
+    { kind: "contents", key: CONTENTS_PAGE_KEY, title: "Phrasebook", topics },
+    ...topics,
+  ];
+  const supplemental = [
+    { kind: "translations" as const, key: TRANSLATIONS_PAGE_KEY, title: "Translations",
+      entries: phrases.filter((entry) => entry.occurrence?.groupId === undefined) },
+    { kind: "words" as const, key: WORDS_PAGE_KEY, title: "Words",
+      entries: entries.filter((entry) => entry.card.type === "word" && !entry.wordPlacement) },
+    { kind: "chunks" as const, key: CHUNKS_PAGE_KEY, title: "Chunks",
+      entries: entries.filter((entry) => entry.card.type === "chunk") },
+  ];
+  pages.push(...supplemental.filter((page) => page.entries.length > 0));
   const starredEntries: LibraryEntry[] = [];
   const seenMemberships = new Map<string, Set<string>>();
   // Match Review's saved entry order, independent of the learning collections.
@@ -142,28 +121,58 @@ export function normalizePageKey(
     ?? pages.find((page) => page.kind !== "starred")!.key;
 }
 
-function emptyPageMessage(kind: DeckPageKind): string {
-  if (kind === "vocab") return "No vocabulary in this phrasebook.";
-  if (kind === "phrases") return "No highlighted phrases in this phrasebook. Explore the conversation tabs for more.";
-  if (kind === "chunks") return "No chunks in this phrasebook.";
-  if (kind === "starred") return "No starred cards in this phrasebook.";
-  return "No phrases in this conversation.";
+export function renderIllustration(illustration?: DeckIllustration): string {
+  if (!illustration) return "";
+  if (illustration.state === "failed") {
+    return '<p class="deck-illustration-unavailable fg-secondary">Illustration unavailable</p>';
+  }
+  return `<div class="deck-illustration"${illustration.state === "pending" ? ' aria-hidden="true"' : ""}>
+    ${illustration.state === "ready"
+      ? `<img src="${escapeHTML(illustration.image.dataUrl)}" alt="" width="${illustration.image.width}" height="${illustration.image.height}">`
+      : ""}
+  </div>`;
 }
 
-function renderPageEntries(
-  page: DeckPage,
-  readingDisplay: ReadingDisplay,
-  readOnly = false,
-): string {
-  if (page.entries.length === 0) {
-    return `<p class="deck-view-empty fg-secondary">${emptyPageMessage(page.kind)}</p>`;
+function renderContents(topics: readonly TopicPage[], deck: ContentDeck): string {
+  return `<div data-region="deck-hero">${renderIllustration("illustration" in deck ? deck.illustration : undefined)}</div>
+    ${topics.map((topic) => `
+      <section class="topic-preview">
+        <h2 class="section-label">${escapeHTML(topic.title)}</h2>
+        <div class="topic-preview-card">
+          ${topic.essentials.slice(0, 3).map((entry) =>
+            `<p class="topic-preview-line">${escapeHTML(entry.card.translation)}</p>`).join("")}
+          ${topic.vocab.slice(0, 2).map((entry) =>
+            `<p class="topic-preview-line">${escapeHTML(entry.card.translation)}${entry.card.type === "word" ? ` <span class="fg-secondary">(${escapeHTML(entry.card.partOfSpeech)})</span>` : ""}</p>`).join("")}
+          <div class="topic-preview-footer">
+            <span>${topic.essentials.length} phrase${topic.essentials.length === 1 ? "" : "s"} · ${topic.vocab.length} word${topic.vocab.length === 1 ? "" : "s"} · 1 conversation</span>
+            <button type="button" class="topic-view tappable" data-action="content/set-page"
+              data-page-key="${escapeHTML(topic.key)}" aria-label="View ${escapeHTML(topic.title)}">View</button>
+          </div>
+        </div>
+      </section>`).join("")}`;
+}
+
+function renderPageEntries(page: DeckPage, deck: ContentDeck): string {
+  if (page.kind === "contents") return renderContents(page.topics, deck);
+  const readOnly = isPreview(deck);
+  const rows = (entries: readonly LibraryEntry[], conversation = false, wordTile = false): string =>
+    entries.map((entry, index) => renderCardRow(entry, deck.readingDisplay, {
+      readOnly, conversation, wordTile,
+      alternative: conversation && index > 0 && entry.occurrence?.speaker !== undefined
+        && entry.occurrence.speaker === entries[index - 1].occurrence?.speaker,
+    })).join("");
+  if (page.kind === "topic") {
+    const section = (title: string, key: string, entries: LibraryEntry[], conversation = false): string =>
+      `<section class="topic-section">
+        <h2 class="section-label">${title}</h2>
+        <div class="${key === "vocab" ? "topic-word-grid" : "topic-card-list"}"
+          data-reorder-region="${key}">${rows(entries, conversation, key === "vocab")}</div>
+      </section>`;
+    return section("Essential phrases", "essentials", page.essentials)
+      + (page.vocab.length ? section("Useful words", "vocab", page.vocab) : "")
+      + section("Conversation", "dialogue", page.dialogue, true);
   }
-  return page.entries
-    .map((entry) => renderCardRow(entry, readingDisplay, {
-      readOnly,
-      conversation: page.kind === "conversation",
-    }))
-    .join("");
+  return `<div class="topic-card-list"${page.kind === "starred" ? "" : ` data-reorder-region="${page.kind}"`}>${rows(page.entries)}</div>`;
 }
 
 function renderPageTab(page: DeckPage, activePageKey: string): string {
@@ -225,7 +234,7 @@ export function renderDeckPager(
               ${selected ? "" : "inert"}
             >
               <div class="deck-page-list flex-col" data-region="card-list">
-                ${renderPageEntries(page, deck.readingDisplay)}
+                ${renderPageEntries(page, deck)}
               </div>
             </section>
           `;
@@ -235,33 +244,29 @@ export function renderDeckPager(
   `;
 }
 
-/**
- * Preview and language-library views stay vertically browsable, but use the
- * same joined entries and explicit groups as the phrasebook pager.
- */
+/** Language browse is independent of phrasebook topic pages. */
 export function renderBrowseCardsHTML(
   deck: ContentDeck,
   entries: readonly LibraryEntry[],
-  groups: readonly Group[],
+  _groups: readonly Group[],
 ): string {
-  const pages = getDeckPages(entries, groups).filter(
-    (page) => page.kind !== "starred" && page.kind !== "phrases" && page.entries.length > 0,
-  );
-  if (pages.length === 0) {
+  const sections = [
+    { type: "phrase", title: "Translations" },
+    { type: "word", title: "Words" },
+    { type: "chunk", title: "Chunks" },
+  ].map((section) => ({
+    ...section, entries: entries.filter((entry) => entry.card.type === section.type),
+  })).filter((section) => section.entries.length > 0);
+  if (sections.length === 0) {
     return '<div class="deck-view-empty text-center fg-secondary"><p>No cards in this library.</p></div>';
   }
-  const readOnly = isPreview(deck);
-  const showHeadings = pages.length > 1 || pages[0].key.startsWith("group:");
-  return pages.map((page) => `
-    ${showHeadings
-      ? `<div class="deck-view-section-header section-label">${escapeHTML(page.title)}</div>`
-      : ""}
-    <div class="card-group">
-      <div class="card-group-rows">
-        ${renderPageEntries(page, deck.readingDisplay, readOnly)}
-      </div>
-    </div>
-  `).join("");
+  return sections.map((section) => `
+    <h2 class="deck-view-section-header section-label">${section.title}</h2>
+    <div class="card-group"><div class="card-group-rows">
+      ${section.entries.map((entry) => renderCardRow(entry, deck.readingDisplay, {
+        readOnly: isPreview(deck), conversation: false,
+      })).join("")}
+    </div></div>`).join("");
 }
 
 export function renderDeckBody(
@@ -271,7 +276,7 @@ export function renderDeckBody(
   pageKey: string | null,
 ): string {
   if (!deck) return "";
-  const browse = isSystem(deck) || isPreview(deck);
+  const browse = isSystem(deck);
   const pager = browse
     ? `<div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto" data-region="card-list">
          ${renderBrowseCardsHTML(deck, entries, groups)}
@@ -285,7 +290,7 @@ export function renderDeckBody(
     ${renderHeader(deck)}
     <p class="content-inline-error fg-danger" data-region="content-error" role="alert" hidden></p>
     ${pager}
-    ${browse
+    ${browse || isPreview(deck)
       ? ""
       : `<div class="deck-view-action-bar shrink-0 flex items-center justify-center">
            <div class="deck-view-action-pill flex items-center">

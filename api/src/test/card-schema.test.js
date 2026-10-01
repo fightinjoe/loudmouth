@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   validateCard, validateCandidate, validateCardBatch, validateEvidence,
   cardIdentity, evidenceIdentity, validateBreakdownRequest, validateBreakdownResponse, validatePhrasebookResponse,
+  validateContextResult, validatePhrasebookImage, validatePhrasebookImageResponse,
 } = require('../schema');
 const word = {type:'word', lang:'ja', text:'食べる', translation:'eat', partOfSpeech:'verb', senseKey:'consume-food', reading:[['食','た'],['べる',null]]};
 const source = {snapshot:{lang:'ja',text:'肉も魚も食べません。',translation:'I do not eat meat or fish.',reading:[['肉','にく'],['も',null],['魚','さかな'],['も',null],['食','た'],['べません。',null]]},span:{start:0,end:2}};
@@ -103,61 +104,62 @@ test('wire breakdown permits flagged Words without evidence but never unvalidate
   }
 });
 
-test('phrasebook draft evidence and featured selection stay within their conversation groups', () => {
-  const id = '00000000-0000-4000-8000-000000000001';
-  const groupId = '00000000-0000-4000-8000-000000000002';
+test('v3 phrasebook evidence stays inside its topic and preserves section ownership', () => {
+  const uuid = index => `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
   const snapshot = source.snapshot;
-  const response = {schemaVersion:2,title:'Dinner',usage,flags:[
-    {code:'vocab-source-missing',groupIndex:0,vocabIndex:1,reason:'omitted'},
-    {code:'vocab-source-missing',groupIndex:0,vocabIndex:2,reason:'unresolved'},
-  ],groups:[{
-    id:groupId,title:'Dinner',phrases:[{id,card:{type:'phrase',...snapshot},speaker:'you'},
-      {id:'00000000-0000-4000-8000-000000000004',card:{type:'phrase',lang:'ja',text:'はい。',translation:'Yes.'},speaker:'partner'}],
-    featuredPhraseIds: [id],
-    vocab:[{card:word,sources:[{snapshot,ref:{occurrenceId:id},span:{start:4,end:9}}]},
+  const response = { schemaVersion:3, title:'Dinner', usage, flags:[], groups:[{
+    id:uuid(1), title:'Dinner',
+    essentials:[{id:uuid(2),card:{type:'phrase',...snapshot}}],
+    dialogue:[
+      {id:uuid(3),card:{type:'phrase',...snapshot},speaker:'you'},
+      {id:uuid(4),card:{type:'phrase',lang:'ja',text:'はい。',translation:'Yes.'},speaker:'partner'},
+      {id:uuid(5),card:{type:'phrase',lang:'ja',text:'いいえ。',translation:'No.'},speaker:'partner',alternative:true},
+    ],
+    vocab:[
+      {card:word,sources:[{snapshot,ref:{occurrenceId:uuid(2)},span:{start:4,end:9}}]},
       {card:{...word,text:'肉',reading:[['肉','にく']],translation:'meat',partOfSpeech:'noun',senseKey:'meat'}},
-      {card:{...word,text:'魚',reading:[['魚','さかな']],translation:'fish',partOfSpeech:'noun',senseKey:'fish'}}],
-  }]};
-  validatePhrasebookResponse(response);
-  const noSelection = structuredClone(response);
-  noSelection.groups[0].featuredPhraseIds = [];
-  assert.deepEqual(validatePhrasebookResponse(noSelection).groups[0].featuredPhraseIds, []);
-  const partnerSelection = structuredClone(response);
-  partnerSelection.groups[0].featuredPhraseIds = [partnerSelection.groups[0].phrases[1].id];
-  assert.throws(() => validatePhrasebookResponse(partnerSelection), /featuredPhraseIds.*learner speech/u);
-  for (const featuredPhraseIds of [undefined, null, id, [id, id], [groupId], [''], [4]]) {
+    ],
+  }] };
+  assert.equal(validatePhrasebookResponse(response).schemaVersion,3);
+  const dialogueEvidence = structuredClone(response);
+  dialogueEvidence.groups[0].vocab[0].sources[0].ref.occurrenceId = uuid(3);
+  assert.equal(validatePhrasebookResponse(dialogueEvidence).groups[0].vocab[0].sources[0].ref.occurrenceId,uuid(3));
+  for (const mutate of [
+    value => { value.schemaVersion = 2; },
+    value => { value.groups[0].phrases = []; },
+    value => { value.groups[0].featuredPhraseIds = []; },
+    value => { delete value.groups[0].essentials; },
+    value => { delete value.groups[0].vocab; },
+    value => { delete value.groups[0].dialogue; },
+    value => { value.groups[0].essentials = []; },
+    value => { value.groups[0].essentials[0].speaker = 'you'; },
+    value => { value.groups[0].dialogue[0].alternative = true; },
+    value => { delete value.groups[0].dialogue[2].alternative; },
+    value => { value.groups[0].dialogue[1].speaker = 'you'; },
+    value => { value.groups[0].dialogue[0].id = uuid(2); },
+    value => { value.groups[0].vocab[0].sources[0].snapshot.translation = 'Changed'; },
+    value => { value.groups[0].vocab[0].sources[0].ref.occurrenceId = uuid(8); },
+    value => { value.groups[0].vocab[1].card.reading = [['肉',null]]; },
+    value => { value.groups[0].dialogue[1].card.lang = 'es'; },
+    value => { value.flags = [{code:'vocab-source-missing',groupIndex:0,vocabIndex:1,reason:'omitted'}]; },
+    value => { value.flags = [{code:'vocab-source-missing',groupIndex:0,vocabIndex:0,reason:'unresolved'}]; },
+  ]) {
     const invalid = structuredClone(response);
-    invalid.groups[0].featuredPhraseIds = featuredPhraseIds;
-    assert.throws(() => validatePhrasebookResponse(invalid), /featuredPhraseIds/u);
+    mutate(invalid);
+    assert.throws(() => validatePhrasebookResponse(invalid));
   }
-  const foreignSelection = structuredClone(response);
-  const otherId = '00000000-0000-4000-8000-000000000005';
-  const otherGroup = {
-    ...structuredClone(response.groups[0]),
-    id: '00000000-0000-4000-8000-000000000003',
-    phrases: response.groups[0].phrases.map((phrase, index) => ({
-      ...phrase, id: `00000000-0000-4000-8000-00000000000${index + 5}`,
-    })),
-    featuredPhraseIds: [otherId],
-  };
-  otherGroup.vocab[0].sources[0].ref.occurrenceId = otherId;
-  foreignSelection.groups.push(otherGroup);
-  foreignSelection.flags.push(...response.flags.map(flag => ({ ...flag, groupIndex: 1 })));
-  foreignSelection.groups[0].featuredPhraseIds = [otherId];
-  assert.throws(() => validatePhrasebookResponse(foreignSelection), /featuredPhraseIds.*owning group/u);
-  const missingFlag = structuredClone(response);
-  missingFlag.flags.pop();
-  assert.throws(
-    () => validatePhrasebookResponse(missingFlag),
-    /identify every vocabulary item without source evidence/u,
-  );
-  const wrongSnapshot = structuredClone(response);
-  wrongSnapshot.groups[0].vocab[0].sources[0].snapshot.translation = 'A different translation';
-  assert.throws(()=>validatePhrasebookResponse(wrongSnapshot));
-  const crossGroup = structuredClone(response);
-  crossGroup.groups.push({...structuredClone(crossGroup.groups[0]),id:'00000000-0000-4000-8000-000000000003',featuredPhraseIds:[],
-    phrases:crossGroup.groups[0].phrases.map((phrase,index)=>({...phrase,id:`00000000-0000-4000-8000-00000000000${index+5}`}))});
-  assert.throws(()=>validatePhrasebookResponse(crossGroup));
+  const flagged = structuredClone(response);
+  flagged.flags = [{code:'vocab-source-missing',groupIndex:0,vocabIndex:1,reason:'unresolved'}];
+  assert.equal(validatePhrasebookResponse(flagged).flags[0].reason,'unresolved');
+  const foreign = structuredClone(response);
+  const other = structuredClone(response.groups[0]);
+  other.id = uuid(6);
+  other.essentials[0].id = uuid(7);
+  other.dialogue.forEach((entry,index) => { entry.id = uuid(8+index); });
+  other.vocab = [];
+  foreign.groups.push(other);
+  foreign.groups[0].vocab[0].sources[0].ref.occurrenceId = uuid(7);
+  assert.throws(() => validatePhrasebookResponse(foreign), /owning group/);
 });
 
 test('both producers resolve the same dictionary sense despite contextual gloss wording', () => {
@@ -165,8 +167,8 @@ test('both producers resolve the same dictionary sense despite contextual gloss 
   const { validatePhraseBreakdownResponse } = require('../phrase-breakdown');
   const produced = assemblePhrasebook({
     seed:'Dinner',language:'ja',
-    conversations:[{title:'Dinner',lines:[{speaker:'you',text:'I do not eat.'}],vocab:['eat']}],
-    translations:[{lines:['食[た]べません。'],lineScores:[5],vocab:[{target:'食[た]べる',partOfSpeech:'verb',senseKey:'consume-food',source:{lineIndex:0,surface:'食べません',occurrence:0}}]}],
+    conversations:[{title:'Dinner',essentials:['I do not eat.'],lines:[{speaker:'you',text:'I do not eat.'},{speaker:'partner',text:'Understood.'}],vocab:['eat']}],
+    translations:[{essentials:['食[た]べません。'],lines:['食[た]べません。','はい。'],vocab:[{target:'食[た]べる',partOfSpeech:'verb',senseKey:'consume-food',source:{section:'essentials',index:0,surface:'食べません',occurrence:0}}]}],
   }).groups[0].vocab[0].card;
   const request = {schemaVersion:2,source:{snapshot:{lang:'ja',text:'食べません。',translation:'I do not eat.'}}};
   const analysis = validatePhraseBreakdownResponse(JSON.stringify({chunks:[{
@@ -176,4 +178,54 @@ test('both producers resolve the same dictionary sense despite contextual gloss 
   const extracted = analysis.chunks[0].words[0].card;
   assert.equal(cardIdentity(validateCard(produced)),cardIdentity(validateCard(extracted)));
   assert.notEqual(cardIdentity(produced),cardIdentity({...extracted,senseKey:'consume-resources'}));
+});
+
+test('normalized context requires bounded bespoke art without changing card exchange versions', () => {
+  const context = {
+    questions:[{label:'Where?',options:['Here','There']}],
+    checklist:[{label:'Ask for help',checked:true}],
+    imagePrompt:'A watercolor still life.', usage,
+  };
+  assert.equal(validateContextResult(context).imagePrompt,context.imagePrompt);
+  for (const mutate of [
+    value => { delete value.imagePrompt; },
+    value => { value.imagePrompt = ' '; },
+    value => { value.imagePrompt = 'x'.repeat(2001); },
+    value => { value.imagePrompt = ' padded '; },
+    value => { value.checklist[0].checked = 'yes'; },
+    value => { value.questions[0].options = ['one']; },
+    value => { value.unknown = true; },
+  ]) {
+    const invalid = structuredClone(context); mutate(invalid);
+    assert.throws(() => validateContextResult(invalid));
+  }
+  assert.equal(validateCardBatch({schemaVersion:2,cards:[{card:word}]}).schemaVersion,2);
+  assert.throws(() => validateCardBatch({schemaVersion:3,cards:[{card:word}]}));
+});
+
+test('image responses enforce local PNG bytes, dimensions and conservative stage costs', async () => {
+  const png = await require('sharp')({create:{width:16,height:9,channels:4,background:{r:200,g:100,b:80,alpha:0.5}}}).png().toBuffer();
+  const image = {dataUrl:`data:image/png;base64,${png.toString('base64')}`,mediaType:'image/png',width:16,height:9};
+  const response = {image,usage:{model:'flux + matting',costUsd:null,durationMs:3,stages:[
+    {provider:'openrouter',model:'flux',costUsd:0.02,durationMs:1},
+    {provider:'fal',model:'matting',costUsd:null,durationMs:2},
+  ]}};
+  assert.equal(validatePhrasebookImage(image).width,16);
+  assert.equal(validatePhrasebookImageResponse(response).usage.costUsd,null);
+  for (const mutate of [
+    value => { value.image.dataUrl = 'https://example.com/art.png'; },
+    value => { value.image.dataUrl = 'data:image/png;base64,bm90LXBuZw=='; },
+    value => { value.image.dataUrl += ' '; },
+    value => { value.image.mediaType = 'image/jpeg'; },
+    value => { value.image.width = 0; },
+    value => { value.image.width = 9; },
+    value => { value.image.width = 16000; value.image.height = 9000; },
+    value => { value.usage.costUsd = 0.02; },
+    value => { value.usage.stages[1].costUsd = -1; },
+    value => { value.usage.stages.pop(); },
+    value => { value.usage.inputTokens = 0; },
+  ]) {
+    const invalid = structuredClone(response); mutate(invalid);
+    assert.throws(() => validatePhrasebookImageResponse(invalid));
+  }
 });

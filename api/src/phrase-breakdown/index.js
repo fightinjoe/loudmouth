@@ -372,6 +372,7 @@ async function performPhraseBreakdown(
     const event = error instanceof PhraseBreakdownTimeoutError ? 'llm_timeout' : 'llm_error';
     console.error({
       event,
+      failureLevel: 2,
       route: 'phrase-breakdown',
       llm: backendName,
       error: error.message,
@@ -388,11 +389,12 @@ async function performPhraseBreakdown(
     const usage = buildUsageReport(reply.model, reply.usage, durationMs);
     const response = { ...result, usage };
     validateBreakdownResponse(response, parsedRequest);
-    console.log({ event: 'usage', route: 'phrase-breakdown', llm: backendName, ...usage });
+    console.log({ event: 'usage', route: 'phrase-breakdown', llm: backendName, ...usage, failureLevel: response.flags.length > 0 ? 1 : 0 });
     return response;
   } catch (error) {
     console.error({
       event: 'validation_error',
+      failureLevel: 2,
       route: 'phrase-breakdown',
       llm: backendName,
       raw: reply && reply.text,
@@ -406,12 +408,16 @@ async function performPhraseBreakdown(
 
 async function handlePhraseBreakdown(req, res, registry, opts = {}) {
   const parsed = parsePhraseBreakdownRequest(req.body || {});
-  if (parsed.error) return res.status(400).json({ error: parsed.error });
+  if (parsed.error) {
+    console.warn({ event: 'request_invalid', route: 'phrase-breakdown', failureLevel: 2, error: parsed.error });
+    return res.status(400).json({ error: parsed.error });
+  }
 
   try {
     const response = await performPhraseBreakdown(parsed.value, registry, opts);
     return res.status(200).json(response);
   } catch (error) {
+    console.error({ event: 'request_failed', route: 'phrase-breakdown', failureLevel: 2, status: error.status || 500 });
     return res.status(error.status || 500).json({ error: error.message });
   }
 }

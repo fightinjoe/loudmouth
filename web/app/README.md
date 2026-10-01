@@ -31,9 +31,9 @@ Vite transpiles the production web TypeScript; API handlers remain JavaScript
 and load the compiled shared schema.
 
 Web source edits use Vite's normal hot reload. Shared-schema edits in
-`api/src/schema/index.ts` are **not continuously compiled**: restart both dev
-servers after changing that file. Run `npm run typecheck` in `web/app/` for
-strict type checking; Vite's development transpilation alone is not a type check.
+`api/src/schema/index.ts` are **not continuously compiled**: restart both dev servers after changing
+that file, using `npm run dev -- --force` for web to rebuild its cached schema dependency. Reload the
+browser and start a fresh flow. `npm run typecheck` performs strict checking; Vite transpilation does not.
 
 ## Testing against a local API
 
@@ -99,6 +99,11 @@ credentials are reported rather than invented. `tiny` is the API host's Tailscal
 MagicDNS name: remote browsers must be on the tailnet to reach the API. Open the
 web app at `http://tiny:5270` remotely (or `http://localhost:5270` locally).
 
+HTTP worktree origins are supported. Library and cover-task UUIDs share the
+`crypto.getRandomValues` implementation; do not use the secure-context-only
+`crypto.randomUUID` in this browser flow. Context initialization errors remain
+visible with **Try again**, rather than leaving creation on the loading screen.
+
 Run `npm run test:e2e` from that worktree's `web/app`. Playwright uses its own
 preview port (default **4173** outside configured worktrees), and never reuses
 an existing server. An explicit `PLAYWRIGHT_PORT` environment variable overrides
@@ -131,6 +136,10 @@ directory available when building the web package: its local package dependency
 is linked using the checked-in `.npmrc` (`install-links=false`). No separately
 checked-in compiled schema is needed.
 
+Unit tests run with `npm test`. On Node 25, use
+`NODE_OPTIONS=--no-experimental-webstorage npm test` so happy-dom owns the isolated browser storage
+instead of Node's unrelated native Web Storage implementation.
+
 ## Deployment
 
 - **Web:** run `npm ci` and `npm run build` in `web/app/`, then deploy `dist/`
@@ -148,10 +157,12 @@ checked-in compiled schema is needed.
   Node startup bypasses `predev` and requires this compiled output; production
   startup deliberately does not require the TypeScript compiler.
 
-**Breaking v2 rollout:** deploy API and web together. Old content responses and
-old-format imports are rejected. The new web app deliberately deletes the legacy
-`loudmouth` local database and legacy app preferences/cache on initialization;
-there is no migration. It preserves unrelated storage and the new v2 library.
+**Breaking v3 rollout:** API, gateway, and web must deploy together. Phrasebook responses and library
+backups are v3; common CardBatch imports and breakdown exchange remain v2.
+The new web library is `loudmouth-topic-v3`, with independent section occurrences and topic Word
+placements. Old databases/preferences remain physically untouched, with no old phrasebook reader,
+conversion, or restore. Reload marks interrupted pending cover work failed without paid retries.
+The 2026-10-01 promotion changes production code only; it does not authorize or perform deployment.
 
 ## Preview production build
 

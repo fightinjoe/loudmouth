@@ -3,7 +3,7 @@
 const { randomUUID } = require('node:crypto');
 const {
   PARTS_OF_SPEECH,
-  SCHEMA_VERSION,
+  PHRASEBOOK_SCHEMA_VERSION,
   validateCard,
   validateCandidate,
 } = require('../schema');
@@ -25,8 +25,10 @@ const MAX_CHECKLIST_ITEMS = 8;
 const MAX_CHECKLIST_ITEM_LENGTH = 120;
 const MIN_LINES_PER_CONVERSATION = 2;
 const MAX_LINES_PER_CONVERSATION = 10;
-const MIN_VOCAB_PER_CONVERSATION = 3;
-const MAX_VOCAB_PER_CONVERSATION = 6;
+const MIN_ESSENTIALS_PER_CONVERSATION = 1;
+const MAX_ESSENTIALS_PER_CONVERSATION = 8;
+const MIN_VOCAB_PER_CONVERSATION = 0;
+const MAX_VOCAB_PER_CONVERSATION = 10;
 
 function isObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -114,7 +116,7 @@ function parseModelJson(raw) {
   if (typeof raw !== 'string') {
     throw new Error(`Expected string from LLM, got ${typeof raw}`);
   }
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/iu, '').replace(/\s*```$/u, '').trim();
+  const cleaned = raw.trim();
   let parsed;
   try {
     parsed = JSON.parse(cleaned);
@@ -128,74 +130,73 @@ function parseModelJson(raw) {
 }
 
 function validateGenerationResponse(raw, checklist) {
+  if (!Array.isArray(checklist) || checklist.length < MIN_CHECKLIST_ITEMS || checklist.length > MAX_CHECKLIST_ITEMS
+    || checklist.some(title => typeof title !== 'string' || !title.trim() || title.length > MAX_CHECKLIST_ITEM_LENGTH)) {
+    throw new Error('checklist must contain 1 to 8 bounded, nonblank topic titles');
+  }
   const parsed = parseModelJson(raw);
-  if (!Array.isArray(parsed.conversations)) {
-    throw new Error('"conversations" must be an array');
+  assertExactFields(parsed, ['conversations'], 'response');
+  if (!Array.isArray(parsed.conversations) || parsed.conversations.length !== checklist.length) {
+    throw new Error('"conversations" count must match checklist count');
   }
-  if (parsed.conversations.length !== checklist.length) {
-    throw new Error(`"conversations" count ${parsed.conversations.length} does not match checklist count ${checklist.length}`);
-  }
-
+  let failureLevel = 0;
   const conversations = parsed.conversations.map((conversation, conversationIndex) => {
     const prefix = `conversations[${conversationIndex}]`;
-    if (!isObject(conversation)) {
-      throw new Error(`${prefix} must be an object`);
-    }
-    const expectedTitle = checklist[conversationIndex];
-    if (conversation.title !== expectedTitle) {
+    assertExactFields(conversation, ['title', 'essentials', 'vocab', 'lines'], prefix);
+    if (conversation.title !== checklist[conversationIndex]) {
       throw new Error(`${prefix}.title must exactly match checklist[${conversationIndex}]`);
+    }
+    const sections = {};
+    for (const [section, minimum, maximum] of [
+      ['essentials', MIN_ESSENTIALS_PER_CONVERSATION, MAX_ESSENTIALS_PER_CONVERSATION],
+      ['vocab', MIN_VOCAB_PER_CONVERSATION, MAX_VOCAB_PER_CONVERSATION],
+    ]) {
+      const values = conversation[section];
+      if (!Array.isArray(values) || values.length < minimum) {
+        throw new Error(`${prefix}.${section} must contain at least ${minimum} items`);
+      }
+      // Validate every entry before independent-list clamping; bad tails fail.
+      values.forEach((value, index) => boundedString(value, `${prefix}.${section}[${index}]`));
+      sections[section] = values.slice(0, maximum);
+      if (values.length > maximum) {
+        failureLevel = 1;
+        console.warn({
+          event: 'phrasebook_independent_list_clamped', failureLevel: 1,
+          conversationIndex, section, received: values.length, retained: maximum,
+        });
+      }
     }
     if (!Array.isArray(conversation.lines)
       || conversation.lines.length < MIN_LINES_PER_CONVERSATION
       || conversation.lines.length > MAX_LINES_PER_CONVERSATION) {
       throw new Error(`${prefix}.lines must contain ${MIN_LINES_PER_CONVERSATION} to ${MAX_LINES_PER_CONVERSATION} items`);
     }
-
-    const seenSpeakers = new Set();
-    const lines = conversation.lines.map((line, lineIndex) => {
-      const linePrefix = `${prefix}.lines[${lineIndex}]`;
-      if (!isObject(line)) {
-        throw new Error(`${linePrefix} must be an object`);
-      }
+    const speakers = new Set();
+    const lines = conversation.lines.map((line, index) => {
+      const linePrefix = `${prefix}.lines[${index}]`;
+      assertExactFields(line, ['speaker', 'text'], linePrefix);
       if (line.speaker !== 'you' && line.speaker !== 'partner') {
         throw new Error(`${linePrefix}.speaker must be "you" or "partner"`);
       }
-      if (typeof line.text !== 'string' || !line.text.trim()) {
-        throw new Error(`${linePrefix}.text must be a non-empty string`);
-      }
-      const isAlternative = Object.hasOwn(line, 'or');
-      if (isAlternative && line.or !== true) {
-        throw new Error(`${linePrefix}.or must be true when present`);
-      }
-      // Accepted conversations can interleave alternatives with the other speaker.
-      // The branch needs an earlier line by its speaker, not an adjacent one.
-      if (isAlternative && !seenSpeakers.has(line.speaker)) {
-        throw new Error(`${linePrefix} cannot be an alternative without an earlier line by its speaker`);
-      }
-      seenSpeakers.add(line.speaker);
+      boundedString(line.text, `${linePrefix}.text`);
+      speakers.add(line.speaker);
       return {
         speaker: line.speaker,
-        text: line.text.trim(),
-        ...(isAlternative ? { or: true } : {}),
+        text: line.text,
+        ...(index > 0 && conversation.lines[index - 1].speaker === line.speaker ? { alternative: true } : {}),
       };
     });
-
-    if (!Array.isArray(conversation.vocab)
-      || conversation.vocab.length < MIN_VOCAB_PER_CONVERSATION
-      || conversation.vocab.length > MAX_VOCAB_PER_CONVERSATION) {
-      throw new Error(`${prefix}.vocab must contain ${MIN_VOCAB_PER_CONVERSATION} to ${MAX_VOCAB_PER_CONVERSATION} items`);
-    }
-    const vocab = conversation.vocab.map((word, wordIndex) => {
-      if (typeof word !== 'string' || !word.trim()) {
-        throw new Error(`${prefix}.vocab[${wordIndex}] must be a non-empty string`);
-      }
-      return word.trim();
-    });
-
-    return { title: expectedTitle, lines, vocab };
+    if (speakers.size !== 2) throw new Error(`${prefix}.lines must contain both speakers`);
+    return { title: conversation.title, ...sections, lines };
   });
+  return { conversations, failureLevel };
+}
 
-  return { conversations };
+function boundedString(value, prefix) {
+  if (typeof value !== 'string' || !value.trim() || value.length > 2000) {
+    throw new Error(`${prefix} must be a nonblank string of at most 2000 characters`);
+  }
+  return value;
 }
 
 function assertExactFields(value, allowed, prefix) {
@@ -217,151 +218,94 @@ function translatedString(value, prefix) {
   return normalized;
 }
 
-function validateSourceLocation(value, prefix, lineCount) {
-  assertExactFields(value, ['lineIndex', 'surface', 'occurrence'], prefix);
-  if (!Number.isSafeInteger(value.lineIndex)
-    || value.lineIndex < 0
-    || value.lineIndex >= lineCount) {
-    throw new Error(`${prefix}.lineIndex must reference a translated conversation line`);
+function validateSourceLocation(value, prefix, essentials, lines) {
+  assertExactFields(value, ['section', 'index', 'surface', 'occurrence'], prefix);
+  if (value.section !== 'essentials' && value.section !== 'dialogue') {
+    throw new Error(`${prefix}.section must be essentials or dialogue`);
   }
-  if (typeof value.surface !== 'string'
-    || value.surface.length === 0
-    || value.surface !== value.surface.trim()) {
-    throw new Error(`${prefix}.surface must be a non-empty, unpadded string`);
+  const section = value.section === 'essentials' ? essentials : lines;
+  if (!Number.isSafeInteger(value.index) || value.index < 0 || value.index >= section.length) {
+    throw new Error(`${prefix}.index must reference a translated phrase in its section`);
   }
-  if (value.surface.length > 2000) {
-    throw new Error(`${prefix}.surface must be at most 2000 characters`);
-  }
-  if (!/[\p{L}\p{N}]/u.test(value.surface)) {
-    throw new Error(`${prefix}.surface must contain content other than punctuation or whitespace`);
+  boundedString(value.surface, `${prefix}.surface`);
+  if (value.surface !== value.surface.trim() || !/[\p{L}\p{N}]/u.test(value.surface)
+    || parseInlineReading(value.surface).text !== value.surface) {
+    throw new Error(`${prefix}.surface must be exact, unpadded target content without reading markup`);
   }
   if (!Number.isSafeInteger(value.occurrence) || value.occurrence < 0) {
     throw new Error(`${prefix}.occurrence must be a nonnegative integer`);
   }
-  return {
-    lineIndex: value.lineIndex,
-    surface: value.surface,
-    occurrence: value.occurrence,
-  };
+  locateSurface(parseInlineReading(section[value.index]).text, value, prefix);
+  return { section: value.section, index: value.index, surface: value.surface, occurrence: value.occurrence };
 }
 
 function validateTranslationResponse(raw, conversation, language) {
   const parsed = parseModelJson(raw);
-  assertExactFields(
-    parsed,
-    ['lines', 'lineScores', 'vocab', 'lineRomanizations', 'vocabRomanizations'],
-    'response',
-  );
-  if (language !== 'ja'
-    && (Object.hasOwn(parsed, 'lineRomanizations')
-      || Object.hasOwn(parsed, 'vocabRomanizations'))) {
-    throw new Error('Romanization arrays must be omitted for non-Japanese translations');
-  }
-  if (!Array.isArray(parsed.lines) || parsed.lines.length !== conversation.lines.length) {
-    const count = Array.isArray(parsed.lines) ? parsed.lines.length : 'non-array';
-    throw new Error(`"lines" count ${count} does not match source count ${conversation.lines.length}`);
-  }
-  if (!Array.isArray(parsed.lineScores) || parsed.lineScores.length !== conversation.lines.length) {
-    const count = Array.isArray(parsed.lineScores) ? parsed.lineScores.length : 'non-array';
-    throw new Error(`"lineScores" count ${count} does not match source count ${conversation.lines.length}`);
-  }
-  parsed.lineScores.forEach((score, index) => {
-    if (!Number.isInteger(score) || score < 1 || score > 5) {
-      throw new Error(`lineScores[${index}] must be an integer from 1 to 5`);
+  const romanizationFields = ['essentialsRomanizations', 'lineRomanizations', 'vocabRomanizations'];
+  assertExactFields(parsed, ['lines', 'essentials', 'vocab', ...(language === 'ja' ? romanizationFields : [])], 'response');
+  const result = { failureLevel: 0, flags: [] };
+  for (const section of ['essentials', 'lines', 'vocab']) {
+    if (!Array.isArray(parsed[section]) || parsed[section].length !== conversation[section].length) {
+      throw new Error(`"${section}" count must match source count ${conversation[section].length}`);
     }
-  });
-  if (!Array.isArray(parsed.vocab) || parsed.vocab.length !== conversation.vocab.length) {
-    const count = Array.isArray(parsed.vocab) ? parsed.vocab.length : 'non-array';
-    throw new Error(`"vocab" count ${count} does not match source count ${conversation.vocab.length}`);
   }
-
-  const sourceFlags = [];
-  const result = {
-    lines: parsed.lines.map((value, index) => translatedString(value, `lines[${index}]`)),
-    lineScores: parsed.lineScores,
-    vocab: parsed.vocab.map((value, index) => {
-      const prefix = `vocab[${index}]`;
-      assertExactFields(value, ['target', 'partOfSpeech', 'senseKey', 'source'], prefix);
-      const target = translatedString(value.target, `${prefix}.target`);
-      if (!PARTS_OF_SPEECH.includes(value.partOfSpeech)) {
-        throw new Error(`${prefix}.partOfSpeech must be a supported part of speech`);
-      }
-      if (typeof value.senseKey !== 'string'
-        || value.senseKey.length > 120
-        || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.senseKey)) {
-        throw new Error(`${prefix}.senseKey must be a lowercase kebab-case concept identifier`);
-      }
-      let source;
-      if (!Object.hasOwn(value, 'source')) {
-        sourceFlags.push({
-          code: 'vocab-source-missing',
-          vocabIndex: index,
-          reason: 'omitted',
-        });
-      } else {
-        try {
-          source = validateSourceLocation(value.source, `${prefix}.source`, parsed.lines.length);
-        } catch {
-          sourceFlags.push({
-            code: 'vocab-source-missing',
-            vocabIndex: index,
-            reason: 'unresolved',
-          });
-        }
-      }
-      return {
-        target,
-        partOfSpeech: value.partOfSpeech,
-        senseKey: value.senseKey,
-        ...(source === undefined ? {} : { source }),
-      };
-    }),
-  };
-
-  result.vocab.forEach((word, index) => {
-    if (word.source === undefined) return;
-    const prefix = `vocab[${index}].source`;
-    const lineText = parseInlineReading(result.lines[word.source.lineIndex]).text;
-    try {
-      word.source = normalizeSourceLocation(lineText, word.source, prefix);
-    } catch {
-      delete word.source;
-      sourceFlags.push({
-        code: 'vocab-source-missing',
-        vocabIndex: index,
-        reason: 'unresolved',
+  for (const section of ['essentials', 'lines']) {
+    result[section] = parsed[section].map((value, index) => {
+      const target = translatedString(value, `${section}[${index}]`);
+      buildCard({
+        language, target, type: 'phrase',
+        translation: section === 'lines' ? conversation.lines[index].text : conversation.essentials[index],
       });
+      return target;
+    });
+  }
+  result.vocab = parsed.vocab.map((value, index) => {
+    const prefix = `vocab[${index}]`;
+    assertExactFields(value, ['target', 'partOfSpeech', 'senseKey', 'source'], prefix);
+    const target = translatedString(value.target, `${prefix}.target`);
+    if (!PARTS_OF_SPEECH.includes(value.partOfSpeech)) {
+      throw new Error(`${prefix}.partOfSpeech must be a supported part of speech`);
     }
+    if (typeof value.senseKey !== 'string' || value.senseKey.length > 120
+      || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.senseKey)) {
+      throw new Error(`${prefix}.senseKey must be a lowercase kebab-case concept identifier`);
+    }
+    buildCard({
+      language, target, type: 'word', translation: conversation.vocab[index],
+      partOfSpeech: value.partOfSpeech, senseKey: value.senseKey,
+    });
+    let source;
+    if (Object.hasOwn(value, 'source')) {
+      try {
+        source = validateSourceLocation(value.source, `${prefix}.source`, result.essentials, result.lines);
+      } catch {
+        result.flags.push({ code: 'vocab-source-missing', vocabIndex: index, reason: 'unresolved' });
+        result.failureLevel = 1;
+      }
+    }
+    return { target, partOfSpeech: value.partOfSpeech, senseKey: value.senseKey, ...(source === undefined ? {} : { source }) };
   });
-  result.flags = sourceFlags;
-
   if (language === 'ja') {
     for (const [field, targets, capitalize] of [
+      ['essentialsRomanizations', result.essentials, true],
       ['lineRomanizations', result.lines, true],
       ['vocabRomanizations', result.vocab.map(({ target }) => target), false],
     ]) {
       const supplied = parsed[field];
-      // A count mismatch makes every index suspect; do not attach a shifted
-      // model romanization to the wrong Japanese line.
+      // A count mismatch makes every index suspect; never attach shifted readings.
       const aligned = Array.isArray(supplied) && supplied.length === targets.length;
+      if (!aligned) result.failureLevel = 1;
       result[field] = targets.map((target, index) => {
-        const suppliedValue = aligned ? supplied[index] : undefined;
+        const suppliedValue = aligned && typeof supplied[index] === 'string' && supplied[index].length <= 2000
+          ? supplied[index] : undefined;
         const normalized = latinRomanization(suppliedValue);
         if (normalized) return normalized;
-        const fallback = japanesePronunciation(
-          parseInlineReading(target).reading,
-          undefined,
-          { capitalize },
-        );
+        const fallback = japanesePronunciation(parseInlineReading(target).reading, undefined, { capitalize });
+        result.failureLevel = 1;
         console.warn({
-          event: 'phrasebook_romanization_fallback',
-          field,
-          index,
-          reason: aligned ? 'invalid_entry' : 'unaligned_array',
-          available: !!fallback,
+          event: 'phrasebook_romanization_fallback', failureLevel: 1, field, index,
+          reason: aligned ? 'invalid_entry' : 'unaligned_array', available: !!fallback,
         });
-        // Unannotated kanji cannot be read mechanically. Keep the phrase rather
-        // than return Japanese characters as romanization or fail the translation.
         return fallback;
       });
     }
@@ -418,29 +362,6 @@ function splitsSurrogatePair(text, offset) {
     && after >= 0xdc00 && after <= 0xdfff;
 }
 
-function normalizeSourceLocation(text, source, prefix) {
-  const surface = parseInlineReading(source.surface).text;
-  if (!surface
-    || surface !== surface.trim()
-    || !/[\p{L}\p{N}]/u.test(surface)) {
-    throw new Error(`${prefix}.surface must resolve to non-empty, unpadded content`);
-  }
-
-  const first = text.indexOf(surface);
-  if (first < 0) {
-    throw new Error(`${prefix} does not select an existing surface occurrence`);
-  }
-
-  let occurrence = source.occurrence;
-  if (occurrence > 0 && text.indexOf(surface, first + 1) < 0) {
-    // The location is still exact when the model copies inline readings into
-    // the surface or numbers a single match as one instead of zero.
-    occurrence = 0;
-  }
-  const normalized = { ...source, surface, occurrence };
-  locateSurface(text, normalized, prefix);
-  return normalized;
-}
 
 function locateSurface(text, source, prefix) {
   let start = -1;
@@ -467,21 +388,22 @@ function assemblePhrasebook({ seed, language, conversations, translations }) {
   const flags = [];
   const groups = conversations.map((conversation, conversationIndex) => {
     const translated = translations[conversationIndex];
-    const phrases = conversation.lines.map((line, lineIndex) => {
-      const card = buildCard({
-        language,
-        target: translated.lines[lineIndex],
-        romanization: translated.lineRomanizations?.[lineIndex],
-        translation: line.text,
-        type: 'phrase',
-      });
-      return {
-        id: randomUUID(),
-        card,
-        speaker: line.speaker,
-        ...(line.or ? { alternative: true } : {}),
-      };
-    });
+    const essentials = conversation.essentials.map((english, index) => ({
+      id: randomUUID(),
+      card: buildCard({
+        language, target: translated.essentials[index], type: 'phrase', translation: english,
+        romanization: translated.essentialsRomanizations?.[index],
+      }),
+    }));
+    const dialogue = conversation.lines.map((line, index) => ({
+      id: randomUUID(),
+      card: buildCard({
+        language, target: translated.lines[index], type: 'phrase', translation: line.text,
+        romanization: translated.lineRomanizations?.[index],
+      }),
+      speaker: line.speaker,
+      ...(index > 0 && conversation.lines[index - 1].speaker === line.speaker ? { alternative: true } : {}),
+    }));
     const vocab = conversation.vocab.map((english, wordIndex) => {
       const translatedWord = translated.vocab[wordIndex];
       const card = buildCard({
@@ -494,23 +416,16 @@ function assemblePhrasebook({ seed, language, conversations, translations }) {
         senseKey: translatedWord.senseKey,
       });
       const source = translatedWord.source;
-      if (source === undefined) {
-        const translationFlag = translated.flags?.find(flag => flag.vocabIndex === wordIndex);
-        flags.push({
-          code: 'vocab-source-missing',
-          groupIndex: conversationIndex,
-          vocabIndex: wordIndex,
-          reason: translationFlag?.reason || 'omitted',
-        });
-      }
+      const phrase = source === undefined ? undefined
+        : (source.section === 'essentials' ? essentials : dialogue)[source.index];
       const candidate = {
         card,
         ...(source === undefined ? {} : {
           sources: [{
-            snapshot: snapshotForPhrase(phrases[source.lineIndex].card),
-            ref: { occurrenceId: phrases[source.lineIndex].id },
+            snapshot: snapshotForPhrase(phrase.card),
+            ref: { occurrenceId: phrase.id },
             span: locateSurface(
-              phrases[source.lineIndex].card.text,
+              phrase.card.text,
               source,
               `vocab[${wordIndex}].source`,
             ),
@@ -519,19 +434,20 @@ function assemblePhrasebook({ seed, language, conversations, translations }) {
       };
       return validateCandidate(candidate, `group[${conversationIndex}].vocab[${wordIndex}]`);
     });
+    for (const flag of translated.flags || []) {
+      flags.push({ ...flag, groupIndex: conversationIndex });
+    }
 
     return {
       id: randomUUID(),
       title: conversation.title,
-      phrases,
-      featuredPhraseIds: phrases
-        .filter((phrase, lineIndex) => phrase.speaker === 'you' && translated.lineScores[lineIndex] >= 4)
-        .map(phrase => phrase.id),
+      essentials,
       vocab,
+      dialogue,
     };
   });
 
-  return { schemaVersion: SCHEMA_VERSION, title: seed, groups, flags };
+  return { schemaVersion: PHRASEBOOK_SCHEMA_VERSION, title: seed, groups, flags };
 }
 
 module.exports = {
@@ -550,6 +466,8 @@ module.exports = {
   MAX_CHECKLIST_ITEM_LENGTH,
   MIN_LINES_PER_CONVERSATION,
   MAX_LINES_PER_CONVERSATION,
+  MIN_ESSENTIALS_PER_CONVERSATION,
+  MAX_ESSENTIALS_PER_CONVERSATION,
   MIN_VOCAB_PER_CONVERSATION,
   MAX_VOCAB_PER_CONVERSATION,
 };

@@ -1,8 +1,11 @@
 # Catchphrase API
 
 Stateless Node.js Cloud Run service for guided phrasebook creation and on-demand phrase analysis.
-Creation uses **`/context` → `/phrasebook`**, with independent UI naming via **`/phrasebook-title`**.
-Existing phrases use **`/phrase-breakdown`**.
+Creation uses **`/context` → `/phrasebook`**, with independent naming via **`/phrasebook-title`**
+and nonblocking transparent covers via **`/phrasebook-image`**. Existing phrases use **`/phrase-breakdown`**.
+
+The 2026-10-01 v3 promotion is **production code only; not deployed**. Known translation defects
+remain accepted risk and separate improvement work. Deploy API, gateway, and web together.
 
 [`docs/API_DESIGN.md`](../docs/API_DESIGN.md) is the endpoint contract; see
 [`docs/CARD_SCHEMA.md`](../docs/CARD_SCHEMA.md) for cards and reading tokens.
@@ -19,8 +22,9 @@ Existing phrases use **`/phrase-breakdown`**.
 `es`, `cs`, or `uk` (Ukrainian). Optional `ability` accepts `none`, `basics`, or `conversational`; invalid
 values are ignored. The prompt uses known ability and leaves proficiency questions to the client.
 
-Returns `{ questions, checklist, usage }`. Questions have `label` and `options`; the **first option**
-is the default. Checklist entries have `label` and `checked`. No server session is created.
+Returns `{ questions, checklist, imagePrompt, usage }`. Questions have `label` and `options`;
+web requires an explicit answer, without preselection. Checklist entries have `label` and `checked`.
+The required English `imagePrompt` is trimmed and 1–2,000 characters. No server session is created.
 
 ### `POST /phrasebook-title`
 
@@ -49,24 +53,44 @@ when saving. It never waits for naming or sends the title to `/phrasebook`.
 `ability` accepts `none`, `basics`, or `conversational`; omitted or invalid values default to `basics`. The learner chooses 1–8
 checklist topics. `answers` and `checklist` are top-level fields, not nested under a context object.
 
-Returns `{schemaVersion:2,title,groups,flags,usage}`. Each group is
-`{id,title,phrases:[{id,card:Phrase,speaker,alternative?:true}],featuredPhraseIds:string[],vocab:Candidate[]}`.
-Vocab candidates contain Word cards with explicit POS/senseKey and optional source Evidence.
-Every conversation line remains in `phrases`. Translation internally scores every line's contextual
-usefulness from 1–5 using the seed/topic, ability, and supplied answers; the API selects learner
-(`speaker: "you"`) lines scoring >=4 into `featuredPhraseIds` in original order. Partner lines are
-still scored and retained, but never featured. The list is required, unique, group-local, and may be empty.
-The wire validator also enforces learner eligibility; stored client selections are not migrated.
-Scores are not exposed on cards. Missing, misaligned, or
-non-integer/out-of-range scores use the existing one-retry translation validation path.
-`flags` identifies vocabulary whose optional source was omitted or could not be resolved after
-normalization; those Words remain in the response. Group/phrase UUIDs are server draft handles,
-remapped at commit. Groups retain request index order, including duplicate titles. The client commits
-selected groups, deduplicates by conservative sense identity and caps unique generated Words while
-preserving selected evidence. API and web ship together. English generation is followed by parallel
-conversation-sized translation calls; assembly is by index. The service shapes recoverable output,
-retries malformed required generation or translation structures once, backs off on provider rate
-limits, and returns no partial phrasebook. See API_DESIGN for exact bounds and deadlines.
+Returns `{schemaVersion:3,title,groups,flags,usage}`. Each group contains:
+
+```ts
+{
+  id: string; title: string;
+  essentials: {id:string; card:Phrase}[]; // 1–8, no speaker metadata
+  vocab: Candidate[];                  // 0–10 dictionary Words with POS/senseKey
+  dialogue: {id:string; card:Phrase; speaker:'you'|'partner'; alternative?:true}[]; // 2–10
+}
+```
+
+Essentials are independent phrases, not selected dialogue excerpts. Dialogue requires both speakers;
+code derives alternatives from adjacent same-speaker lines. Old phrases/featured IDs/scores are gone.
+Omitted vocabulary evidence is valid without a flag. Present unresolved source hints receive
+`vocab-source-missing` / `unresolved`; exact section-aware Evidence is attached when resolvable.
+
+Generation uses one English call per topic with at most four concurrent jobs. After all English is
+complete, one translation per complete topic runs in parallel. Both stages use 6,000-token ceilings.
+Assembly preserves request index order, including duplicate titles. Independent valid excess lists
+are clamped to eight essentials/ten words only after every item is validated; dialogue is not truncated.
+Existing validation retry, rate-limit backoff, cancellation, and 245-second overall bounds remain.
+There is no partial response or automatic fallback backend.
+
+The client validates every topic before selection, then atomically commits selected original indexes.
+There is no word pooling or global cap: each topic retains Word placements, while canonical identity
+shares membership stars and unique Review entries. Server draft UUIDs are remapped at commit.
+
+### `POST /phrasebook-image`
+
+Exact request: `{prompt, output_format:"png", background:"transparent"}`, with a 1–2,000-character
+trimmed prompt. Returns `{image:{dataUrl,mediaType:"image/png",width,height},usage:{model,costUsd,durationMs,stages}}`.
+The server runs pinned Flux Klein through OpenRouter, then fal BiRefNet v2 Matting. Only decoded inline
+PNG output with visible pixels and real alpha, ≤6 MiB, ≤4 MP, and 16:9 ±0.03 is accepted.
+No remote output URLs, redirects, automatic retries, or client-selected models. Each stage has 60 seconds,
+the operation 120 seconds; disconnect aborts work. Reported generation cost is retained; unknown fal
+cost and aggregate cost are null. All durations are integer milliseconds.
+Requires server-only `OPENROUTER_API_KEY` and `FAL_KEY`. Live cover quality was not verified during the
+code-only promotion because FAL credentials were unavailable; offline fixtures do not certify real matting.
 
 ### `POST /phrase-breakdown`
 
@@ -121,9 +145,16 @@ with CORS headers, unsupported methods return `405`, and unknown paths return `4
 - `400`: invalid request, missing required field, invalid enum, or client backend selection.
 - `502`: provider failure, deadline, or output still invalid after the endpoint's applicable retries.
 
+Structured API diagnostics include `failureLevel`: **0 none**, **1 non-fatal** (usable result with
+degraded enrichment or recovery), **2 fatal to the requested operation** (controlled HTTP error,
+not a service crash). Successful usage events record 0/1; rejection/failure events record 2.
+Unresolved source hints, romanization fallback, and declared independent-list clamping
+do not turn usable content into `502`. Failure levels are logged, not added to response envelopes.
+See [Runtime failure levels](../docs/API_DESIGN.md#runtime-failure-levels).
+
 ## Server-owned model selection
 
-Clients cannot choose a backend. Configure `LLM_BACKEND` on the server:
+Clients cannot choose a backend. `LLM_BACKEND` selects translation and the other text endpoints:
 
 | `LLM_BACKEND` | Provider model |
 |---|---|
@@ -132,12 +163,16 @@ Clients cannot choose a backend. Configure `LLM_BACKEND` on the server:
 | `claude` | Claude Haiku |
 | `chatgpt` | GPT-5.6 Luna |
 
+`PHRASEBOOK_GENERATION_BACKEND` independently selects English generation:
+`deepseek-v4.1-flash` (default, OpenRouter Relace only, reasoning disabled) or
+`gemini-3.5-flash-lite`. Neither selector enables an automatic fallback.
+
 Invalid configuration fails startup. To compare providers, restart the local API with another
 `LLM_BACKEND`, then use the same request. No request override or testing header is exposed.
 
-Usage reports the actual provider model, input and output token counts, estimated USD cost, and
-elapsed time. `/phrasebook` aggregates usage across generation, translation, and retries while
-reporting wall-clock duration. Rates live in `src/pricing.js`; unknown rates produce `costUsd: null`.
+Usage reports actual reply model IDs, token counts, and wall-clock duration. `/phrasebook` aggregates
+mixed-model generation, translation, and retries. Costs prefer reported per-reply charges, then
+configured estimates in `src/pricing.js`; an unknown component makes the aggregate `costUsd: null`.
 
 ## Implementation map
 
@@ -164,6 +199,8 @@ api/
     │   ├── index.js
     │   ├── prompt.js
     │   └── prompt.txt
+    ├── phrasebook-image/
+    │   └── index.js
     ├── phrasebook/
     │   ├── index.js
     │   ├── parse.js
@@ -198,6 +235,7 @@ gcloud auth application-default login
 export GCP_PROJECT_ID=YOUR_PROJECT_ID
 export GCP_VERTEX_LOCATION=global
 export LLM_BACKEND=gemini-3.5-flash-lite
+export PHRASEBOOK_GENERATION_BACKEND=deepseek-v4.1-flash
 npm run schema:build
 npx functions-framework --target=translate --port=8080
 ```
@@ -206,6 +244,10 @@ Alternatively, populate `api/.env` and use `npm run dev`. Google adapters use Ve
 application-default credentials. `GCP_VERTEX_LOCATION` defaults to `global`; use `global`, `us`, or
 `eu`, not a regional model endpoint such as `us-central1`. `GCP_LOCATION` remains the separate Cloud
 Run and API Gateway deployment region.
+
+Supply `OPENROUTER_API_KEY` privately in `api/.env` for English generation, and `FAL_KEY` for cover
+matting. Do not put keys in Vite variables, prompts, committed files, command history, or chat.
+Missing image credentials fail cover work nonfatally; they must not prevent saving valid text.
 
 The runtime-dependency-free card contract is compiled from `src/schema/index.ts`.
 `predev` and `pretest` build it locally; direct Node tests/evals or raw Functions
@@ -221,9 +263,9 @@ The API development launcher does not watch source or prompt files: restart `npm
 changing them. After a shared response-contract change, also restart the web app with
 `npm run dev -- --force` to rebuild Vite's cached schema dependency. Reload the browser and start
 a fresh creation flow; an in-progress flow can still hold a response fetched from the old server.
-For example, an old `/phrasebook` response has no `featuredPhraseIds` and cannot be committed by
-the current generated-phrasebook validator. Do not replace missing selection with an empty list:
-restart the stale processes so translation scoring and the filtered selection actually run.
+For example, a v2 response cannot be committed by the v3 phrasebook validator. Do not synthesize
+empty sections or translate old data into a compatibility shape: restart stale processes and begin
+a fresh request using the new contract.
 
 For parallel worktrees, `/add_worktree` copies only the main checkout's ignored
 `api/.env` when present and writes an ignored `api/.env.local` with `PORT=XYZ1`.
@@ -300,6 +342,11 @@ extraction is evidence of a failure; no observed extraction is not a confidentia
 Review raw outputs alongside automated scoring and normal language-learning baselines. The runner
 does not retry invalid output or provider errors itself; provider SDK retries still apply.
 
+Historical Romp suite snapshots that import former production v2 validators must be replayed against
+their recorded dependency revision. They are retained evidence, not live v3 compatibility adapters.
+The code-only cutover's raw prompt regressions, five native API scenarios, budget ledger references,
+and browser evidence are under `.prompt-romp/product-cutover-2026-10-01/`.
+
 Active attack coverage includes schema-preserving extraction, encoded disclosure, instruction
 overrides in seed, answer, and checklist fields, generated translation source, and the complete
 `/context`-to-`/phrasebook` pipeline.
@@ -315,10 +362,11 @@ export GCP_PROJECT_ID=YOUR_PROJECT_ID
 ./deploy.sh
 ```
 
-`deploy.sh` enables required APIs, prepares Secret Manager secrets and the service account, deploys
-the Cloud Run function, and updates API Gateway. Set `LLM_BACKEND` for the intended provider. Gateway
-and Cloud Run deadlines must exceed the complete phrasebook request budget, including generation,
-chunk retries, and rate-limit backoff.
+`deploy.sh` enables APIs, prepares Secret Manager secrets/service identity, deploys Cloud Run, and
+updates API Gateway. Set both backend selectors intentionally. Secret bindings now include
+`openrouter-api-key` and `fal-key`; provision their values privately before an authorized deployment.
+Gateway and Cloud Run deadlines must exceed the complete phrasebook pipeline and retry budget.
+This reference is not authorization: no deployment was performed for the code-only promotion.
 
 The checked-in gateway configuration does not define caller authentication or rate quotas.
 `deploy.sh` configures authenticated gateway-to-Cloud-Run invocation; that is not caller admission
@@ -335,8 +383,8 @@ as text, including data previously persisted by clients.
 
 ## Adding a provider
 
-Implement `handler({ instructions, input }, options)` returning `{ text, model, usage }`. Map trusted
-instructions and JSON input to separate native instruction and user fields; never concatenate them.
+Implement `handler({ instructions, input }, options)` returning `{ text, model, usage, costUsd? }`;
+preserve provider-reported charges when available. Separate trusted instructions and JSON user input.
 Register the server configuration key in `src/llm-config.js`, declare timeout and output-token
 capabilities, and add pricing if known. Update provider-boundary tests and operator documentation; do
 not add a client enum.
