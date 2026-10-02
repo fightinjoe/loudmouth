@@ -189,7 +189,7 @@ paths:
         204:
           description: CORS preflight response
     post:
-      summary: Generate a contextual watercolor PNG with a real transparent background
+      summary: Generate a contextual watercolor PNG
       operationId: phrasebookImage
       consumes: [application/json]
       produces: [application/json]
@@ -199,7 +199,7 @@ paths:
           required: true
           schema:
             type: object
-            required: [prompt, output_format, background]
+            required: [prompt, output_format]
             additionalProperties: false
             properties:
               prompt:
@@ -209,16 +209,13 @@ paths:
               output_format:
                 type: string
                 enum: [png]
-              background:
-                type: string
-                enum: [transparent]
       responses:
         200:
-          description: Validated transparent PNG produced by Flux followed by background matting
+          description: Validated PNG produced by FLUX.2 Klein 4B
           schema:
             $ref: '#/definitions/PhrasebookImageResponse'
         400:
-          description: Invalid prompt, format, background, or extra request fields
+          description: Invalid prompt, format, or extra request fields
         502:
           description: Missing credentials, provider failure, timeout, or unsafe image output
 
@@ -288,7 +285,7 @@ definitions:
         type: integer
         minimum: 1
         maximum: 4000000
-    description: Server verifies PNG signature, at most 4 megapixels and 6 MiB, nonempty alpha, and 16:9 ratio within 0.03.
+    description: Server verifies decoded PNG pixels, at most 4 megapixels and 6 MiB, visible content, and 16:9 ratio within 0.03. Transparency is not required.
 
   ImageStageUsage:
     type: object
@@ -323,7 +320,7 @@ definitions:
         properties:
           model:
             type: string
-            enum: ['black-forest-labs/flux.2-klein-4b + fal-ai/birefnet/v2']
+            enum: ['black-forest-labs/flux.2-klein-4b']
           costUsd:
             type: number
             minimum: 0
@@ -333,8 +330,8 @@ definitions:
             minimum: 0
           stages:
             type: array
-            minItems: 2
-            maxItems: 2
+            minItems: 1
+            maxItems: 1
             items:
               $ref: '#/definitions/ImageStageUsage'
 

@@ -107,7 +107,7 @@ analysis without overwriting saved teaching. Character and Grammar card types re
   The client speculates while topics are selected, validates the whole draft, then commits original
   selected indexes without pooling or globally capping words.
   Independent `/phrasebook-title` work freezes the available name or seed fallback at commit.
-  `/phrasebook-image` performs Flux Klein generation and BiRefNet matting without blocking text;
+  `/phrasebook-image` generates PNGs through OpenRouter FLUX.2 Klein 4B without blocking text;
   ready PNG bytes persist with the phrasebook. Missing or failed art leaves text usable.
 - **Phrase analysis:** `/phrase-breakdown` receives the exact active occurrence snapshot and
   phrasebook context. The web client validates and caches the v2 analysis for the browser tab.

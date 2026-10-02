@@ -2,7 +2,7 @@
 
 Stateless Node.js Cloud Run service for guided phrasebook creation and on-demand phrase analysis.
 Creation uses **`/context` → `/phrasebook`**, with independent naming via **`/phrasebook-title`**
-and nonblocking transparent covers via **`/phrasebook-image`**. Existing phrases use **`/phrase-breakdown`**.
+and nonblocking watercolor covers via **`/phrasebook-image`**. Existing phrases use **`/phrase-breakdown`**.
 
 The 2026-10-01 v3 promotion is **production code only; not deployed**. Known translation defects
 remain accepted risk and separate improvement work. Deploy API, gateway, and web together.
@@ -82,15 +82,24 @@ shares membership stars and unique Review entries. Server draft UUIDs are remapp
 
 ### `POST /phrasebook-image`
 
-Exact request: `{prompt, output_format:"png", background:"transparent"}`, with a 1–2,000-character
+Exact request: `{prompt, output_format:"png"}`, with a 1–2,000-character
 trimmed prompt. Returns `{image:{dataUrl,mediaType:"image/png",width,height},usage:{model,costUsd,durationMs,stages}}`.
-The server runs pinned Flux Klein through OpenRouter, then fal BiRefNet v2 Matting. Only decoded inline
-PNG output with visible pixels and real alpha, ≤6 MiB, ≤4 MP, and 16:9 ±0.03 is accepted.
-No remote output URLs, redirects, automatic retries, or client-selected models. Each stage has 60 seconds,
-the operation 120 seconds; disconnect aborts work. Reported generation cost is retained; unknown fal
-cost and aggregate cost are null. All durations are integer milliseconds.
-Requires server-only `OPENROUTER_API_KEY` and `FAL_KEY`. Live cover quality was not verified during the
-code-only promotion because FAL credentials were unavailable; offline fixtures do not certify real matting.
+The server makes one OpenRouter image call to `black-forest-labs/flux.2-klein-4b`, pinned to
+Black Forest Labs, with 16:9 aspect ratio and PNG output. The context prompt requests a close-up
+composition on plain white paper: large objects fill the frame with a narrow 3–5% target margin,
+without clipping. Actual margins vary; no automatic crop is applied. Transparency is neither
+requested nor required. Only decoded inline PNG output with visible pixels, ≤6 MiB, ≤4 MP,
+and 16:9 ±0.03 is accepted.
+No background-removal service, remote output URLs, redirects, automatic retries,
+or client-selected models. The operation has a 120-second deadline; disconnect aborts work.
+Usage contains one OpenRouter stage; reported cost is used for both stage and aggregate cost,
+or null when unavailable. All durations are integer milliseconds.
+Requires only server-side `OPENROUTER_API_KEY`; no separate image-provider account or key.
+An authenticated local HTTP smoke using a generated context image prompt returned an opaque
+1824×1024 PNG in 4.4 seconds at a reported $0.015. This is one observation, not a latency guarantee.
+The route logs `usage` on success and `request_invalid`/`request_failed` on rejection, each with
+`route: 'phrasebook-image'` and a failure level. Usage logs contain cost, model, and duration,
+not image bytes or credentials.
 
 ### `POST /phrase-breakdown`
 
@@ -245,8 +254,8 @@ application-default credentials. `GCP_VERTEX_LOCATION` defaults to `global`; use
 `eu`, not a regional model endpoint such as `us-central1`. `GCP_LOCATION` remains the separate Cloud
 Run and API Gateway deployment region.
 
-Supply `OPENROUTER_API_KEY` privately in `api/.env` for English generation, and `FAL_KEY` for cover
-matting. Do not put keys in Vite variables, prompts, committed files, command history, or chat.
+Supply `OPENROUTER_API_KEY` privately in `api/.env` for English generation and cover images.
+Do not put keys in Vite variables, prompts, committed files, command history, or chat.
 Missing image credentials fail cover work nonfatally; they must not prevent saving valid text.
 
 The runtime-dependency-free card contract is compiled from `src/schema/index.ts`.
@@ -261,8 +270,9 @@ Do not override the build hook with an empty `GOOGLE_NODE_RUN_SCRIPTS`.
 
 The API development launcher does not watch source or prompt files: restart `npm run dev` after
 changing them. After a shared response-contract change, also restart the web app with
-`npm run dev -- --force` to rebuild Vite's cached schema dependency. Reload the browser and start
-a fresh creation flow; an in-progress flow can still hold a response fetched from the old server.
+`npm run dev`: Vite forces dependency rebundling on startup so the freshly compiled local schema
+cannot be hidden by a stale optimized dependency. Reload the browser and start a fresh creation flow;
+an in-progress flow can still hold a response fetched from the old server.
 For example, a v2 response cannot be committed by the v3 phrasebook validator. Do not synthesize
 empty sections or translate old data into a compatibility shape: restart stale processes and begin
 a fresh request using the new contract.
@@ -363,8 +373,8 @@ export GCP_PROJECT_ID=YOUR_PROJECT_ID
 ```
 
 `deploy.sh` enables APIs, prepares Secret Manager secrets/service identity, deploys Cloud Run, and
-updates API Gateway. Set both backend selectors intentionally. Secret bindings now include
-`openrouter-api-key` and `fal-key`; provision their values privately before an authorized deployment.
+updates API Gateway. Set both backend selectors intentionally. Secret bindings include
+`openrouter-api-key`; provision its value privately before an authorized deployment.
 Gateway and Cloud Run deadlines must exceed the complete phrasebook pipeline and retry budget.
 This reference is not authorization: no deployment was performed for the code-only promotion.
 

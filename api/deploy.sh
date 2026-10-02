@@ -42,7 +42,7 @@ gcloud services enable \
 echo ""
 echo "==> Checking secrets..."
 
-for SECRET in anthropic-api-key openai-api-key openrouter-api-key fal-key; do
+for SECRET in anthropic-api-key openai-api-key openrouter-api-key; do
   if ! gcloud secrets describe "${SECRET}" --project="${PROJECT_ID}" &>/dev/null; then
     echo "    Creating secret: ${SECRET}"
     gcloud secrets create "${SECRET}" \
@@ -85,7 +85,7 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --condition=None \
   --quiet
 
-for SECRET in anthropic-api-key openai-api-key openrouter-api-key fal-key; do
+for SECRET in anthropic-api-key openai-api-key openrouter-api-key; do
   gcloud secrets add-iam-policy-binding "${SECRET}" \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="roles/secretmanager.secretAccessor" \
@@ -112,7 +112,7 @@ gcloud run deploy "${SERVICE_NAME}" \
   --timeout="300s" \
   --service-account="${SA_EMAIL}" \
   --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},GCP_LOCATION=${REGION},GCP_VERTEX_LOCATION=${VERTEX_LOCATION},LLM_BACKEND=${LLM_BACKEND},PHRASEBOOK_GENERATION_BACKEND=${PHRASEBOOK_GENERATION_BACKEND}" \
-  --set-secrets="ANTHROPIC_API_KEY=anthropic-api-key:latest,OPENAI_API_KEY=openai-api-key:latest,OPENROUTER_API_KEY=openrouter-api-key:latest,FAL_KEY=fal-key:latest" \
+  --set-secrets="ANTHROPIC_API_KEY=anthropic-api-key:latest,OPENAI_API_KEY=openai-api-key:latest,OPENROUTER_API_KEY=openrouter-api-key:latest" \
   --project="${PROJECT_ID}"
 
 # ---------------------------------------------------------------------------

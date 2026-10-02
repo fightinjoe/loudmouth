@@ -32,8 +32,13 @@ and load the compiled shared schema.
 
 Web source edits use Vite's normal hot reload. Shared-schema edits in
 `api/src/schema/index.ts` are **not continuously compiled**: restart both dev servers after changing
-that file, using `npm run dev -- --force` for web to rebuild its cached schema dependency. Reload the
+that file. Vite forces dependency rebundling on startup, so ordinary `npm run dev` uses the freshly
+compiled schema rather than an older optimized copy; no manual `--force` is needed. Reload the
 browser and start a fresh flow. `npm run typecheck` performs strict checking; Vite transpilation does not.
+
+A stale validator can reject a successful `/phrasebook-image` response and show “Illustration
+unavailable.” Failed saved illustrations do not automatically restart paid generation; refreshing
+dependencies fixes new creation flows, not already-saved failed states.
 
 ## Testing against a local API
 

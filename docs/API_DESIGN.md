@@ -71,8 +71,9 @@ Those replay timings are not live model or deployed Cloud Run latency.
 Decoded fixture PNGs proved image contract validation, nonfatal timeout, persisted ready art,
 and late hero-only updates preserving page, cards, focus, scroll and edit state. Pending art became
 failed on reload with zero provider requests. These synthetic layout images do **not** establish
-watercolor or matting quality. The three live cover checks remain blocked by missing private
-`FAL_KEY` and authenticated bounded fal pricing. No deployment or secret provisioning was performed.
+watercolor or matting quality. At promotion, the original two-provider cover pipeline lacked
+matting credentials and live verification. It is superseded by the OpenRouter-only implementation
+described below. No deployment or secret provisioning was performed.
 Lifetime conservative accounting is $2.3876218931 against the $5 cap; unknown-charge reservations
 remain included. Full per-call reported/estimated cost distinctions are in the regression report.
 
@@ -649,13 +650,17 @@ an illustration already bound to a completed text save may finish afterward.
 Independent, nonblocking cover generation. The exact request is:
 
 ```json
-{"prompt":"English watercolor instruction","output_format":"png","background":"transparent"}
+{"prompt":"English watercolor instruction","output_format":"png"}
 ```
 
 The prompt is trimmed and 1–2,000 characters. Extra model/provider/URL/options fields are rejected.
 The server calls OpenRouter `black-forest-labs/flux.2-klein-4b`, pinned to Black Forest Labs with no
-fallback, then `fal-ai/birefnet/v2` with the Matting model. Flux is not assumed to produce native alpha;
-matting is a real second provider operation, not a white-to-alpha threshold.
+fallback, requesting one 16:9 PNG. The context prompt requests a close-up on plain white paper,
+with large objects occupying 90–94% of the frame and a narrow 3–5% target safety margin. Long objects
+are arranged horizontally or diagonally. Margins are generation instructions, not enforced cropping.
+Transparency is neither requested nor required; there is no background-removal operation.
+The [OpenRouter endpoint capabilities](https://openrouter.ai/api/v1/images/models/black-forest-labs/flux.2-klein-4b/endpoints)
+advertise PNG and 16:9 support. Actual response cost is authoritative.
 
 Response:
 
@@ -669,17 +674,67 @@ Response:
 }
 ```
 
-Both stages are retained. OpenRouter reported cost is used when supplied; fal's response lacks billed
-cost, so that stage and aggregate cost are null, never invented zero. Durations are integer milliseconds.
-Decoded PNG validation requires visible pixels and genuine transparency, ≤4 megapixels, ≤6 MiB decoded
-file bytes, and a 16:9 ratio within 0.03. Only inline PNG bytes are accepted; remote image URLs and
-redirects are rejected. Decoder validation rejects corrupt, opaque, empty-alpha, or non-PNG output.
-Each stage has a 60-second deadline; the whole operation has 120 seconds. Disconnect cancels work.
+Usage contains exactly one OpenRouter generation stage. Reported cost is used for both stage and
+aggregate cost when supplied, otherwise both are null, never invented zero. Durations are integer milliseconds.
+Decoded PNG validation requires visible pixels, ≤4 megapixels, ≤6 MiB decoded file bytes, and a
+16:9 ratio within 0.03. Only inline PNG bytes are accepted; remote image URLs and redirects are
+rejected. Decoder validation rejects corrupt, entirely invisible, or non-PNG output, but accepts opaque RGB/RGBA.
+The complete operation has a 120-second deadline. Disconnect cancels work.
 No automatic retry or fallback. Invalid requests return 400; controlled provider/decode failures 502.
 
-Keys are server-only `OPENROUTER_API_KEY` and `FAL_KEY`. Live cover acceptance requires both credentials,
-bounded authenticated pricing, and visual inspection of actual results. The code-only cutover had
-no FAL key: offline pipeline/lifecycle evidence is not live watercolor or matting-quality acceptance.
+Only server-side `OPENROUTER_API_KEY` is required. An authenticated local `/phrasebook-image`
+smoke on 2026-10-01, using the revised `/context` image prompt for Japanese vegan dining, returned
+HTTP 200 and passed the shared response validator: opaque 1824×1024 PNG, 1,132,565 bytes,
+4.4 seconds wall time, reported cost $0.015. The watercolor was visually inspected on white.
+This single observation is not a latency or broad visual-quality guarantee.
+
+With explicit user approval, the two background instructions in `context/prompt.txt` changed from
+transparent to plain white; other style instructions stayed unchanged. Live before/after evaluations
+used `gemini-3.5-flash-lite` with identical seeds, languages, and `basics` ability:
+
+| Input | Context latency before → after | Input tokens before → after | Output tokens before → after |
+|---|---|---|---|
+| Vegan dining / Japanese | 6,439 → 5,810 ms | 1,510 → 1,511 | 463 → 526 |
+| Salsa / Spanish | 1,856 → 1,737 ms | 1,510 → 1,511 | 468 → 457 |
+| Pharmacy / Czech | 1,926 → 1,808 ms | 1,513 → 1,514 | 469 → 503 |
+
+All six responses passed context validation. All three original image prompts requested a
+transparent background; all three revised prompts requested plain white and no transparency.
+Seed-specific objects and watercolor style were retained. Questions/checklist wording varied;
+one call per input/version does not establish a causal latency or output-token change.
+
+### Tight-framing prompt evaluation
+
+With explicit user approval, the two composition instructions in `context/prompt.txt` replaced
+the wide vignette/lots-of-empty-space wording with close-up, nearly edge-to-edge subjects.
+FLUX.2 Klein 4B, 16:9 output, the white background, and watercolor style remain unchanged.
+The evaluation used the real context and image pipelines with `basics` ability, one observation
+per input/version, and visual inspection of the generated images. All context and image outputs
+passed their existing validators; all images were 1824×1024.
+
+| Input | Average blank side margin before → final | Context latency before → final | Image latency before → final |
+|---|---|---|---|
+| Vegan dining / Japanese | 20.3% → 7.5% | 5,561 → 5,623 ms | 3,671 → 4,363 ms |
+| Salsa / Spanish | 26.2% → 6.4% | 2,048 → 2,000 ms | 3,247 → 4,081 ms |
+| Surfboard rental / Spanish | 25.5% → 3.8% | 2,135 → 1,772 ms | 3,852 → 4,392 ms |
+
+Margins above average the left/right distance to the bounding box of pixels with any RGB channel
+below 235. This includes painted washes, not just main objects; pale watercolor boundaries are
+approximate. Visual inspection confirmed larger subjects without clipped main objects. Final
+individual margins ranged from 2.7% to 10.6%, so the 3–5% target is not a guarantee.
+
+| Input | Context input tokens before → final | Context output tokens before → final | Image prompt tokens before → final |
+|---|---|---|---|
+| Vegan dining | 1,511 → 1,617 | 463 → 500 | 229 → 273 |
+| Salsa | 1,511 → 1,617 | 461 → 482 | 214 → 262 |
+| Surfboard rental | 1,515 → 1,621 | 526 → 485 | 226 → 264 |
+
+Image output usage stayed at 7,291 tokens and $0.015 per image. The initial intermediate draft
+left 12–19% side margins and was strengthened before acceptance; its salsa and surfing calls
+took about 33 seconds each. Across baseline, intermediate, and final evaluations, nine images
+cost $0.135 and context calls reported $0.0151382. The small non-deterministic sample does not
+establish a causal latency change or production reliability. Only new creation flows after an API
+restart use the revised prompt; saved images are unchanged.
 
 ## `/phrasebook-title`
 
