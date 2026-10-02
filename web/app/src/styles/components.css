@@ -1342,7 +1342,7 @@ ruby {
 }
 
 /* ── Guided Creation Panel ──
-   Linear flow: topic → context questions → checklist → generation. */
+   Linear flow: language → topic → context questions → checklist → generation. */
 
 .bottom-sheet.creation-panel {
   z-index: 151;
@@ -1404,6 +1404,18 @@ ruby {
 
 .creation-input-wrap {
   padding: 0 20px;
+}
+
+.creation-language-choice {
+  align-self: flex-start;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0 20px;
+  color: var(--accent);
+}
+
+.creation-language-question .creation-radio-items {
+  margin-top: 12px;
 }
 
 .creation-input-field-row {
@@ -1665,8 +1677,4 @@ ruby {
 
 .deck-picker-chevron {
   flex-shrink: 0;
-}
-
-.new-phrasebook-body[data-suggestion="false"] .new-phrasebook-ability {
-  display: none;
 }

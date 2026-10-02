@@ -24,6 +24,9 @@ import {
 import {
   LANGUAGE_ABILITY_PREFIX,
   LAST_DECK_KEY,
+  CREATION_LANGUAGE_KEY,
+  getLastCreationLanguage,
+  setLastCreationLanguage,
   getLastAbility,
   getLastDeckId,
   setLastAbility,
@@ -741,6 +744,8 @@ describe("v3 namespace isolation and preferences", () => {
       for (const key of ["localStorage", "sessionStorage"]) {
         Object.defineProperty(globalThis, key, {configurable:true,get(){throw new DOMException("Disabled", "SecurityError");}});
       }
+      setLastCreationLanguage("ja");
+      expect(getLastCreationLanguage()).toBeUndefined();
       const target = createDb({indexedDB:new IDBFactory(), IDBKeyRange});
       await initializeLibrary(target);
       const deck = await createBook("Storage disabled", "Hola", "Hello", target);
@@ -757,6 +762,13 @@ describe("v3 namespace isolation and preferences", () => {
   it("uses only the v3 preference namespace and ignores invalid values", () => {
     localStorage.setItem("loudmouth-card-v2.languageAbility.es", "conversational");
     expect(getLastAbility("es")).toBeUndefined();
+    expect(getLastCreationLanguage()).toBeUndefined();
+    setLastCreationLanguage("ja");
+    expect(getLastCreationLanguage()).toBe("ja");
+    setLastCreationLanguage("unsupported");
+    expect(getLastCreationLanguage()).toBe("ja");
+    localStorage.setItem(CREATION_LANGUAGE_KEY, "unsupported");
+    expect(getLastCreationLanguage()).toBeUndefined();
     setLastAbility("es", "conversational");
     expect(localStorage.getItem(`${LANGUAGE_ABILITY_PREFIX}es`)).toBe("conversational");
     expect(getLastAbility("es")).toBe("conversational");

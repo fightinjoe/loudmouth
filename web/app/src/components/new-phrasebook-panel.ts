@@ -19,7 +19,6 @@ export interface PhrasebookConfirmation {
   ability: Ability;
 }
 
-export type PhrasebookCreatedCallback = (lang: Lang) => void;
 export type PhrasebookConfirmedCallback = (confirmation: PhrasebookConfirmation) => void;
 
 interface NewPhrasebookState {
@@ -28,15 +27,14 @@ interface NewPhrasebookState {
 }
 
 
-/** Opens the language-selection or suggested-phrasebook confirmation sheet. */
+/** Opens the suggested-phrasebook confirmation sheet. */
 export function openNewPhrasebookPanel(
   appElement: HTMLElement,
-  onCreated: PhrasebookCreatedCallback,
   onDismiss: () => void,
-  suggestion?: PhrasebookSuggestion,
-  onConfirmed?: PhrasebookConfirmedCallback,
+  suggestion: PhrasebookSuggestion,
+  onConfirmed: PhrasebookConfirmedCallback,
 ): BottomSheetHandle {
-  const initialLanguage = suggestion?.lang ?? CONTENT_LANGUAGES[0];
+  const initialLanguage = suggestion.lang;
   const savedAbility: unknown = getLastAbility(initialLanguage);
   const state: NewPhrasebookState = {
     lang: initialLanguage,
@@ -89,43 +87,32 @@ export function openNewPhrasebookPanel(
       if (event.currentTarget.disabled) return;
       event.currentTarget.disabled = true;
 
-      if (suggestion) {
-        if (!onConfirmed) {
-          throw new Error("A confirmation callback is required for a suggested phrasebook");
-        }
-        onConfirmed({ lang: state.lang, ability: state.ability });
-        return;
-      }
-      onCreated(state.lang);
+      onConfirmed({ lang: state.lang, ability: state.ability });
     });
   }
 }
 
 function renderBody(
   state: Readonly<NewPhrasebookState>,
-  suggestion?: PhrasebookSuggestion,
+  suggestion: PhrasebookSuggestion,
 ): string {
-  const heading = suggestion ? `"${suggestion.title}" phrasebook` : "New phrasebook";
-  const subtitle = suggestion
-    ? "Save and modify a collection for the language you want to catch and learn"
-    : "Create a collection for the language you want to catch and learn";
-  const buttonLabel = suggestion
-    ? `View "${suggestion.title}" phrasebook`
-    : "Create your first phrasebook";
+  const heading = `"${suggestion.title}" phrasebook`;
+  const subtitle = "Save and modify a collection for the language you want to catch and learn";
+  const buttonLabel = `View "${suggestion.title}" phrasebook`;
 
   return `
     <div class="pane-header new-phrasebook-header flex-col">
       <span class="text-header fg-body font-semibold">${escapeHTML(heading)}</span>
       <span class="text-body2 fg-secondary">${subtitle}</span>
     </div>
-    <div class="new-phrasebook-body flex-col" data-suggestion="${Boolean(suggestion)}">
+    <div class="new-phrasebook-body flex-col">
       <label class="new-phrasebook-row flex items-center justify-between">
         <span class="text-body1 fg-body">Language</span>
         <select class="new-phrasebook-select" data-action="new-phrasebook/lang">
           ${CONTENT_LANGUAGES.map((language) => `<option value="${language}" ${state.lang === language ? "selected" : ""}>${LANG_FLAGS[language]} ${LANG_NAMES[language]}</option>`).join("")}
         </select>
       </label>
-      <label class="new-phrasebook-row new-phrasebook-ability flex items-center justify-between">
+      <label class="new-phrasebook-row flex items-center justify-between">
         <span class="text-body1 fg-body">Your ability</span>
         <select class="new-phrasebook-select" data-action="new-phrasebook/ability">
           ${ABILITIES.map((ability) => `<option value="${ability}" ${state.ability === ability ? "selected" : ""}>${ABILITY_LABELS[ability]}</option>`).join("")}

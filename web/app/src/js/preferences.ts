@@ -1,8 +1,10 @@
 import type { Lang } from "@catchphrase/card-schema";
 import type { Ability } from "./library-types";
 import { isAbility } from "./ability";
+import { isContentLanguage } from "./lang";
 
 export const LAST_DECK_KEY = "loudmouth-topic-v3.lastDeckId";
+export const CREATION_LANGUAGE_KEY = "loudmouth-topic-v3.creationLanguage";
 export const LANGUAGE_ABILITY_PREFIX = "loudmouth-topic-v3.languageAbility.";
 export const PHRASE_BREAKDOWN_CACHE_PREFIX = "loudmouth-topic-v3.phrase-breakdown.v1:";
 
@@ -38,6 +40,23 @@ export function setLastAbility(lang: Lang, ability: Ability): void {
     if (isAbility(ability)) {
       localStorage.setItem(`${LANGUAGE_ABILITY_PREFIX}${lang}`, ability);
     }
+  } catch {
+    // Storage-disabled environments have no durable preference.
+  }
+}
+
+export function getLastCreationLanguage(): Lang | undefined {
+  try {
+    const lang = localStorage.getItem(CREATION_LANGUAGE_KEY);
+    return isContentLanguage(lang) ? lang : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function setLastCreationLanguage(lang: Lang): void {
+  try {
+    if (isContentLanguage(lang)) localStorage.setItem(CREATION_LANGUAGE_KEY, lang);
   } catch {
     // Storage-disabled environments have no durable preference.
   }

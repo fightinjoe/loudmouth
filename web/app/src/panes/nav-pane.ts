@@ -136,7 +136,7 @@ const navPane = {
         ui.transition('shell/close');
       } catch(error) { showError(error); }
     });
-    delegate.register('nav/open-new-phrasebook',()=>ui.transition('action/open',{kind:'new-phrasebook',payload:{}}));
+    delegate.register('nav/open-new-phrasebook',()=>ui.transition('action/open',{kind:'creation',payload:{}}));
     return ()=>{
       ++inflight;
       unsubItems();unsubReload();

@@ -48,25 +48,31 @@ local library.
 
 ## Guided creation
 
-Creation uses two sequential action-pane modes:
+**New phrasebook** opens the full-height **Creation** action pane directly. Language selection is a
+step within that pane, not a separate setup sheet. With no saved phrasebooks, the learner first sees
+an unselected language radio list and must choose a language, then press **Next**, before the prompt
+appears. Returning learners start at the prompt using their last confirmed creation language; if no
+preference exists, the newest saved phrasebook supplies the default.
 
-1. **New phrasebook** — choose the target language. Language is immutable for the resulting phrasebook.
-2. **Creation** — enter a situation, answer generated clarification questions, choose which suggested
-   conversations to prepare, and generate the complete phrasebook.
+The selected language appears below the textarea. Tapping it opens the same radio list with the
+current language selected. **Next** confirms the choice and returns to the preserved prompt; **Back**
+cancels the pending language change. Confirmed choices are remembered in this browser independently
+of phrasebook saving. Language remains immutable after the phrasebook is saved.
 
 The creation mode is a linear flow:
 
 ```text
-topic → questions → conversation checklist (generation runs) → wait if needed → phrasebook
+language (first time or change) → topic → questions → conversation checklist (generation runs) → wait if needed → phrasebook
 ```
 
 Topic submission calls `/context` with `{ seed, language, ability? }` (using the remembered ability
 for this language when available) and independently starts `/phrasebook-title` with `{ seed }`. 
 Otherwise the client prepends "What is your language ability?" to the returned questions, with
 options None, Basics, Conversational. On web, each question occupies its own action-pane page.
-Radio lists start with no selection and use the checklist's grouped rows with circular indicators.
-Choosing a preset advances immediately. Generated questions end with an Other radio and a text box
-whose placeholder is "other"; typing selects it, and Next or Enter submits nonblank, trimmed text.
+Language and context questions share the same grouped-row radio component with circular indicators.
+Clicking a radio only selects it; **Next** advances. Context questions start unselected. Generated
+questions end with an Other radio and a text box whose placeholder is "other"; typing selects it,
+and Next or Enter submits nonblank, trimmed text.
 Ability retains only its three supported choices. Previous and Next preserve answers, with Next
 disabled until the current question has an answer. Completing the last question
 starts `/phrasebook` with `{ seed, language, ability, answers, checklist }`, using the selected or
@@ -74,10 +80,13 @@ remembered enum value and excluding the ability question from `answers`. `checkl
 suggested topics. The learner selects 1–8 topics locally while generation runs; model selection 
 remains server-owned.
 
-Nothing is persisted while answering questions or selecting topics, even if generation has finished.
-Final Continue validates the whole v3 draft, retains selected topics by original index, and atomically
-saves their independent sections and Word placements. There is no word pooling or global cap, and no
-duplicate text request. Back without changes reuses work; answer or seed changes invalidate text work.
+No phrasebook data is persisted while answering questions or selecting topics, even if generation has
+finished; the confirmed language preference is independent. Final Continue validates the whole v3
+draft, retains selected topics by original index, and atomically saves their independent sections and
+Word placements. There is no word pooling or global cap, and no duplicate text request. Back without
+changes reuses work; answer or seed changes invalidate text work. Changing the confirmed language
+preserves the prompt but clears context, answers, and checklist, aborts speculative work, and resolves
+the remembered ability for the new language before requesting fresh context.
 Confirmation shows the loading state for at least 1000 ms before saving and displaying the phrasebook,
 configured by `PHRASEBOOK_MIN_LOADING_MS` in `web/app/src/components/creation-panel.ts`.
 This minimum overlaps any remaining generation time rather than adding a delay after generation.

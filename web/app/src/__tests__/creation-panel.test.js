@@ -2,14 +2,16 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 
-const { commitPhrasebook, setDeckIllustration } = vi.hoisted(() => ({
+const { commitPhrasebook, setDeckIllustration, getDecks } = vi.hoisted(() => ({
   commitPhrasebook: vi.fn(),
   setDeckIllustration: vi.fn(),
+  getDecks: vi.fn(),
 }));
 vi.mock("../js/db", async (importOriginal) => ({
   ...(await importOriginal()),
   commitPhrasebook,
   setDeckIllustration,
+  getDecks,
 }));
 
 const { getContext, generatePhrasebook, getPhrasebookTitle, generatePhrasebookImage } = vi.hoisted(() => ({
@@ -26,7 +28,7 @@ vi.mock("../js/phrasebook-api", () => ({
 }));
 
 import { createDb } from "../js/db";
-import { getLastAbility, setLastAbility } from "../js/preferences";
+import { getLastAbility, setLastAbility, getLastCreationLanguage, setLastCreationLanguage } from "../js/preferences";
 import { ABILITY_QUESTION } from "../js/ability";
 import { openCreationPanel } from "../components/creation-panel";
 
@@ -135,6 +137,8 @@ beforeEach(() => {
   document.body.appendChild(appElement);
   localStorage.clear();
   sessionStorage.clear();
+  getDecks.mockReset();
+  getDecks.mockResolvedValue([]);
   commitPhrasebook.mockReset();
   commitPhrasebook.mockResolvedValue(committedDeck);
   getContext.mockReset();
@@ -177,7 +181,7 @@ function gotoChecklist() {
     const next = appElement.querySelector('[data-action="creation/next-question"]');
     expect(next).not.toBeNull();
     if (next.disabled) choosePreset();
-    else next.click();
+    next.click();
   }
   throw new Error("Question navigation did not reach the checklist");
 }
@@ -205,10 +209,183 @@ function createStore() {
   return store.open().then(() => store);
 }
 
+describe("openCreationPanel — language selection", () => {
+  it("opens the full pane before loading and requires a confirmed first language despite a stale preference", async () => {
+    const decks = deferred();
+    getDecks.mockReturnValueOnce(decks.promise);
+    setLastCreationLanguage("ja");
+    const sheet = openCreationPanel(appElement, {}, () => {});
+    expect(sheet.panel.classList.contains("bottom-sheet--full")).toBe(true);
+    expect(appElement.querySelector(".creation-input-field")).toBeNull();
+    decks.resolve([]);
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-language-question")).not.toBeNull());
+    expect(appElement.querySelector('input[type="radio"]:checked')).toBeNull();
+    const next = appElement.querySelector('[data-action="creation/next-language"]');
+    expect(next.disabled).toBe(true);
+    appElement.querySelector('[data-action="creation/language"][value="es"]').click();
+    expect(next.disabled).toBe(false);
+    expect(appElement.querySelector(".creation-input-field")).toBeNull();
+    expect(getLastCreationLanguage()).toBe("ja");
+    next.click();
+    expect(getLastCreationLanguage()).toBe("es");
+    expect(appElement.querySelector(".creation-input-field")).not.toBeNull();
+    expect(appElement.querySelector('[data-action="creation/edit-language"]').textContent).toContain("Spanish");
+    sheet.close();
+  });
+
+  it("defaults returning learners to their last confirmed language and its remembered ability", async () => {
+    getDecks.mockResolvedValueOnce([committedDeck]);
+    setLastCreationLanguage("ja");
+    setLastAbility("es", "none");
+    setLastAbility("ja", "basics");
+    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
+    const sheet = openCreationPanel(appElement, {}, () => {});
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-input-field")).not.toBeNull());
+    expect(appElement.querySelector('[data-action="creation/edit-language"]').textContent).toContain("Japanese");
+    typeAndSubmitTopic("salsa dancing");
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-question")).not.toBeNull());
+    expect(getContext.mock.calls[0][0]).toMatchObject({ language: "ja", ability: "basics" });
+    gotoChecklist();
+    expect(generatePhrasebook.mock.calls[0][0]).toMatchObject({ language: "ja", ability: "basics" });
+    sheet.close();
+  });
+
+  it("falls back to the most recently created saved phrasebook rather than the most recently accessed one", async () => {
+    getDecks.mockResolvedValueOnce([
+      { ...committedDeck, id: "older", lang: "es", lastAccessedAt: "2026-04-01T00:00:00.000Z" },
+      { ...committedDeck, id: "newer", lang: "cs", createdAt: "2026-03-01T00:00:00.000Z" },
+      { ...committedDeck, id: "middle", lang: "ja", createdAt: "2026-02-01T00:00:00.000Z" },
+    ]);
+    getContext.mockReturnValueOnce(new Promise(() => {}));
+    const sheet = openCreationPanel(appElement, {}, () => {});
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-input-field")).not.toBeNull());
+    typeAndSubmitTopic("ordering coffee");
+    expect(getContext.mock.calls[0][0].language).toBe("cs");
+    sheet.close();
+  });
+
+  it("keeps a failed library lookup in the same pane and retries instead of silently choosing a language", async () => {
+    getDecks.mockRejectedValueOnce(new Error("Library unavailable"));
+    setLastCreationLanguage("ja");
+    const sheet = openCreationPanel(appElement, {}, () => {});
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-error")?.textContent).toContain("Library unavailable"));
+    expect(appElement.querySelector(".creation-input-field")).toBeNull();
+    expect(appElement.querySelector(".creation-language-question")).toBeNull();
+    appElement.querySelector('[data-action="creation/retry"]').click();
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-language-question")).not.toBeNull());
+    expect(appElement.querySelectorAll(".creation-panel")).toHaveLength(1);
+    expect(sheet.panel.querySelector('input[type="radio"]:checked')).toBeNull();
+    sheet.close();
+  });
+
+  it("preserves the prompt and cached context when a language edit is cancelled or confirmed unchanged", async () => {
+    setLastCreationLanguage("es");
+    const sheet = await openQuestions();
+    gotoChecklist();
+    const generation = generatePhrasebook.mock.calls[0][0];
+    const art = generatePhrasebookImage.mock.calls[0][0];
+    appElement.querySelector('[data-action="creation/back"]').click();
+    appElement.querySelector('[data-action="creation/back"]').click();
+    appElement.querySelector('[data-action="creation/edit-language"]').click();
+    expect(appElement.querySelector('input[type="radio"]:checked').value).toBe("es");
+    appElement.querySelector('[data-action="creation/language"][value="ja"]').click();
+    expect(getLastCreationLanguage()).toBe("es");
+    appElement.querySelector('[data-action="creation/back"]').click();
+    expect(appElement.querySelector(".creation-input-field").value).toBe("salsa dancing");
+    expect(appElement.querySelector('[data-action="creation/edit-language"]').textContent).toContain("Spanish");
+    appElement.querySelector('[data-action="creation/edit-language"]').click();
+    expect(appElement.querySelector('input[type="radio"]:checked').value).toBe("es");
+    appElement.querySelector('[data-action="creation/next-language"]').click();
+    expect(appElement.querySelector(".creation-input-field").value).toBe("salsa dancing");
+    typeAndSubmitTopic("salsa dancing");
+    gotoChecklist();
+    expect(getContext).toHaveBeenCalledTimes(1);
+    expect(generatePhrasebook).toHaveBeenCalledTimes(1);
+    expect(generation.signal.aborted).toBe(false);
+    expect(art.signal.aborted).toBe(false);
+    sheet.close();
+  });
+
+  it("invalidates old-language context, answers, checklist, generation, and art only when a new language is confirmed", async () => {
+    setLastCreationLanguage("ja");
+    setLastAbility("ja", "conversational");
+    setLastAbility("es", "basics");
+    const oldGeneration = deferred();
+    const newResponse = {
+      ...sampleGenerateResponse,
+      groups: [{ ...sampleGenerateResponse.groups[0], id: "new-language-group" }],
+    };
+    generatePhrasebook.mockReturnValueOnce(oldGeneration.promise).mockResolvedValueOnce(newResponse);
+    await openQuestions({ params: { lang: "ja" } });
+    gotoChecklist();
+    appElement.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[1].click();
+    const oldRequest = generatePhrasebook.mock.calls[0][0];
+    const oldArt = generatePhrasebookImage.mock.calls[0][0];
+    appElement.querySelector('[data-action="creation/back"]').click();
+    appElement.querySelector('[data-action="creation/back"]').click();
+    appElement.querySelector('[data-action="creation/edit-language"]').click();
+    appElement.querySelector('[data-action="creation/language"][value="es"]').click();
+    expect(oldRequest.signal.aborted).toBe(false);
+    expect(oldArt.signal.aborted).toBe(false);
+    expect(getLastCreationLanguage()).toBe("ja");
+    appElement.querySelector('[data-action="creation/next-language"]').click();
+    expect(oldRequest.signal.aborted).toBe(true);
+    expect(oldArt.signal.aborted).toBe(true);
+    expect(getPhrasebookTitle.mock.calls[0][0].signal.aborted).toBe(true);
+    expect(getLastCreationLanguage()).toBe("es");
+    expect(appElement.querySelector(".creation-input-field").value).toBe("salsa dancing");
+    getContext.mockResolvedValueOnce({
+      ...sampleQuestionsResponse,
+      questions: [{ label: "Partner", options: ["Friend", "Stranger"] }],
+      checklist: [{ label: "New context", checked: true }],
+    });
+    typeAndSubmitTopic("salsa dancing");
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-question")).not.toBeNull());
+    expect(getContext).toHaveBeenCalledTimes(2);
+    expect(getContext.mock.calls[1][0]).toMatchObject({ seed: "salsa dancing", language: "es", ability: "basics" });
+    expect(appElement.querySelector('input[type="radio"]:checked')).toBeNull();
+    oldGeneration.resolve(sampleGenerateResponse);
+    await Promise.resolve();
+    gotoChecklist();
+    expect(generatePhrasebook.mock.calls[1][0]).toMatchObject({
+      language: "es", ability: "basics", answers: { Partner: "Friend" }, checklist: ["New context"],
+    });
+    appElement.querySelector('[data-action="creation/submit-context"]').click();
+    await waitForCommit();
+    expect(commitPhrasebook.mock.calls[0][0]).toMatchObject({
+      lang: "es",
+      generation: { seed: "salsa dancing", ability: "basics", answers: { Partner: "Friend" } },
+      groups: newResponse.groups,
+      selectedIndexes: [0],
+    });
+    expect(getLastAbility("ja")).toBe("conversational");
+    expect(getLastAbility("es")).toBe("basics");
+  });
+
+  it("asks for ability after switching to a language without a saved ability rather than reusing the initial override", async () => {
+    const sheet = await openQuestions({ params: { lang: "es", ability: "none" } });
+    appElement.querySelector('[data-action="creation/back"]').click();
+    appElement.querySelector('[data-action="creation/edit-language"]').click();
+    appElement.querySelector('[data-action="creation/language"][value="ja"]').click();
+    appElement.querySelector('[data-action="creation/next-language"]').click();
+    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
+    typeAndSubmitTopic("salsa dancing");
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-question-label")?.textContent).toBe(ABILITY_QUESTION));
+    expect(getContext.mock.calls[1][0].language).toBe("ja");
+    expect(getContext.mock.calls[1][0]).not.toHaveProperty("ability");
+    choosePreset(2);
+    expect(generatePhrasebook).not.toHaveBeenCalled();
+    appElement.querySelector('[data-action="creation/next-question"]').click();
+    gotoChecklist();
+    expect(generatePhrasebook.mock.calls[0][0]).toMatchObject({ language: "ja", ability: "conversational" });
+    expect(getLastAbility("ja")).toBeUndefined();
+    sheet.close();
+  });
+});
+
 describe("openCreationPanel — input and context", () => {
-  it("renders the chosen language and enables topic submission only for input", () => {
+  it("enables topic submission only for input", () => {
     openCreationPanel(appElement, { lang: "es", ability: "none" }, () => {});
-    expect(appElement.querySelector(".pane-header-title").textContent).toContain("Spanish");
     const submit = appElement.querySelector('[data-action="creation/submit-topic"]');
     expect(submit.disabled).toBe(true);
 
@@ -258,6 +435,10 @@ describe("openCreationPanel — input and context", () => {
     expect(generatePhrasebook).not.toHaveBeenCalled();
 
     choosePreset(1);
+    expect(appElement.querySelector(".creation-question-label").textContent).toBe("Scene");
+    expect(appElement.querySelector('[data-action="creation/next-question"]').disabled).toBe(false);
+    expect(generatePhrasebook).not.toHaveBeenCalled();
+    appElement.querySelector('[data-action="creation/next-question"]').click();
     expect(appElement.querySelector(".creation-question-label").textContent).toBe("Partner");
     expect(appElement.querySelector('input[type="radio"]:checked')).toBeNull();
     expect(appElement.querySelector('[data-action="creation/next-question"]').disabled).toBe(true);
@@ -272,6 +453,9 @@ describe("openCreationPanel — input and context", () => {
     expect(appElement.querySelector('input[type="radio"]:checked')).toBeNull();
 
     choosePreset(0);
+    expect(appElement.querySelector('[data-action="creation/submit-context"]')).toBeNull();
+    expect(generatePhrasebook).not.toHaveBeenCalled();
+    appElement.querySelector('[data-action="creation/next-question"]').click();
     expect(appElement.querySelector('[data-action="creation/submit-context"]')).not.toBeNull();
     expect(generatePhrasebook.mock.calls[0][0].answers).toEqual({
       Scene: "Class",
@@ -296,7 +480,6 @@ describe("openCreationPanel — input and context", () => {
     const radios = [...appElement.querySelectorAll('input[type="radio"]')];
     expect(radios.at(-1).dataset.action).toBe("creation/other");
     let input = appElement.querySelector(".creation-other-input");
-    expect(input.placeholder).toBe("other");
     input.value = " \t ";
     input.dispatchEvent(new Event("input"));
     expect(appElement.querySelector('[data-action="creation/other"]').checked).toBe(true);
@@ -335,6 +518,7 @@ describe("openCreationPanel — input and context", () => {
       },
     });
     choosePreset(1);
+    appElement.querySelector('[data-action="creation/next-question"]').click();
 
     const generation = generatePhrasebook.mock.calls[0][0];
     expect(Object.hasOwn(generation.answers, "__proto__")).toBe(true);
@@ -403,6 +587,8 @@ describe("openCreationPanel — speculative generation", () => {
     appElement.querySelector('[data-action="creation/back"]').click();
     choosePreset(1);
     expect(oldSignal.aborted).toBe(true);
+    expect(generatePhrasebook).toHaveBeenCalledTimes(1);
+    appElement.querySelector('[data-action="creation/next-question"]').click();
 
     oldRequest.resolve(sampleGenerateResponse);
     await Promise.resolve();
@@ -543,6 +729,7 @@ describe("openCreationPanel — atomic commit lifetime", () => {
       onCreated: (deck) => { createdDeck = deck; },
     });
     choosePreset(1);
+    appElement.querySelector('[data-action="creation/next-question"]').click();
     appElement.querySelectorAll('[data-action="creation/toggle-checklist-item"]')[2].click();
     appElement.querySelector('[data-action="creation/submit-context"]').click();
     await waitForCommit();
@@ -768,6 +955,7 @@ describe("openCreationPanel — independent cover work", () => {
     gotoChecklist();
     appElement.querySelector('[data-action="creation/back"]').click();
     choosePreset(1);
+    appElement.querySelector('[data-action="creation/next-question"]').click();
     expect(generatePhrasebookImage).toHaveBeenCalledTimes(1);
     appElement.querySelector('[data-action="creation/back"]').click();
     appElement.querySelector('[data-action="creation/back"]').click();

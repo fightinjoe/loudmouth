@@ -632,8 +632,9 @@ The creation panel:
    options None, Basics, Conversational. On web, every question has its own radio-list page, with
    nothing initially selected. The model is instructed not to ask language proficiency questions.
    This extra question is outside the model's five-question cap.
-4. Choosing a preset advances to the next question. Generated questions also offer a final Other
-   radio/text input; Next or Enter submits its nonblank, trimmed text. Ability has no custom option.
+4. Clicking a preset only selects its radio; Next advances. Language selection and context questions
+   share the web radio-list component. Generated questions also offer a final Other radio/text input;
+   Next or Enter submits its nonblank, trimmed text. Ability has no custom option.
    Previous and Next preserve answers. Completing the last question calls `/phrasebook` with the
    selected or remembered ability enum, copied flat `answers` excluding the ability question,
    and all checklist labels in order.
@@ -641,9 +642,11 @@ The creation panel:
 6. On final Continue, reuses the pending or ready response and commits selected topic sections and
    topic-local Word placements without pooling.
 
-Setup and speculative text remain ephemeral until commit. Context completion starts independent
-cover work; answer/checklist changes do not restart it. Dismissal cancels unbound art and text, but
-an illustration already bound to a completed text save may finish afterward.
+Speculative phrasebook data remains ephemeral until commit. The confirmed creation-language
+preference is remembered separately. Changing language preserves the prompt but clears context,
+answers, and checklist and aborts speculative work before requesting fresh context. Context completion
+starts independent cover work; answer/checklist changes do not restart it. Dismissal cancels unbound
+art and text, but an illustration already bound to a completed text save may finish afterward.
 
 ## `/phrasebook-image`
 
@@ -1203,15 +1206,17 @@ location. Structural checks do not establish teaching quality or cultural approp
 ### Client integration
 
 - Topic entry calls `/context` with `{ seed, language, ability? }`, using remembered ability.
-- Web questions start unselected on individual radio-list pages. Presets advance automatically;
-  generated questions also accept Other text via Next or Enter. Previous/Next preserve answers.
+- Web language and context steps share grouped radio lists. Clicking selects without advancing;
+  Next advances. Context questions start unselected and also accept Other text via Next or Enter.
+  Previous/Next preserve answers.
 - Advancing from questions starts one `/phrasebook` request with all checklist topics, copied flat
   `answers` excluding the client ability question, and the selected or remembered `ability`.
   Toggling topics never sends another request.
 - Final Continue validates all topics before filtering original indexes (titles may duplicate), then
   commits independent essential/dialogue occurrences and topic Word placements without pooling.
 - Back without input changes reuses work. Changing an answer or seed invalidates and aborts it;
-  request-identity guards ignore stale responses.
+  changing language also clears context and resolves ability for the new language.
+  Request-identity guards ignore stale responses.
 - Background failures leave the checklist usable. Final Continue surfaces the error; retry preserves
   selections and starts fresh text work. Dismissal aborts text and unbound art, not committed cover work.
 - No automatic save or navigation occurs when speculative generation finishes. Persistence begins

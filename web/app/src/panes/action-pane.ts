@@ -46,8 +46,8 @@ export interface PreviewDeck {
 export type ActionOpen =
   | { kind: "settings"; payload: { deck: Deck; cards: LibraryEntry[] } }
   | { kind: "review"; payload: { deck: Deck; cards: LibraryEntry[] } }
-  | { kind: "creation"; payload: { lang: Lang } }
-  | { kind: "new-phrasebook"; payload: { suggestion?: SuggestedPhrasebook } }
+  | { kind: "creation"; payload: { lang?: Lang } }
+  | { kind: "new-phrasebook"; payload: { suggestion: SuggestedPhrasebook } }
   | { kind: "card-edit"; payload: { entry: LibraryEntry } }
   | { kind: "json"; payload: { title: string; jsonString: string } };
 
@@ -194,7 +194,7 @@ function openKind(
     case "creation":
       return openCreationPanel(
         hostElement,
-        { lang: open.payload.lang },
+        open.payload,
         (deck: Deck) => {
           ui.transition("shell/close");
           ui.transition("nav/reload");
@@ -209,22 +209,14 @@ function openKind(
       let sheetHandle: BottomSheetHandle | null = null;
       sheetHandle = openNewPhrasebookPanel(
         hostElement,
-        (lang) => {
-          ui.transition("action/open", {
-            kind: "creation",
-            payload: { lang },
-          });
-        },
         onDismiss,
         suggestion,
-        suggestion
-          ? ({ ability }) => {
-              const preview = buildPreview(suggestion, ability);
-              ui.transition("shell/close");
-              ui.transition("content/loaded", preview);
-              sheetHandle?.close();
-            }
-          : undefined,
+        ({ ability }) => {
+          const preview = buildPreview(suggestion, ability);
+          ui.transition("shell/close");
+          ui.transition("content/loaded", preview);
+          sheetHandle?.close();
+        },
       );
       return sheetHandle;
     }

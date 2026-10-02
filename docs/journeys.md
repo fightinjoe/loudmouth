@@ -28,24 +28,27 @@ Content names describe what a pane renders; they do not create new pane componen
 **One-line:** The learner chooses a language, describes an upcoming situation, answers a few targeted
 questions, selects conversations to prepare, and receives a complete phrasebook.
 
-**Panes traversed:** Navigation *(landing)* → Action *(new phrasebook → creation)* → Content
-*(phrasebook)*.
+**Panes traversed:** Navigation *(landing)* → Action *(creation, including language selection)* →
+Content *(phrasebook)*.
 
 ### Step by step
 
 1. **Start from navigation.**
    - In the empty state, the landing banner offers the first phrasebook.
    - Returning users start from the navigation pane's new-phrasebook FAB.
-   - Both entry points open the same action-pane flow.
+   - Both entry points immediately open the same full-height creation action pane.
 
-2. **Choose language.**
-   - The action pane first shows **New phrasebook** with a target-language select.
-   - Language becomes the phrasebook's immutable target language.
-   - Remembered ability is reused; otherwise creation asks for it before the context questions.
-   - Continuing does not create or persist a phrasebook.
+2. **Choose language when needed.**
+   - With no saved phrasebooks, the pane shows an unselected language radio list. Select a language,
+     then press **Next** to reach the prompt; selecting the radio does not advance.
+   - Returning users start at the prompt with their last confirmed language. If no preference exists,
+     the newest saved phrasebook supplies the default.
+   - Confirmed language choices are remembered separately; continuing does not save a phrasebook.
+   - Remembered ability is reused per language; otherwise creation asks before the context questions.
 
 3. **Enter the situation.**
-   - The action pane moves to **Creation** at full height.
+   - The selected language appears below the textarea. Tap it to choose another using the same radio
+     list. **Next** confirms; **Back** cancels the language edit. Both preserve the typed prompt.
    - The learner enters a situation, activity, or topic in the `Enter word, phrase, or topic` field.
    - Continue is disabled while the trimmed field is empty.
    - Submitting calls `/context` with `{ seed, language, ability? }` and independently requests a title.
@@ -54,8 +57,9 @@ questions, selects conversations to prepare, and receives a complete phrasebook.
 4. **Answer clarification questions.**
    - The action pane shows the entered situation under the language header.
    - On web, each question has its own radio-list page with no initial selection.
-   - Choosing a preset advances automatically. Generated questions end with an Other radio and a
-     text box with placeholder "other"; nonblank text is submitted with Next or Enter.
+   - Language and context questions share the radio-list component. Clicking an item only selects
+     it; **Next** advances. Generated questions end with an Other radio and a text box with placeholder
+     "other"; nonblank text is submitted with Next or Enter.
    - The client-owned ability question offers only None, Basics, and Conversational.
    - Previous and Next preserve answers; Next is disabled while the current answer is empty.
    - Answers stay in local creation state. Changing an answer invalidates earlier speculative work.
@@ -76,14 +80,18 @@ questions, selects conversations to prepare, and receives a complete phrasebook.
 
 7. **Commit and open.**
    - Only explicit Continue plus a successful response creates the local phrasebook and imports cards.
-   - Selected conversation bundles retain checklist order. The client pools their vocabulary,
-     deduplicates by normalized English word, and caps at `min(24, 5 × selected topics)`.
+   - Selected topics retain checklist order, independent essential/dialogue occurrences, and
+     topic-local vocabulary placements without pooling or a global word cap.
    - The action pane closes and the new phrasebook opens in the content pane.
 
 ### State and failure rules
 
-- Creation state is ephemeral. Dismissing aborts outstanding requests and discards uncommitted results.
+- Phrasebook creation state is ephemeral. Dismissing aborts outstanding requests and discards
+  uncommitted results; the confirmed language preference survives.
 - Back walks checklist → individual questions in reverse → topic; Back from topic dismisses creation.
+  Back from language editing returns to the unchanged prompt; from first-time language selection it dismisses.
+- Changing the confirmed language clears prior context/answers/checklist and aborts speculative work,
+  while preserving the prompt. Submitting it requests fresh context with the new language and ability.
 - A context-request error returns to the topic stage on retry. A generation error returns to the
   checklist stage on retry and starts fresh generation. Previously entered choices remain available.
 - The client never exposes a partly generated or partly imported phrasebook.

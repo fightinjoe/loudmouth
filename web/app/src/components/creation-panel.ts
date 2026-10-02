@@ -3,21 +3,21 @@ import { openBottomSheet } from "./bottom-sheet";
 import type { BottomSheetHandle } from "./bottom-sheet";
 import { getContext, generatePhrasebook, getPhrasebookTitle } from "../js/phrasebook-api";
 import type { Ability } from "../js/phrasebook-api";
-import { commitPhrasebook as persistPhrasebook } from "../js/db";
+import { commitPhrasebook as persistPhrasebook, getDecks } from "../js/db";
 import type { Deck, DeckIllustration, Generation } from "../js/library-types";
 import { createIllustrationTask } from "../js/phrasebook-illustration";
 import type { IllustrationTask } from "../js/phrasebook-illustration";
-import { LANG_FLAGS, LANG_NAMES } from "../js/lang";
+import { CONTENT_LANGUAGES, LANG_FLAGS, LANG_NAMES } from "../js/lang";
 import { icon } from "./icon";
 import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header";
 import { escapeHTML } from "../js/utils";
-import { getLastAbility, setLastAbility } from "../js/preferences";
+import { getLastAbility, setLastAbility, getLastCreationLanguage, setLastCreationLanguage } from "../js/preferences";
 import { ABILITIES, ABILITY_LABELS, ABILITY_QUESTION } from "../js/ability";
 
 const PHRASEBOOK_MIN_LOADING_MS = 1000;
 
-type CreationStep = "topic" | "questions" | "checklist" | "generating" | "error";
-type ResumeStep = "topic" | "checklist";
+type CreationStep = "initializing" | "language" | "topic" | "questions" | "checklist" | "generating" | "error";
+type ResumeStep = "initializing" | "topic" | "checklist";
 type PhrasebookRequestOutcome =
   | { status: "pending" }
   | { status: "ready"; result: PhrasebookResponse }
@@ -38,6 +38,7 @@ interface TitleRequest {
 
 interface PhrasebookRequest {
   controller: AbortController;
+  language: Lang;
   generation: Generation;
   outcome: PhrasebookRequestOutcome;
   promise: Promise<void>;
@@ -50,6 +51,7 @@ interface CommitRequest {
 
 interface CreationState {
   step: CreationStep;
+  pendingLanguage: Lang | undefined;
   topic: string;
   contextSeed: string | null;
   questions: ContextQuestion[];
@@ -68,7 +70,7 @@ interface CreationState {
 }
 
 export interface CreationPanelParams {
-  lang: Lang;
+  lang?: Lang;
   ability?: Ability;
 }
 
@@ -81,14 +83,16 @@ export type PhrasebookCreatedCallback = (deck: Deck) => void;
  */
 export function openCreationPanel(
   appElement: HTMLElement,
-  { lang, ability: initialAbility }: CreationPanelParams,
+  { lang: initialLanguage, ability: initialAbility }: CreationPanelParams,
   onCreated: PhrasebookCreatedCallback,
   onDismiss?: () => void,
   onIllustrationUpdated: (deckId: string, illustration: DeckIllustration) => void = () => {},
 ): BottomSheetHandle {
-  const rememberedAbility = initialAbility ?? getLastAbility(lang);
+  let lang = initialLanguage;
+  let rememberedAbility = lang ? initialAbility ?? getLastAbility(lang) : undefined;
   const state: CreationState = {
-    step: "topic",
+    step: lang ? "topic" : "initializing",
+    pendingLanguage: lang,
     topic: "",
     contextSeed: null,
     questions: [],
@@ -142,7 +146,51 @@ export function openCreationPanel(
   });
   closeObserver.observe(sheet.panel, { attributes: true, attributeFilter: ["class"] });
 
+  if (!lang) void initializeLanguage();
+
   return sheet;
+
+  async function initializeLanguage(): Promise<void> {
+    state.step = "initializing";
+    state.resumeStep = "initializing";
+    state.error = null;
+    rerender();
+    try {
+      const decks = await getDecks(null);
+      if (dismissed) return;
+      const newest = decks.reduce<Deck | undefined>((latest, deck) =>
+        !latest || deck.createdAt > latest.createdAt ? deck : latest, undefined);
+      lang = newest ? getLastCreationLanguage() ?? newest.lang : undefined;
+      rememberedAbility = lang ? initialAbility ?? getLastAbility(lang) : undefined;
+      state.pendingLanguage = lang;
+      state.step = lang ? "topic" : "language";
+      state.resumeStep = "topic";
+    } catch (error) {
+      if (dismissed) return;
+      state.error = errorMessage(error);
+      state.step = "error";
+    }
+    rerender({ focusInput: state.step === "topic" });
+  }
+
+  function confirmLanguage(): void {
+    const selected = state.pendingLanguage;
+    if (!selected || dismissed) return;
+    if (selected !== lang) {
+      resetContext();
+      abortTitleRequest();
+      state.frozenTitle = null;
+      lang = selected;
+      rememberedAbility = selected === initialLanguage
+        ? initialAbility ?? getLastAbility(selected)
+        : getLastAbility(selected);
+    }
+    setLastCreationLanguage(selected);
+    state.step = "topic";
+    state.resumeStep = "topic";
+    state.error = null;
+    rerender({ focusInput: true });
+  }
 
   function dispose(): void {
     if (dismissed || completed) return;
@@ -197,6 +245,19 @@ export function openCreationPanel(
     request?.controller.abort();
   }
 
+  function resetContext(): void {
+    abortContextRequest();
+    invalidatePhrasebook();
+    state.illustrationTask?.cancel();
+    state.illustrationTask = null;
+    state.contextSeed = null;
+    state.questions = [];
+    state.questionIndex = 0;
+    state.otherQuestions.clear();
+    state.checklist = [];
+    state.answers = Object.create(null);
+  }
+
   function rerender({ focusInput = false }: { focusInput?: boolean } = {}): void {
     if (dismissed) return;
     const inner = sheet.panel.querySelector<HTMLElement>(".creation-panel-inner");
@@ -204,7 +265,7 @@ export function openCreationPanel(
     inner.innerHTML = renderStep(state, lang);
     bind(sheet.panel);
     if (focusInput) focusInputIfPresent(sheet.panel);
-    if (state.step === "questions") {
+    if (state.step === "questions" || state.step === "language") {
       sheet.panel.querySelector<HTMLElement>(".creation-question-label")?.focus();
     }
   }
@@ -220,7 +281,7 @@ export function openCreationPanel(
 
   async function submitTopic(rawTopic: string): Promise<void> {
     const topic = rawTopic.trim();
-    if (!topic || dismissed) return;
+    if (!topic || !lang || dismissed) return;
 
     state.topic = topic;
     ensureTitleRequest(topic);
@@ -232,16 +293,7 @@ export function openCreationPanel(
       return;
     }
 
-    abortContextRequest();
-    invalidatePhrasebook();
-    state.illustrationTask?.cancel();
-    state.illustrationTask = null;
-    state.contextSeed = null;
-    state.questions = [];
-    state.questionIndex = 0;
-    state.otherQuestions.clear();
-    state.checklist = [];
-    state.answers = Object.create(null);
+    resetContext();
     state.step = "generating";
     rerender();
 
@@ -282,6 +334,7 @@ export function openCreationPanel(
 
   function ensurePhrasebookRequest(): PhrasebookRequest {
     if (state.phrasebookRequest) return state.phrasebookRequest;
+    if (!lang) throw new Error("Choose a language before continuing.");
 
     const answers = Object.fromEntries(
       Object.entries(state.answers).filter(([label]) => label !== ABILITY_QUESTION),
@@ -299,6 +352,7 @@ export function openCreationPanel(
     const controller = new AbortController();
     const request: PhrasebookRequest = {
       controller,
+      language: lang,
       generation,
       outcome: { status: "pending" },
       promise: Promise.resolve(),
@@ -306,7 +360,7 @@ export function openCreationPanel(
     state.phrasebookRequest = request;
     request.promise = generatePhrasebook({
       ...generation,
-      language: lang,
+      language: request.language,
       checklist,
       signal: controller.signal,
     }).then(
@@ -382,7 +436,7 @@ export function openCreationPanel(
     try {
       deck = await persistPhrasebook({
         name: title,
-        lang,
+        lang: request.language,
         generation: request.generation,
         groups: request.outcome.result.groups,
         selectedIndexes,
@@ -398,7 +452,7 @@ export function openCreationPanel(
 
     // Transaction completion is the success boundary. A dismissal that races
     // after it never deletes the committed phrasebook.
-    setLastAbility(lang, request.generation.ability);
+    setLastAbility(request.language, request.generation.ability);
     completed = true;
     closeObserver?.disconnect();
     if (dismissed) return;
@@ -433,7 +487,11 @@ export function openCreationPanel(
 
   // Back walks each question in reverse before returning to the topic.
   function goBack(): void {
-    if (state.step === "checklist") {
+    if (state.step === "language" && lang) {
+      state.pendingLanguage = lang;
+      state.step = "topic";
+      rerender({ focusInput: true });
+    } else if (state.step === "checklist") {
       state.questionIndex = Math.max(0, state.questions.length - 1);
       state.step = state.questions.length > 0 ? "questions" : "topic";
       rerender({ focusInput: state.step === "topic" });
@@ -454,13 +512,34 @@ export function openCreationPanel(
     panel.querySelector<HTMLButtonElement>('[data-action="creation/back"]')
       ?.addEventListener("click", goBack);
 
+    if (state.step === "language") bindLanguageStep(panel);
     if (state.step === "topic") bindTopicStep(panel);
     if (state.step === "questions") bindQuestionsStep(panel);
     if (state.step === "checklist") bindChecklistStep(panel);
     if (state.step === "error") bindErrorStep(panel);
   }
 
+  function bindLanguageStep(panel: HTMLElement): void {
+    panel.querySelectorAll<HTMLInputElement>('[data-action="creation/language"]')
+      .forEach((radio) => {
+        radio.addEventListener("change", () => {
+          state.pendingLanguage = CONTENT_LANGUAGES.find((language) => language === radio.value);
+          const next = panel.querySelector<HTMLButtonElement>('[data-action="creation/next-language"]');
+          if (next) next.disabled = !state.pendingLanguage;
+        });
+      });
+    panel.querySelector<HTMLButtonElement>('[data-action="creation/next-language"]')
+      ?.addEventListener("click", confirmLanguage);
+  }
+
   function bindTopicStep(panel: HTMLElement): void {
+    panel.querySelector<HTMLButtonElement>('[data-action="creation/edit-language"]')
+      ?.addEventListener("click", () => {
+        state.pendingLanguage = lang;
+        state.step = "language";
+        rerender();
+      });
+
     const inputElement = panel.querySelector<HTMLTextAreaElement>(".creation-input-field");
     if (inputElement) {
       inputElement.value = state.topic;
@@ -512,7 +591,6 @@ export function openCreationPanel(
         radio.addEventListener("change", () => {
           state.otherQuestions.delete(state.questionIndex);
           setAnswer(radio.value);
-          nextQuestion();
         });
       });
 
@@ -564,6 +642,10 @@ export function openCreationPanel(
   function bindErrorStep(panel: HTMLElement): void {
     panel.querySelector<HTMLButtonElement>('[data-action="creation/retry"]')
       ?.addEventListener("click", () => {
+        if (state.resumeStep === "initializing") {
+          void initializeLanguage();
+          return;
+        }
         state.step = state.questions.length > 0 ? state.resumeStep : "topic";
         state.error = null;
         if (state.step === "checklist") {
@@ -583,13 +665,21 @@ function errorMessage(error: unknown): string {
 
 // ── Render ───────────────────────────────────────────────────────────────
 
-function renderStep(state: Readonly<CreationState>, lang: Lang): string {
+function renderStep(state: Readonly<CreationState>, lang: Lang | undefined): string {
+  if (state.step === "initializing") {
+    return renderSurface(`
+      ${renderHeader()}
+      <div class="creation-step-body" role="status">Loading your phrasebooks…</div>
+    `);
+  }
+  if (state.step === "language") return renderLanguageStep(state);
+  if (state.step === "error") return renderErrorStep(state, lang);
+  if (!lang) throw new Error("Choose a language before continuing.");
   switch (state.step) {
     case "topic": return renderTopicStep(state, lang);
     case "questions": return renderQuestionsStep(state, lang);
     case "checklist": return renderChecklistStep(state, lang);
     case "generating": return renderGeneratingStep(state, lang);
-    case "error": return renderErrorStep(state, lang);
   }
 }
 
@@ -597,22 +687,71 @@ function renderSurface(inner: string): string {
   return `<div class="creation-surface flex-col">${inner}</div>`;
 }
 
-function renderHeader(lang: Lang, { extra = "" }: { extra?: string } = {}): string {
-  const flag = LANG_FLAGS[lang];
-  const languageName = LANG_NAMES[lang];
+function languageLabel(lang: Lang): string {
+  return `${LANG_FLAGS[lang]} ${LANG_NAMES[lang]}`.trim();
+}
+
+function renderHeader(lang?: Lang, { extra = "" }: { extra?: string } = {}): string {
   return renderPaneHeader({
     leading: headerIconButton("back", {
       action: "creation/back",
       label: "Back",
       className: "creation-back",
     }),
-    title: headerTitle(`${flag} ${languageName}`.trim()),
+    title: headerTitle(lang ? languageLabel(lang) : "New phrasebook"),
     trailing: `<div class="creation-header-right flex items-center gap-sm">${extra}</div>`,
   });
 }
 
 function renderTermLine(topic: string): string {
   return `<div class="creation-term flex items-end"><p class="creation-term-text flex-1">${escapeHTML(topic)}</p></div>`;
+}
+
+function renderRadioList<T extends string>(
+  options: readonly T[],
+  {
+    name,
+    action,
+    selected,
+    label = (value: T) => value,
+    extra = "",
+  }: {
+    name: string;
+    action: string;
+    selected?: string;
+    label?: (value: T) => string;
+    extra?: string;
+  },
+): string {
+  return `<div class="creation-radio-items flex-col">
+    ${options.map((value, index) => `
+      <label class="creation-radio-item flex items-center tappable">
+        <input type="radio" name="${escapeHTML(name)}" data-action="${escapeHTML(action)}" data-option="${index}" value="${escapeHTML(value)}" ${selected === value ? "checked" : ""}>
+        <span class="text-body1 fg-body">${escapeHTML(label(value))}</span>
+      </label>
+    `).join("")}
+    ${extra}
+  </div>`;
+}
+
+function renderLanguageStep(state: Readonly<CreationState>): string {
+  return renderSurface(`
+    ${renderHeader()}
+    <div class="creation-step-body flex-col">
+      <fieldset class="creation-question creation-language-question">
+        <legend class="creation-question-label section-label" tabindex="-1">Which language would you like to learn?</legend>
+        ${renderRadioList(CONTENT_LANGUAGES, {
+          name: "creation-language",
+          action: "creation/language",
+          selected: state.pendingLanguage,
+          label: languageLabel,
+        })}
+      </fieldset>
+    </div>
+    <div class="creation-context-footer flex items-center justify-end">
+      <button class="creation-question-nav tappable" data-action="creation/next-language" ${state.pendingLanguage ? "" : "disabled"}><span>Next</span>${icon("next")}</button>
+    </div>
+  `);
 }
 
 function renderTopicStep(state: Readonly<CreationState>, lang: Lang): string {
@@ -622,7 +761,7 @@ function renderTopicStep(state: Readonly<CreationState>, lang: Lang): string {
     : "";
 
   return renderSurface(`
-    ${renderHeader(lang, { extra: clearButton })}
+    ${renderHeader(undefined, { extra: clearButton })}
     <div class="creation-input-form flex-col">
       <div class="creation-input-wrap" data-has-value="${hasValue}">
         <div class="creation-input-field-row flex items-center">
@@ -636,6 +775,9 @@ function renderTopicStep(state: Readonly<CreationState>, lang: Lang): string {
           ></textarea>
         </div>
       </div>
+      <button class="creation-language-choice tappable flex items-center text-body2" data-action="creation/edit-language" aria-label="Change language: ${escapeHTML(LANG_NAMES[lang])}">
+        <span>${escapeHTML(languageLabel(lang))}</span>${icon("next", { size: "sm" })}
+      </button>
       <button class="icon-button creation-submit" data-action="creation/submit-topic" aria-label="Continue" ${hasValue ? "" : "disabled"}>${icon("next")}</button>
     </div>
   `);
@@ -652,20 +794,17 @@ function renderQuestionsStep(state: Readonly<CreationState>, lang: Lang): string
       <fieldset class="creation-question">
         <legend class="creation-question-label section-label" tabindex="-1">${escapeHTML(question.label)}</legend>
         <p class="creation-question-progress text-body2 fg-secondary">Question ${state.questionIndex + 1} of ${state.questions.length}</p>
-        <div class="creation-radio-items flex-col">
-          ${question.options.map((option, index) => `
-            <label class="creation-radio-item flex items-center tappable">
-              <input type="radio" name="creation-answer" data-action="creation/answer" data-option="${index}" value="${escapeHTML(option)}" ${!isOther && value === option ? "checked" : ""}>
-              <span class="text-body1 fg-body">${escapeHTML(option)}</span>
-            </label>
-          `).join("")}
-          ${question.label === ABILITY_QUESTION ? "" : `
+        ${renderRadioList(question.options, {
+          name: "creation-answer",
+          action: "creation/answer",
+          selected: isOther ? undefined : value,
+          extra: question.label === ABILITY_QUESTION ? "" : `
             <div class="creation-radio-item flex items-center">
               <input type="radio" name="creation-answer" data-action="creation/other" aria-label="Other" ${isOther ? "checked" : ""}>
               <input class="creation-other-input text-body1" type="text" placeholder="other" aria-label="Other answer" value="${isOther ? escapeHTML(value ?? "") : ""}" autocomplete="off">
             </div>
-          `}
-        </div>
+          `,
+        })}
       </fieldset>
     </div>
     <div class="creation-context-footer creation-question-footer flex items-center">
@@ -724,7 +863,7 @@ function renderSkeleton(): string {
   return `<div class="creation-skeleton-list flex-col">${card}${card}${card}</div>`;
 }
 
-function renderErrorStep(state: Readonly<CreationState>, lang: Lang): string {
+function renderErrorStep(state: Readonly<CreationState>, lang: Lang | undefined): string {
   return renderSurface(`
     ${renderHeader(lang)}
     ${state.topic ? renderTermLine(state.topic) : ""}

@@ -21,10 +21,21 @@ const KINDS = [
   { kind: 'card-edit', needsCard: true, label: 'card-edit' },
   { kind: 'review', needsDeck: true, needsCards: true, label: 'review' },
   { kind: 'creation', payload: { lang: 'ja' }, label: 'creation (topic entry)' },
-  { kind: 'new-phrasebook', payload: {}, label: 'new-phrasebook' },
+  { kind: 'creation', payload: {}, label: 'creation (first-time language selection)' },
   {
     kind: 'new-phrasebook',
-    payload: { suggestion: { id: 'seed-greetings-ja', emoji: '', title: 'Greetings', lang: 'ja', groups: [{ phrases: [{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}], vocab: [] }] } },
+    payload: { suggestion: {
+      id: 'seed-greetings-ja', emoji: '', title: 'Greetings', lang: 'ja',
+      groups: [{
+        title: 'Greeting someone',
+        essentials: [{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}],
+        dialogue: [
+          {card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'},speaker:'you'},
+          {card:{type:'phrase',lang:'ja',text:'どうも',translation:'hi'},speaker:'partner'},
+        ],
+        vocab: [],
+      }],
+    } },
     label: 'new-phrasebook (confirm suggestion)',
   },
   {
@@ -59,7 +70,15 @@ test.describe('action panes open without runtime errors', () => {
         if (spec.needsDeck || spec.needsCards || spec.needsCard) {
           deck = await db.commitPhrasebook({
             name:'Smoke Deck',lang:'ja',selectedIndexes:[0],
-            groups:[{id:crypto.randomUUID(),phrases:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}}],vocab:[]}],
+            groups:[{
+              id:crypto.randomUUID(), title:'Greeting someone',
+              essentials:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}}],
+              dialogue:[
+                {id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'},speaker:'you'},
+                {id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'どうも',translation:'hi'},speaker:'partner'},
+              ],
+              vocab:[],
+            }],
           })
           cards = await db.getCards(deck.id)
           if (spec.kind === 'review') {
@@ -86,6 +105,10 @@ test.describe('action panes open without runtime errors', () => {
       // kinds and full-screen kinds (card-edit, json) append here.
       const paneRoot = page.locator('#action-layer > *')
       await expect(paneRoot.first()).toBeVisible()
+      if (spec.kind === 'creation' && !spec.payload.lang) {
+        await expect(paneRoot.getByRole('radio').first()).toBeVisible()
+        await expect(paneRoot.locator('textarea')).toHaveCount(0)
+      }
 
       // Close it the way a dismissal does, and confirm it tears down.
       await page.evaluate(() => {
