@@ -182,6 +182,8 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
+  touch-action: pan-x pinch-zoom;
+  -webkit-overflow-scrolling: touch;
 }
 
 .deck-tab-scroll::-webkit-scrollbar,

@@ -228,16 +228,28 @@ export function wireTabMotion(rootEl: HTMLElement) {
     requestFrame();
   }
 
-  function takeOver(event: Event): void {
-    if (!(event.target instanceof Element) || !event.target.closest('[data-region="deck-tabs"]')) return;
+  function takeOver(event: Event): boolean {
+    if (!(event.target instanceof Element) || !event.target.closest('[data-region="deck-tabs"]')) {
+      return false;
+    }
     selection = null;
     manual = true;
     remember();
+    return true;
+  }
+
+  function onWheel(event: WheelEvent): void {
+    if (!takeOver(event) || !strip || maximum() === 0) return;
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (delta === 0) return;
+    const before = strip.scrollLeft;
+    strip.scrollLeft += delta;
+    if (strip.scrollLeft !== before) event.preventDefault();
   }
 
   rootEl.addEventListener("pointerdown", takeOver, { passive: true });
   rootEl.addEventListener("touchstart", takeOver, { passive: true });
-  rootEl.addEventListener("wheel", takeOver, { passive: true });
+  rootEl.addEventListener("wheel", onWheel, { passive: false });
   window.addEventListener("resize", layoutChanged);
   document.fonts?.addEventListener("loadingdone", layoutChanged);
   function settleReducedMotion(): void {
@@ -264,7 +276,7 @@ export function wireTabMotion(rootEl: HTMLElement) {
     strip?.removeEventListener("scroll", onScroll);
     rootEl.removeEventListener("pointerdown", takeOver);
     rootEl.removeEventListener("touchstart", takeOver);
-    rootEl.removeEventListener("wheel", takeOver);
+    rootEl.removeEventListener("wheel", onWheel);
     window.removeEventListener("resize", layoutChanged);
     document.fonts?.removeEventListener("loadingdone", layoutChanged);
     reducedMotion.removeEventListener("change", settleReducedMotion);
