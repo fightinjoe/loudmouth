@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => {
   return {
     optimizeDeps: {
       include: ['@catchphrase/card-schema'],
+      // predev rebuilds this local CommonJS package without changing the lockfile.
+      // Rebundle on startup so an old validator cannot reject current API responses.
+      force: true,
     },
     build: {
       commonjsOptions: {

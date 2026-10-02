@@ -115,7 +115,7 @@ Restore requires unique IDs and identity keys, valid timestamps, contiguous loca
 
 ### Illustration persistence
 
-Optional `DeckIllustration` shares `{requestId,prompt}` and is either `{state:'pending'}`, `{state:'failed'}` or `{state:'ready',image:{dataUrl,mediaType:'image/png',width,height}}`. Prompt is trimmed, nonblank and at most 2,000 units. Ready art stores final PNG bytes, not a provider URL; validation shares the image API boundary: PNG data URI, base64 payload ≤8 MiB, decoded-file size ≤6 MiB, positive integer dimensions ≤4 megapixels and absolute 16:9 ratio error ≤0.03. Server decoding separately proves nonempty real alpha.
+Optional `DeckIllustration` shares `{requestId,prompt}` and is either `{state:'pending'}`, `{state:'failed'}` or `{state:'ready',image:{dataUrl,mediaType:'image/png',width,height}}`. Prompt is trimmed, nonblank and at most 2,000 units. Ready art stores final PNG bytes, not a provider URL; validation shares the image API boundary: PNG data URI, base64 payload ≤8 MiB, decoded-file size ≤6 MiB, positive integer dimensions ≤4 megapixels and absolute 16:9 ratio error ≤0.03. Server decoding separately verifies pixel integrity and visible content; transparency is not required.
 
 Commit snapshots optional illustration state without delaying text. `setDeckIllustration(deckId,requestId,next)` updates only an existing deck with matching request ownership and prompt; stale/deleted owners return false. A ready image cannot be overwritten by pending/failed state. The update is transactional, so a late completion cannot recreate a deleted deck or downgrade ready art. Backups retain and strictly validate the same discriminated states and final bytes.
 

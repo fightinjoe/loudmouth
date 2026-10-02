@@ -787,7 +787,7 @@ export function validatePhrasebookImageResponse(value: unknown): PhrasebookImage
   };
   cost(usage.costUsd, 'response.usage.costUsd');
   nonnegativeInteger(usage.durationMs, 'response.usage.durationMs');
-  if (!Array.isArray(usage.stages) || usage.stages.length !== 2) throw new Error('response.usage.stages must contain both provider stages');
+  if (!Array.isArray(usage.stages) || usage.stages.length !== 1) throw new Error('response.usage.stages must contain one image generation stage');
   let total: number | null = 0;
   usage.stages.forEach((entry, index) => {
     const prefix = `response.usage.stages[${index}]`;

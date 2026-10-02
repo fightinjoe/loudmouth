@@ -7,15 +7,14 @@ const sharp = require('sharp');
 const { performPhrasebookImage, handlePhrasebookImage, parsePhrasebookImageRequest } = require('../phrasebook-image');
 const { validatePhrasebookImageResponse } = require('../schema');
 
-const request = { prompt: 'Watercolor dancing shoes', output_format: 'png', background: 'transparent' };
+const request = { prompt: 'Watercolor dancing shoes', output_format: 'png' };
 const prefix = 'data:image/png;base64,';
-const originalKeys = { OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY, FAL_KEY: process.env.FAL_KEY };
+const originalKey = process.env.OPENROUTER_API_KEY;
 let opaque;
 let transparent;
 let empty;
 before(async () => {
   process.env.OPENROUTER_API_KEY = 'test-openrouter-private';
-  process.env.FAL_KEY = 'test-fal-private';
   opaque = await sharp({ create: { width: 32, height: 18, channels: 4, background: { r: 200, g: 120, b: 80, alpha: 1 } } }).png().toBuffer();
   empty = await sharp({ create: { width: 32, height: 18, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
   // A real PNG with an opaque subject and transparent surrounding pixels.
@@ -23,19 +22,15 @@ before(async () => {
   transparent = await sharp(empty).composite([{ input: subject, left: 12, top: 5 }]).png().toBuffer();
 });
 after(() => {
-  for (const [key, value] of Object.entries(originalKeys)) {
-    if (value === undefined) delete process.env[key];
-    else process.env[key] = value;
-  }
+  if (originalKey === undefined) delete process.env.OPENROUTER_API_KEY;
+  else process.env.OPENROUTER_API_KEY = originalKey;
 });
 
-function transport(finalImage = transparent, generatedImage = opaque) {
+function transport(image = opaque, usage = { cost: 0.001 }) {
   const calls = [];
   const fetchImpl = async (url, options) => {
     calls.push({ url, ...options, body: JSON.parse(options.body) });
-    return Response.json(calls.length === 1
-      ? { data: [{ b64_json: generatedImage.toString('base64') }], usage: { cost: 0.001 } }
-      : { image: { url: typeof finalImage === 'string' ? finalImage : prefix + finalImage.toString('base64') } });
+    return Response.json({ data: [{ b64_json: typeof image === 'string' ? image : image.toString('base64') }], usage });
   };
   return { calls, fetchImpl };
 }
@@ -58,30 +53,39 @@ test('accepts only the bounded server-controlled PNG request', () => {
   }
 });
 
-test('persists real transparent PNG bytes and separates known and unknown stage cost', async () => {
-  const fake = transport();
-  const result = validatePhrasebookImageResponse(await performPhrasebookImage(request, fake));
-  assert.deepEqual(result.image, { dataUrl: prefix + transparent.toString('base64'), mediaType: 'image/png', width: 32, height: 18 });
-  const decoded = await sharp(Buffer.from(result.image.dataUrl.slice(prefix.length), 'base64')).raw().toBuffer();
-  assert.equal(decoded[3], 0);
-  assert.equal(decoded[(9 * 32 + 16) * 4 + 3], 255); // white subject stays opaque
-  assert.equal(result.usage.costUsd, null);
-  assert.equal(result.usage.stages[0].costUsd, 0.001);
-  assert.equal(result.usage.stages[1].costUsd, null);
-  assert.equal(fake.calls.length, 2);
-  assert.deepEqual(fake.calls.map((call) => call.url), ['https://openrouter.ai/api/v1/images', 'https://fal.run/fal-ai/birefnet/v2']);
-  assert.equal(Object.hasOwn(fake.calls[0].body, 'background'), false);
-  assert.equal(fake.calls[1].body.image_url, prefix + opaque.toString('base64'));
-  assert.equal(JSON.stringify(result).includes('private'), false);
+test('accepts RGB and opaque RGBA images without requiring transparency', async () => {
+  const rgb = await sharp(opaque).removeAlpha().png().toBuffer();
+  for (const image of [rgb, opaque]) {
+    const result = validatePhrasebookImageResponse(await performPhrasebookImage(request, transport(image)));
+    assert.deepEqual(result.image, { dataUrl: prefix + image.toString('base64'), mediaType: 'image/png', width: 32, height: 18 });
+    assert.equal(result.usage.costUsd, 0.001);
+    assert.equal(result.usage.stages[0].costUsd, 0.001);
+  }
 });
 
-test('rejects opaque, empty-alpha, corrupt, non-PNG, and remote URL matting results', async () => {
+test('preserves valid alpha when present without removing white subjects', async () => {
+  const result = await performPhrasebookImage(request, transport(transparent));
+  const decoded = await sharp(Buffer.from(result.image.dataUrl.slice(prefix.length), 'base64')).raw().toBuffer();
+  assert.equal(decoded[3], 0);
+  assert.equal(decoded[(9 * 32 + 16) * 4 + 3], 255);
+});
+
+test('missing or invalid provider cost stays unknown rather than becoming free', async () => {
+  for (const usage of [undefined, {}, { cost: null }, { cost: -1 }, { cost: '0.13' }]) {
+    const fake = transport(opaque, usage === undefined ? null : usage);
+    const result = validatePhrasebookImageResponse(await performPhrasebookImage(request, fake));
+    assert.equal(result.usage.costUsd, null);
+    assert.equal(result.usage.stages[0].costUsd, null);
+  }
+});
+
+test('rejects empty-alpha, corrupt, non-PNG, and remote URL results', async () => {
   const jpeg = await sharp(opaque).jpeg().toBuffer();
-  for (const image of [opaque, empty, Buffer.from('not png'), jpeg, transparent.subarray(0, 40),
+  for (const image of [empty, Buffer.from('not png'), jpeg, opaque.subarray(0, 40),
     'https://attacker.example/image.png', 'data:image/jpeg;base64,' + jpeg.toString('base64')]) {
     const fake = transport(image);
     await assert.rejects(performPhrasebookImage(request, fake), { status: 502 });
-    assert.equal(fake.calls.length, 2);
+    assert.equal(fake.calls.length, 1);
   }
 });
 
@@ -92,7 +96,7 @@ test('rejects invalid aspect ratio and decoded pixel limit', async () => {
   }
 });
 
-test('rejects oversized or malformed provider responses before matting', async () => {
+test('rejects oversized or malformed provider responses', async () => {
   for (const output of [
     { data: [{ b64_json: 'a'.repeat(8 * 1024 * 1024 + 4) }] },
     { data: [{ b64_json: opaque.toString('base64') }, { b64_json: opaque.toString('base64') }] },
@@ -107,26 +111,22 @@ test('rejects oversized or malformed provider responses before matting', async (
 });
 
 test('provider failures do not retry or leak private upstream errors', async () => {
-  for (const failedStage of [1, 2]) {
-    let calls = 0;
-    const good = transport();
-    await assert.rejects(performPhrasebookImage(request, { fetchImpl: async (...args) => {
-      calls++;
-      if (calls === failedStage) return new Response('test-fal-private', { status: 503 });
-      return good.fetchImpl(...args);
-    } }), (error) => error.status === 502 && error.message === 'Phrasebook illustration failed');
-    assert.equal(calls, failedStage);
-  }
+  let calls = 0;
+  await assert.rejects(performPhrasebookImage(request, { fetchImpl: async () => {
+    calls++;
+    return new Response('test-openrouter-private', { status: 503 });
+  } }), (error) => error.status === 502 && error.message === 'Phrasebook illustration failed');
+  assert.equal(calls, 1);
 });
 
 test('missing credentials fail before dispatch', async () => {
-  const key = process.env.FAL_KEY;
-  delete process.env.FAL_KEY;
+  const key = process.env.OPENROUTER_API_KEY;
+  delete process.env.OPENROUTER_API_KEY;
   try {
     const fake = transport();
     await assert.rejects(performPhrasebookImage(request, fake), { status: 502 });
     assert.equal(fake.calls.length, 0);
-  } finally { process.env.FAL_KEY = key; }
+  } finally { process.env.OPENROUTER_API_KEY = key; }
 });
 
 test('cancellation aborts stalled generation without awaiting the transport', async () => {
@@ -144,7 +144,7 @@ test('cancellation aborts stalled generation without awaiting the transport', as
   assert.equal(fake.calls.length, 0);
 });
 
-test('stage deadline aborts even an uncooperative transport', async (t) => {
+test('operation deadline aborts even an uncooperative transport', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   let stageSignal;
   const pending = performPhrasebookImage(request, { fetchImpl: async (url, { signal }) => {
@@ -152,7 +152,7 @@ test('stage deadline aborts even an uncooperative transport', async (t) => {
     return new Promise(() => {});
   } });
   const rejection = assert.rejects(pending, { status: 502 });
-  t.mock.timers.tick(60_000);
+  t.mock.timers.tick(120_000);
   await rejection;
   assert.equal(stageSignal.aborted, true);
 });
@@ -177,38 +177,13 @@ test('handler rejects invalid input and disconnect cancels pending work', async 
   assert.equal(res.listenerCount('close'), 0);
 });
 
-test('matting cancellation and its own deadline abort without retry', async (t) => {
-  t.mock.timers.enable({ apis: ['setTimeout'] });
-  for (const cancel of [false, true]) {
-    const controller = new AbortController();
-    let enteredMatting;
-    const entered = new Promise((resolve) => { enteredMatting = resolve; });
-    let stageSignal;
-    let calls = 0;
-    const pending = performPhrasebookImage(request, { signal: controller.signal, fetchImpl: async (url, { signal }) => {
-      calls++;
-      if (calls === 1) return Response.json({ data: [{ b64_json: opaque.toString('base64') }] });
-      stageSignal = signal;
-      enteredMatting();
-      return new Promise(() => {});
-    } });
-    const rejection = assert.rejects(pending, { status: 502 });
-    await entered;
-    if (cancel) controller.abort();
-    else t.mock.timers.tick(60_000);
-    await rejection;
-    assert.equal(stageSignal.aborted, true);
-    assert.equal(calls, 2);
-  }
-});
-
 test('handler returns the decoded image or a sanitized upstream failure', async (t) => {
   const fake = transport();
   t.mock.method(globalThis, 'fetch', fake.fetchImpl);
   const res = response();
   await handlePhrasebookImage({ body: request }, res);
   assert.equal(res.statusCode, 200);
-  assert.equal(res.body.image.dataUrl, prefix + transparent.toString('base64'));
+  assert.equal(res.body.image.dataUrl, prefix + opaque.toString('base64'));
   globalThis.fetch.mock.mockImplementation(async () => { throw new Error('test-openrouter-private'); });
   const failure = response();
   await handlePhrasebookImage({ body: request }, failure);

@@ -56,7 +56,7 @@ describe('content response trust boundary',()=>{
     }
   });
   it('rejects remote or malformed image results instead of saving an unsafe URL',async()=>{
-    const usage = {model:'fixture',costUsd:null,durationMs:1,stages:[{provider:'openrouter',model:'fixture',costUsd:null,durationMs:1},{provider:'fal',model:'fixture',costUsd:null,durationMs:0}]};
+    const usage = {model:'fixture',costUsd:null,durationMs:1,stages:[{provider:'openrouter',model:'fixture',costUsd:null,durationMs:1}]};
     for (const dataUrl of ['https://untrusted.example/image.png','data:image/png;base64,invalid']) {
       serve({image:{dataUrl,mediaType:'image/png',width:160,height:90},usage});
       await expect(generatePhrasebookImage({prompt:'A watercolor.'})).rejects.toThrow(/image/);

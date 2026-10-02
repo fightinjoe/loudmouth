@@ -206,9 +206,8 @@ test('normalized context requires bounded bespoke art without changing card exch
 test('image responses enforce local PNG bytes, dimensions and conservative stage costs', async () => {
   const png = await require('sharp')({create:{width:16,height:9,channels:4,background:{r:200,g:100,b:80,alpha:0.5}}}).png().toBuffer();
   const image = {dataUrl:`data:image/png;base64,${png.toString('base64')}`,mediaType:'image/png',width:16,height:9};
-  const response = {image,usage:{model:'flux + matting',costUsd:null,durationMs:3,stages:[
-    {provider:'openrouter',model:'flux',costUsd:0.02,durationMs:1},
-    {provider:'fal',model:'matting',costUsd:null,durationMs:2},
+  const response = {image,usage:{model:'image-model',costUsd:null,durationMs:3,stages:[
+    {provider:'openrouter',model:'image-model',costUsd:null,durationMs:3},
   ]}};
   assert.equal(validatePhrasebookImage(image).width,16);
   assert.equal(validatePhrasebookImageResponse(response).usage.costUsd,null);
@@ -221,8 +220,9 @@ test('image responses enforce local PNG bytes, dimensions and conservative stage
     value => { value.image.width = 9; },
     value => { value.image.width = 16000; value.image.height = 9000; },
     value => { value.usage.costUsd = 0.02; },
-    value => { value.usage.stages[1].costUsd = -1; },
+    value => { value.usage.stages[0].costUsd = -1; },
     value => { value.usage.stages.pop(); },
+    value => { value.usage.stages.push({...value.usage.stages[0]}); },
     value => { value.usage.inputTokens = 0; },
   ]) {
     const invalid = structuredClone(response); mutate(invalid);

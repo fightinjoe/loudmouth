@@ -99,7 +99,10 @@ Historical setup preferences are not inferred or migrated to the new scale.
 ## Phrasebook view
 
 On web, saved phrasebooks open **Phrasebook**, a contents page with an optional decorative 16:9
-transparent watercolor hero. Pending art reserves its space; ready art has empty alt text and white
+watercolor hero on plain white paper. The composition is a close-up: large objects fill the landscape
+frame, with a narrow 3–5% target safety margin and no clipped objects. Long objects lie horizontally
+or diagonally to use the width. Actual generated margins vary; no automatic crop is applied.
+Transparency is not required. Pending art reserves its space; ready art has empty alt text and white
 surrounding space; failed art shows a subdued unavailable message. Topic previews show up to three
 essential English phrases and two words with POS. The final preview item is vertically clipped to
 suggest more content. The white footer shows section counts and **View** with a right chevron.

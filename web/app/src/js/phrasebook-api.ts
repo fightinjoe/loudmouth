@@ -45,7 +45,7 @@ export async function generatePhrasebookImage({prompt,signal}: {
   prompt:string;signal?:AbortSignal;
 }): Promise<PhrasebookImageResponse> {
   return validatePhrasebookImageResponse(await post('/phrasebook-image', {
-    prompt, output_format:'png', background:'transparent',
+    prompt, output_format:'png',
   }, signal));
 }
 export async function getPhrasebookTitle({seed,signal}: {seed:string;signal?:AbortSignal}): Promise<{title:string}> {
