@@ -46,7 +46,7 @@ function renderPhrase(slice: DetailsState): string {
   return html + renderRange(snapshot, offset, snapshot.text.length, tokens);
 }
 
-export function renderSource(slice: DetailsState, includeCue = false): string {
+export function renderSource(slice: DetailsState): string {
   const snapshot = sourceSnapshot(slice);
   const reading = slice.showReadings && slice.readingDisplay === "romanization"
     ? snapshot.romanization ?? ""
@@ -57,8 +57,7 @@ export function renderSource(slice: DetailsState, includeCue = false): string {
       : ""}
     <span class="card-term-target fg-body" lang="${escapeHTML(snapshot.lang)}">${renderPhrase(slice)}</span>
     ${reading ? `<span class="card-term-reading">${escapeHTML(reading)}</span>` : ""}
-    ${includeCue ? '<span class="card-explore-cue details-source-cue">Explore phrase</span>' : ""}
-    <button type="button" class="card-audio details-audio" data-action="details/play-audio"
+    <button type="button" class="details-audio" data-action="details/play-audio"
       aria-label="Play pronunciation: ${escapeHTML(snapshot.translation)}">${icon("sound")}</button>
   </div>`;
 }

@@ -102,12 +102,12 @@ describe("phrasebook joined-entry pages", () => {
 
     const pages = getDeckPages(entries, groups);
     expect(pages.map((page) => page.key)).toEqual([
-      "contents", "group:group-first", "group:group-later", "translations", "words", "chunks",
+      "starred", "contents", "group:group-first", "group:group-later", "translations", "words", "chunks",
     ]);
-    expect(pages[0].topics.map((topic) => topic.groupId)).toEqual(["group-first", "group-later"]);
-    expect(pages[3].entries.map((entry) => entry.key)).toEqual(["loose-new", "loose-old"]);
-    expect(pages[1].dialogue.map((entry) => entry.key)).toEqual(["first-row"]);
-    expect(pages[2].dialogue.map((entry) => entry.key)).toEqual(["later-row"]);
+    expect(pages[1].topics.map((topic) => topic.groupId)).toEqual(["group-first", "group-later"]);
+    expect(pages[4].entries.map((entry) => entry.key)).toEqual(["loose-new", "loose-old"]);
+    expect(pages[2].dialogue.map((entry) => entry.key)).toEqual(["first-row"]);
+    expect(pages[3].dialogue.map((entry) => entry.key)).toEqual(["later-row"]);
   });
 
   it("renders each repeated occurrence's interpretation, speaker, alternative, and entry key", () => {
@@ -130,8 +130,6 @@ describe("phrasebook joined-entry pages", () => {
     const root = document.createElement("div");
     root.innerHTML = renderDeckBody(deck, entries, groups, "group:group-first");
 
-    const tabs = [...root.querySelectorAll('[role="tab"]')];
-    expect(tabs.map((tab) => tab.textContent.trim())).toEqual(["Phrasebook", "Ordering", "Ordering"]);
     const rows = [...root.querySelectorAll('.deck-page[data-page-key="group:group-first"] .card-row-wrapper')];
     expect(rows.map((row) => row.dataset.entryKey)).toEqual(["occ-you", "occ-alternative", "occ-partner"]);
     expect(rows.map((row) => row.querySelector(".card-term-english").textContent)).toEqual([

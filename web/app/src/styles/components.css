@@ -352,6 +352,10 @@
   display: none;
 }
 
+.topic-preview {
+  cursor: pointer;
+}
+
 .topic-preview h2,
 .topic-section h2 {
   margin: 0 0 12px;
@@ -364,10 +368,28 @@
   background: hsl(var(--gray-50));
 }
 
+.topic-preview-lines {
+  overflow: hidden;
+}
+
 .topic-preview-line {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0;
   padding: 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 24px;
+  text-align: left;
   overflow-wrap: anywhere;
+}
+
+/* Cut into the last text line, rather than hiding only its bottom padding. */
+.topic-preview-line:last-child {
+  margin-bottom: -28px;
 }
 
 .topic-preview-line + .topic-preview-line {
@@ -381,6 +403,7 @@
   gap: 8px;
   padding: 8px 12px 8px 16px;
   border-top: 1px solid hsl(var(--gray-200));
+  background: var(--bg-surface);
   color: var(--fg-caption);
   font-size: 13px;
 }
@@ -391,18 +414,55 @@
 }
 
 .topic-view {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
   flex-shrink: 0;
   min-width: 44px;
   min-height: 44px;
   border: 0;
   background: transparent;
   color: var(--accent);
+  text-transform: uppercase;
+}
+
+.topic-view .icon {
+  width: 20px;
+  height: 20px;
 }
 
 .topic-card-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.topic-section[data-topic-section="essentials"],
+.deck-page[data-page-kind="starred"] .topic-card-list {
+  margin-inline: -20px;
+}
+
+.topic-section[data-topic-section="essentials"] > h2 {
+  padding-inline: 20px;
+}
+
+.topic-section[data-topic-section="essentials"] .topic-card-list,
+.deck-page[data-page-kind="starred"] .topic-card-list {
+  gap: 0;
+}
+
+.topic-section[data-topic-section="essentials"] .card-row,
+.deck-page[data-page-kind="starred"] .card-row {
+  padding: 16px 20px;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.topic-section[data-topic-section="essentials"] .card-star,
+.deck-page[data-page-kind="starred"] .card-star {
+  right: 4px;
 }
 
 .topic-word-grid {
@@ -593,37 +653,8 @@ ruby {
   display: none;
 }
 
-#content-pane[data-edit-mode] .card-audio,
-#content-pane[data-edit-mode] .card-explore-cue {
-  display: none;
-}
 
-.card-term-english {
-  padding-right: 32px;
-}
-
-.card-audio {
-  position: absolute;
-  bottom: 4px;
-  right: 0;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-}
-
-.card-explore-cue {
-  padding: 6px 32px 0 0;
-  font-size: 12px;
-  line-height: 20px;
-  color: var(--accent);
-}
-
-/* Conversation bubbles retain speaker offset. Partner/left is neutral,
-   learner/right is blue; the star state never participates in backgrounds. */
+/* Conversation bubbles retain their speaker offset in the topic page. */
 .deck-page[data-page-kind="topic"] .card-row-wrapper[data-speaker] {
   width: 89%;
 }
@@ -639,13 +670,19 @@ ruby {
 }
 
 .deck-page[data-page-kind="topic"] [data-speaker="you"] .card-row {
-  background: var(--bg-speaker);
+  background: hsl(var(--gray-100));
 }
 
-.deck-page[data-page-kind="topic"] [data-speaker="partner"] .card-row,
-.deck-page[data-page-kind="words"] .card-row,
-.deck-page[data-page-kind="starred"] .card-row {
-  background: hsl(var(--gray-50));
+/* Selected colors follow the live button state without requiring a rerender.
+   The existing tint/speaker tokens correspond to Figma blue-50/blue-100. */
+.deck-page:not([data-page-kind="starred"]) .card-row:has(.card-star[data-selected="true"]),
+.deck-view-list .card-row:has(.card-star[data-selected="true"]) {
+  background: var(--bg-blue-tint);
+}
+
+.deck-page[data-page-kind="topic"] [data-speaker="you"] .card-row:has(.card-star[data-selected="true"]),
+.deck-view-list [data-speaker="you"] .card-row:has(.card-star[data-selected="true"]) {
+  background: var(--bg-speaker);
 }
 
 .deck-view-empty {
@@ -1043,6 +1080,11 @@ ruby {
   padding: 0 0 20px;
   pointer-events: none;
 }
+
+.deck-view-action-bar[hidden] {
+  display: none;
+}
+
 .deck-view-action-pill {
   pointer-events: auto;
   background: var(--bg-surface);
@@ -1593,11 +1635,7 @@ ruby {
 }
 
 .deck-view-list [data-speaker="you"] .card-row {
-  background: var(--bg-speaker);
-}
-
-.deck-view-list [data-speaker="partner"] .card-row {
-  background: hsl(var(--gray-50));
+  background: hsl(var(--gray-100));
 }
 
 /* ── Suggested phrasebooks + unsaved preview ── */

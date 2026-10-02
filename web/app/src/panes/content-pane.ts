@@ -75,7 +75,6 @@ export interface ContentSlice {
   editOrder: string[] | null;
   menuOpen: boolean;
   pageKey: string | null;
-  previousPageKey: string | null;
   starPatch: ContentStarPatch | null;
   reload: number;
   browse: ContentBrowse | null;
@@ -107,14 +106,10 @@ function reconcilePageKey(
   nextEntries: readonly LibraryEntry[],
   nextGroups: readonly Group[],
   currentKey: string | null,
-  previousPageKey: string | null,
 ): string {
   const nextPages = getDeckPages(nextEntries, nextGroups);
   const currentPage = nextPages.find((page) => page.key === currentKey);
   if (currentPage) return currentPage.key;
-  if (currentKey === STARRED_PAGE_KEY) {
-    return normalizePageKey(nextEntries, nextGroups, previousPageKey);
-  }
   const previousPages = getDeckPages(previousEntries, previousGroups);
   const previousIndex = Math.max(
     0,
@@ -132,7 +127,6 @@ const initialState: ContentSlice = {
   editOrder: null,
   menuOpen: false,
   pageKey: null,
-  previousPageKey: null,
   starPatch: null,
   reload: 0,
   browse: null,
@@ -144,7 +138,7 @@ const transitions = {
     deckId: id,
     browse: null,
     ...(id !== slice.deckId
-      ? { deck: null, cards: [], groups: [], pageKey: null, previousPageKey: null, starPatch: null }
+      ? { deck: null, cards: [], groups: [], pageKey: null, starPatch: null }
       : {}),
   }),
 
@@ -166,14 +160,8 @@ const transitions = {
       menuOpen: false,
       browse: null,
       pageKey: deck && !isSystemDeck(deck)
-        ? normalizePageKey(cards, nextGroups, slice.deckId === deck.id
-          ? slice.pageKey === STARRED_PAGE_KEY
-            && !cards.some((entry) => entry.membership?.starredAt != null)
-            ? slice.previousPageKey
-            : slice.pageKey
-          : null)
+        ? normalizePageKey(cards, nextGroups, slice.deckId === deck.id ? slice.pageKey : null)
         : null,
-      previousPageKey: slice.deckId === deck?.id ? slice.previousPageKey : null,
       starPatch: null,
     };
   },
@@ -194,7 +182,7 @@ const transitions = {
       groups: nextGroups,
       pageKey: slice.deck && !isSystemDeck(slice.deck)
         ? reconcilePageKey(
-          slice.cards, slice.groups, cards, nextGroups, slice.pageKey, slice.previousPageKey,
+          slice.cards, slice.groups, cards, nextGroups, slice.pageKey,
         )
         : null,
       starPatch: null,
@@ -216,11 +204,7 @@ const transitions = {
       };
     });
     if (!changed) return slice;
-    const pageKey = slice.pageKey === STARRED_PAGE_KEY
-      && !cards.some((entry) => entry.membership?.starredAt != null)
-      ? normalizePageKey(cards, slice.groups, slice.previousPageKey)
-      : slice.pageKey;
-    return { ...slice, cards, pageKey, starPatch: { deckId, cardId, starredAt } };
+    return { ...slice, cards, starPatch: { deckId, cardId, starredAt } };
   },
 
   "content/set-page": (slice, { pageKey }) => {
@@ -229,9 +213,6 @@ const transitions = {
     return nextPageKey === slice.pageKey ? slice : {
       ...slice,
       pageKey: nextPageKey,
-      previousPageKey: nextPageKey === STARRED_PAGE_KEY
-        ? slice.pageKey
-        : slice.previousPageKey,
     };
   },
 
@@ -482,7 +463,9 @@ const contentPane = {
         .find((element) => element.dataset.pageKey === next.pageKey);
       if (focusedIndex >= 0) {
         const stars = [...page?.querySelectorAll<HTMLElement>(".card-star") ?? []];
-        stars[Math.min(focusedIndex, stars.length - 1)]?.focus({ preventScroll: true });
+        const target = stars[Math.min(focusedIndex, stars.length - 1)]
+          ?? pager.querySelector<HTMLElement>(".deck-star-tab");
+        target?.focus({ preventScroll: true });
       } else if (focusedEntry) {
         const wrapper = [...page?.querySelectorAll<HTMLElement>(".card-row-wrapper") ?? []]
           .find((element) => element.dataset.entryKey === focusedEntry);
@@ -547,6 +530,9 @@ const contentPane = {
       } else if (!next.browse && pageChanged) {
         syncPager(next.pageKey);
       }
+
+      const reviewBar = meatEl.querySelector<HTMLElement>(".deck-view-action-bar");
+      if (reviewBar) reviewBar.hidden = next.pageKey !== STARRED_PAGE_KEY;
 
       if (cardsChanged || deckChanged || browseChanged) {
         const reviewButton = meatEl.querySelector<HTMLButtonElement>('[data-action="content/review"]');
@@ -653,13 +639,14 @@ const contentPane = {
 
     delegate.register("content/review", (_event, element) => {
       const slice = ui.get("content");
-      if (!isStoredDeck(slice.deck)) return;
+      if (!isStoredDeck(slice.deck) || slice.pageKey !== STARRED_PAGE_KEY) return;
       const deck = slice.deck;
       const button = element instanceof HTMLButtonElement ? element : null;
       if (button) button.disabled = true;
       void getReviewCards(deck.id).then((cards) => {
         const current = ui.get("content");
-        if (!isStoredDeck(current.deck) || current.deck.id !== deck.id || cards.length === 0) {
+        if (!isStoredDeck(current.deck) || current.deck.id !== deck.id
+          || current.pageKey !== STARRED_PAGE_KEY || cards.length === 0) {
           return;
         }
         ui.transition("action/open", { kind: "review", payload: { deck, cards } });
@@ -730,11 +717,20 @@ const contentPane = {
       const pageKey = element.dataset.pageKey;
       if (pageKey) {
         ui.transition("content/set-page", { pageKey });
-        if (element.matches(".topic-view")) syncPager(pageKey, { focus: true });
+        if (element.closest(".topic-preview")) {
+          syncPager(pageKey, { focus: true });
+          const page = [...meatEl.querySelectorAll<HTMLElement>(".deck-page")]
+            .find((candidate) => candidate.dataset.pageKey === pageKey);
+          const section = [...page?.querySelectorAll<HTMLElement>("[data-topic-section]") ?? []]
+            .find((candidate) => candidate.dataset.topicSection === element.dataset.section);
+          if (page && section) {
+            page.scrollTop += section.getBoundingClientRect().top - page.getBoundingClientRect().top;
+          }
+        }
       }
     });
 
-    const unregisterCardActions = registerCardActions({ host, isEdit, resetReveal });
+    const unregisterCardActions = registerCardActions({ host, rootEl, isEdit, resetReveal });
     const registeredActions = [
       "content/menu",
       "content/deck-title",

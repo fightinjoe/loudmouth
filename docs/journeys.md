@@ -100,32 +100,33 @@ they want in the review set.
 ### Step by step
 
 1. **Open a phrasebook.** Selecting a recent or language-grouped phrasebook opens its content pane on
-   **Phrases**, as does completing creation.
+   **Phrasebook**, as does completing creation.
 2. **Browse tabs.**
-   - **Phrases** is first, showing neutral full-width learner-speech cards selected by contextual
-     usefulness. **Vocab** is second. Repeated phrases appear once; partner replies stay in conversations.
-   - Context-less phrases occupy **Translations** when present, followed by each complete named
-     conversation and optional saved **Chunks**. Filtering Phrases never removes conversation lines.
-   - Stars mark the review set; the pinned **Starred** tab appears when at least one card is starred.
+   - **Phrasebook** previews each topic with a clipped final item and a white **View** footer.
+     Tapping a phrase opens its topic's Essential phrases; tapping a word opens Useful words.
+   - Each topic contains full-width essentials, vocabulary tiles, and the complete conversation.
+     Unplaced entries occupy supplemental **Translations**, **Words**, or **Chunks** tabs.
+   - Stars mark the review set; the pinned **Starred** tab remains visible even at zero.
 3. **Read a conversation.** Speaker metadata renders learner and partner lines on opposite sides.
    Alternatives remain in the same conversation group.
-4. **Use a card.** On web, tapping a phrase opens its breakdown. Select a phrase part or use
+4. **Use a card.** On web, tapping a card speaks it. Long-press a phrase for 500 ms to open its
+   breakdown; right-click or Shift+F10 provides the same action. Select a phrase part or use
    **SHOW ALL** to inspect every explanation; optional patterns include notes and another example.
    The source stays visible during generation and errors, with Retry after a failure.
-5. **Listen or prioritize.** Explicit audio buttons pronounce phrases; vocabulary still plays on tap.
-   The star affordance changes the review set without opening details.
+5. **Prioritize.** The star affordance changes the review set without opening details or speaking.
+   Starred cards turn blue in topic pages; the Starred collection uses white, full-width rows.
 6. **Return or maintain content.** Close, Escape, or the scrim returns to the original card and scroll
    position. Editing and deletion remain in edit mode; the phrasebook title menu exposes settings
    and reorder. Opening another pane dismisses the breakdown rather than stacking task interfaces.
 
 ### Key rules
 
-- Occurrences retain their group, speaker, translation, and optional featured selection through persistence.
+- Occurrences retain their group, section, speaker when applicable, and translation through persistence.
 - Conversation order and vocabulary separation come from the generated groups; the learner is not
   asked to file generated cards.
 - Starring is bounded binary emphasis, not a score or progress state.
-- The phrasebook's only bottom action is **Review**. Extending an existing phrasebook is not part of the
-  current flow.
+- The phrasebook's only bottom action is **Review**, shown only on **Starred**. Extending an existing
+  phrasebook is not part of the current flow.
 
 ## Journey 3 — Reviewing starred cards
 
@@ -136,9 +137,9 @@ listens to pronunciation, and swipes through the finite set.
 
 ### Entry
 
-The learner taps **Review** from a phrasebook with at least one starred card. The current content tab
-does not change the study set: Review always receives every starred card in phrasebook order. When
-there are no starred cards, Review is unavailable.
+The learner opens **Starred** and taps **Review** with at least one starred card. Review receives
+every starred card in phrasebook order. At zero, Starred remains available with an empty state and
+Review is disabled. Removing the final star does not navigate away.
 
 ### Review states
 

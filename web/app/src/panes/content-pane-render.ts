@@ -100,14 +100,12 @@ export function getDeckPages(
     seenCards.add(membership.cardId);
     starredEntries.push(entry);
   }
-  if (starredEntries.length > 0) {
-    pages.unshift({
-      key: STARRED_PAGE_KEY,
-      title: "Starred",
-      kind: "starred",
-      entries: starredEntries,
-    });
-  }
+  pages.unshift({
+    key: STARRED_PAGE_KEY,
+    title: "Starred",
+    kind: "starred",
+    entries: starredEntries,
+  });
   return pages;
 }
 
@@ -136,17 +134,22 @@ export function renderIllustration(illustration?: DeckIllustration): string {
 function renderContents(topics: readonly TopicPage[], deck: ContentDeck): string {
   return `<div data-region="deck-hero">${renderIllustration("illustration" in deck ? deck.illustration : undefined)}</div>
     ${topics.map((topic) => `
-      <section class="topic-preview">
+      <section class="topic-preview" data-action="content/set-page"
+        data-page-key="${escapeHTML(topic.key)}" data-section="essentials">
         <h2 class="section-label">${escapeHTML(topic.title)}</h2>
         <div class="topic-preview-card">
-          ${topic.essentials.slice(0, 3).map((entry) =>
-            `<p class="topic-preview-line">${escapeHTML(entry.card.translation)}</p>`).join("")}
-          ${topic.vocab.slice(0, 2).map((entry) =>
-            `<p class="topic-preview-line">${escapeHTML(entry.card.translation)}${entry.card.type === "word" ? ` <span class="fg-secondary">(${escapeHTML(entry.card.partOfSpeech)})</span>` : ""}</p>`).join("")}
+          <div class="topic-preview-lines">
+            ${topic.essentials.slice(0, 3).map((entry) =>
+              `<button type="button" class="topic-preview-line" data-action="content/set-page"
+                data-page-key="${escapeHTML(topic.key)}" data-section="essentials">${escapeHTML(entry.card.translation)}</button>`).join("")}
+            ${topic.vocab.slice(0, 2).map((entry) =>
+              `<button type="button" class="topic-preview-line" data-action="content/set-page"
+                data-page-key="${escapeHTML(topic.key)}" data-section="vocab">${escapeHTML(entry.card.translation)}${entry.card.type === "word" ? ` <span class="fg-secondary">(${escapeHTML(entry.card.partOfSpeech)})</span>` : ""}</button>`).join("")}
+          </div>
           <div class="topic-preview-footer">
             <span>${topic.essentials.length} phrase${topic.essentials.length === 1 ? "" : "s"} · ${topic.vocab.length} word${topic.vocab.length === 1 ? "" : "s"} · 1 conversation</span>
             <button type="button" class="topic-view tappable" data-action="content/set-page"
-              data-page-key="${escapeHTML(topic.key)}" aria-label="View ${escapeHTML(topic.title)}">View</button>
+              data-page-key="${escapeHTML(topic.key)}" data-section="essentials" aria-label="View ${escapeHTML(topic.title)}">View${icon("next")}</button>
           </div>
         </div>
       </section>`).join("")}`;
@@ -163,7 +166,7 @@ function renderPageEntries(page: DeckPage, deck: ContentDeck): string {
     })).join("");
   if (page.kind === "topic") {
     const section = (title: string, key: string, entries: LibraryEntry[], conversation = false): string =>
-      `<section class="topic-section">
+      `<section class="topic-section" data-topic-section="${key}">
         <h2 class="section-label">${title}</h2>
         <div class="${key === "vocab" ? "topic-word-grid" : "topic-card-list"}"
           data-reorder-region="${key}">${rows(entries, conversation, key === "vocab")}</div>
@@ -171,6 +174,9 @@ function renderPageEntries(page: DeckPage, deck: ContentDeck): string {
     return section("Essential phrases", "essentials", page.essentials)
       + (page.vocab.length ? section("Useful words", "vocab", page.vocab) : "")
       + section("Conversation", "dialogue", page.dialogue, true);
+  }
+  if (page.kind === "starred" && page.entries.length === 0) {
+    return '<div class="deck-view-empty text-center fg-secondary"><p>No starred cards yet.</p><p>Star cards in this phrasebook to review them here.</p></div>';
   }
   return `<div class="topic-card-list"${page.kind === "starred" ? "" : ` data-reorder-region="${page.kind}"`}>${rows(page.entries)}</div>`;
 }
@@ -292,7 +298,7 @@ export function renderDeckBody(
     ${pager}
     ${browse || isPreview(deck)
       ? ""
-      : `<div class="deck-view-action-bar shrink-0 flex items-center justify-center">
+      : `<div class="deck-view-action-bar shrink-0 flex items-center justify-center"${pageKey === STARRED_PAGE_KEY ? "" : " hidden"}>
            <div class="deck-view-action-pill flex items-center">
              <button class="deck-view-action-btn flex-col items-center" data-action="content/review" aria-label="Review"${reviewDisabled}>${icon("review")}<span>Review</span></button>
            </div>

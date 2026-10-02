@@ -442,7 +442,7 @@ const detailsPane = {
       const from = surface.getBoundingClientRect();
       const { backgroundColor, borderRadius } = getComputedStyle(surface);
       cancelMotion();
-      sourceEl.innerHTML = renderSource(slice, false);
+      sourceEl.innerHTML = renderSource(slice);
       rootEl.dataset.detailsState = "closing";
       const target = geometryElement(slice.opener);
       const to = target.isConnected ? target.getBoundingClientRect() : origin?.rect ?? from;
@@ -606,7 +606,7 @@ const detailsPane = {
         || next.status !== prev.status
         || newBreakdown;
       if (replaceBody) {
-        sourceEl.innerHTML = renderSource(next, !prev);
+        sourceEl.innerHTML = renderSource(next);
         if (next.status === "loading") {
           bodyEl.innerHTML = '<div class="details-notice" role="status" aria-live="polite"><span class="details-spinner" aria-hidden="true"></span><strong>Breaking down this phrase…</strong></div>';
         } else if (next.status === "error") {

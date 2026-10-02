@@ -101,20 +101,23 @@ Historical setup preferences are not inferred or migrated to the new scale.
 On web, saved phrasebooks open **Phrasebook**, a contents page with an optional decorative 16:9
 transparent watercolor hero. Pending art reserves its space; ready art has empty alt text and white
 surrounding space; failed art shows a subdued unavailable message. Topic previews show up to three
-essential English phrases, two words with POS, section counts, and a **View** action.
+essential English phrases and two words with POS. The final preview item is vertically clipped to
+suggest more content. The white footer shows section counts and **View** with a right chevron.
+The whole topic preview is clickable: phrases, heading, and footer open Essential phrases; words
+open Useful words. Each destination scrolls to its section and focuses the exact topic tab.
 
-Each stored Group then has one topic tab and horizontally sliding page, identified by Group ID rather
-than title. View selects that exact topic and focuses its tab, including when titles duplicate.
-Each topic contains **Essential phrases**, **Useful words**, and **Conversation** in that order:
-neutral full-width essentials; two-column Word tiles; complete blue learner/neutral partner dialogue.
-Essentials are independently generated occurrences, not ranked dialogue excerpts. Equal text can
-retain different meanings and presentation in different sections.
+Each stored Group has one topic tab and horizontally sliding page, identified by Group ID rather
+than title, including when titles duplicate. Each topic contains **Essential phrases**, **Useful
+words**, and **Conversation** in that order: full-bleed white essential rows with bottom borders;
+two-column Word tiles; gray-100 learner/gray-50 partner dialogue bubbles. Essentials are independently
+generated occurrences, not ranked dialogue excerpts. Equal text can retain different meanings and
+presentation in different sections.
 
 Supplemental **Translations**, **Words**, and **Chunks** pages follow topics when unplaced entries
 exist. Topic Word placements are not duplicated into the supplemental Words page.
-A fixed leftmost **Starred** tab appears only when this phrasebook has starred memberships. It shows a solid blue star
+A fixed leftmost **Starred** tab is always present, including at zero. It shows a solid blue star
 and the exact unique-membership count, without a visible label; its accessible name is “Starred, N
-cards.” **Review** remains a separate action over the same phrasebook-scoped study set.
+cards.” **Review** appears only on Starred and is disabled when the phrasebook study set is empty.
 This web navigation does not change iOS.
 
 The title and tab row remain above the independently scrolling pages. Topic tabs fit their title text
@@ -125,8 +128,8 @@ white surface. The first topic anchors left beside Starred, the last anchors rig
 selections center within the **full tab-row viewport**, including the pinned width, clamped to the
 available scroll range. A single topic anchors left; oversized titles follow the same boundary rules.
 Clicking or keyboard-selecting with arrows or Home/End, without looping, animates tabs and pages for
-280 ms with cubic ease-out. Starred expands and fades in over 360 ms on first appearance or initial
-phrasebook presentation; count changes do not replay its entrance. Count/font/viewport changes
+280 ms with cubic ease-out. Starred expands and fades in over 360 ms on initial phrasebook
+presentation; count changes do not replay its entrance. Count/font/viewport changes
 coordinate width and scroll compensation before paint, retaining alignment or a manually scrolled
 offset. Direct pointer, touch, and wheel input interrupt selection motion; selecting Starred stops
 strip motion without moving it. Reduced motion skips transitions and settles in-flight geometry.
@@ -138,24 +141,26 @@ Vertical scrolling stays native, and each page retains its own position. Offscre
 Edit mode disables paging drags and retains active-page reorder and card editing.
 
 The visual reference is `explorations/phrasebook-navigation/PHRASEBOOK_EXPLORATION.html`: white
-surfaces, Roboto Condensed headings and tabs, and Manrope card text. Borderless cards have 16 px
-corners and 8 px gaps. Each Phrase occurrence supplies its own translation, topic, section, and
-position; repeated occurrences may share a durable Phrase without sharing presentation state.
-Only dialogue supplies speaker state. Learner speech is right-aligned blue (`#dbefff`), partner
-speech left-aligned neutral (`#f9fafb`), with text left-aligned on both. “or” appears only between
-adjacent same-speaker dialogue lines in the same topic and retains that speaker's color.
-Stars change only their icon, never card backgrounds or another phrasebook's membership.
+surfaces, Roboto Condensed headings and tabs, and Manrope card text. Word and conversation bubbles
+have 16 px corners and 8 px gaps; essential and Starred rows have square edges and bottom borders.
+Each Phrase occurrence supplies its own translation, topic, section, and position; repeated
+occurrences may share a durable Phrase without sharing presentation state.
+Only dialogue supplies speaker state. Learner speech is right-aligned gray-100, partner speech
+left-aligned gray-50, with text left-aligned on both. “or” appears only between adjacent same-speaker
+dialogue lines in the same topic.
+Starring changes white/gray-50 cards to blue-50 and gray-100 learner cards to blue-100. Unstarring
+restores the original surface. Membership changes never affect another phrasebook.
 
-Starred is a neutral, full-width collection in saved entry order (the same order as Review), not
+Starred is a white, full-bleed collection in saved entry order (the same order as Review), not
 reconstructed dialogue or a copy of essentials. Each membership appears once; a repeated Phrase
-uses its first saved occurrence and translation.
-Word definitions and full highlighted Chunk source snapshots remain available, along with existing
-audio, details, editing, and star actions. Starring updates every occurrence without changing the
-active page. Opening Starred remembers the previous topic and leaves the topic strip in place.
-Unstarring removes only the collection row, never the saved card, membership, or evidence. Removing a
-focused row moves focus to the next star, or the preceding star at the end. Removing the last star
-hides the tab immediately and, if Starred was active, returns to the previous topic and focuses its
-tab. Count changes are announced without moving focus; topic tab identity survives membership updates.
+uses its first saved occurrence and translation. All card types use essential-row styling here,
+without blue backgrounds. Word definitions and full highlighted Chunk source snapshots remain
+available, along with audio, details, editing, and star actions. Starring updates every occurrence
+without changing the active page. Opening Starred leaves the topic strip in place.
+Unstarring removes only the collection row, never the saved card, membership, or evidence. Removing
+a focused row moves focus to the next star, or the preceding star at the end. Removing the last
+star leaves Starred selected, shows its empty state, and focuses the pinned Starred tab.
+Count changes are announced without moving focus; topic tab identity survives membership updates.
 The adopted web reference is `explorations/starred-access/STARRED_ACCESS.html`; iOS remains unchanged.
 
 Card text places English above the target language without changing either line's typography.
@@ -169,17 +174,20 @@ remain literal text. Absent definitions add no empty row; Phrase and Chunk cards
 this compact definition line. This adopts the Word-definition hierarchy from the same exploration
 without changing the existing English/target typography or adding usage notes and examples.
 
-Cards can be starred for review when they have a membership in the active phrasebook. Tapping a Phrase
-occurrence opens its breakdown; a Word tap pronounces its dictionary headword, and a Chunk tap
-pronounces the full preserved source snapshot. Chunk rows render that full source with the saved span
-highlighted rather than presenting an isolated fragment. In edit mode, entry-keyed card taps open
+Cards can be starred for review when they have a membership in the active phrasebook. Tapping any
+card speaks it: Phrases use their pronunciation, Words their dictionary headword, and Chunks the
+full preserved source snapshot. Phrase breakdown opens on a 500 ms long press, right-click, or
+Shift+F10/Context Menu key while the card is focused. Movement, scrolling, cancellation, or navigation
+cancels the hold; its release never also plays audio. Stars remain independent tap targets.
+There is no card speaker icon or visible Explore phrase link. Chunk rows render their full source
+with the saved span highlighted rather than presenting an isolated fragment. In edit mode, entry-keyed card taps open
 the editor. Word tiles become one column; reorder stays inside one topic/section bucket and updates
 placements or occurrences, never canonical card identity. Contents and Starred have no reorder
 overlay. Phrasebook settings remain available from the title menu. Language browsing remains
 separate, with no star or review control without a phrasebook.
 
-The phrasebook action bar contains **Review**. Phrasebook content is not extended from this view; a new
-situation starts a new guided phrasebook from navigation.
+The phrasebook action bar contains **Review** only while Starred is selected. Phrasebook content is
+not extended from this view; a new situation starts a new guided phrasebook from navigation.
 
 ## Phrase breakdown (web)
 

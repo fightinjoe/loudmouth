@@ -238,7 +238,7 @@ describe("phrasebook-scoped membership stars", () => {
       .toBe("storage unavailable");
   });
 
-  it("retains focus during a pending unstar, then focuses the next row or previous topic", async () => {
+  it("retains focus during a pending unstar, then focuses the next row or empty Starred tab", async () => {
     const view = mountPane();
     view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
@@ -273,9 +273,10 @@ describe("phrasebook-scoped membership stars", () => {
     mocks.toggleCardStar.mockResolvedValue({ cardId: "word", starredAt: null });
     next.click();
     await flush();
-    expect(view.ui.get("content").pageKey).toBe("contents");
-    expect(document.activeElement).toBe(view.rootEl.querySelector('.deck-tab[aria-selected="true"]'));
-    expect(view.rootEl.querySelector(".deck-star-tab")).toBeNull();
+    expect(view.ui.get("content").pageKey).toBe("starred");
+    expect(document.activeElement).toBe(view.rootEl.querySelector(".deck-star-tab"));
+    expect(view.rootEl.querySelector(".deck-star-count").textContent).toBe("0");
+    expect(view.rootEl.querySelector('[data-action="content/review"]').disabled).toBe(true);
     expect(view.ui.get("content").cards).toHaveLength(3);
     expect([...view.rootEl.querySelectorAll(".card-star")].every((button) => !button.disabled)).toBe(true);
   });
@@ -295,6 +296,7 @@ describe("review entry point", () => {
       starredAt: "2026-02-01T00:00:00.000Z",
     });
 
+    view.ui.transition("content/set-page", { pageKey: "starred" });
     view.rootEl.querySelector('[data-action="content/review"]').click();
     await flush();
 
@@ -317,6 +319,7 @@ describe("review entry point", () => {
       starredAt: "2026-02-01T00:00:00.000Z",
     });
 
+    view.ui.transition("content/set-page", { pageKey: "starred" });
     view.rootEl.querySelector('[data-action="content/review"]').click();
     view.ui.transition("content/select-deck", { id: "d2" });
     await flush();
@@ -465,7 +468,7 @@ describe("topic navigation and independent sections", () => {
     entry.occurrence.section = "essentials";
     view.ui.transition("content/cards-changed", { cards: [entry] });
     view.rootEl.querySelector(".topic-view").click();
-    view.rootEl.querySelector(".card-term").click();
+    view.rootEl.querySelector(".card-term").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
     expect(view.ui.get("details").entry.occurrence).toEqual(entry.occurrence);
     expect(view.ui.get("details").entry.occurrence).not.toHaveProperty("speaker");
     expect(view.ui.get("details").group.id).toBe("group-1");
