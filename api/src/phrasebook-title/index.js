@@ -2,27 +2,13 @@
 const { buildPhrasebookTitlePrompt } = require('./prompt');
 const { buildUsageReport } = require('../pricing');
 const { getBackendName } = require('../llm-config');
+const { callWithTimeout } = require('../llms/timeout');
 
 const PHRASEBOOK_TITLE_MAX_TOKENS = 256;
 const PHRASEBOOK_TITLE_TIMEOUT_MS = 15000;
 const MAX_TITLE_LENGTH = 80;
 
 class PhrasebookTitleTimeoutError extends Error {}
-
-function callWithTimeout(handler, prompt, opts, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      const error = new PhrasebookTitleTimeoutError(`LLM request timed out after ${timeoutMs}ms`);
-      controller.abort(error);
-      reject(error);
-    }, timeoutMs);
-    handler(prompt, { ...opts, signal: controller.signal }).then(
-      (value) => { clearTimeout(timer); resolve(value); },
-      (err) => { clearTimeout(timer); reject(err); },
-    );
-  });
-}
 
 function parsePhrasebookTitleRequest(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -71,7 +57,9 @@ async function performPhrasebookTitle(
   const startedAt = performance.now();
   let reply;
   try {
-    reply = await callWithTimeout(handler, prompt, { maxOutputTokens: PHRASEBOOK_TITLE_MAX_TOKENS }, effectiveTimeoutMs);
+    reply = await callWithTimeout(
+      handler, prompt, { maxOutputTokens: PHRASEBOOK_TITLE_MAX_TOKENS }, effectiveTimeoutMs, PhrasebookTitleTimeoutError,
+    );
   } catch (err) {
     if (err instanceof PhrasebookTitleTimeoutError) {
       console.error({ event: 'llm_timeout', route: 'phrasebook-title', llm: backendName, error: err.message, failureLevel: 2 });

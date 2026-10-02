@@ -13,7 +13,12 @@ test('hostile historical source stays inert through the real card lifecycle', as
     const {db,ui} = window.__loudmouth
     const phrase = {type:'phrase',lang:'ja',text:`猫${payload}`,translation:payload,reading:[['猫','ねこ'],[payload,null]],notes:payload}
     const deck = await db.commitPhrasebook({name:payload,lang:'ja',selectedIndexes:[0],groups:[{
-      id:crypto.randomUUID(),title:payload,phrases:[{id:crypto.randomUUID(),card:phrase,speaker:'you'}],vocab:[],
+      id:crypto.randomUUID(),title:payload,
+      essentials:[{id:crypto.randomUUID(),card:phrase}],vocab:[],
+      dialogue:[
+        {id:crypto.randomUUID(),card:phrase,speaker:'you'},
+        {id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'はい',translation:'Yes'},speaker:'partner'},
+      ],
     }]})
     const [entry] = await db.getCards(deck.id)
     const source = {snapshot:{lang:'ja',text:phrase.text,translation:payload,reading:phrase.reading},ref:{cardId:entry.cardId,occurrenceId:entry.occurrence.id},span:{start:0,end:1}}

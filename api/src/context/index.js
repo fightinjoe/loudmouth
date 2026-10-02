@@ -23,6 +23,7 @@
 const { buildContextPrompt } = require('./prompt');
 const { buildUsageReport } = require('../pricing');
 const { getBackendName } = require('../llm-config');
+const { callWithTimeout } = require('../llms/timeout');
 
 const { sanitizeAbility } = require('../ability');
 
@@ -43,21 +44,6 @@ const MAX_OPTIONS = 5;
 const MAX_CHECKLIST = 8;
 
 class ContextTimeoutError extends Error {}
-
-function callWithTimeout(handler, prompt, opts, timeoutMs) {
-  return new Promise((resolve, reject) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      const error = new ContextTimeoutError(`LLM request timed out after ${timeoutMs}ms`);
-      controller.abort(error);
-      reject(error);
-    }, timeoutMs);
-    handler(prompt, { ...opts, signal: controller.signal }).then(
-      (value) => { clearTimeout(timer); resolve(value); },
-      (err) => { clearTimeout(timer); reject(err); },
-    );
-  });
-}
 
 /**
  * @param {object} body   parsed request body
@@ -180,7 +166,9 @@ async function performContext(
   const startedAt = performance.now();
   let reply;
   try {
-    reply = await callWithTimeout(handler, prompt, { maxOutputTokens: CONTEXT_MAX_TOKENS }, effectiveTimeoutMs);
+    reply = await callWithTimeout(
+      handler, prompt, { maxOutputTokens: CONTEXT_MAX_TOKENS }, effectiveTimeoutMs, ContextTimeoutError,
+    );
   } catch (err) {
     if (err instanceof ContextTimeoutError) {
       console.error({ event: 'llm_timeout', route: 'context', llm: backendName, error: err.message, failureLevel: 2 });

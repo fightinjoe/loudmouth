@@ -185,64 +185,51 @@ To test PWA installability ("Add to Home Screen"):
 
 ## App structure
 
-### Entry point
+### Startup and state
 
-`src/js/router.js` → `src/panes/app.js`
-
-The router calls `initApp(params)` on every hash change. `app.js` builds the
-static shell HTML, creates the shared `app` context object, and bootstraps the
-two panes.
-
-### The `app` context object
-
-Passed by reference to every pane and gesture module. Contains:
-
-```js
-app.els.navPane      // #nav-pane — the nav list behind the content (stable DOM element)
-app.els.handle       // .handle — transparent overlay on nav-main; gesture target
-app.els.navMain      // #nav-main — the sliding shell that carries handle, scrim, and content-pane
-app.els.contentPane  // #content-pane — the deck content area inside nav-main (re-rendered on deck switch)
-app.els.scrim        // #nav-main-scrim — tap-to-close overlay when nav is open
-
-app.navPane          // returned by wireNavPaneGesture: { open, close, setSuppressed, refresh }
-app.contentPane      // set by buildContentPane: { loadDeck }
-
-app.getLastDeckId()  // reads last-viewed deck from localStorage
-app.setLastDeckId()  // writes last-viewed deck to localStorage
-```
+`src/js/main.ts` initializes the library, then `src/js/router.ts` passes hash parameters to
+`src/panes/app.ts`. The app mounts the shell, content, details, and action layers and registers
+their namespaced transitions with `src/js/uiState.ts`. Typed slice and transition payload contracts
+live in `src/js/app-types.ts`; pane event handlers receive a shared `Host`, not a mutable app context.
 
 ### Panes (`src/panes/`)
 
 | File | Responsibility |
 |------|---------------|
-| `app.js` | Shell HTML, `app` object, gesture bootstrap, pane init sequence |
-| `navPane.js` | Nav pane HTML renderer + one delegated click listener on `app.els.navPane` |
-| `contentPane.js` | Content pane HTML renderer + all content-pane event listeners on `app.els.contentPane` |
+| `app.ts` | Shell markup, state registration, pane mounting, last-opened phrasebook |
+| `nav-pane.ts` | Recent phrasebooks, language browsing, creation entry point |
+| `content-pane.ts` | Phrasebook/browse state, page selection, edit mode, pane coordination |
+| `content-pane-load.ts` | Load stored, suggested-preview, and language-wide content |
+| `content-pane-render.ts` | Contents, topic sections, supplemental collections, Starred markup |
+| `content-pane-actions.ts` | Card actions, editing, stars, audio, details entry |
+| `content-pane-gestures.ts` | Shell reveal, topic paging, section-local reorder |
+| `content-pane-tab-motion.ts` | Tab scrolling, selection animation, reduced-motion handling |
+| `details-pane.ts` | On-demand phrase analysis, candidate stars, modal focus and expansion |
+| `action-pane.ts` | Lifecycle for creation, suggestion confirmation, Review, settings, editor, JSON |
 
-**Listener strategy:** all event listeners attach once to the stable pane root
-elements (`app.els.navPane`, `app.els.contentPane`). Re-renders write freely
-into their children via `innerHTML` with no listener bookkeeping.
+Cross-pane communication uses named state transitions. Stable pane roots use delegated handlers;
+action panels own their mounted listeners and cleanup. Keep asynchronous ownership and cancellation
+within the pane or panel that starts the work.
 
-**Cross-pane communication** goes through `app`:
-- Nav pane calls `app.contentPane.loadDeck(id)` when a deck is selected.
-- Content pane calls `app.navPane.refresh()` after deck settings change.
-- Content pane calls `app.navPane.open/close/setSuppressed` for gesture coordination.
+### Components and API clients
 
-### Gesture modules (`src/js/`)
+`src/components/` contains both markup renderers (`card.ts`, `source-context.ts`,
+`phrase-breakdown.ts`) and interactive panel controllers (`creation-panel.ts`, `review-panel.ts`,
+`card-edit-panel.ts`, `bottom-sheet.ts`). Controllers explicitly own mounting and teardown; renderers
+receive data and return markup.
 
-| File | Attaches to | Handles |
-|------|-------------|---------|
-| `navPaneGestures.js` | `app.els.handle` | Swipe right/left to open/close nav pane |
-| `contentPaneGestures.js` | `app.els.contentPane` | Swipe-left to reveal card actions; touch-drag to reorder cards |
-| `gestures.js` | Various | `wireSheetDismissGesture` for bottom sheet panels |
+`src/js/phrasebook-api.ts` validates creation responses against `@catchphrase/card-schema`.
+`phrasebook-illustration.ts` manages independent cover work; `phrase-breakdown.ts` validates and
+caches disposable analysis. `ability.ts` and `lang.ts` define the client enums reused by storage
+validation. Preferences remain separate from durable library content.
 
-### Components (`src/components/`)
+### Storage and exchange
 
-Pure functions that return HTML strings. No DOM queries, no side effects.
-Event listeners for component interactions are handled by the containing pane's
-delegated listener, not inside the component itself.
+`src/js/db.ts` owns the seven-table Dexie library, atomic phrasebook commits, canonical card identity,
+phrasebook-specific membership stars, occurrences, topic Word placements, and historical evidence.
+Phrasebook and language-wide reads share provenance retrieval while retaining different source
+ordering: the active phrasebook's evidence first versus chronological ordering.
 
-### Data layer (`src/js/db.js`)
-
-Dexie-backed IndexedDB. All DB calls are async. Imported directly by panes;
-components receive data as arguments.
+Library backup/restore uses v3; `components/json-panel.ts` exports v2 CardBatch content through the
+shared schema. The library exposes validated import and backup/restore APIs; there is no
+`#deck?cards=` URL-import handler. `#deck?id=` selects a stored phrasebook.

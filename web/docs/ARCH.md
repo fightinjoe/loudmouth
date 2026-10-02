@@ -1,85 +1,67 @@
 # Loudmouth — Architecture
 
-> Client-only PWA built with plain HTML/JS + Vite, storing cards in IndexedDB via Dexie.js, deployed on Vercel.
+> Client-side TypeScript PWA built with Vite, storing its library in IndexedDB via Dexie.
+> The monorepo's stateless `api/` service supplies generated content; it stores no library.
 
-## Status
-**As of:** 2026-09-16 (phrase-breakdown integration; historical sections below retain earlier decisions)
-**Brief:** See docs/BRIEF.md
+## Sources of truth
 
-## Platform
-Mobile-first PWA. Web only — no native app. PWA manifest + service worker enables "Add to Home Screen" on iOS Safari, hides browser chrome, and provides offline support. Desktop is supported but not a design target; audio is explicitly iOS Safari only.
+- [`docs/BRIEF.md`](../../docs/BRIEF.md) — product scope and current architecture.
+- [`docs/DESIGN.md`](../../docs/DESIGN.md) — creation, browsing, analysis, and Review behavior.
+- [`docs/CARD_SCHEMA.md`](../../docs/CARD_SCHEMA.md) — normative card and storage contracts.
+- [`docs/API_DESIGN.md`](../../docs/API_DESIGN.md) — endpoint contracts and provider policies.
+- [`web/app/README.md`](../app/README.md#app-structure) — current module map and development commands.
+- [Pane Protocol](./PANE_PROTOCOL.html) — pane ownership and interaction mechanics.
 
 ## Frontend
-**Approach:** SPA (client-rendered, no framework)
-**Tooling:** Plain HTML/JS + Vite
-**Why:** The app is a focused single-purpose tool with no SEO requirement and no server. A framework adds bundle weight and abstraction overhead with no payoff here. Vite provides fast dev builds, ES module bundling, and static output for Vercel. Files should be small and modular — one concern per file.
 
-**Source layout:**
-- `src/js/` — utilities and app logic, including shared UI state/delegation, API clients, and validated tab-scoped phrase analysis caching
-- `src/panes/` — navigation, content, details, and action layer owners; no `src/screens/` directory
-- `src/components/` — reusable rendering functions for specific UI components (template-literal renderers)
-- `src/styles/` — CSS split by concern: `variables.css` (all design tokens — primitive HSL channels + semantic variables), `utilities.css` (layout/typography utility classes), `base.css` (global resets/defaults), `components.css` (component-specific styles)
+The web app is a framework-free, mobile-first SPA. Vite transpiles strict TypeScript and emits
+static assets plus a PWA service worker. Native iOS is a separate client in the monorepo.
 
-**CSS approach:** Display logic is handled via CSS (`data-*` attribute selectors), not JS DOM manipulation. Mode-specific visibility (e.g. card faces in review vs. browse) is toggled by setting `data-card-mode` on the element and using CSS selectors to show/hide the appropriate content. Utility classes follow a Tailwind-like naming convention (e.g. `.flex-row`, `.gap-sm`, `.text-h2`).
+Production source lives under `web/app/src/`:
 
-**Gesture handling:** Pane owners wire static handles; `content-pane-gestures.js` owns shell/pager/reorder gestures. The details pane's expansion is a geometric Web Animation, not a swipe gesture. See `AGENTS.md` and the Pane Protocol for the current contract.
+- `js/` — startup/router, typed UI state and delegated events, library access, API clients,
+  preferences, language/ability enums, audio, and shared utilities.
+- `panes/` — shell initialization and owners of the navigation, content, details, and action layers.
+  Content rendering, loading, card actions, gestures, and tab motion have separate modules.
+- `components/` — data-to-markup renderers and interactive panels with explicit mount/cleanup.
+- `styles/` — tokens, utilities, base rules, component/pane styles, and phrase-breakdown styles.
 
-## Backend
-**Approach:** Static web client with the monorepo `api/` model-generation service.
-**Boundary:** The server is stateless and stores no library. `/phrase-breakdown` analyzes existing
-phrases on demand with exact source spans, contextual teaching, and optional reusable patterns.
-The details pane aborts dismissed client requests and ignores late results. Validated responses are
-cached by exact language/text/translation/context in tab-scoped sessionStorage, not IndexedDB.
-Edits change the cache key. API/gateway and web must deploy together.
+Named state transitions coordinate panes through a typed host. Stable pane roots use delegated
+events; mounted panels manage their own listeners. CSS data attributes express display state.
+Content gestures own shell reveal, topic paging, and section-local reorder. Details uses geometric
+expansion and modal focus management rather than a fifth pane layer.
 
-**Details interaction:** `details-pane.js` owns selection, all-mode, disclosures, modal focus, inert
-content, and geometry; pure renderers live in `components/phrase-breakdown.js`, data/cache helpers in
-`js/phrase-breakdown.js`, and styles in `phrase-breakdown.css`. It occupies the existing details layer.
-Action opening or navigation closes details synchronously; normal dismissal reverses expansion and
-returns focus without changing conversation scroll. No framework or new persisted card schema.
+## Service boundary
 
-## Data & Storage
-**Primary store:** IndexedDB via [Dexie.js](https://dexie.org/)
-**Why:** IndexedDB has no practical size limit for this use case (handles 100k+ cards). Dexie wraps the raw API with a clean, async interface. localStorage is ruled out (5MB limit, synchronous). SQLite/WASM is overkill — no complex querying needed.
+Creation uses `/context` and `/phrasebook`, with independent `/phrasebook-title` and
+`/phrasebook-image` work. Text commits atomically; cover failure never prevents saving a phrasebook.
+`/phrase-breakdown` analyzes the exact selected occurrence and active phrasebook context.
+Validated analysis is disposable and cached per browser tab; only explicit stars save targets.
 
-**Schema:** See `docs/BRIEF.md` — Library Schema section. Key points:
-- Cards are stored with `id` (UUID v4) and `importedAt` (ISO 8601) assigned at import time
-- Cards from the same paste share `importedAt` — this is the batch association mechanism
-- Schema includes extension points for future spaced repetition (`reviewHistory`) even if unused in Phase 1–2
+The shared `@catchphrase/card-schema` package validates server/client exchange. Phrasebook responses
+and library backups use v3; common CardBatch exports and phrase breakdown use v2. API, gateway,
+shared schema, and web must deploy together when their contract changes.
 
-**Durability note:** iOS Safari can evict IndexedDB data under low-storage conditions without warning. Mitigation: a JSON export feature (Phase 2) lets users back up and restore their library manually.
+## Local library
 
-## Auth
-**Approach:** None
-**Why:** Single-user, single-device tool. No accounts, no login, no sessions.
+The `loudmouth-topic-v3` Dexie database contains `cards`, `decks`, `groups`, `memberships`,
+`occurrences`, `provenance`, and `topicWords`. Canonical cards may be shared across phrasebooks,
+while stars belong to memberships and translation/presentation belongs to occurrences.
+Historical source evidence survives deletion of its originating phrase or phrasebook.
 
-## Deployment
-**Target:** Vercel
-**Build output:** Static files from `vite build`
-**Environments:** Production only — no staging environment needed for a single-user tool. Local dev via `vite dev`.
-**Why:** Zero-config for static Vite output. Free tier is sufficient. Good CLI and GitHub integration.
+Storage exposes atomic import and full-library backup/restore APIs. JSON card export uses the
+shared CardBatch validator; there is no URL-encoded card-import handler. Local preferences and
+tab-scoped analysis caches are separate from the durable library. Old physical databases and
+preference keys are left untouched; no compatibility reader or migration runs.
 
-## Key Integrations
-- **Web Speech API** — TTS audio playback. `lang="zh-CN"` for Mandarin, `lang="ja-JP"` for Japanese. iOS Safari only; do not attempt to support macOS Safari or Chrome Desktop for audio.
-- **URI import** — Cards can be imported via a `#deck?cards=<base64url-encoded-JSON>` hash URL. The payload is the standard card batch JSON schema. No server is involved; the `#` fragment is never sent over the network. Browser URL buffer limits (~2MB) are the only practical size constraint, sufficient for thousands of cards. A small pure `base64url` utility module handles encode/decode.
+iOS Safari may evict local storage. There are no accounts, cloud sync, or server-held backups.
 
-## Constraints
-Every feature and future PRD must respect these:
+## Constraints and deployment
 
-- **No backend.** Do not introduce server-side logic, APIs, or auth without a concrete forcing function (multi-device sync, shared decks, or server-side AI calls).
-- **Audio is mobile-only.** Web Speech API audio is a mobile-first feature. macOS Safari is silent; Chrome Desktop is poor. Do not attempt to fix this.
-- **Small, modular files.** One concern per file. No monolithic modules.
-- **No framework.** Plain JS only. Do not introduce React, Vue, Svelte, or similar without revisiting this architecture.
-- **PWA requirements must be maintained.** Any change to the service worker, manifest, or caching strategy should be deliberate — breaking PWA installability is a regression.
-
-## Deferred Decisions
-- **Spaced repetition storage shape** — The Library Schema has an extension point but SR is not designed. Deferred until the no-self-rating tension is resolved (see BRIEF.md open questions). Will be decided when SR is prioritized.
-- **Card grouping model** — How cards are organized in the browse/list view (by batch, trip, topic) is unresolved and affects the data model. A prototype is planned (see BRIEF.md). Will be decided before Phase 2 PRD is written.
-- **Furigana rendering approach** — Whether `reading` renders as plain text or ruby annotations is pending a prototype. Does not affect the data model but affects the rendering layer. Will be decided before Phase 2 ships.
-- **Server-side storage** — Not needed now. Revisit if: multi-device sync is desired, iOS eviction becomes a real problem, or card derivation moves server-side.
-
-## What This Rules Out
-- **Multi-device sync** — no server means the library lives only on the device it was imported on. Acceptable for now; would require a backend to change.
-- **Push notifications / background sync** — PWA service worker is for offline caching only, not background processing.
-- **Native device APIs** (camera, haptics, etc.) — web-only; not available.
-- **Real-time features** — no server means no websockets, no live collaboration.
+- Keep the web client framework-free and statically deployable; do not add a separate web backend.
+- Preserve PWA installability and offline asset caching.
+- Audio uses Web Speech API on mobile; desktop audio is intentionally unsupported.
+- Keep code separated by ownership and lifecycle rather than adding generic frameworks.
+- Static build output is deployed to Vercel; the API runs separately on Cloud Run.
+- Camera/OCR, spaced repetition, push notifications, and multi-device synchronization remain
+  outside the current product scope. The service worker is not a background generation worker.

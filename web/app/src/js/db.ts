@@ -17,7 +17,6 @@ import {
   type Phrase,
 } from "@catchphrase/card-schema";
 import type {
-  Ability,
   CardRecord,
   CommitPhrasebookInput,
   Deck,
@@ -40,10 +39,10 @@ import type {
 
 import { LIBRARY_SCHEMA_VERSION } from "./library-types";
 import { uuid } from "./utils";
+import { ABILITIES } from "./ability";
+import { CONTENT_LANGUAGES } from "./lang";
 
 const DATABASE_NAME = "loudmouth-topic-v3";
-const LANGS: readonly Lang[] = ["zh", "ja", "es", "cs", "uk"];
-const ABILITIES: readonly Ability[] = ["none", "basics", "conversational"];
 const MODES: readonly DeckMode[] = ["study", "review", "reverse"];
 const ORDERS: readonly DeckOrder[] = ["default", "random", "reverse"];
 const READING_DISPLAYS: readonly ReadingDisplay[] = ["reading", "romanization"];
@@ -298,7 +297,7 @@ function validateCommitInput(value: unknown): CommitPhrasebookInput {
     "input",
   );
   const name = requiredString(input.name, "input.name", 500);
-  const lang = enumValue(input.lang, LANGS, "input.lang");
+  const lang = enumValue(input.lang, CONTENT_LANGUAGES, "input.lang");
   const generation = Object.hasOwn(input, "generation")
     ? validateGeneration(input.generation, "input.generation")
     : undefined;
@@ -664,6 +663,21 @@ function provenanceOrder(deckId: string, left: Provenance, right: Provenance): n
     || left.id.localeCompare(right.id);
 }
 
+async function getProvenanceByCard(
+  cardIds: string[],
+  store: LibraryDb,
+): Promise<Map<string, Provenance[]>> {
+  const provenance = cardIds.length === 0
+    ? []
+    : await store.provenance.where("cardId").anyOf(cardIds).toArray();
+  const sourcesByCard = new Map<string, Provenance[]>();
+  for (const source of provenance) {
+    const values = sourcesByCard.get(source.cardId) ?? [];
+    values.push(source);
+    sourcesByCard.set(source.cardId, values);
+  }
+  return sourcesByCard;
+}
 
 export async function getCards(deckId: string, store: LibraryDb = db): Promise<LibraryEntry[]> {
   const [memberships, occurrences, groups, topicWords] = await Promise.all([
@@ -675,18 +689,10 @@ export async function getCards(deckId: string, store: LibraryDb = db): Promise<L
   const cardIds = [...new Set(memberships.map((membership) => membership.cardId))];
   const records = (await store.cards.bulkGet(cardIds))
     .filter((record): record is CardRecord => record !== undefined);
-  const provenance = cardIds.length === 0
-    ? []
-    : await store.provenance.where("cardId").anyOf(cardIds).toArray();
+  const sourcesByCard = await getProvenanceByCard(cardIds, store);
   const membershipByCard = new Map(memberships.map((membership) => [membership.cardId, membership]));
   const cardById = new Map(records.map((record) => [record.id, record]));
   const groupById = new Map(groups.map((group) => [group.id, group]));
-  const sourcesByCard = new Map<string, Provenance[]>();
-  for (const source of provenance) {
-    const values = sourcesByCard.get(source.cardId) ?? [];
-    values.push(source);
-    sourcesByCard.set(source.cardId, values);
-  }
   const phraseEntries = occurrences.flatMap((occurrence): LibraryEntry[] => {
     const membership = membershipByCard.get(occurrence.cardId);
     const record = cardById.get(occurrence.cardId);
@@ -766,15 +772,7 @@ export async function getCards(deckId: string, store: LibraryDb = db): Promise<L
 export async function getCardsByLang(lang: Lang, store: LibraryDb = db): Promise<LibraryEntry[]> {
   const records = await store.cards.where("lang").equals(lang).toArray();
   const cardIds = records.map((record) => record.id);
-  const provenance = cardIds.length === 0
-    ? []
-    : await store.provenance.where("cardId").anyOf(cardIds).toArray();
-  const sourcesByCard = new Map<string, Provenance[]>();
-  for (const source of provenance) {
-    const values = sourcesByCard.get(source.cardId) ?? [];
-    values.push(source);
-    sourcesByCard.set(source.cardId, values);
-  }
+  const sourcesByCard = await getProvenanceByCard(cardIds, store);
   return records
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id))
     .map((record) => ({
@@ -1193,7 +1191,7 @@ function validateDeck(value: unknown, path: string): Deck {
   const deck: Deck = {
     id: uuidString(row.id, `${path}.id`),
     name: requiredString(row.name, `${path}.name`, 500),
-    lang: enumValue(row.lang, LANGS, `${path}.lang`),
+    lang: enumValue(row.lang, CONTENT_LANGUAGES, `${path}.lang`),
     createdAt: isoTimestamp(row.createdAt, `${path}.createdAt`),
     mode: enumValue(row.mode, MODES, `${path}.mode`),
     order: enumValue(row.order, ORDERS, `${path}.order`),
@@ -1223,7 +1221,7 @@ function validateCardRecord(value: unknown, path: string): CardRecord {
   const content = validateCard(row.content, `${path}.content`);
   const identityKey = requiredString(row.identityKey, `${path}.identityKey`);
   if (identityKey !== cardIdentity(content)) throw new Error(`${path}.identityKey is invalid`);
-  const lang = enumValue(row.lang, LANGS, `${path}.lang`);
+  const lang = enumValue(row.lang, CONTENT_LANGUAGES, `${path}.lang`);
   if (lang !== content.lang) throw new Error(`${path}.lang must equal content.lang`);
   const type = enumValue(row.type, ["word", "phrase", "chunk"], `${path}.type`);
   if (type !== content.type) throw new Error(`${path}.type must equal content.type`);

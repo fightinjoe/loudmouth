@@ -94,11 +94,14 @@ Endpoint code and accepted prompt artifacts live together:
 - `api/src/phrasebook/translate-prompt.txt` — canonical translation prompt
 - `api/src/phrasebook/reading-rules-ja.txt` and `reading-rules-zh.txt` — language-specific reading rules
 - `api/src/phrase-breakdown/index.js` — on-demand analysis validation, source alignment, and execution
-- `api/src/phrasebook-image/index.js` — independent image generation, matting, and decoded PNG validation
+- `api/src/phrasebook-image/index.js` — independent image generation and decoded PNG validation
 - `api/src/phrase-breakdown/prompt.js` and `prompt.txt` — trusted contextual-teaching prompt
 
-Provider adapters remain in `api/src/llms/`. Shared backend configuration, card validation, and
-pricing remain in `api/src/llm-config.js`, `api/src/schema/index.ts`, and `api/src/pricing.js`.
+Provider adapters and the shared single-call timeout helper remain in `api/src/llms/`.
+`llms/timeout.js` owns cancellation/timer cleanup for context, title, and breakdown; handlers retain
+their endpoint-specific deadlines and error policy. Phrasebook orchestration and image cancellation
+remain independent. Shared backend configuration, card validation, and pricing remain in
+`api/src/llm-config.js`, `api/src/schema/index.ts`, and `api/src/pricing.js`.
 Endpoint tests remain in `api/src/test/`.
 
 ## Prompt and code responsibilities

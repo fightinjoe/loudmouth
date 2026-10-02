@@ -62,22 +62,8 @@ Repeat until the user approves.
 
 ## Step 4: Output
 
-Produce the final JSON, then generate two import links and display the raw JSON for troubleshooting.
+Display the final card batch JSON in a fenced code block. Validate it against the current shared
+CardBatch contract described in `docs/CARD_SCHEMA.md`.
 
-### 4a: Build the import links
-
-1. Serialize the card batch JSON to a compact string (no extra whitespace).
-2. Base64url-encode it: standard base64, then replace `+` with `-`, `/` with `_`, and strip trailing `=` padding.
-3. Produce two links:
-
-```
-**Import (production):**
-https://loudmouth-gilt.vercel.app/#deck?cards=<encoded>
-
-**Import (local):**
-http://localhost:8000/#deck?cards=<encoded>
-```
-
-### 4b: Show the raw JSON
-
-After the links, display the full JSON in a fenced code block for troubleshooting.
+Do not generate `#deck?cards=` import links: the current web router does not consume encoded
+card payloads. JSON export/import at the library API boundary is not a URL-import feature.

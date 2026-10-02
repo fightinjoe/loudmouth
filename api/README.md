@@ -218,7 +218,7 @@ api/
     │   ├── translate-prompt.txt
     │   ├── reading-rules-ja.txt
     │   └── reading-rules-zh.txt
-    ├── llms/
+    ├── llms/                       # provider adapters + shared single-call timeout helper
     ├── llm-config.js
     ├── schema/                     # canonical strict TS contract; emits ignored dist/
     ├── pricing.js
@@ -233,6 +233,11 @@ changes in place; there is no separate prompt-source tree or copy step.
 `src/index.js` exports the Cloud Function `translate` and owns CORS, method handling, and route
 dispatch. `src/llm-config.js` owns server backend configuration, `src/llms/` contains provider
 adapters, and the card and pricing modules contain shared rules.
+
+`src/llms/timeout.js` shares the bounded-call/AbortSignal/timer-cleanup mechanics used by context,
+title, and breakdown. Their handlers retain endpoint-specific deadlines, error types, validation,
+usage, and HTTP policy. Phrasebook's multi-call retries/overall deadline and image disconnect
+cancellation remain separate; they are not equivalent single-call lifecycles.
 
 ## Local development
 

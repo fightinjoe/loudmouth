@@ -257,7 +257,6 @@ async function generateConversations(args) {
   const unlink = linkAbortSignal(args.signal, controller);
   const conversations = new Array(args.parsedRequest.checklist.length);
   let nextIndex = 0;
-  let failureLevel = 0;
   const worker = async () => {
     try {
       while (nextIndex < conversations.length) {
@@ -269,7 +268,6 @@ async function generateConversations(args) {
           signal: controller.signal,
         });
         conversations[index] = generated.conversations[0];
-        failureLevel = Math.max(failureLevel, generated.failureLevel);
       }
     } catch (error) {
       if (!controller.signal.aborted) controller.abort(error);
@@ -280,7 +278,7 @@ async function generateConversations(args) {
     const settled = await Promise.allSettled(Array.from({ length: Math.min(4, conversations.length) }, worker));
     const failure = settled.find(result => result.status === 'rejected');
     if (failure) throw failure.reason;
-    return { conversations, failureLevel };
+    return { conversations };
   } finally {
     unlink();
   }

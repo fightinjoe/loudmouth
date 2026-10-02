@@ -4,7 +4,7 @@
 
 ## Architecture constraints (non-negotiable)
 
-- **No framework.** Plain JS only — no React, Vue, Svelte, etc.
+- **No framework.** Strict TypeScript with Vite — no React, Vue, Svelte, etc.
 - **No web backend runtime.** The web app stays fully client-side. Approved model generation and phrase analysis call the existing monorepo `api/` service; do not add a separate web server or server-held library.
 - **Small, modular files.** One concern per file. No monolithic modules.
 - **PWA installability must be maintained.** Do not break the service worker, manifest, or caching strategy.
@@ -13,7 +13,7 @@
 ## Source layout
 
 ```
-src/js/          Generic utilities and app logic (router, db, tts, import-parser, base64url, lang, utils, uiState, delegate)
+src/js/          Generic utilities and app logic (router, db, tts, lang, ability, utils, uiState, delegate)
 src/panes/       Pane modules — one per layer of the app, conforming to the Pane Protocol
 src/components/  Reusable rendering functions for specific UI components, plus the bottom-sheet primitive
 src/styles/      CSS split by concern (see below)

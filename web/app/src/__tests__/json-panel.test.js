@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import {describe,it,expect} from 'vitest';
 import {IDBFactory,IDBKeyRange} from 'fake-indexeddb';
-import {parseCardBatch} from '../js/import-parser';
+import {validateCardBatch} from '@catchphrase/card-schema';
 import {toImportJson} from '../components/json-panel';
 import {createDb,commitPhrasebook,toggleCardStar,getCards,getCardsByLang,importCards} from '../js/db';
 
@@ -11,21 +11,6 @@ const chunk = {card:{type:'chunk',lang:'ja',text:'肉も',translation:'neither m
 const word = {card:{type:'word',lang:'ja',text:'食べる',translation:'eat',partOfSpeech:'verb',senseKey:'consume-food',reading:[['食','た'],['べる',null]]},sources:[{snapshot,span:{start:4,end:9}}]};
 
 describe('v2 content exchange',()=>{
-  it('rejects an entire batch and reports indexed paths for malformed entries',()=>{
-    const result = parseCardBatch(JSON.stringify({schemaVersion:2,cards:[word,null,{card:{...word.card,type:'sentence'}}]}));
-    expect(result.cards).toEqual([]);
-    expect(result.errors).toHaveLength(2);
-    expect(result.errors[0]).toContain('cards[1]');
-    expect(result.errors[1]).toContain('cards[2]');
-  });
-  it('rejects old envelopes, metadata and misaligned optional readings',()=>{
-    for (const batch of [{cards:[word]},{schemaVersion:1,cards:[word]}, {schemaVersion:2,cards:[{...word,card:{...word.card,id:'injected'}}]}, {schemaVersion:2,cards:[{...word,card:{...word.card,reading:[['食べました','たべました']]}}]}, {schemaVersion:2,cards:[word],decks:[]}]) {
-      const result = parseCardBatch(JSON.stringify(batch));
-      expect(result.cards).toEqual([]);
-      expect(result.errors.length).toBeGreaterThan(0);
-    }
-    expect(parseCardBatch('{broken').cards).toEqual([]);
-  });
   it('round trips saved Chunk context and Word evidence without membership stars or metadata',async()=>{
     const store = createDb({indexedDB:new IDBFactory(),IDBKeyRange});
     const card = {type:'phrase',...snapshot};
@@ -37,8 +22,7 @@ describe('v2 content exchange',()=>{
     await toggleCardStar(deck.id,chunk,store);
     const entries = await getCards(deck.id,store);
     const json = toImportJson(entries);
-    const parsed = parseCardBatch(json);
-    expect(parsed.errors).toEqual([]);
+    const parsed = validateCardBatch(JSON.parse(json));
     expect(parsed.cards.find(candidate=>candidate.card.type==='chunk')).toEqual(chunk);
     expect(parsed.cards.find(candidate=>candidate.card.type==='word')).toEqual(word);
     for (const candidate of parsed.cards) {
@@ -49,7 +33,7 @@ describe('v2 content exchange',()=>{
     const restored = createDb({indexedDB:new IDBFactory(),IDBKeyRange});
     await importCards(parsed.cards,null,restored);
     expect(await restored.memberships.count()).toBe(0);
-    const reexported = parseCardBatch(toImportJson(await getCardsByLang('ja',restored)));
+    const reexported = validateCardBatch(JSON.parse(toImportJson(await getCardsByLang('ja',restored))));
     expect(reexported.cards).toEqual(expect.arrayContaining(parsed.cards));
     store.close(); restored.close();
   });
@@ -58,14 +42,10 @@ describe('v2 content exchange',()=>{
       {card:{type:'phrase',lang:'uk',text:'Де вокзал?',translation:'Where is the station?'}},
       {card:{type:'word',lang:'uk',text:'вокзал',translation:'station',partOfSpeech:'noun',senseKey:'train-station'}},
     ];
-    const parsed = parseCardBatch(JSON.stringify({schemaVersion:2,cards:candidates}));
-    expect(parsed.errors).toEqual([]);
-    expect(parsed.cards).toEqual(candidates);
     const store = createDb({indexedDB:new IDBFactory(),IDBKeyRange});
     try {
-      await importCards(parsed.cards,null,store);
-      const reexported = parseCardBatch(toImportJson(await getCardsByLang('uk',store)));
-      expect(reexported.errors).toEqual([]);
+      await importCards(candidates,null,store);
+      const reexported = validateCardBatch(JSON.parse(toImportJson(await getCardsByLang('uk',store))));
       expect(reexported.cards.sort((a,b)=>a.card.type.localeCompare(b.card.type)))
         .toEqual([...candidates].sort((a,b)=>a.card.type.localeCompare(b.card.type)));
     } finally {
@@ -75,7 +55,7 @@ describe('v2 content exchange',()=>{
   it('exports repeated appearances once while merging distinct historical examples',()=>{
     const second = {...word.sources[0],snapshot:{...snapshot,translation:'No meat or fish for me.'}};
     const entry = {key:'first',cardId:'word',card:word.card,sources:word.sources};
-    const batch = parseCardBatch(toImportJson([entry,{...entry,key:'second',sources:[word.sources[0],second]}]));
+    const batch = validateCardBatch(JSON.parse(toImportJson([entry,{...entry,key:'second',sources:[word.sources[0],second]}])));
     expect(batch.cards).toEqual([{card:word.card,sources:[word.sources[0],second]}]);
   });
 });

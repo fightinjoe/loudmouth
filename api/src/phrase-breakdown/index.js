@@ -3,6 +3,7 @@
 const { buildPhraseBreakdownPrompt } = require('./prompt');
 const { buildUsageReport } = require('../pricing');
 const { getBackendName } = require('../llm-config');
+const { callWithTimeout } = require('../llms/timeout');
 const {
   SCHEMA_VERSION,
   normalizeIdentityText,
@@ -29,20 +30,6 @@ const FIELD_LIMITS = Object.freeze({
 });
 
 class PhraseBreakdownTimeoutError extends Error {}
-
-function callWithTimeout(handler, prompt, opts, timeoutMs) {
-  const controller = new AbortController();
-  let timer;
-  const timeout = new Promise((resolve, reject) => {
-    timer = setTimeout(() => {
-      const error = new PhraseBreakdownTimeoutError(`LLM request timed out after ${timeoutMs}ms`);
-      controller.abort(error);
-      reject(error);
-    }, timeoutMs);
-  });
-  const call = Promise.resolve().then(() => handler(prompt, { ...opts, signal: controller.signal }));
-  return Promise.race([call, timeout]).finally(() => clearTimeout(timer));
-}
 
 function parsePhraseBreakdownRequest(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -367,6 +354,7 @@ async function performPhraseBreakdown(
       prompt,
       { maxOutputTokens: PHRASE_BREAKDOWN_MAX_TOKENS },
       effectiveTimeoutMs,
+      PhraseBreakdownTimeoutError,
     );
   } catch (error) {
     const event = error instanceof PhraseBreakdownTimeoutError ? 'llm_timeout' : 'llm_error';
