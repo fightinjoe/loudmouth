@@ -15,6 +15,7 @@ import {
   type Evidence,
   type Lang,
   type Phrase,
+  type Word,
 } from "@catchphrase/card-schema";
 import type {
   CardRecord,
@@ -436,11 +437,13 @@ interface ResolvedDraftRef {
 
 function remapDraftEvidence(
   source: Evidence,
-  refs: ReadonlyMap<string, ResolvedDraftRef>,
+  refs: ReadonlyMap<string, ResolvedDraftRef | null>,
 ): Evidence {
   const draftOccurrenceId = source.ref?.occurrenceId;
   if (!draftOccurrenceId) return source;
   const resolved = refs.get(draftOccurrenceId);
+  // A removed essential keeps its historical snapshot, not a misleading live reference.
+  if (resolved === null) return { snapshot: source.snapshot, span: source.span };
   if (!resolved) throw new Error(`Source refers to unselected draft occurrence ${draftOccurrenceId}.`);
   return {
     ...source,
@@ -460,16 +463,27 @@ export async function commitPhrasebook(
   const signal = options.signal;
   assertAbort(signal);
   const selected = input.selectedIndexes.map((index) => input.groups[index]);
-  const prepared: PreparedDraftGroup[] = selected.map((draft) => ({
-    draft,
-    groupId: uuid(),
-    phrases: [
-      ...draft.essentials.map((phrase, position): PreparedDraftPhrase =>
-        ({ draft: phrase, occurrenceId: uuid(), section: "essentials", position })),
-      ...draft.dialogue.map((phrase, position): PreparedDraftPhrase =>
-        ({ draft: phrase, occurrenceId: uuid(), section: "dialogue", position })),
-    ],
-  }));
+  const draftRefs = new Map<string, ResolvedDraftRef | null>();
+  const earlierEssentials = new Set<string>();
+  const prepared: PreparedDraftGroup[] = selected.map((draft) => {
+    const essentials = draft.essentials.filter((phrase) => {
+      if (!earlierEssentials.has(phrase.card.translation)) return true;
+      draftRefs.set(phrase.id, null);
+      return false;
+    });
+    // Only earlier retained topics suppress placement; keep within-topic repetition.
+    for (const phrase of essentials) earlierEssentials.add(phrase.card.translation);
+    return {
+      draft,
+      groupId: uuid(),
+      phrases: [
+        ...essentials.map((phrase, position): PreparedDraftPhrase =>
+          ({ draft: phrase, occurrenceId: uuid(), section: "essentials", position })),
+        ...draft.dialogue.map((phrase, position): PreparedDraftPhrase =>
+          ({ draft: phrase, occurrenceId: uuid(), section: "dialogue", position })),
+      ],
+    };
+  });
   const now = isoNow();
   const deck: Deck = {
     id: uuid(),
@@ -504,7 +518,6 @@ export async function commitPhrasebook(
         activeTransaction = Dexie.currentTransaction ?? undefined;
         assertAbort(signal);
         await store.decks.add(deck);
-        const draftRefs = new Map<string, ResolvedDraftRef>();
         let groupPosition = 0;
         let phraseMembershipPosition = 0;
         const phraseMemberships = new Set<string>();
@@ -549,20 +562,35 @@ export async function commitPhrasebook(
 
         let wordPosition = 0;
         const wordMemberships = new Set<string>();
+        const earlierWords = new Map<string, CardRecord>();
         for (const group of prepared) {
-          for (const [position, word] of group.draft.vocab.entries()) {
-            const card = await resolveCard(word.card, store, now);
+          const groupWords = new Map<string, CardRecord>();
+          let position = 0;
+          for (const word of group.draft.vocab) {
+            const content = word.card as Word; // Validated before any selection or writes.
+            // Placement is stricter than canonical card sharing: no text normalization,
+            // and both English meaning and target form must agree with POS and sense.
+            const identity = JSON.stringify([
+              content.lang, content.text, content.translation,
+              content.partOfSpeech, content.senseKey,
+            ]);
+            const earlier = earlierWords.get(identity);
+            const card = earlier ?? await resolveCard(word.card, store, now);
+            groupWords.set(identity, card);
             if (!wordMemberships.has(card.id)) {
               await ensureMembership(deck.id, card.id, wordPosition++, now, store);
               wordMemberships.add(card.id);
             }
-            await store.topicWords.add({
-              id: uuid(), deckId: deck.id, groupId: group.groupId, cardId: card.id, position,
-            });
+            if (!earlier) {
+              await store.topicWords.add({
+                id: uuid(), deckId: deck.id, groupId: group.groupId, cardId: card.id, position: position++,
+              });
+            }
             for (const source of word.sources ?? []) {
               await addProvenance(card.id, deck.id, remapDraftEvidence(source, draftRefs), now, store);
             }
           }
+          for (const [identity, card] of groupWords) earlierWords.set(identity, card);
         }
         assertAbort(signal);
       },
@@ -1087,57 +1115,6 @@ export async function getLangs(store: LibraryDb = db): Promise<Lang[]> {
   return [...new Set(cards.map((card) => card.lang))].sort();
 }
 
-export async function updateCard(
-  cardId: string,
-  fieldsValue: Record<string, unknown>,
-  options: { occurrenceId?: string; store?: LibraryDb } = {},
-): Promise<void> {
-  const store = options.store ?? db;
-  const fields = objectValue(fieldsValue, "fields");
-  await store.transaction("rw", store.cards, store.occurrences, async () => {
-    const record = await store.cards.get(cardId);
-    if (!record) throw new Error(`Card ${cardId} does not exist.`);
-    const commonEditable = ["translation", "definition", "formality", "notes", "example"];
-    const editable = record.content.type === "chunk"
-      ? [...commonEditable, "role", "explanation"]
-      : [...commonEditable, "text", "reading", "romanization"];
-    assertExactFields(fields, editable, "fields");
-    const updatedValue: Record<string, unknown> = { ...record.content };
-    const occurrence = options.occurrenceId ? await store.occurrences.get(options.occurrenceId) : undefined;
-    if (options.occurrenceId) {
-      if (record.type !== "phrase" || !occurrence || occurrence.cardId !== cardId) {
-        throw new Error(`Occurrence ${options.occurrenceId} does not belong to this Phrase.`);
-      }
-      updatedValue.translation = occurrence.translation;
-    }
-    for (const [field, value] of Object.entries(fields)) {
-      if (value === undefined) delete updatedValue[field];
-      else updatedValue[field] = value;
-    }
-    const content = validateCard(updatedValue, "card");
-    if (content.type !== record.type || content.lang !== record.lang) {
-      throw new Error("Card type and language cannot be changed.");
-    }
-    if (content.type === "word" && record.content.type === "word"
-      && (content.partOfSpeech !== record.content.partOfSpeech
-        || content.senseKey !== record.content.senseKey)) {
-      throw new Error("Word part of speech and sense key cannot be changed.");
-    }
-    const identityKey = cardIdentity(content);
-    if (identityKey !== record.identityKey) {
-      const collision = await store.cards.where("identityKey").equals(identityKey).first();
-      if (collision && collision.id !== cardId) {
-        throw new Error("A card with this identity already exists.");
-      }
-    }
-    if (occurrence) {
-      await store.occurrences.update(occurrence.id, { translation: content.translation });
-      content.translation = record.content.translation;
-    }
-    await store.cards.update(cardId, { identityKey, content });
-  });
-}
-
 export async function removeCardFromDeck(
   cardId: string,
   deckId: string,
@@ -1149,22 +1126,6 @@ export async function removeCardFromDeck(
     await store.topicWords.where("deckId").equals(deckId).filter((row) => row.cardId === cardId).delete();
     await normalizeDeckPositions(deckId, store);
   });
-}
-
-export async function deleteCard(cardId: string, store: LibraryDb = db): Promise<void> {
-  await store.transaction(
-    "rw",
-    [store.cards, store.memberships, store.occurrences, store.provenance, store.topicWords],
-    async () => {
-      const deckIds = (await store.memberships.where("cardId").equals(cardId).toArray()).map((row) => row.deckId);
-      await store.memberships.where("cardId").equals(cardId).delete();
-      await store.occurrences.where("cardId").equals(cardId).delete();
-      await store.topicWords.where("cardId").equals(cardId).delete();
-      await store.provenance.where("cardId").equals(cardId).delete();
-      await store.cards.delete(cardId);
-      for (const deckId of deckIds) await normalizeDeckPositions(deckId, store);
-    },
-  );
 }
 
 export async function deleteDeck(deckId: string, store: LibraryDb = db): Promise<void> {

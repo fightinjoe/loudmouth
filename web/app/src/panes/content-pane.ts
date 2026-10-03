@@ -298,7 +298,7 @@ const contentPane = {
         <div id="deck-title-menu-scrim" data-action="content/close-menu"></div>
         <div id="deck-title-menu" class="deck-title-menu bg-surface overflow-hidden">
           <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-action="content/menu-settings">Settings</button>
-          <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-action="content/menu-edit">Edit cards</button>
+          <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-action="content/menu-edit">Reorder cards</button>
         </div>
       </div>
     `;
@@ -585,7 +585,6 @@ const contentPane = {
       ui,
       isEdit,
     });
-    const { resetReveal } = gestures;
     syncPager = gestures.syncPager;
 
     captureTabGeometry = gestures.captureTabGeometry;
@@ -730,7 +729,7 @@ const contentPane = {
       }
     });
 
-    const unregisterCardActions = registerCardActions({ host, rootEl, isEdit, resetReveal });
+    const unregisterCardActions = registerCardActions({ host, rootEl, isEdit });
     const registeredActions = [
       "content/menu",
       "content/deck-title",

@@ -198,14 +198,14 @@ live in `src/js/app-types.ts`; pane event handlers receive a shared `Host`, not 
 |------|---------------|
 | `app.ts` | Shell markup, state registration, pane mounting, last-opened phrasebook |
 | `nav-pane.ts` | Recent phrasebooks, language browsing, creation entry point |
-| `content-pane.ts` | Phrasebook/browse state, page selection, edit mode, pane coordination |
+| `content-pane.ts` | Phrasebook/browse state, page selection, reorder mode, pane coordination |
 | `content-pane-load.ts` | Load stored, suggested-preview, and language-wide content |
 | `content-pane-render.ts` | Contents, topic sections, supplemental collections, Starred markup |
-| `content-pane-actions.ts` | Card actions, editing, stars, audio, details entry |
+| `content-pane-actions.ts` | Stars, audio, details entry, section-local reordering |
 | `content-pane-gestures.ts` | Shell reveal, topic paging, section-local reorder |
 | `content-pane-tab-motion.ts` | Tab scrolling, selection animation, reduced-motion handling |
 | `details-pane.ts` | On-demand phrase analysis, candidate stars, modal focus and expansion |
-| `action-pane.ts` | Lifecycle for creation, suggestion confirmation, Review, settings, editor, JSON |
+| `action-pane.ts` | Lifecycle for creation, suggestion confirmation, Review, settings, JSON |
 
 Cross-pane communication uses named state transitions. Stable pane roots use delegated handlers;
 action panels own their mounted listeners and cleanup. Keep asynchronous ownership and cancellation
@@ -215,8 +215,8 @@ within the pane or panel that starts the work.
 
 `src/components/` contains both markup renderers (`card.ts`, `source-context.ts`,
 `phrase-breakdown.ts`) and interactive panel controllers (`creation-panel.ts`, `review-panel.ts`,
-`card-edit-panel.ts`, `bottom-sheet.ts`). Controllers explicitly own mounting and teardown; renderers
-receive data and return markup.
+`bottom-sheet.ts`). Controllers explicitly own mounting and teardown; renderers receive data and
+return markup. Web card-content editing is removed; phrasebook settings and card reordering remain.
 
 `src/js/phrasebook-api.ts` validates creation responses against `@catchphrase/card-schema`.
 `phrasebook-illustration.ts` manages independent cover work; `phrase-breakdown.ts` validates and
@@ -227,6 +227,9 @@ validation. Preferences remain separate from durable library content.
 
 `src/js/db.ts` owns the seven-table Dexie library, atomic phrasebook commits, canonical card identity,
 phrasebook-specific membership stars, occurrences, topic Word placements, and historical evidence.
+After final topic selection, commit removes exact essentials/Word placements already present in an
+earlier retained topic. It preserves related vocabulary, every dialogue line, and historical evidence;
+unchecked topics never suppress selected content. No API round trip or model stage is added.
 Phrasebook and language-wide reads share provenance retrieval while retaining different source
 ordering: the active phrasebook's evidence first versus chronological ordering.
 

@@ -336,6 +336,8 @@ describe("entry-key reordering", () => {
     view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
     view.ui.transition("content/enter-edit");
+    view.rootEl.querySelector('.card-row[data-entry-key="occ-1"]').click();
+    expect(view.ui.get("action")).toBeNull();
     view.ui.transition("content/reorder", { pageOrder: ["occ-2", "occ-1"] });
 
     view.rootEl.querySelector('[data-action="content/done"]').click();

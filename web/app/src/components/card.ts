@@ -28,25 +28,6 @@ export function renderCardRow(
   const speaker = conversation ? occurrence?.speaker : undefined;
   const showAlternative = conversation && (alternative ?? occurrence?.alternative === true);
   const canStar = !readOnly && entry.membership !== undefined;
-  const editActions = readOnly
-    ? ""
-    : `
-      <div class="inset flex-row reverse items-center gap-md">
-        <button
-          class="icon-button bg-blue fg-white tappable"
-          data-action="content/edit-card"
-          data-entry-key="${entryKey}"
-          aria-label="Edit"
-        >${icon("edit")}</button>
-
-        <button
-          class="icon-button bg-danger fg-white tappable"
-          data-action="content/delete-card"
-          data-entry-key="${entryKey}"
-          aria-label="Delete"
-        >${icon("delete")}</button>
-      </div>`;
-
   return `
     <div
       class="card-row-wrapper shrink-0 overflow-hidden${wordTile ? " card-word-tile" : ""}"
@@ -58,8 +39,6 @@ export function renderCardRow(
       ${showAlternative
         ? `<div class="card-alternative" ${speaker ? `data-speaker="${speaker}"` : ""}>or</div>`
         : ""}
-      ${editActions}
-
       <div class="card-row flex-row items-start tappable"
         data-action="content/open-card"
         data-entry-key="${entryKey}"

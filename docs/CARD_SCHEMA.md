@@ -91,13 +91,13 @@ Generation settings belong to the phrasebook and are the actual sanitized creati
 
 ### Atomic lifecycle
 
-Generated, cached, saved and starred are distinct properties. Generation and caching alone do not persist learning content. Initial commit validates the entire draft, including unselected topics, before applying selected original indexes in ascending index order. It saves every selected essential, dialogue line and topic-local Word placement unstarred in one transaction with cards, groups, occurrences, memberships and provenance. There is no vocabulary pooling or chapter cap. Required titled groups and independent section bounds apply equally to generated and authored drafts. Duplicate titles remain distinct topics; duplicate phrase IDs, unknown fields, wrong section roles and cross-topic or mismatched evidence reject the whole commit. No discarded draft refs survive. Cancellation before transaction completion and write failure leave the prior library unchanged; after successful commit the saved book remains.
+Generated, cached, saved and starred are distinct properties. Generation and caching alone do not persist learning content. Initial commit validates the entire draft, including unselected topics, before applying selected original indexes in ascending index order. It then suppresses essentials whose exact English source appears in an earlier retained topic, and Word placements whose exact language/target/English/POS/senseKey tuple appears in an earlier retained topic. Within-topic repetitions, related forms, distinct senses and all dialogue lines remain. Retained records are saved unstarred in one transaction with cards, groups, occurrences, memberships and provenance. No global word cap applies. Incoming draft section bounds remain strict; a stored topic may have zero essentials after deduplication. Duplicate titles remain distinct topics; duplicate phrase IDs, unknown fields, wrong section roles and cross-topic or mismatched evidence reject the whole commit. Evidence for removed essentials retains its exact snapshot/span without a ref; repeated Word provenance is retained and surviving refs are remapped. No discarded draft refs survive. Cancellation before transaction completion and write failure leave the prior library unchanged; after successful commit the saved book remains.
 
 Starring atomically validates the current deck, resolves/inserts content by identity, records new Word evidence, ensures membership and toggles its star. A new membership starts unstarred then becomes starred. Reuse never resets another membership or overwrites content. Unstarring retains cards, membership and examples. Concurrent toggles serialize; missing decks/cards and cross-language targets fail atomically. Without an active phrasebook there are no star or review controls and no inferred arbitrary membership.
 
-Removing a card from a deck deletes that membership, its Phrase occurrences and its Word placements, not reusable content/evidence. Deleting a card deletes its own memberships, occurrences, placements and Word provenance, never derivatives or evidence on other cards. Deleting a deck removes its groups/memberships/occurrences/placements and retains reusable cards and historical evidence, including orphans. Local ordering is compacted after deletion and dialogue alternatives are rederived. Language browse exposes all saved types.
+Removing a card from a deck deletes that membership, its Phrase occurrences and its Word placements, not reusable content/evidence. Deleting a deck removes its groups/memberships/occurrences/placements and retains reusable cards and historical evidence, including orphans. Local ordering is compacted after removal and dialogue alternatives are rederived. Language browse exposes all saved types.
 
-Editing validates content and recomputes identity; collisions report “A card with this identity already exists.” Type/lang and Word senseKey/POS cannot be edited. Editing an explicitly active Phrase occurrence changes only that occurrence's English translation, not canonical meaning or other occurrences. Other editable form/teaching fields remain canonical. Chunk source/text/readings are read-only. Parent edits never rewrite historical evidence.
+Web card-content editing and the editor-only `updateCard`/`deleteCard` APIs are removed. Phrasebook naming/settings, section-local reordering, stars, review and phrase breakdown remain. Saved historical evidence is not rewritten.
 
 Joined entries are `{key,cardId,card,membership,occurrence?,wordPlacement?,sources}`. Phrase keys identify occurrences; topic Word keys identify placements; unplaced Word/Chunk keys identify deck/card pairs. Presentation uses occurrence translation without mutating content. Language browse has one entry per saved card keyed by card ID and no inferred active membership. Review deduplicates every type by starred membership, selecting the first displayed occurrence or placement. Stars therefore synchronize across essentials, dialogue and shared Words. Word examples prefer the active deck then creation time and ID.
 
@@ -130,7 +130,7 @@ Phrase review uses the active occurrence translation. Word review uses dictionar
 
 ## Acceptance scenarios
 
-1. Committing a phrasebook saves every selected topic's independent essentials, conversation and Word placements, unstarred; speculative unselected groups are absent.
+1. Committing a phrasebook saves selected topics with exact cross-topic deduplicated essentials/Word placements and complete dialogue, unstarred; speculative unselected groups cannot suppress retained content.
 2. Opening and closing breakdown without starring creates no derived library rows.
 3. Starring a new Word creates it, membership and that membership's star atomically.
 4. Equivalent Words across phrasebooks reuse content with independent memberships/stars.
@@ -138,9 +138,9 @@ Phrase review uses the active occurrence translation. Word review uses dictionar
 6. Chunk/Word targets are independent unless explicitly equivalent, in which case one control exists.
 7. Cache clearing/regeneration preserves saved content, provenance and stars; explanation changes alone do not duplicate Chunks.
 8. Saved `肉も` reviews in `肉も魚も食べません。` with span `[0,2)` highlighted; Word `食べる` reviews its dictionary form with `食べません` as source context.
-9. Editing/deleting the parent does not invalidate historical learning targets.
+9. Removing the parent occurrence or phrasebook does not invalidate historical learning targets.
 10. Shared Phrases use the active book's occurrence context; repeated appearances agree on membership star.
 11. Failed stars leave no partial relationships; backup round trips preserve content, interpretations, ordering, independent stars and durable source snapshots.
-12. Equal-title topics remain separate; an essential absent from dialogue survives reload and backup, and shared Words have multiple placements but one membership/star/Review entry.
+12. Equal-title topics remain separate; an essential absent from dialogue survives reload and backup. Exact repeated Words have their placement in the earliest retained topic, with accumulated provenance and one membership/star/Review entry; related words and distinct senses remain.
 13. Section-local reorder and deletion preserve contiguous positions, evidence snapshots and independent occurrence meanings.
 14. Stale/deleted illustration owners cannot overwrite saved art; startup fails interrupted pending work without network calls, while ready PNG bytes survive backup and reload.

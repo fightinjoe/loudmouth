@@ -82,11 +82,12 @@ remains server-owned.
 
 No phrasebook data is persisted while answering questions or selecting topics, even if generation has
 finished; the confirmed language preference is independent. Final Continue validates the whole v3
-draft, retains selected topics by original index, and atomically saves their independent sections and
-Word placements. There is no word pooling or global cap, and no duplicate text request. Back without
-changes reuses work; answer or seed changes invalidate text work. Changing the confirmed language
-preserves the prompt but clears context, answers, and checklist, aborts speculative work, and resolves
-the remembered ability for the new language before requesting fresh context.
+draft, retains selected topics by original index, and atomically saves their sections and Word
+placements. Exact repeated essentials and words belong to the earliest retained topic; unchecked
+topics cannot suppress them. Related vocabulary and every dialogue line remain. There is no global
+word cap or duplicate text request. Back without changes reuses work; answer or seed changes invalidate
+text work. Changing the confirmed language preserves the prompt but clears context, answers, and
+checklist, aborts speculative work, and resolves the remembered ability for the new language.
 Confirmation shows the loading state for at least 1000 ms before saving and displaying the phrasebook,
 configured by `PHRASEBOOK_MIN_LOADING_MS` in `web/app/src/components/creation-panel.ts`.
 This minimum overlaps any remaining generation time rather than adding a delay after generation.
@@ -115,15 +116,15 @@ Transparency is not required. Pending art reserves its space; ready art has empt
 surrounding space; failed art shows a subdued unavailable message. Topic previews show up to three
 essential English phrases and two words with POS. The final preview item is vertically clipped to
 suggest more content. The white footer shows section counts and **View** with a right chevron.
-The whole topic preview is clickable: phrases, heading, and footer open Essential phrases; words
-open Useful words. Each destination scrolls to its section and focuses the exact topic tab.
+The whole topic preview is clickable: phrases, heading, and footer open the first nonempty section;
+words open Useful words. Each destination scrolls to its section and focuses the exact topic tab.
 
 Each stored Group has one topic tab and horizontally sliding page, identified by Group ID rather
 than title, including when titles duplicate. Each topic contains **Essential phrases**, **Useful
 words**, and **Conversation** in that order: full-bleed white essential rows with bottom borders;
 two-column Word tiles; gray-100 learner/gray-50 partner dialogue bubbles. Essentials are independently
-generated occurrences, not ranked dialogue excerpts. Equal text can retain different meanings and
-presentation in different sections.
+generated occurrences, not ranked dialogue excerpts. Exact cross-topic duplicates are removed at
+commit; empty essentials/words sections are omitted. Dialogue repetition remains intact.
 
 Supplemental **Translations**, **Words**, and **Chunks** pages follow topics when unplaced entries
 exist. Topic Word placements are not duplicated into the supplemental Words page.
@@ -167,7 +168,7 @@ Starred is a white, full-bleed collection in saved entry order (the same order a
 reconstructed dialogue or a copy of essentials. Each membership appears once; a repeated Phrase
 uses its first saved occurrence and translation. All card types use essential-row styling here,
 without blue backgrounds. Word definitions and full highlighted Chunk source snapshots remain
-available, along with audio, details, editing, and star actions. Starring updates every occurrence
+available, along with audio, details, and star actions. Starring updates every occurrence
 without changing the active page. Opening Starred leaves the topic strip in place.
 Unstarring removes only the collection row, never the saved card, membership, or evidence. Removing
 a focused row moves focus to the next star, or the preceding star at the end. Removing the last
@@ -192,11 +193,12 @@ full preserved source snapshot. Phrase breakdown opens on a 500 ms long press, r
 Shift+F10/Context Menu key while the card is focused. Movement, scrolling, cancellation, or navigation
 cancels the hold; its release never also plays audio. Stars remain independent tap targets.
 There is no card speaker icon or visible Explore phrase link. Chunk rows render their full source
-with the saved span highlighted rather than presenting an isolated fragment. In edit mode, entry-keyed card taps open
-the editor. Word tiles become one column; reorder stays inside one topic/section bucket and updates
-placements or occurrences, never canonical card identity. Contents and Starred have no reorder
-overlay. Phrasebook settings remain available from the title menu. Language browsing remains
-separate, with no star or review control without a phrasebook.
+with the saved span highlighted rather than presenting an isolated fragment. **Reorder cards** keeps
+reordering inside one topic/section bucket and updates placements or occurrences, never canonical
+card identity. Word tiles become one column; card taps do not open an editor. Contents and Starred
+have no reorder overlay. Card-content editing and its swipe edit/delete actions are removed from
+the web app. Phrasebook settings, including naming, remain available from the title menu. Language
+browsing remains separate, with no star or review control without a phrasebook.
 
 The phrasebook action bar contains **Review** only while Starred is selected. Phrasebook content is
 not extended from this view; a new situation starts a new guided phrasebook from navigation.

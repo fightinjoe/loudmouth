@@ -135,7 +135,7 @@ function renderContents(topics: readonly TopicPage[], deck: ContentDeck): string
   return `<div data-region="deck-hero">${renderIllustration("illustration" in deck ? deck.illustration : undefined)}</div>
     ${topics.map((topic) => `
       <section class="topic-preview" data-action="content/set-page"
-        data-page-key="${escapeHTML(topic.key)}" data-section="essentials">
+        data-page-key="${escapeHTML(topic.key)}" data-section="${topic.essentials.length ? "essentials" : topic.vocab.length ? "vocab" : "dialogue"}">
         <h2 class="section-label">${escapeHTML(topic.title)}</h2>
         <div class="topic-preview-card">
           <div class="topic-preview-lines">
@@ -149,7 +149,7 @@ function renderContents(topics: readonly TopicPage[], deck: ContentDeck): string
           <div class="topic-preview-footer">
             <span>${topic.essentials.length} phrase${topic.essentials.length === 1 ? "" : "s"} · ${topic.vocab.length} word${topic.vocab.length === 1 ? "" : "s"} · 1 conversation</span>
             <button type="button" class="topic-view tappable" data-action="content/set-page"
-              data-page-key="${escapeHTML(topic.key)}" data-section="essentials" aria-label="View ${escapeHTML(topic.title)}">View${icon("next")}</button>
+              data-page-key="${escapeHTML(topic.key)}" data-section="${topic.essentials.length ? "essentials" : topic.vocab.length ? "vocab" : "dialogue"}" aria-label="View ${escapeHTML(topic.title)}">View${icon("next")}</button>
           </div>
         </div>
       </section>`).join("")}`;
@@ -171,7 +171,7 @@ function renderPageEntries(page: DeckPage, deck: ContentDeck): string {
         <div class="${key === "vocab" ? "topic-word-grid" : "topic-card-list"}"
           data-reorder-region="${key}">${rows(entries, conversation, key === "vocab")}</div>
       </section>`;
-    return section("Essential phrases", "essentials", page.essentials)
+    return (page.essentials.length ? section("Essential phrases", "essentials", page.essentials) : "")
       + (page.vocab.length ? section("Useful words", "vocab", page.vocab) : "")
       + section("Conversation", "dialogue", page.dialogue, true);
   }

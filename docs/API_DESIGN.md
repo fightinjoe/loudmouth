@@ -1086,11 +1086,18 @@ stays strict. English vocabulary supplies the card translation; no inflection or
 heuristic invents a source. Generated Japanese/Chinese Words require their own aligned readings.
 
 The client validates the full response and submitted checklist association before selection.
-Commit filters by original indexes, creates fresh topic/occurrence/Word-placement IDs, and remaps
-evidence refs atomically. No global word pooling or cap: duplicate canonical Word identities retain
-independent topic placements, but share one phrasebook membership/star and one Review entry.
-All initial memberships are unstarred. The new seven-store library and backups use v3; old physical
-databases remain untouched and old phrasebooks/backups are not read or converted.
+Commit filters by original indexes and processes retained topics in their original relative order.
+An essential is omitted only if an earlier retained topic contains exactly the same English source.
+A Word placement is omitted only for an exact match of language, target text, English gloss, POS,
+and senseKey in an earlier retained topic. Within-topic repetitions, related vocabulary, and all
+dialogue remain. There is no global word cap or additional provider call. A stored topic may have
+no essentials after deduplication; the incoming v3 response still requires 1–8 per topic.
+Commit creates fresh topic/occurrence/Word-placement IDs and remaps surviving evidence refs atomically.
+Evidence for removed essentials retains its original snapshot/span without a dangling ref; repeated
+Word provenance is retained. Canonical identity still shares membership stars and unique Review
+entries. All initial memberships are unstarred. Existing saved books are not retroactively deduplicated.
+The seven-store library and backups remain v3; old physical databases remain untouched and old
+phrasebooks/backups are not read or converted.
 
 Kanji and hanzi `base[reading]` runs become `ReadingToken` pairs; stray bracket annotations are removed.
 Japanese translation chunks additionally return `essentialsRomanizations`, `lineRomanizations`, and
@@ -1216,7 +1223,7 @@ location. Structural checks do not establish teaching quality or cultural approp
   `answers` excluding the client ability question, and the selected or remembered `ability`.
   Toggling topics never sends another request.
 - Final Continue validates all topics before filtering original indexes (titles may duplicate), then
-  commits independent essential/dialogue occurrences and topic Word placements without pooling.
+  commits exact cross-topic deduplicated essentials/Word placements and every dialogue occurrence.
 - Back without input changes reuses work. Changing an answer or seed invalidates and aborts it;
   changing language also clears context and resolves ability for the new language.
   Request-identity guards ignore stale responses.

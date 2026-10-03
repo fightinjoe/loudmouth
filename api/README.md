@@ -77,8 +77,11 @@ Existing validation retry, rate-limit backoff, cancellation, and 245-second over
 There is no partial response or automatic fallback backend.
 
 The client validates every topic before selection, then atomically commits selected original indexes.
-There is no word pooling or global cap: each topic retains Word placements, while canonical identity
-shares membership stars and unique Review entries. Server draft UUIDs are remapped at commit.
+At commit, exact repeated essentials/words belong to the earliest retained topic; unchecked topics
+cannot suppress them. Related vocabulary, within-topic repetition, and all dialogue remain.
+There is no global cap or extra API request. Canonical identity shares membership stars and unique
+Review entries. Server draft UUIDs are remapped at commit; removed essential refs are detached while
+preserving evidence snapshots. The API response itself is unchanged and retains every generated topic.
 
 ### `POST /phrasebook-image`
 

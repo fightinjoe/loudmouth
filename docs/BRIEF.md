@@ -43,8 +43,9 @@ The web app and API support Chinese, Japanese, Spanish, Czech, and Ukrainian.
 
 1. **Create:** enter a topic or situation.
 2. **Clarify:** answer dynamic, topic-specific questions and check which conversations to prepare.
-3. **Generate:** atomically commit selected topics, independent phrase occurrences, and topic-local
-   Word placements. All initial memberships are unstarred; cover completion never delays text saving.
+3. **Generate:** atomically commit selected topics, keeping exact repeated essentials and vocabulary
+   in the earliest retained topic. Related words and all dialogue remain. Initial memberships are
+   unstarred; cover completion never delays text saving.
 4. **Prioritize:** stars belong to the current phrasebook. Starring an analysis candidate saves its
    learning target and historical evidence; unstarring retains both.
 5. **Review:** use the contents page to open a topic's essential phrases, two-column words, and complete
@@ -58,7 +59,8 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 
 ## Goals
 
-- Make preparation for a known situation fast and useful.
+- Prioritize creation speed, with content quality a close second; do not add a blocking quality stage
+  without showing that time to the first usable phrasebook stays within the current latency envelope.
 - Generate immediately deployable, conversational language at any learner level.
 - Teach both anticipated speech and likely replies.
 - Make short, frequent review frictionless.
@@ -70,7 +72,7 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 - In-the-moment capture as a separate mode; it is not part of the prep-first core experience.
 - Fixed lessons, long-term cross-topic study, scoring, streaks, or gamification.
 - User accounts, cloud sync, OCR/camera input, URL import, and manual blank-form authoring.
-- Whole-phrasebook regeneration, undo, or unrestricted editing.
+- Whole-phrasebook regeneration, undo, and user editing of card content.
 - Spaced repetition until a useful signal exists without introducing scoring.
 
 ## Phases
@@ -105,7 +107,8 @@ analysis without overwriting saved teaching. Character and Grammar card types re
   waits for all English, then translates each complete topic in parallel. The v3 response has
   independent `essentials`, `vocab`, and `dialogue`; no scores or featured selection.
   The client speculates while topics are selected, validates the whole draft, then commits original
-  selected indexes without pooling or globally capping words.
+  selected indexes with exact cross-topic deduplication and no global word cap. Unselected topics
+  never suppress retained content; duplicate dialogue and related vocabulary remain.
   Independent `/phrasebook-title` work freezes the available name or seed fallback at commit.
   `/phrasebook-image` generates PNGs through OpenRouter FLUX.2 Klein 4B without blocking text;
   ready PNG bytes persist with the phrasebook. Missing or failed art leaves text usable.
@@ -141,6 +144,19 @@ or restore path. Existing physical databases and old preference keys are left un
 API, gateway, and web must ship together. The 2026-10-01 promotion is production code only:
 no deployment was authorized. Known translation defects remain accepted product risk and separate
 quality work, not a linguistic acceptance claim.
+
+## Creation quality work (planned)
+
+- Keep value scoring separate from translation verification. Evaluate Jev alongside translation,
+  without delaying the first usable phrasebook; related words and dialogue repetition remain valid.
+- Background translation review/repair should target completion within 60 seconds of first display,
+  including dispatch, model work, validation, and patch application. This is a target, not measured
+  performance or a claim that the initial content is 80% correct.
+- Next evaluate repair models on saved translations, including missing/incorrect readings, meaning
+  errors, and already-correct controls. Compare Luna reasoning settings and another capable model;
+  measure fixes, missed defects, introduced defects, latency, and cost before selecting a reviewer.
+- Repair triggering, persistence, and patch identity are not implemented. The design must account
+  for final topic selection, shared canonical cards, stale responses, and deleted phrasebooks.
 
 ## Open decisions
 

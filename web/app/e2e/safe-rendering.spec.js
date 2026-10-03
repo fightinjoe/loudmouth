@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-// Stored content must stay literal through import, reload, editing, export and review.
+// Stored content must stay literal through import, reload, export and review.
 test('hostile historical source stays inert through the real card lifecycle', async ({ page }) => {
   const payload = '<img src="/security-probe" onerror="window.__injectionExecuted=true">'
   const probeRequests = []
@@ -55,22 +55,21 @@ test('hostile historical source stays inert through the real card lifecycle', as
   await expect(page.locator('.review-panel-inner rt')).toHaveText('ねこ')
   await page.evaluate(()=>window.__loudmouth.ui.transition('action/close'))
 
-  // Source remains historical after its parent is removed; editor and export cannot turn it into HTML.
+  // Source remains historical after its parent occurrence is removed; export cannot turn it into HTML.
   await page.evaluate(async ({deckId,phraseId,chunkId})=>{
     const {db,ui}=window.__loudmouth
-    await db.deleteCard(phraseId)
+    await db.removeCardFromDeck(phraseId, deckId)
     await db.toggleCardStar(deckId,{cardId:chunkId})
-    const entry=(await db.getCards(deckId)).find(entry=>entry.cardId===chunkId)
-    ui.transition('action/open',{kind:'card-edit',payload:{entry}})
+    ui.transition('action/open',{kind:'settings',payload:{
+      deck:await db.db.decks.get(deckId),cards:await db.getCards(deckId),
+    }})
   },{deckId,phraseId,chunkId})
-  await expect(page.locator('#edit-text')).not.toBeEditable()
-  await expect(page.locator('#edit-role')).toHaveValue(payload)
-  await expect(page.locator('#edit-explanation')).toHaveValue(payload)
-  await page.locator('#btn-view-json').click()
+  await page.locator('#ds-export-row').click()
   const batch=JSON.parse(await page.locator('.json-pane-textarea').inputValue())
   expect(batch.schemaVersion).toBe(2)
-  expect(batch.cards[0].card.source.snapshot.text).toBe(`猫${payload}`)
-  expect(batch.cards[0].card.role).toBe(payload)
+  const chunk=batch.cards.find(entry=>entry.card.type==='chunk')
+  expect(chunk.card.source.snapshot.text).toBe(`猫${payload}`)
+  expect(chunk.card.role).toBe(payload)
   await page.evaluate(()=>window.__loudmouth.ui.transition('action/close'))
   await page.evaluate(async deckId=>{
     const {db,ui}=window.__loudmouth

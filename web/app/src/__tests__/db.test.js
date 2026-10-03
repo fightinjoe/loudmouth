@@ -6,7 +6,6 @@ import {
   applyCardOrder,
   commitPhrasebook,
   createDb,
-  deleteCard,
   deleteDeck,
   exportAllData,
   getCards,
@@ -18,7 +17,6 @@ import {
   restoreAllData,
   setDeckIllustration,
   toggleCardStar,
-  updateCard,
   updateDeckEntryOrder,
 } from "../js/db";
 import {
@@ -107,55 +105,133 @@ async function createBook(name = "Book", text = "Hola", translation = "Hello", t
 }
 
 describe("commitPhrasebook", () => {
-  it("retains topic-local vocabulary and both source sections with duplicate titles and original index selection", async () => {
-    const first = topic("a", "Same title");
-    first.vocab = [
-      word("hola", "hello", "greeting", [evidence("Hola", "Hello", 0, 4, "a-essential")]),
-      ...Array.from({ length: 9 }, (_, index) => word(`palabra-a-${index}`, `word a ${index}`, `word-a-${index}`)),
-    ];
-    const last = topic("c", "Same title", "Hola", "Hi there");
-    last.dialogue[0] = phrase("c-you", "Hola", "Hello again", { speaker: "you" });
-    last.vocab = [
-      word("hola", "hi", "greeting", [evidence("Hola", "Hello again", 0, 4, "c-you")]),
-      ...Array.from({ length: 9 }, (_, index) => word(`palabra-c-${index}`, `word c ${index}`, `word-c-${index}`)),
-    ];
+  it("deduplicates only final retained topics in original order without mutating speculative input", async () => {
+    const discarded = topic("discarded", "Unchecked", "Buenos días", "Hello");
+    const first = topic("first", "Same title", "Hola", "Hello");
+    const last = topic("last", "Same title", "Buenas", "Hello");
+    for (const group of [discarded, first, last]) group.vocab = [word("agua", "water", "water")];
     const input = {
-      name: "Generated", lang: "es",
-      generation: { seed: "dinner", ability: "basics", answers: { Audience: "friends" } },
-      groups: [first, topic("b", "Discarded", "Adiós", "Goodbye"), last],
-      selectedIndexes: [2, 0],
+      name: "Selected", lang: "es", groups: [discarded, first, last], selectedIndexes: [2, 1],
     };
+    const original = structuredClone(input);
     const deck = await commitPhrasebook(input, { store });
     const groups = await store.groups.where("deckId").equals(deck.id).sortBy("position");
     const entries = await getCards(deck.id, store);
+    expect(input).toEqual(original);
     expect(groups.map((group) => group.title)).toEqual(["Same title", "Same title"]);
     expect(entries.filter((entry) => entry.occurrence?.section === "essentials")
-      .map((entry) => [entry.card.translation, entry.occurrence.groupId]))
-      .toEqual([["Hello", groups[0].id], ["Hi there", groups[1].id]]);
-    expect(entries.filter((entry) => entry.wordPlacement)).toHaveLength(20);
-    expect(await store.cards.where("type").equals("word").count()).toBe(19);
-    expect(await store.memberships.count()).toBe(22);
-    expect(entries.some((entry) => entry.card.text === "Adiós")).toBe(false);
-    const repeated = entries.filter((entry) => entry.card.text === "Hola");
-    expect(new Set(repeated.map((entry) => entry.cardId)).size).toBe(1);
-    expect(new Set(repeated.map((entry) => entry.key)).size).toBe(3);
-    expect(repeated.map((entry) => entry.card.translation)).toEqual(["Hello", "Hi there", "Hello again"]);
-    const sharedWords = entries.filter((entry) => entry.card.type === "word" && entry.card.senseKey === "greeting");
-    expect(sharedWords).toHaveLength(2);
-    expect(sharedWords[0].cardId).toBe(sharedWords[1].cardId);
-    expect(sharedWords[0].key).not.toBe(sharedWords[1].key);
-    const sources = sharedWords[0].sources;
-    expect(sources).toHaveLength(2);
-    expect(sources.map((source) =>
-      entries.find((entry) => entry.key === source.ref.occurrenceId)?.occurrence.section).sort())
-      .toEqual(["dialogue", "essentials"]);
-    expect(sources.every((source) =>
-      entries.some((entry) => entry.key === source.ref.occurrenceId && entry.cardId === source.ref.cardId))).toBe(true);
-    expect(entries.every((entry) => entry.membership.starredAt === null)).toBe(true);
-    await toggleCardStar(deck.id, { cardId: sharedWords[0].cardId }, store);
-    expect((await getCards(deck.id, store)).filter((entry) => entry.cardId === sharedWords[0].cardId)
-      .every((entry) => entry.membership.starredAt !== null)).toBe(true);
-    expect((await getReviewCards(deck.id, store)).map((entry) => entry.cardId)).toEqual([sharedWords[0].cardId]);
+      .map((entry) => [entry.card.text, entry.occurrence.groupId]))
+      .toEqual([["Hola", groups[0].id]]);
+    expect(entries.filter((entry) => entry.wordPlacement)
+      .map((entry) => [entry.card.text, entry.wordPlacement.groupId]))
+      .toEqual([["agua", groups[0].id]]);
+    expect(entries.filter((entry) => entry.occurrence?.groupId === groups[1].id)
+      .map((entry) => entry.occurrence.section)).toEqual(["dialogue", "dialogue"]);
+    expect((await store.cards.toArray()).some((row) => ["Buenos días", "Buenas"].includes(row.content.text))).toBe(false);
+  });
+
+  it("uses exact English essentials only, preserving within-topic repeats and every dialogue line", async () => {
+    const first = topic("first");
+    first.essentials.push(phrase("first-repeat", "Hola", "Hello"));
+    first.dialogue.splice(1, 0, phrase("alternative", "Hola", "Hello", { speaker: "you", alternative: true }));
+    const last = topic("last", "Later", "Buenas", "Hello");
+    last.essentials.push(
+      phrase("case", "Buenas tardes", "hello"),
+      phrase("punctuation", "Saludos", "Hello!"),
+      phrase("dialogue-match", "¿Cómo estás?", "How are you?"),
+    );
+    last.dialogue.push(phrase("last-repeat", "Hola", "Hello", { speaker: "you" }));
+    const deck = await commitPhrasebook({
+      name: "Essentials", lang: "es", groups: [first, last], selectedIndexes: [0, 1],
+    }, { store });
+    const entries = await getCards(deck.id, store);
+    expect(entries.filter((entry) => entry.occurrence?.section === "essentials")
+      .map((entry) => entry.card.translation)).toEqual(["Hello", "Hello", "hello", "Hello!", "How are you?"]);
+    expect(entries.filter((entry) => entry.occurrence?.section === "dialogue")
+      .map((entry) => [entry.card, entry.occurrence.speaker, entry.occurrence.alternative]))
+      .toEqual([first, last].flatMap((group) =>
+        group.dialogue.map((line) => [line.card, line.speaker, line.alternative])));
+  });
+
+  it("keeps related forms, distinct senses and POS, and non-exact vocabulary variants", async () => {
+    const first = topic("first");
+    first.vocab = [
+      word("alergia", "allergy", "allergy"), word("alergia", "allergy", "allergy"),
+      word("banco", "bank", "financial"),
+    ];
+    const last = topic("last");
+    const allergic = word("alérgico", "allergic", "allergic");
+    allergic.card.partOfSpeech = "adjective";
+    const verb = word("banco", "bank", "financial");
+    verb.card.partOfSpeech = "verb";
+    last.vocab = [
+      word("alergia", "allergy", "allergy"),
+      allergic,
+      word("banco", "bench", "seat"),
+      verb,
+      word("alergia", "an allergy", "allergy"),
+      word("Alergia", "allergy", "allergy"),
+    ];
+    const deck = await commitPhrasebook({
+      name: "Vocabulary", lang: "es", groups: [first, last], selectedIndexes: [0, 1],
+    }, { store });
+    const groups = await store.groups.where("deckId").equals(deck.id).sortBy("position");
+    const words = (await getCards(deck.id, store)).filter((entry) => entry.wordPlacement);
+    expect(words.filter((entry) => entry.wordPlacement.groupId === groups[0].id)
+      .map((entry) => entry.card.text)).toEqual(["alergia", "alergia", "banco"]);
+    expect(words.filter((entry) => entry.wordPlacement.groupId === groups[1].id)
+      .map((entry) => [entry.card.text, entry.card.partOfSpeech, entry.card.senseKey]))
+      .toEqual([
+        ["alérgico", "adjective", "allergic"], ["banco", "noun", "seat"],
+        ["banco", "verb", "financial"], ["alergia", "noun", "allergy"], ["Alergia", "noun", "allergy"],
+      ]);
+    // Canonical identity sharing is unchanged even when exact placement identity differs.
+    expect(new Set(words.filter((entry) => entry.card.text === "alergia").map((entry) => entry.cardId)).size).toBe(1);
+  });
+
+  it("retains repeated vocabulary provenance without dangling or misleading essential references", async () => {
+    const first = topic("first", "First", "Hola", "Hello");
+    const last = topic("last", "Last", "Buenas", "Hello");
+    first.vocab = [word("hola", "hello", "greeting", [evidence("Hola", "Hello", 0, 4, "first-essential")])];
+    last.vocab = [word("hola", "hello", "greeting", [
+      evidence("Buenas", "Hello", 0, 6, "last-essential"),
+      evidence("¿Cómo estás?", "How are you?", 1, 5, "last-you"),
+    ])];
+    const deck = await commitPhrasebook({
+      name: "Evidence", lang: "es", groups: [first, last], selectedIndexes: [0, 1],
+    }, { store });
+    const entries = await getCards(deck.id, store);
+    const words = entries.filter((entry) => entry.wordPlacement);
+    expect(words).toHaveLength(1);
+    expect(words[0].sources).toHaveLength(3);
+    expect(words[0].sources.find((source) => source.snapshot.text === "Buenas"))
+      .toEqual(evidence("Buenas", "Hello", 0, 6));
+    for (const source of words[0].sources.filter((source) => source.ref)) {
+      const entry = entries.find((candidate) => candidate.key === source.ref.occurrenceId);
+      expect(entry.cardId).toBe(source.ref.cardId);
+      expect(source.snapshot).toEqual({
+        lang: entry.card.lang, text: entry.card.text, translation: entry.card.translation,
+      });
+    }
+    const memberships = await store.memberships.where("deckId").equals(deck.id).toArray();
+    expect(new Set(memberships.map((row) => row.cardId))).toEqual(new Set(entries.map((entry) => entry.cardId)));
+    expect((await store.cards.toArray()).some((row) => row.content.text === "Buenas")).toBe(false);
+    await toggleCardStar(deck.id, { cardId: words[0].cardId }, store);
+    expect((await getReviewCards(deck.id, store)).map((entry) => entry.cardId)).toEqual([words[0].cardId]);
+    const backup = await exportAllData(store);
+    await restoreAllData(backup, store);
+    expect(await exportAllData(store)).toEqual(backup);
+  });
+
+  it("validates a duplicate selected essential's evidence before removing its placement", async () => {
+    const first = topic("first");
+    const last = topic("last");
+    last.vocab = [word("hola", "hello", "greeting", [evidence("Hola", "Wrong", 0, 4, "last-essential")])];
+    const before = await exportAllData(store);
+    await expect(commitPhrasebook({
+      name: "Invalid duplicate", lang: "es", groups: [first, last], selectedIndexes: [0, 1],
+    }, { store })).rejects.toThrow(/snapshot must exactly match/);
+    expect(await exportAllData(store)).toEqual(before);
   });
 
   it("persists authored topic metadata without fabricating generation settings", async () => {
@@ -233,7 +309,7 @@ describe("commitPhrasebook", () => {
     expect(await exportAllData(store)).toEqual(before);
   });
 
-  it("retains independent essentials and equal-text meanings through edit, reopen, and restore", async () => {
+  it("retains independent essentials and equal-text meanings through reorder, reopen, and restore", async () => {
     const input = suggestedBook("Independent");
     input.groups[0].essentials.push(phrase("essential-two", "Solo aquí", "Only here"));
     input.groups[0].dialogue[0] = phrase("reply", "Hola", "Hi", { speaker: "you" });
@@ -242,7 +318,6 @@ describe("commitPhrasebook", () => {
     const essential = entries.find((entry) => entry.card.text === "Hola" && entry.occurrence.section === "essentials");
     const dialogue = entries.find((entry) => entry.card.text === "Hola" && entry.occurrence.section === "dialogue");
     expect(essential.cardId).toBe(dialogue.cardId);
-    await updateCard(dialogue.cardId, { translation: "Hi there" }, { occurrenceId: dialogue.key, store });
     const order = [entries[1].key, entries[0].key, ...entries.slice(2).map((entry) => entry.key)];
     await updateDeckEntryOrder(deck.id, order, store);
     store.close();
@@ -250,7 +325,7 @@ describe("commitPhrasebook", () => {
     const reopened = await getCards(deck.id, store);
     expect(reopened.filter((entry) => entry.occurrence.section === "essentials")
       .map((entry) => entry.card.translation)).toEqual(["Only here", "Hello"]);
-    expect(reopened.find((entry) => entry.key === dialogue.key).card.translation).toBe("Hi there");
+    expect(reopened.find((entry) => entry.key === dialogue.key).card.translation).toBe("Hi");
     const fresh = createDb({ indexedDB: new IDBFactory(), IDBKeyRange });
     await restoreAllData(await exportAllData(store), fresh);
     expect(await getCards(deck.id, fresh)).toEqual(reopened);
@@ -403,7 +478,7 @@ describe("joined entries and ordering", () => {
     first.dialogue.splice(1, 0, phrase("alternative", "¿Todo bien?", "Everything all right?", { speaker: "you", alternative: true }));
     first.vocab = [word("agua", "water", "water"), word("pan", "bread", "bread")];
     const second = topic("second", "Conversation");
-    second.vocab = [word("agua", "water", "water")];
+    second.vocab = [word("sal", "salt", "salt")];
     const deck = await commitPhrasebook({name:"Ordering",lang:"es",groups:[first,second],selectedIndexes:[0,1]}, {store});
     const entries = await getCards(deck.id, store);
     const groups = await store.groups.where("deckId").equals(deck.id).sortBy("position");
@@ -458,56 +533,7 @@ describe("joined entries and ordering", () => {
   });
 });
 
-describe("editing and deletion", () => {
-  it("updates only the active Phrase occurrence translation", async () => {
-    const deck = await createBook("Edit", "Hola", "Hello");
-    await importCards([
-      { card: { type: "phrase", lang: "es", text: "Hola", translation: "Hi" } },
-    ], deck.id, store);
-    const entries = (await getCards(deck.id, store)).filter((entry) => entry.card.type === "phrase");
-    const active = entries[0];
-    const other = entries[1];
-
-    await updateCard(active.cardId, { translation: "Greetings" }, {
-      occurrenceId: active.occurrence.id,
-      store,
-    });
-    const reloaded = await getCards(deck.id, store);
-    expect(reloaded.find((entry) => entry.key === active.key).card.translation).toBe("Greetings");
-    expect(reloaded.find((entry) => entry.key === other.key).card.translation).toBe(other.card.translation);
-  });
-
-  it("rejects identity collisions and read-only identity/source fields", async () => {
-    await importCards([
-      word("uno", "one", "one"),
-      { card: { type: "phrase", lang: "es", text: "Primera", translation: "First" } },
-      { card: { type: "phrase", lang: "es", text: "Segunda", translation: "Second" } },
-    ], null, store);
-    const records = await store.cards.toArray();
-    const one = records.find((row) => row.content.text === "uno");
-    const first = records.find((row) => row.content.text === "Primera");
-    const second = records.find((row) => row.content.text === "Segunda");
-    await expect(updateCard(second.id, { text: first.content.text }, { store }))
-      .rejects.toThrow("A card with this identity already exists.");
-    await expect(updateCard(one.id, { partOfSpeech: "verb" }, { store }))
-      .rejects.toThrow("partOfSpeech is not allowed");
-
-    await importCards([{
-      card: {
-        type: "chunk",
-        lang: "es",
-        text: "Hola",
-        translation: "hello",
-        role: "greeting",
-        explanation: "Greeting",
-        source: evidence("Hola amigo", "Hello friend", 0, 4),
-      },
-    }], null, store);
-    const chunk = (await store.cards.where("type").equals("chunk").first());
-    await expect(updateCard(chunk.id, { text: "amigo" }, { store }))
-      .rejects.toThrow("text is not allowed");
-  });
-
+describe("deletion", () => {
   it("removes relationships transactionally without deleting reusable or historical data", async () => {
     const deckA = await createBook("Delete A");
     const deckB = await createBook("Delete B");
@@ -524,10 +550,6 @@ describe("editing and deletion", () => {
     expect(await store.cards.get(cardId)).toBeTruthy();
     expect(await store.provenance.where("cardId").equals(cardId).count()).toBe(2);
     expect((await getCardsByLang("es", store)).some((entry) => entry.cardId === cardId)).toBe(true);
-
-    await deleteCard(cardId, store);
-    expect(await store.cards.get(cardId)).toBeUndefined();
-    expect(await store.provenance.where("cardId").equals(cardId).count()).toBe(0);
   });
 
   it("removes related Word placements and closes position gaps without deleting other topics or canonical data", async () => {
@@ -544,9 +566,6 @@ describe("editing and deletion", () => {
     expect(await store.topicWords.where("deckId").equals(other.id).count()).toBe(2);
     expect(await store.cards.get(water.cardId)).toBeDefined();
     await restoreAllData(await exportAllData(store), store);
-    await deleteCard(water.cardId, store);
-    expect(await store.topicWords.where("cardId").equals(water.cardId).count()).toBe(0);
-    expect(await store.topicWords.where("deckId").equals(other.id).count()).toBe(1);
     const surviving = await store.cards.count();
     await deleteDeck(other.id, store);
     expect(await store.topicWords.where("deckId").equals(other.id).count()).toBe(0);
@@ -585,7 +604,7 @@ describe("backup validation and atomic restore", () => {
     expect(await exportAllData(fresh)).toEqual(backup);
   });
 
-  it("preserves Ukrainian edits and the existing library across a backup round trip", async () => {
+  it("preserves Ukrainian cards and the existing library across a backup round trip", async () => {
     const existing = await createBook("Existing Spanish");
     const existingEntries = await getCards(existing.id, store);
     const deck = await commitPhrasebook({
@@ -615,10 +634,6 @@ describe("backup validation and atomic restore", () => {
       selectedIndexes: [0],
     }, { store });
     const order = (await getCards(deck.id, store)).find((entry) => entry.occurrence?.speaker === "you");
-    await updateCard(order.cardId, { text: "Чай, будь ласка.", translation: "Tea, please." }, {
-      occurrenceId: order.occurrence.id,
-      store,
-    });
     await toggleCardStar(deck.id, { cardId: order.cardId }, store);
     const backup = await exportAllData(store);
     const fresh = createDb({ indexedDB: new IDBFactory(), IDBKeyRange });
@@ -629,8 +644,8 @@ describe("backup validation and atomic restore", () => {
       expect(await fresh.decks.get(deck.id)).toMatchObject({ lang: "uk", generation: { ability: "basics" } });
       const restored = await getCards(deck.id, fresh);
       expect(restored.find((entry) => entry.cardId === order.cardId)).toMatchObject({
-        card: { lang: "uk", text: "Чай, будь ласка.", translation: "Tea, please." },
-        occurrence: { section: "dialogue", speaker: "you", translation: "Tea, please." },
+        card: { lang: "uk", text: "Каву, будь ласка.", translation: "Coffee, please." },
+        occurrence: { section: "dialogue", speaker: "you", translation: "Coffee, please." },
       });
       expect(restored.find((entry) => entry.occurrence?.speaker === "partner").card.text).toBe("Звичайно.");
       expect((await getReviewCards(deck.id, fresh)).map((entry) => entry.cardId)).toEqual([order.cardId]);

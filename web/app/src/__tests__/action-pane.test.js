@@ -7,8 +7,6 @@ vi.mock("../js/db", () => ({
   updateDeckOrder: vi.fn(),
   updateDeckReadingDisplay: vi.fn(),
   deleteDeck: vi.fn(),
-  updateCard: vi.fn(),
-  deleteCard: vi.fn(),
   commitPhrasebook: vi.fn(),
   setDeckIllustration: vi.fn(),
 }));

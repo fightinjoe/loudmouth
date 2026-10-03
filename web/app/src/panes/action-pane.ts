@@ -1,6 +1,5 @@
 import { cardIdentity } from "@catchphrase/card-schema";
 import type { Lang } from "@catchphrase/card-schema";
-import { openCardEditPanel } from "../components/card-edit-panel";
 import { openCreationPanel } from "../components/creation-panel";
 import { openDeckSettings } from "../components/deck-settings";
 import { openJsonPanel, toImportJson } from "../components/json-panel";
@@ -8,9 +7,7 @@ import { openNewPhrasebookPanel } from "../components/new-phrasebook-panel";
 import type { BottomSheetHandle } from "../components/bottom-sheet";
 import { openReviewPanel } from "../components/review-panel";
 import {
-  deleteCard,
   deleteDeck,
-  updateCard,
   updateDeckMode,
   updateDeckName,
   updateDeckOrder,
@@ -48,7 +45,6 @@ export type ActionOpen =
   | { kind: "review"; payload: { deck: Deck; cards: LibraryEntry[] } }
   | { kind: "creation"; payload: { lang?: Lang } }
   | { kind: "new-phrasebook"; payload: { suggestion: SuggestedPhrasebook } }
-  | { kind: "card-edit"; payload: { entry: LibraryEntry } }
   | { kind: "json"; payload: { title: string; jsonString: string } };
 
 export type ActionSlice = ActionOpen | null;
@@ -220,16 +216,6 @@ function openKind(
       );
       return sheetHandle;
     }
-
-    case "card-edit":
-      return openCardEditPanel(
-        hostElement,
-        open.payload.entry,
-        { updateCard, deleteCard },
-        () => ui.transition("content/reload-deck"),
-        () => ui.transition("content/reload-deck"),
-        onDismiss,
-      );
 
     case "json":
       return openJsonPanel(

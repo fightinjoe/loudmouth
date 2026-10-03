@@ -15,10 +15,9 @@ import { test, expect } from '@playwright/test'
  */
 
 // Every kind the action pane can open, with the payload shape each expects.
-// `needsDeck`/`needsCard` mark kinds that require seeded data in the payload.
+// `needsDeck`/`needsCards` mark kinds that require seeded data in the payload.
 const KINDS = [
   { kind: 'settings', needsDeck: true, needsCards: true, label: 'settings' },
-  { kind: 'card-edit', needsCard: true, label: 'card-edit' },
   { kind: 'review', needsDeck: true, needsCards: true, label: 'review' },
   { kind: 'creation', payload: { lang: 'ja' }, label: 'creation (topic entry)' },
   { kind: 'creation', payload: {}, label: 'creation (first-time language selection)' },
@@ -67,7 +66,7 @@ test.describe('action panes open without runtime errors', () => {
         const { db } = window.__loudmouth
         let deck = null
         let cards = null
-        if (spec.needsDeck || spec.needsCards || spec.needsCard) {
+        if (spec.needsDeck || spec.needsCards) {
           deck = await db.commitPhrasebook({
             name:'Smoke Deck',lang:'ja',selectedIndexes:[0],
             groups:[{
@@ -89,7 +88,6 @@ test.describe('action panes open without runtime errors', () => {
         const p = { ...(spec.payload || {}) }
         if (spec.needsDeck) p.deck = deck
         if (spec.needsCards) p.cards = cards
-        if (spec.needsCard) p.entry = cards[0]
         return p
       }, spec)
 
@@ -102,7 +100,7 @@ test.describe('action panes open without runtime errors', () => {
       )
 
       // A pane actually mounted into the action layer. Both bottom-sheet
-      // kinds and full-screen kinds (card-edit, json) append here.
+      // kinds and full-screen kinds (json) append here.
       const paneRoot = page.locator('#action-layer > *')
       await expect(paneRoot.first()).toBeVisible()
       if (spec.kind === 'creation' && !spec.payload.lang) {
