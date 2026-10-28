@@ -17,6 +17,10 @@ checks of its actual replies. ❌ It declared the whole-topic review finished in
 examples, so correction remained blocked for the other four. **2/6 is better than the baseline's 0/6;
 the target is 6/6.** Recognizing an error is positive, but is not the same as completing review or fixing it.
 
+**CURRENT DISPOSITION:** C is optional and deferred by user decision. Preserve these observations;
+do not reconcile its instructions/schema now. Establishing a confident A/B baseline is the next
+priority and does not depend on resolving C.
+
 ## Run logistics
 
 | Item | Observed |
@@ -141,11 +145,35 @@ The same model alias and OpenRouter Vertex route do not establish reproducibilit
 the production direct-Vertex path. One observation per case cannot establish a defect rate, reliable
 tail latency, instruction causality or general repair benefit. A/B remain separate quality lanes.
 
-## Next boundary
+## Status: deferred optional investigation
 
-This diagnostic does not clear C for candidate ranking or a mandatory production reviewer. A further
-proposal should investigate an explicit, independently checkable coverage contract rather than keep
-silently changing or ignoring `complete`. Any schema/instruction revision and additional paid study
-need a new exact scope and approval. The remaining category-granularity question also needs explicit
-reporting expectations, not retrospective label changes. Production and the current fail-closed
-contract are unchanged; no additional calls are authorized.
+**C is parked, not accepted or repaired.** Its unresolved coverage/category questions remain recorded.
+No C instruction/schema change, further reconciliation or new run is currently planned. A and B's
+[baseline checkpoint](../../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline)
+takes priority; C is not a prerequisite.
+
+### What the current evaluation actually does
+
+Detection and repair are two **model roles**, with deterministic routing and application around them.
+They are not necessarily two total calls: detection reviews a topic, while repairs can be per item.
+This is an evaluation decomposition, not a selected production architecture.
+
+| Stage | Owner | Observed status at pause |
+|---|---|---|
+| Identify problems and declare review coverage | Detector model | Latest run: 12 valid replies; all 6 inserted errors recognized by assistant review; 4 defective topics declared incomplete. Five correct controls and the unscored keep/hold probe were left clean. |
+| Decide whether correction may proceed | Local gate | `complete:false` selects no repairs and retains the topic. This withheld saved repairs for 4 cases; it is not evidence that a repair model refused or failed to produce a correction. Why the detector chose false is unknown. |
+| Generate a localized correction | Repair model | **No fresh calls in the latest study.** Earlier, location-assisted replies passed all 6 supplied defect checks. The separate keep/hold probe was unnecessarily changed; suitability of the original wording remains unestablished. Neutral repair behavior and restraint on correct controls remain unmeasured. |
+| Validate and apply proposed changes | Local application code | Offline reuse of saved replies applied the 2 Chinese repairs, totaling 3 field edits. Four incomplete topics retained their original errors. This was not fresh end-to-end repair or production delivery. |
+
+### Required process review if C is reopened
+
+Before choosing another prompt, schema or experiment, trace the whole process on a defective example
+and a correct control: exact inputs to each model role, actual replies, gate decision, proposed changes,
+application validation and resulting whole topic. Separate **missed/false findings**, **incomplete or
+uncertain review**, **repair not requested**, **repair-model failure**, **rejected application** and
+**accepted but harmful changes**. Do not attribute a gate-blocked repair to model refusal.
+
+Only after that review decide what to change and how to measure net benefit over unchanged content.
+The previously suggested coverage-contract redesign is a parked hypothesis, not approved work.
+Preserve the existing blocking contract and historical labels. Any new study needs a separately
+frozen scope and explicit paid approval; no further calls or production changes are authorized.

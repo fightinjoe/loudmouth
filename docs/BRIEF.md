@@ -144,18 +144,22 @@ quality work, not a linguistic acceptance claim.
 including retries/failures; **trustworthy** means faithful meaning and learner intent, useful teaching,
 and avoidance of harmful learner-facing errors. Structural validation alone is not linguistic assurance.
 
-R1 evaluates English generation (A), translation (B), and detection/optional repair (C) independently
-using shared canonical learner contexts and qualitative review. Useful English essentials have the
-highest content priority; ordinary dialogue awkwardness is lower impact than material meaning/safety
-errors. Improve initial output before presuming a runtime reviewer is needed. Repair is not implemented
-and remains optional; it must not become a required serial stage before usable initial content.
+R1 evaluates English generation (A), translation (B), and optional detection/repair (C) independently
+using shared canonical learner contexts and qualitative review. **A and B are the primary quality
+priorities; the next checkpoint is a confident, reviewed baseline of their current behavior for future
+model/prompt comparisons.** Useful English essentials have the highest content priority; ordinary
+dialogue awkwardness is lower impact than material meaning/safety errors. A baseline records known
+failures and uncertainty rather than claiming error-free content.
 
-Independent offline A/B/C and composed A→B workflows now exist with five canonical contexts,
-authored mocks, saved-response evaluation, a proposed rubric and a subjective-review skill.
-They prove validation/workflow behavior, not provider performance or linguistic correctness.
-Cleanup and offline implementation are separate committed checkpoints; paid calibration still requires
-rubric/sample review and exact bounded native approval before comparisons. R2 identity/schema follows
-quality findings; R3 storage follows R2. iOS/web convergence remains an independent contract/catch-up track.
+Independent offline A/B/C and composed A→B workflows exist with five canonical contexts, authored
+mocks, saved-response evaluation, a proposed rubric and a subjective-review skill. Paid diagnostic
+findings are recorded, but do not yet establish representative reliability or linguistic acceptance.
+**C is a nice-to-have investigation and is deferred.** Preserve its current findings and review the
+whole detection→gate→repair→application process if it is revisited; do not reconcile it now or make it
+an A/B prerequisite. Repair is not implemented in production and must not become a required serial
+stage before usable initial content. New baseline collection requires sample/rubric review and exact
+bounded native approval. R2 identity/schema follows quality findings; R3 storage follows R2.
+iOS/web convergence remains an independent contract/catch-up track.
 
 See the [current quality, identity, storage, and convergence plan](designs/phrasebook-quality-identity-storage-plan.md)
 for gates, review priorities, schema-grounded terms and historical caveats;

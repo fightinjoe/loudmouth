@@ -4,6 +4,12 @@
 [Current strategy](../docs/designs/phrasebook-quality-identity-storage-plan.md) ·
 [Proposed rubric](rubric.json) · [Subjective-review skill](../.agents/skills/content-quality-evaluation/SKILL.md)
 
+**Current priority: establish a confident A/B baseline before comparing future models or prompts.**
+C is optional and deferred, not a prerequisite for A/B. Follow the
+[baseline checkpoint](../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline);
+retain C's [current process/status](calibration/c-recalibration-findings.md#status-deferred-optional-investigation)
+without further reconciliation or paid execution.
+
 ## Three independent pipelines
 
 | Command lane | Frozen input → output | What it measures |
@@ -318,9 +324,13 @@ Do not append experiment diaries or automatically persist every intermediate rep
 3. Diagnostic calibration checkpoint — user approved the exact 29-attempt/$0.40 package; all calls
    completed and concise findings are in `calibration/`. A subsequent approved 12-call C recalibration
    observed better attribution/severity agreement but four remaining incomplete defect reviews under
-   proposed rubric 1.2. Review cited A/B and language uncertainties before comparison.
+   proposed rubric 1.2. C is now optional and deferred; those unresolved questions do not gate A/B.
    Calibration is not candidate ranking or unseen reliability evidence.
-4. Only then compare **models**, **prompts** and **systemic changes** under separate controlled studies:
-   A and B independently, then C's incremental benefit versus unchanged topics. Optional A→B smoke
-   checks cover integration; they are not a required fourth paid quality study.
-   Freeze sampling, repetitions, gates and stop rules; no automatic model/prompt promotion or deployment.
+4. **Next: establish the current A/B baseline** using the linked checkpoint. Inventory existing
+   observations, review coverage/assessment gaps and freeze the baseline configuration, inputs and
+   repetitions before requesting an exact A/B-only collection approval. Do not silently fix known
+   failures or treat the five observations per lane as a confident baseline.
+5. Only after that baseline, compare **models**, **prompts** and **systemic changes** under separate
+   controlled studies, A and B independently. C is reconsidered only if explicitly reopened, with
+   process review before new experiments. Optional A→B smoke checks are not a fourth quality study.
+   Freeze decision criteria and stop rules; no automatic model/prompt promotion or deployment.

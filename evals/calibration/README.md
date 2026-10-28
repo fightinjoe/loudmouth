@@ -139,3 +139,9 @@ cost/token/latency differences. Reusing saved oracle-assisted patches yields onl
 repairs; the historical hold-probe patch failure remains separate. No fresh repair, A/B or judge calls,
 retries, fallback or deployment. The consumed authorization does not permit additional spending.
 
+**Current disposition: C is optional and deferred.** Its
+[process and unresolved status](c-recalibration-findings.md#status-deferred-optional-investigation)
+are retained without further reconciliation. The next quality checkpoint is a
+[reviewed A/B baseline](../../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline);
+C does not gate that work.
+

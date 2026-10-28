@@ -20,6 +20,10 @@ Production contracts: `docs/API_DESIGN.md` and `docs/CARD_SCHEMA.md`.
 - A generating candidate cannot certify its own output. Identify reviewer identity, available language
   expertise and whether review was blind. User approves the initial rubric, priorities and sample;
   materially uncertain linguistic judgments remain unresolved pending qualified adjudication.
+- A/B initial-content quality and their reviewed baseline are the current priorities. C is optional
+  and deferred by user decision; unresolved C findings do not gate A/B. Do not resume C reconciliation,
+  redesign or experiments unless explicitly reopened. Follow the
+  [baseline checkpoint](../../../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline).
 
 ## Mode 1: propose expectations
 
@@ -78,6 +82,10 @@ If blind review is impossible, disclose it. Record the actual version from `eval
 - `complete=false` declares incomplete review coverage, not merely a topic containing defects.
   Preserve fail-closed composition and report its zero applied fixes separately from valid patches.
   Repair restraint on correct controls is unmeasured when those controls received no repair calls.
+- Distinguish detector output, local routing, repair-model output and local application. No repair
+  request or a blocked saved patch is not repair-model refusal. If C is reopened, trace the entire
+  process and locate the failure before proposing changes; see the
+  [recorded pause status](../../../evals/calibration/c-recalibration-findings.md#status-deferred-optional-investigation).
 - In projected review inputs, `text` is target-language content and `translation` is frozen English.
   `origin=translation` does not mean the defective field is named `translation`.
 - Compare observed severity with proposed authored severity, but do not overwrite either.

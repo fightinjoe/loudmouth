@@ -3,9 +3,12 @@
 Current plan: 2026-10-28. **A/B/C workflows and optional A→B integration checks are implemented.**
 The separately approved diagnostic calibration completed 29 calls for $0.034841798 reported spend;
 [reviewed findings](../../evals/calibration/findings.md) separate parser failures, content quality,
-detector protocol failures and oracle-assisted repair. This small assistant-reviewed sample is not
-linguistic acceptance, model ranking or authorization for further inference or production changes.
-Tooling and review entrypoint: [`evals/README.md`](../../evals/README.md).
+detector protocol failures and oracle-assisted repair. A subsequent detection-only C study completed
+12 calls for $0.0132374; [its current status](../../evals/calibration/c-recalibration-findings.md#status-deferred-optional-investigation)
+is recorded without resolving its coverage blocker. **C is optional and deferred by user decision.
+The next checkpoint is a confident A/B baseline, not further C reconciliation.** These small
+assistant-reviewed samples are not linguistic acceptance, model ranking or authorization for further
+inference or production changes. Tooling and review entrypoint: [`evals/README.md`](../../evals/README.md).
 Normative contracts remain [`API_DESIGN.md`](../API_DESIGN.md) and
 [`CARD_SCHEMA.md`](../CARD_SCHEMA.md); this plan does not change them.
 
@@ -24,6 +27,11 @@ For A, useful independent essentials are the highest content priority, followed 
 dialogue coherence matters but ordinary awkwardness/repetition is lower impact than missing essentials.
 Material meaning errors and safety risks are separate findings, never averaged away as stylistic issues.
 No fixed overall quality percentage is established. Keep latency, quality, reliability and cost visible.
+
+**A and B are the primary quality work.** Establish their baseline before changing models or prompts.
+C is a nice-to-have investigation, not an A/B acceptance gate, required serial stage or prerequisite
+for pipeline progress. Its current findings and implementation remain available; no C redesign,
+reconciliation or additional inference is the next task.
 
 Workstream order is **R1 quality → R2 identity/schema → R3 storage**. Independent iOS/web convergence
 can start its inventory now, but implementation consumes approved contracts rather than guessing them.
@@ -46,6 +54,32 @@ can start its inventory now, but implementation consumes approved contracts rath
   applied within 60 seconds of first display, including orchestration and client application—not a
   measured guarantee or a reason to postpone usable initial content. Triggering/persistence are undecided.
 
+## Next checkpoint: reviewed A/B baseline
+
+**RECAP:** A and B already have offline workflows and five live diagnostic observations each, one per
+canonical context. A passed the production parser in 4/5 cases; B passed in 5/5 but contained observed
+meaning, pronunciation and supporting-evidence problems. This is starting evidence, not yet a
+confident comparative baseline. See the [diagnostic findings](../../evals/calibration/findings.md).
+
+**GOAL:** Establish a reproducible, independently assessed reference for **current** English generation
+and translation, so future models and prompts can be compared fairly. A baseline can contain known
+failures; confidence means its configuration, coverage, variability and limitations are understood,
+not that its content is error-free.
+
+| Baseline requirement | Evidence to establish before comparison |
+|---|---|
+| Frozen configuration | Record prompt bytes/hashes, model/resolved identity where available, provider/transport, settings and parser/schema revision separately for A and B. Disclose differences from production; do not silently improve the baseline first. |
+| Fixed, reviewed inputs | Use shared canonical learner contexts for A and exact frozen English for B. Review ordinary/challenge, language/script and learner-level coverage; separate development regressions from comparison cases. Exposed cases are not unseen holdouts. |
+| Independent assessment | Reuse the existing cited A/B reviews as starting evidence. Review expected behavior and the rubric before new collection; keep material meaning/safety problems distinct from minor phrasing. Preserve unresolved language judgments and reviewer qualifications. |
+| Variability and limits | Agree repetitions and report counts/distributions and uncertainty by lane and language. Five single observations cannot establish reliability or tail latency. Do not invent a confidence percentage or average away material risks. |
+| Comparable results | Record per-topic quality dimensions and exact findings separately from parser/runtime failures, latency, tokens and cost. Missing assessment stays null. Retain known baseline failures rather than filtering them out. |
+| Bounded collection | Prepare an A/B-only native request plan for missing evidence, with exact inputs, repetitions, caps and stop rules. New paid calls need explicit approval; existing approvals are consumed. No challenger, production prompt edit or deployment is included. |
+
+First inventory the retained A/B evidence against these requirements, identify gaps, and present the
+baseline sample/assessment and exact collection proposal for approval. No C repair success is needed
+to complete this checkpoint. Once established, compare models and prompts in separate controlled
+studies, one changed variable at a time. Optional A→B smoke checks prove handoff, not a fourth study.
+
 ## Four ordered steps and commit gates
 
 1. **Cleanup and establish the checkpoint.** Delete bulky raw responses/logs, native experiment
@@ -61,11 +95,12 @@ can start its inventory now, but implementation consumes approved contracts rath
    priorities, sample and exact bounded request plan. Use a small sample to check instructions,
    subjective expectations, review disagreements and measurement/reporting usability. Keep material
    linguistic disputes unresolved until qualified adjudication. Record limitations, then **commit**.
-4. **Compare candidates only after calibration.** Freeze task-specific configurations, representative
-   inputs, repetitions, numeric gates and stop rules; obtain fresh paid approval. Compare A and B
-   separately, then C's incremental benefit against unchanged input. A→B is an optional integration
-   smoke check, not a fourth quality pipeline or required paid comparison.
-   Commit concise findings and selected regressions; no automatic prompt/model promotion or deployment.
+4. **Establish the reviewed A/B baseline above, then compare candidates.** Freeze task-specific
+   configurations, representative inputs, repetitions, decision criteria and stop rules; obtain fresh
+   paid approval. Compare A and B separately. C remains deferred unless explicitly reopened; only then
+   assess its incremental benefit against unchanged input. Optional A→B is an integration smoke check,
+   not a fourth paid quality study. Commit concise findings and selected regressions; no automatic
+   prompt/model promotion or deployment.
 
 No live provider/catalog checks are needed for cleanup/offline implementation. Historical approvals,
 unused slots or budgets do not authorize new calls, retries or resuming stopped experiments.
