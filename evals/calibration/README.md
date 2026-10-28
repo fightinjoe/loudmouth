@@ -110,11 +110,11 @@ detector-gated correction; known-location success is not end-to-end success. Pro
 
 The current evaluator uses proposed rubric **1.2** and clarified evaluation-only C detection guidance.
 See [C reconciliation](../README.md#c-reconciliation--proposed-rubric-12) for the JSON-field cutover,
-separate attribution/severity diagnostics and observed replay results. The retained suite now passes
+separate attribution/severity diagnostics and observed replay results. That offline checkpoint passed
 **49 tests**. Original `results.json`, findings, approvals and execution-time hashes remain historical
-and unchanged; no new provider calls or evidence of improved model behavior were produced.
+and unchanged; the offline work alone produced no new provider calls or generated-behavior evidence.
 
-## Prepared detection-only recalibration
+## Completed detection-only recalibration
 
 [`c-recalibration-request.json`](c-recalibration-request.json) freezes **12 C detection calls / $0.23
 maximum**, with native conservative reservations of **$0.227289**. Same five contexts: five controls,
@@ -122,13 +122,20 @@ six authored defects and one unscored keep/hold probe. Gemini/provider/settings/
 match the saved detector baseline; revised detection instructions and proposed rubric 1.2 are explicit.
 
 Fresh native plan: `d8be6a10366201c5cb347dd2b8c87deffc0ac9ed9ca9cd9547d6987d38f123fe`.
-Public provider metadata was rechecked; saved-plan reload and baseline-request compatibility checks
-passed. Native status records **zero runs and no human brief approval**. The user's general approval
-to proceed is not recorded as approval of this previously unpresented hash or spending cap.
+Before dispatch, public provider metadata was rechecked with no observed drift, saved-plan reload
+passed, and native zero-run status was confirmed. The user's subsequent **“approved”** reply authorized
+this exact scope and cap; [`c-recalibration-approval.json`](c-recalibration-approval.json) records that
+authorization separately without rewriting the originally unapproved proposal.
 
-No new A/B, repair or judge calls, retries, fallback or deployment. Existing known-location replies
-may be reused only for counterfactual offline composition; the historical hold-probe repair failure
-is not a newly generated detector failure. Both old and new detections must be assessed under the
-same proposed rubric without overwriting the historical calibration results. Explicit approval of
-this exact request is required before execution; caps are reservations, not a provider billing guarantee.
+**12/12 calls completed, $0.0132374 reported spend, zero errors or unknown charges.** Both detector
+sets were reassessed under the same proposed rubric 1.2. Exact authored attribution improved **2→5/6**,
+severity disagreements **4→0**, and coverage-complete defect reviews **0→2/6**. Four incomplete reviews
+still block correction, including the severe-allergy denial. Two independent assistant reviews support
+recognition of all six defects, not qualified linguistic/medical certification or production acceptance.
+
+See [`c-recalibration-findings.md`](c-recalibration-findings.md) and
+[`c-recalibration-results.json`](c-recalibration-results.json) for per-case outcomes and measured
+cost/token/latency differences. Reusing saved oracle-assisted patches yields only two counterfactual
+repairs; the historical hold-probe patch failure remains separate. No fresh repair, A/B or judge calls,
+retries, fallback or deployment. The consumed authorization does not permit additional spending.
 

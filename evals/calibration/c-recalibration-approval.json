@@ -1,0 +1,14 @@
+{
+  "author": {
+    "name": "User (this conversation)",
+    "role": "human"
+  },
+  "approved": true,
+  "quote": "approved",
+  "packageSha256": "dfa4a805192dc2cb3646715cedfed35335320e4a3f9b699ba58f72930ac8929d",
+  "planHash": "d8be6a10366201c5cb347dd2b8c87deffc0ac9ed9ca9cd9547d6987d38f123fe",
+  "maxAttempts": 12,
+  "maxSpendUsd": 0.23,
+  "recordedAt": "2026-10-28T17:58:31.685Z",
+  "scope": "Only the exact 12-call detection-only proposal presented immediately before approval; no retries, fallback, new repair or judge calls, production change or deployment."
+}

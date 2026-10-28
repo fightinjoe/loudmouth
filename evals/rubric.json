@@ -1,6 +1,6 @@
 {
   "version": "1.2-proposed",
-  "status": "offline-reconciled-awaiting-paid-recalibration",
+  "status": "recalibration-complete-coverage-blocker-remains",
   "authority": "Assistant-proposed review guidance; not linguistic certification or a production acceptance gate.",
   "canonicalAnchors": "../docs/API_DESIGN.md#evaluation-technical-validity-and-learning-quality",
   "priorities": [

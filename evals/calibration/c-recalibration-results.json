@@ -1,0 +1,391 @@
+{
+  "version": 1,
+  "status": "diagnostic-complete-coverage-blocker-remains",
+  "date": "2026-10-28",
+  "approval": {
+    "path": "c-recalibration-approval.json",
+    "proposal": "c-recalibration-request.json",
+    "packageSha256": "dfa4a805192dc2cb3646715cedfed35335320e4a3f9b699ba58f72930ac8929d",
+    "planHash": "d8be6a10366201c5cb347dd2b8c87deffc0ac9ed9ca9cd9547d6987d38f123fe",
+    "maxAttempts": 12,
+    "maxSpendUsd": 0.23
+  },
+  "provenance": {
+    "engine": "native ../prompt-romp",
+    "workingRoot": ".prompt-romp/c-recalibration-2026-10-28-r2",
+    "experiment": "E-1793210049902-5e72aef532ff",
+    "run": "run-1793210050380-48db7ea0162b",
+    "baselineRun": "run-1793204998870-a51b257f1fe0",
+    "rubric": {
+      "path": "evals/rubric.json",
+      "version": "1.2-proposed",
+      "sha256": "34c8dd6f6a97ba4c9ec95abfe85069fdf188a6e64934bcdca045e337562daa4f",
+      "scores": null,
+      "executionTimeAssessmentStatus": "pending subjective review",
+      "hashScope": "Execution-time rubric bytes; a later checkpoint-status update does not alter historical provenance."
+    },
+    "caseInputSchemaModelProviderSettingsTimeoutPricing": "Identical between frozen baseline and recalibration plans; detector instructions changed.",
+    "metadataRecheckedAt": "2026-10-28T17:58:18.889Z",
+    "noDriftObserved": true,
+    "rawEvidenceCommitted": false,
+    "repetitions": 1,
+    "concurrency": 1,
+    "retries": 0,
+    "paidJudgeCalls": 0,
+    "newRepairCalls": 0,
+    "newAOrBCalls": 0,
+    "productionChanges": false
+  },
+  "execution": {
+    "planHash": "d8be6a10366201c5cb347dd2b8c87deffc0ac9ed9ca9cd9547d6987d38f123fe",
+    "maxAttempts": 12,
+    "maxSpendUsd": 0.23,
+    "attempts": 12,
+    "reportedSpendUsd": 0.0132374,
+    "reservedUnknownUsd": 0,
+    "committedUsd": 0.0132374,
+    "unknownChargeAttempts": 0,
+    "boundExceeded": false,
+    "providerErrors": 0,
+    "uncertainStarts": 0,
+    "reservationOverruns": 0
+  },
+  "comparison": {
+    "baseline": {
+      "measurements": {
+        "run": "run-1793204998870-a51b257f1fe0",
+        "attempts": 12,
+        "reportedSpendUsd": 0.0121572,
+        "unknownChargeAttempts": 0,
+        "wallMs": 14087.772003,
+        "requestMs": {
+          "count": 12,
+          "knownCount": 12,
+          "unknownCount": 0,
+          "mean": 1159.5075095,
+          "median": 1166.5235165,
+          "max": 1434.0112449999997,
+          "p95": null,
+          "p95Method": null
+        },
+        "inputTokens": 33149,
+        "outputTokens": 885,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "providers": [
+          "Google"
+        ]
+      },
+      "assessment": {
+        "reviews": 12,
+        "validEnvelopes": 12,
+        "completeDefects": 0,
+        "exactMatches": 2,
+        "unmatchedExpectations": 4,
+        "unmatchedPredictions": 5,
+        "severityDifferences": 4,
+        "controlsWithFindings": 0,
+        "appliedFieldEdits": 0,
+        "defectCounterfactualRepairs": 0,
+        "retainedSources": 56,
+        "originalSources": 56,
+        "probe": [
+          {
+            "detection": [],
+            "unresolved": [],
+            "counterfactualOutcome": "clean",
+            "counterfactualEdits": 0,
+            "historicalKnownLocationOutcome": "unresolved",
+            "historicalKnownLocationChecks": false
+          }
+        ]
+      }
+    },
+    "revised": {
+      "measurements": {
+        "run": "run-1793210050380-48db7ea0162b",
+        "attempts": 12,
+        "reportedSpendUsd": 0.0132374,
+        "unknownChargeAttempts": 0,
+        "wallMs": 15451.649796,
+        "requestMs": {
+          "count": 12,
+          "knownCount": 12,
+          "unknownCount": 0,
+          "mean": 1268.84850175,
+          "median": 1111.518469,
+          "max": 2630.940091999999,
+          "p95": null,
+          "p95Method": null
+        },
+        "inputTokens": 37133,
+        "outputTokens": 839,
+        "reasoningTokens": 0,
+        "cachedTokens": 0,
+        "providers": [
+          "Google"
+        ]
+      },
+      "assessment": {
+        "reviews": 12,
+        "validEnvelopes": 12,
+        "completeDefects": 2,
+        "exactMatches": 5,
+        "unmatchedExpectations": 1,
+        "unmatchedPredictions": 1,
+        "severityDifferences": 0,
+        "controlsWithFindings": 0,
+        "appliedFieldEdits": 3,
+        "defectCounterfactualRepairs": 2,
+        "retainedSources": 56,
+        "originalSources": 56,
+        "probe": [
+          {
+            "detection": [],
+            "unresolved": [],
+            "counterfactualOutcome": "clean",
+            "counterfactualEdits": 0,
+            "historicalKnownLocationOutcome": "unresolved",
+            "historicalKnownLocationChecks": false
+          }
+        ]
+      }
+    },
+    "delta": {
+      "reportedSpendUsd": 0.0010802,
+      "inputTokens": 3984,
+      "outputTokens": -46,
+      "medianRequestMs": -55.00504749999982
+    },
+    "interpretation": "Observed contrasts on exposed development cases, one observation per request. Both sets reassessed under the same proposed rubric 1.2; no controlled causal/reliability claim."
+  },
+  "reviews": [
+    {
+      "contextId": "shoes-zh",
+      "id": "shoes-zh-correct",
+      "kind": "correct-control",
+      "validEnvelope": true,
+      "complete": true,
+      "exactMatches": 0,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "assembled",
+      "counterfactualOutcome": "clean",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "shoes-zh",
+      "id": "shoes-zh-size-defect",
+      "kind": "defect",
+      "validEnvelope": true,
+      "complete": true,
+      "exactMatches": 1,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "assembled",
+      "counterfactualOutcome": "repaired",
+      "counterfactualAppliedFieldEdits": 2,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "shoes-zh",
+      "id": "shoes-zh-reading-defect",
+      "kind": "defect",
+      "validEnvelope": true,
+      "complete": true,
+      "exactMatches": 1,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "assembled",
+      "counterfactualOutcome": "repaired",
+      "counterfactualAppliedFieldEdits": 1,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "shoes-zh",
+      "id": "shoes-zh-hold-intent-unresolved",
+      "kind": "unresolved",
+      "validEnvelope": true,
+      "complete": true,
+      "exactMatches": 0,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "assembled",
+      "counterfactualOutcome": "clean",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": false
+    },
+    {
+      "contextId": "allergy-ja",
+      "id": "allergy-ja-correct",
+      "kind": "correct-control",
+      "validEnvelope": true,
+      "complete": true,
+      "exactMatches": 0,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "assembled",
+      "counterfactualOutcome": "clean",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "allergy-ja",
+      "id": "allergy-ja-negation-defect",
+      "kind": "defect",
+      "validEnvelope": true,
+      "complete": false,
+      "exactMatches": 0,
+      "unmatchedExpectations": 1,
+      "unmatchedPredictions": 1,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "detection-incomplete",
+      "counterfactualOutcome": "unresolved",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "tea-cs",
+      "id": "tea-cs-correct",
+      "kind": "correct-control",
+      "validEnvelope": true,
+      "complete": true,
+      "exactMatches": 0,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "assembled",
+      "counterfactualOutcome": "clean",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "tea-cs",
+      "id": "tea-cs-sugar-defect",
+      "kind": "defect",
+      "validEnvelope": true,
+      "complete": false,
+      "exactMatches": 1,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "detection-incomplete",
+      "counterfactualOutcome": "unresolved",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "lost-bag-uk",
+      "id": "lost-bag-uk-correct",
+      "kind": "correct-control",
+      "validEnvelope": true,
+      "complete": true,
+      "exactMatches": 0,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "assembled",
+      "counterfactualOutcome": "clean",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "lost-bag-uk",
+      "id": "lost-bag-uk-route-defect",
+      "kind": "defect",
+      "validEnvelope": true,
+      "complete": false,
+      "exactMatches": 1,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "detection-incomplete",
+      "counterfactualOutcome": "unresolved",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "pottery-es",
+      "id": "pottery-es-correct",
+      "kind": "correct-control",
+      "validEnvelope": true,
+      "complete": true,
+      "exactMatches": 0,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "assembled",
+      "counterfactualOutcome": "clean",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    },
+    {
+      "contextId": "pottery-es",
+      "id": "pottery-es-wheel-defect",
+      "kind": "defect",
+      "validEnvelope": true,
+      "complete": false,
+      "exactMatches": 1,
+      "unmatchedExpectations": 0,
+      "unmatchedPredictions": 0,
+      "severityDisagreements": 0,
+      "counterfactualStatus": "detection-incomplete",
+      "counterfactualOutcome": "unresolved",
+      "counterfactualAppliedFieldEdits": 0,
+      "immutableEnglishIntent": true,
+      "historicalKnownLocationChecksPassed": true
+    }
+  ],
+  "independentReview": {
+    "authority": "Assistant assessments, not qualified native-language or medical certification.",
+    "reviewers": [
+      {
+        "name": "RecalCoverageAttribution",
+        "focus": "Declared coverage, field/handle/origin/category attribution and correction constraints.",
+        "completeObservationsReviewed": 12
+      },
+      {
+        "name": "RecalMeaningSeverity",
+        "focus": "Supported meaning/pronunciation contrasts, severity, false allegations and additional important defects.",
+        "completeObservationsReviewed": 12
+      }
+    ],
+    "packet": "Full topic inputs and actual detections; no repair replies, candidate identity, version, timing, price or fixture answer labels.",
+    "blindnessLimit": "Recognizable exposed development cases, not fully blinded or unseen certification; rubric examples consulted after observations.",
+    "agreement": [
+      "All six authored defects are semantically recognized with supported target-field attribution and impact-based severity.",
+      "No unsupported new allegation or additional important meaning defect was established.",
+      "Four explicit incomplete declarations still block correction; their cause is unobserved.",
+      "The Japanese allergy category is less specific than instructed, not an unnoticed safety contradiction.",
+      "A clean leave-unchanged keep/hold judgment is defensible; suitability remains unestablished.",
+      "Detection recognition does not prove repair validity or application."
+    ],
+    "materialDisagreementsRequiringAdjudication": [],
+    "findings": "c-recalibration-findings.md#independent-review-and-limits"
+  },
+  "limits": [
+    "No more paid execution is authorized; the exact approval is consumed.",
+    "Four non-Chinese authored-defect detections declare incomplete review despite recognized reasons. Keep the correction gate fail-closed; no cause for those declarations is established.",
+    "Japanese allergy meaning versus authored medical-safety is a category-granularity mismatch, not failure to recognize severe-allergy denial.",
+    "Counterfactual composition reuses previous oracle-assisted patches; it is not fresh neutral-model repair or delivered end-to-end C behavior.",
+    "Historical hold-probe repair remains a known preservation failure; its aggregate fixture failure must not be blamed on the new clean detector judgment.",
+    "No unseen holdout, reliability rate, qualified linguistic certification, reliable latency percentile, model promotion or deployment is established."
+  ]
+}

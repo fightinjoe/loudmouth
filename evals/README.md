@@ -167,12 +167,21 @@ Offline replay of the original 12 saved detector responses preserves **2 exact m
 expectations, 5 unmatched predictions, 6 incomplete defect reviews and zero applied edits**. It exposes
 6 same-handle candidates and 4 severity disagreements without rewriting a response or fixture label.
 The historical `calibration/results.json`, findings and approval package remain unchanged. Revised
-reporting is a separate reassessment, not new model evidence. No claim is made that the revised
-instructions improve generated behavior; that requires a new frozen native plan and explicit paid approval.
+reporting is a separate reassessment, not new model evidence. That offline checkpoint alone did not
+establish improved generated behavior.
 
 Verification: **49 tests pass**; the actual saved-response CLI and the five-context mock C workflow
 were exercised. The revised model-independent inventory remains unapproved, non-dispatching and
 29 calls; it is not a priced execution authorization.
+
+The subsequently approved **12-call/$0.23 detection-only recalibration** completed at **$0.0132374**
+reported spend, with zero errors/unknown charges. Under the same rubric, exact authored attribution
+improved **2→5/6**, severity disagreements **4→0**, and coverage-complete defect reviews **0→2/6**.
+All six defects were recognized according to two independent assistant reviews; **four incomplete
+reviews still block correction**, including the severe-allergy denial. Saved replies support two
+counterfactual Chinese repairs, not new neutral repair evidence. See
+[`calibration/c-recalibration-findings.md`](calibration/c-recalibration-findings.md) for per-case
+evidence, measured latency/tokens/cost and limitations. No production or additional paid work is authorized.
 
 
 ## Review priorities and concrete terms
@@ -265,9 +274,10 @@ Do not append experiment diaries or automatically persist every intermediate rep
 1. Cleanup and BRIEF verification — separate committed checkpoint.
 2. Offline pipelines/fixtures/rubric/skill and actual CLI proof — separate committed checkpoint.
 3. Diagnostic calibration checkpoint — user approved the exact 29-attempt/$0.40 package; all calls
-   completed and concise findings are in `calibration/`. C guidance/reporting is reconciled offline
-   under proposed rubric 1.2; live improvement is unmeasured. Review cited A/B and language uncertainties
-   before comparison. Calibration is not candidate ranking.
+   completed and concise findings are in `calibration/`. A subsequent approved 12-call C recalibration
+   observed better attribution/severity agreement but four remaining incomplete defect reviews under
+   proposed rubric 1.2. Review cited A/B and language uncertainties before comparison.
+   Calibration is not candidate ranking or unseen reliability evidence.
 4. Only then compare **models**, **prompts** and **systemic changes** under separate controlled studies:
    A and B independently, then C's incremental benefit versus unchanged topics. Optional A→B smoke
    checks cover integration; they are not a required fourth paid quality study.
