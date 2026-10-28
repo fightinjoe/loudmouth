@@ -100,8 +100,8 @@ test('an unestablished language concern accepts no correction without inventing 
   const accepted = evaluateReview(input, review, saved);
   assert.equal(accepted.structural.pass, true);
   assert.equal(accepted.fixtureExpectation.pass, true);
-  assert.deepEqual(accepted.detection.misses, []);
-  assert.deepEqual(accepted.detection.falseAlarms, []);
+  assert.deepEqual(accepted.detection.unmatchedExpectations, []);
+  assert.deepEqual(accepted.detection.unmatchedPredictions, []);
   const changed = structuredClone(saved);
   changed.repairs[0].response = {
     handle: repairs[0].focus.handle, status: 'repaired', reason: 'An unjustified pronunciation change.',
@@ -111,4 +111,59 @@ test('an unestablished language concern accepts no correction without inventing 
   const rejected = evaluateReview(input, review, changed);
   assert.equal(rejected.knownLocationRepair.changedFields, 1);
   assert.equal(rejected.fixtureExpectation.pass, false);
+});
+
+test('wrong-field attribution remains unmatched without automatic semantic credit or repair', () => {
+  const fixtures = fixture();
+  const item = fixtures.cases.cases.find(item => item.id === 'tea-cs');
+  const review = item.reviews.find(review => review.kind === 'defect');
+  const input = createReviewInput(fixtures, item.id, review.id);
+  const detection = structuredClone(review.mockDetection);
+  detection.complete = false;
+  detection.findings[0].field = 'translation';
+  detection.findings[0].severity = 'critical';
+  const result = evaluateReview(input, review, { id: review.id, detection, repairs: review.repairs });
+  assert.deepEqual(result.detection.exactMatches, []);
+  assert.deepEqual(result.detection.unmatchedExpectations, review.expectedFindings);
+  assert.deepEqual(result.detection.unmatchedPredictions, detection.findings);
+  assert.equal(result.detection.attributionCandidates[0].fieldMatches, false);
+  assert.equal(result.detection.attributionCandidates[0].categoryMatches, true);
+  assert.equal(result.detection.attributionCandidates[0].severityMatches, false);
+  assert.equal(result.detection.semanticRecognition, null);
+  assert.equal(result.knownLocationRepair.outcome, 'repaired');
+  assert.equal(result.effective.status, 'detection-incomplete');
+  assert.equal(result.effective.appliedFieldEdits, 0);
+  assert.equal(result.effective.outcome, 'unresolved');
+});
+
+test('an allowed reading category variant is an attribution candidate, not an exact match', () => {
+  const fixtures = fixture();
+  const item = fixtures.cases.cases.find(item => item.id === 'shoes-zh');
+  const review = item.reviews.find(review => review.id === 'shoes-zh-reading-defect');
+  const input = createReviewInput(fixtures, item.id, review.id);
+  const detection = structuredClone(review.mockDetection);
+  detection.findings[0].category = 'reading-accuracy';
+  const result = evaluateReview(input, review, { id: review.id, detection, repairs: review.repairs });
+  assert.equal(result.detection.valid, true);
+  assert.deepEqual(result.detection.exactMatches, []);
+  assert.equal(result.detection.unmatchedExpectations[0].category, 'reading-romanization');
+  assert.equal(result.detection.unmatchedPredictions[0].category, 'reading-accuracy');
+  assert.equal(result.detection.attributionCandidates[0].fieldMatches, true);
+  assert.equal(result.detection.attributionCandidates[0].categoryMatches, false);
+  assert.equal(result.detection.semanticRecognition, null);
+  assert.equal(result.effective.outcome, 'repaired');
+});
+
+test('a finding on another handle is not paired with an authored defect', () => {
+  const fixtures = fixture();
+  const item = fixtures.cases.cases.find(item => item.id === 'tea-cs');
+  const review = item.reviews.find(review => review.kind === 'defect');
+  const input = createReviewInput(fixtures, item.id, review.id);
+  const detection = structuredClone(review.mockDetection);
+  detection.findings.push({ ...detection.findings[0], handle: 'd:0', reason: 'An additional allegation requiring independent review.' });
+  const result = evaluateReview(input, review, { id: review.id, detection, repairs: review.repairs });
+  assert.deepEqual(result.detection.exactMatches, review.expectedFindings);
+  assert.deepEqual(result.detection.unmatchedExpectations, []);
+  assert.deepEqual(result.detection.unmatchedPredictions.map(finding => finding.handle), ['d:0']);
+  assert.deepEqual(result.detection.attributionCandidates.map(candidate => candidate.predicted.handle), ['e:0']);
 });

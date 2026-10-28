@@ -97,7 +97,7 @@ Observed offline verification:
   56/56 source records retained across cases. Quality and provider-performance metrics remain unassessed.
 - The formerly failing uncertainty scenario now accepts a clean, unchanged reply with zero false
   missed-defect labels; regression also rejects an unjustified known-location change.
-- Final retained behavior suite: **46 pass, 0 fail** (`bun test evals/pipelines`).
+- Calibration-checkpoint behavior suite: **46 pass, 0 fail** (`bun test evals/pipelines`).
 - Actual saved-response CLI smoke: A reports 4/5 parser passes, B 5/5; C reports six incomplete
   detector-gated cases and the hold-probe preservation failure. These observed failures were retained,
   not replaced with mocks. B assembled-card inspection distinguishes raw annotations from normalized data.
@@ -105,3 +105,12 @@ Observed offline verification:
 Current decision: review the cited findings before any separately approved comparison. In particular,
 C recognized all six authored defects but declared incomplete coverage on each, preventing every
 detector-gated correction; known-location success is not end-to-end success. Production remains unchanged.
+
+## Subsequent offline reconciliation
+
+The current evaluator uses proposed rubric **1.2** and clarified evaluation-only C detection guidance.
+See [C reconciliation](../README.md#c-reconciliation--proposed-rubric-12) for the JSON-field cutover,
+separate attribution/severity diagnostics and observed replay results. The retained suite now passes
+**49 tests**. Original `results.json`, findings, approvals and execution-time hashes remain historical
+and unchanged; no new provider calls or evidence of improved model behavior were produced.
+

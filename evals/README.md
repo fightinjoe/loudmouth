@@ -10,7 +10,7 @@
 |---|---|---|
 | `a` — English | Canonical learner request → essentials, useful vocabulary and two-sided dialogue | Structural completeness plus independently reviewed usefulness/fit |
 | `b` — translation | **Fixed authored English** and canonical context → target-language topic | Fidelity, readings, dictionary forms/meanings and evidence; independent of candidate A |
-| `c` — detection/optional repair | Fixed bilingual topic, correct controls and deliberately injected defects → findings and proposed/applied repairs | Detection misses/false alarms; known-location repair separately from counterfactual detector-gated composition |
+| `c` — detection/optional repair | Fixed bilingual topic, correct controls and deliberately injected defects → findings and proposed/applied repairs | Strict attribution and independently reviewed recognition/false alarms; known-location repair separately from counterfactual composition |
 | `ab` — optional integration smoke check | Canonical request → **actual A output** → translation | Technical handoff/association checks, not a fourth quality pipeline or required paid comparison |
 
 These are evaluation workflows, not required runtime API calls. A/B reuse unchanged production
@@ -147,6 +147,34 @@ Read structural/fixture outcomes separately from subjective review. A model can 
 with a reversed negation; a rejected correction can preserve the original yet fix nothing. Review
 actual text, paths, risk and unresolved claims using the skill, not a single green aggregate.
 
+### C reconciliation — proposed rubric 1.2
+
+Evaluation-only detection instructions now distinguish **review coverage** from **correctness**:
+`complete=true` is compatible with defects or unresolved items; `false` still blocks whole-topic
+correction. Target-language wording belongs to `text`, not the frozen English `translation` field.
+Guidance names canonical meaning, medical-safety and pronunciation categories, while retaining the
+existing allowed categories. Critical severity requires a concrete serious safety consequence, not
+merely a contradiction. Production prompts, schemas, repair instructions and routing are unchanged.
+
+Current C JSON reports replace `matches`, `misses` and `falseAlarms` with `exactMatches`,
+`unmatchedExpectations` and `unmatchedPredictions`. `attributionCandidates` compares findings on the
+same handle, including field/category agreement and observed versus proposed authored severity.
+These are review candidates, **not** an automatic semantic match or severity correction;
+`semanticRecognition` remains null. Correct-control repair restraint remains unmeasured without
+an actual repair response. Human recognition/false-alarm judgments remain separately attributable.
+
+Offline replay of the original 12 saved detector responses preserves **2 exact matches, 4 unmatched
+expectations, 5 unmatched predictions, 6 incomplete defect reviews and zero applied edits**. It exposes
+6 same-handle candidates and 4 severity disagreements without rewriting a response or fixture label.
+The historical `calibration/results.json`, findings and approval package remain unchanged. Revised
+reporting is a separate reassessment, not new model evidence. No claim is made that the revised
+instructions improve generated behavior; that requires a new frozen native plan and explicit paid approval.
+
+Verification: **49 tests pass**; the actual saved-response CLI and the five-context mock C workflow
+were exercised. The revised model-independent inventory remains unapproved, non-dispatching and
+29 calls; it is not a priced execution authorization.
+
+
 ## Review priorities and concrete terms
 
 The existing API 0–4 ordinal quality anchors remain; `null` means unassessed, never score 0.
@@ -237,8 +265,9 @@ Do not append experiment diaries or automatically persist every intermediate rep
 1. Cleanup and BRIEF verification — separate committed checkpoint.
 2. Offline pipelines/fixtures/rubric/skill and actual CLI proof — separate committed checkpoint.
 3. Diagnostic calibration checkpoint — user approved the exact 29-attempt/$0.40 package; all calls
-   completed and concise findings are in `calibration/`. C completeness/attribution/severity reporting
-   and the cited A/B findings need reconciliation before comparison. Calibration is not candidate ranking.
+   completed and concise findings are in `calibration/`. C guidance/reporting is reconciled offline
+   under proposed rubric 1.2; live improvement is unmeasured. Review cited A/B and language uncertainties
+   before comparison. Calibration is not candidate ranking.
 4. Only then compare **models**, **prompts** and **systemic changes** under separate controlled studies:
    A and B independently, then C's incremental benefit versus unchanged topics. Optional A→B smoke
    checks cover integration; they are not a required fourth paid quality study.

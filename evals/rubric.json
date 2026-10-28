@@ -1,6 +1,6 @@
 {
-  "version": "1.1-proposed",
-  "status": "diagnostic-calibration-complete-awaiting-user-review",
+  "version": "1.2-proposed",
+  "status": "offline-reconciled-awaiting-paid-recalibration",
   "authority": "Assistant-proposed review guidance; not linguistic certification or a production acceptance gate.",
   "canonicalAnchors": "../docs/API_DESIGN.md#evaluation-technical-validity-and-learning-quality",
   "priorities": [
@@ -86,6 +86,9 @@
       "Citations must resolve and quote the actual artifact, not an expectation or normalized reconstruction presented as raw output.",
       "Missing/invalid assessment is null, never score 0. Scores are ordinal; report distributions and exact weaknesses, not a weighted mean.",
       "Record assistant, independent model and qualified human judgments separately; generating candidates cannot certify their own output.",
+      "C strict location mismatches are not semantic miss/false-alarm judgments. Same-handle candidates require independent review; never relabel recorded findings or infer recognition automatically.",
+      "C coverage is independent of correctness. Incomplete review blocks whole-topic correction even when a known-location patch is valid.",
+      "Severity follows concrete learner impact: minor leaves the task usable, material changes important meaning or blocks the task, critical requires a serious safety consequence. Compare with proposed authored severity without automatically overriding the observed label.",
       "User approves priorities, rubric and representative sample before paid calibration; material linguistic disagreement remains unresolved pending qualified review.",
       "Promotion thresholds, representative sampling, repetitions and stop rules require a separate comparative experiment decision."
     ]

@@ -208,9 +208,18 @@ export function evaluateReview(input, review, saved, { provenance = 'saved-respo
   const preservationOnly = review.kind === 'unresolved';
   const expected = new Set(review.expectedFindings.map(location));
   const actual = new Set(detectionValid ? detection.findings.map(location) : []);
-  const matches = preservationOnly ? [] : review.expectedFindings.filter(finding => actual.has(location(finding)));
-  const misses = preservationOnly ? [] : review.expectedFindings.filter(finding => !actual.has(location(finding)));
-  const falseAlarms = !preservationOnly && detectionValid ? detection.findings.filter(finding => !expected.has(location(finding))) : [];
+  const exactMatches = preservationOnly ? [] : review.expectedFindings.filter(finding => actual.has(location(finding)));
+  const unmatchedExpectations = preservationOnly ? [] : review.expectedFindings.filter(finding => !actual.has(location(finding)));
+  const unmatchedPredictions = !preservationOnly && detectionValid ? detection.findings.filter(finding => !expected.has(location(finding))) : [];
+  // Same-handle candidates expose attribution/severity differences, never semantic credit.
+  const attributionCandidates = preservationOnly || !detectionValid ? [] : review.expectedFindings.flatMap(finding => {
+    const authoredSeverity = review.mockDetection.findings.find(candidate => location(candidate) === location(finding))?.severity ?? null;
+    return detection.findings.filter(candidate => candidate.handle === finding.handle).map(candidate => ({
+      expected: finding, predicted: candidate,
+      fieldMatches: candidate.field === finding.field, categoryMatches: candidate.category === finding.category,
+      authoredSeverity, severityMatches: authoredSeverity === null ? null : candidate.severity === authoredSeverity,
+    }));
+  });
   const repairs = []; const seen = new Set();
   if (!Array.isArray(saved?.repairs)) errors.push('Repairs must be an array');
   for (const repair of Array.isArray(saved?.repairs) ? saved.repairs : []) {
@@ -253,7 +262,16 @@ export function evaluateReview(input, review, saved, { provenance = 'saved-respo
   return {
     id: review.id, kind: review.kind, note: review.note,
     structural: { pass: errors.length === 0, immutableEnglishIntent: effective.items.every((item, index) => equal(item.english, input.items[index].english) && item.card.translation === input.items[index].card.translation) }, errors,
-    detection: { valid: detectionValid, raw: saved?.detection === undefined ? null : rawInfo(saved.detection).summary, complete: detectionValid ? detection.complete : false, findings: detectionValid ? detection.findings : [], matches, misses, falseAlarms, unresolved: detectionValid ? detection.unresolved : [], assessment: preservationOnly ? 'unscored-uncertainty-probe' : 'authored-proposed-locations', interpretation: preservationOnly ? 'No established defect label: do not count a defensible leave-unchanged judgment as a miss or require this proposed concern.' : 'Matches are against authored fixture locations, not independent linguistic truth.' },
+    detection: {
+      valid: detectionValid, raw: saved?.detection === undefined ? null : rawInfo(saved.detection).summary,
+      complete: detectionValid ? detection.complete : false, findings: detectionValid ? detection.findings : [],
+      exactMatches, unmatchedExpectations, unmatchedPredictions, attributionCandidates, semanticRecognition: null,
+      unresolved: detectionValid ? detection.unresolved : [],
+      assessment: preservationOnly ? 'unscored-uncertainty-probe' : 'authored-proposed-locations',
+      interpretation: preservationOnly
+        ? 'No established defect label: do not count a defensible leave-unchanged judgment as a miss or require this proposed concern.'
+        : 'Exact authored location comparison only. Same-handle candidates do not establish semantic recognition; unmatched predictions are not automatically linguistic false alarms. Independent review is required.',
+    },
     knownLocationRepair: { oracleAssisted: true, outcome: knownOutcome, application: known.application, error: known.error ?? null, checks: knownChecks, unresolvedHandles: known.unresolvedHandles, changedFields: knownChanges.length, correctControlChangedItems: review.kind === 'correct-control' ? new Set(knownChanges.map(change => change.handle)).size : 0 },
     proposedRepairs: repairs.map(repair => ({ handle: repair.handle, requestFocus: repair.focus, status: repair.status, raw: repair.raw ?? null, reason: repair.response?.reason ?? null, proposedFieldEdits: Array.isArray(repair.response?.changes) ? repair.response.changes.length : 0, proposedSourceRemovals: Array.isArray(repair.response?.dropSourceIndexes) ? repair.response.dropSourceIndexes.length : 0, error: repair.error ?? null })),
     responseInventory: { detectionResponsesSupplied: saved?.detection === undefined ? 0 : 1, localizedRepairResponsesSupplied: repairs.length, independentNeutralRepairResponsesSupplied: 0 },

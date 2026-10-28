@@ -78,6 +78,11 @@ If blind review is impossible, disclose it. Record the actual version from `eval
 - `complete=false` declares incomplete review coverage, not merely a topic containing defects.
   Preserve fail-closed composition and report its zero applied fixes separately from valid patches.
   Repair restraint on correct controls is unmeasured when those controls received no repair calls.
+- In projected review inputs, `text` is target-language content and `translation` is frozen English.
+  `origin=translation` does not mean the defective field is named `translation`.
+- Compare observed severity with proposed authored severity, but do not overwrite either.
+  Critical requires a concrete serious safety consequence; ordinary task-changing contradictions
+  are material unless the supplied context supports that higher risk.
 - Compare original, proposed and actually applied whole topics. Report fixed defects, introduced
   harm, changed correct controls, unresolved intent and retained/deleted evidence with denominators.
 - Atomic rejection preserves the original but earns zero credited fixes. Unchanged output is not
