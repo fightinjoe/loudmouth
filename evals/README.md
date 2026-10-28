@@ -5,10 +5,14 @@
 [Proposed rubric](rubric.json) · [Subjective-review skill](../.agents/skills/content-quality-evaluation/SKILL.md)
 
 **Current priority: establish a confident A/B baseline before comparing future models or prompts.**
-C is optional and deferred, not a prerequisite for A/B. Follow the
+C is optional and deferred, not a prerequisite for A/B. The
+[prepared baseline findings](baseline/findings.md) inventory 10 retained observations and propose
+**20 additional A/B-only calls / $0.22 maximum**, with exact native hashes in the
+[unapproved request](baseline/approval-request.json). This is a limited five-context reference, not
+product-wide confidence; no new paid calls have run. Follow the
 [baseline checkpoint](../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline);
 retain C's [current process/status](calibration/c-recalibration-findings.md#status-deferred-optional-investigation)
-without further reconciliation or paid execution.
+without further reconciliation.
 
 ## Three independent pipelines
 
@@ -326,10 +330,11 @@ Do not append experiment diaries or automatically persist every intermediate rep
    observed better attribution/severity agreement but four remaining incomplete defect reviews under
    proposed rubric 1.2. C is now optional and deferred; those unresolved questions do not gate A/B.
    Calibration is not candidate ranking or unseen reliability evidence.
-4. **Next: establish the current A/B baseline** using the linked checkpoint. Inventory existing
-   observations, review coverage/assessment gaps and freeze the baseline configuration, inputs and
-   repetitions before requesting an exact A/B-only collection approval. Do not silently fix known
-   failures or treat the five observations per lane as a confident baseline.
+4. **Next: collect and review the proposed limited A/B baseline, only after exact paid approval.**
+   Inventory, independent retained-output assessment and native-plan preparation are complete; see
+   [`baseline/findings.md`](baseline/findings.md). Two new observations plus one retained observation
+   per case give three total. The 20-call/$0.22 request remains unapproved. Known failures stay in the
+   reference; five exposed contexts do not establish representative product-wide reliability.
 5. Only after that baseline, compare **models**, **prompts** and **systemic changes** under separate
    controlled studies, A and B independently. C is reconsidered only if explicitly reopened, with
    process review before new experiments. Optional A→B smoke checks are not a fourth quality study.

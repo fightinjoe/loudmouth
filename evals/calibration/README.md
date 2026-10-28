@@ -141,7 +141,8 @@ retries, fallback or deployment. The consumed authorization does not permit addi
 
 **Current disposition: C is optional and deferred.** Its
 [process and unresolved status](c-recalibration-findings.md#status-deferred-optional-investigation)
-are retained without further reconciliation. The next quality checkpoint is a
-[reviewed A/B baseline](../../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline);
-C does not gate that work.
+are retained without further reconciliation. The next quality checkpoint is a reviewed A/B baseline;
+its [prepared findings](../baseline/findings.md) and [exact request](../baseline/approval-request.json)
+reuse these ten historical A/B observations and propose 20 additional calls / $0.22 maximum.
+This limited-reference proposal is unapproved and unexecuted. C does not gate that work.
 

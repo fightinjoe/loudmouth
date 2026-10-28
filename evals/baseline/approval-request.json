@@ -1,0 +1,424 @@
+{
+  "version": 1,
+  "author": {
+    "name": "co-design assistant",
+    "role": "assistant"
+  },
+  "approved": false,
+  "status": "exact-native-plans-prepared-awaiting-explicit-paid-approval",
+  "preparedAt": "2026-10-28T23:39:50.016Z",
+  "preparationAuthorization": {
+    "quote": "Sounds good - please proceed",
+    "scope": "Inventory, independent assessment and exact proposal preparation only. No approval of these previously unpresented native plan hashes or spending cap is inferred."
+  },
+  "scope": "Establish a limited, unchanged five-context A/B reference by reusing one retained observation and collecting two additional observations per case; no challenger, C, production changes or promotion.",
+  "workingRoot": ".prompt-romp/ab-baseline-2026-10-28-r2",
+  "maximumNewAttempts": 20,
+  "maxSpendUsd": 0.22,
+  "nativeConservativeReservationUsd": 0.21363776,
+  "retainedObservations": 10,
+  "newObservationsPerCase": 2,
+  "totalObservationsPerCase": 3,
+  "concurrency": 1,
+  "retries": 0,
+  "paidJudgeCalls": 0,
+  "cCalls": 0,
+  "repairCalls": 0,
+  "order": [
+    "a",
+    "b"
+  ],
+  "sample": [
+    {
+      "contextId": "shoes-zh",
+      "kind": "ordinary",
+      "targetLanguage": "zh",
+      "ability": "basics",
+      "topics": [
+        "Trying on walking shoes"
+      ],
+      "taskSha256": "9652b42b620eddc1561b695a56d7a89d34aa687e004e47271833c507c3a2da12"
+    },
+    {
+      "contextId": "allergy-ja",
+      "kind": "challenge",
+      "targetLanguage": "ja",
+      "ability": "none",
+      "topics": [
+        "Checking peanut allergy safety before ordering"
+      ],
+      "taskSha256": "6c81e907c384a41bd23672e423cb315b8b870a1b08ddbd9f91756108d8d08148"
+    },
+    {
+      "contextId": "tea-cs",
+      "kind": "ordinary",
+      "targetLanguage": "cs",
+      "ability": "basics",
+      "topics": [
+        "Ordering black tea without sugar"
+      ],
+      "taskSha256": "b9f2f4e87e6d905b1a8e0e257f2bd525b28a737286e36289962311851607fad7"
+    },
+    {
+      "contextId": "lost-bag-uk",
+      "kind": "challenge",
+      "targetLanguage": "uk",
+      "ability": "basics",
+      "topics": [
+        "Reporting a blue bag left on a train"
+      ],
+      "taskSha256": "8ef7835a75abb57825d5a611cc2b7a0cdaad2533329b5f57a2a7ffe86c525992"
+    },
+    {
+      "contextId": "pottery-es",
+      "kind": "ordinary",
+      "targetLanguage": "es",
+      "ability": "basics",
+      "topics": [
+        "Booking a beginner hand-building pottery class"
+      ],
+      "taskSha256": "ab8925e46739799d29da98e5e5b54274ee1075db95d75435551680fbae2ec0eb"
+    }
+  ],
+  "sourceManifest": {
+    "version": 1,
+    "mode": "ab-only-preparation",
+    "approved": false,
+    "dispatch": false,
+    "createdAt": "2026-10-28T23:33:49.386Z",
+    "fixtureHashes": {
+      "contexts": "6c95903cc8a7ef9a11b6305f11f86448eb404934e864b9b5fd9c1b374673aeff",
+      "fixtures": "217fc3f055c3340006f253fda737f12f5f3c41a89321e9d304d63f83ce418f91"
+    },
+    "dependencyHashes": {
+      "../../api/src/phrasebook/prompt.js": "e1eb7c9158baef312b958cc8dae5cc583f462ddfdc9fb8319fe3ce586812986a",
+      "../../api/src/phrasebook/parse.js": "836afb34e8f9dfed1e98d24f01f4aede595aaf2347cadd95a1d576f765d5054d",
+      "../../api/src/phrasebook/index.js": "c03addf9a23d429f04ec7bb96d63cacb25e0ac016e0776ff4b7c330ed7773252",
+      "../../api/src/phrasebook/prompt.txt": "2615d74b7485381acab1003664ad7845499ad7be4fdb4b74025cd6ee90be2632",
+      "../../api/src/phrasebook/translate-prompt.txt": "bd9e161fb4ced037d26210a0a26f4ca4d34acff95204f107d0d0963171ea265c",
+      "../../api/src/phrasebook/reading-rules-ja.txt": "58085761e5d4019c28396d62d827bffab5fc10caef8d6652d07d0f43287b1ba3",
+      "../../api/src/phrasebook/reading-rules-zh.txt": "6a4ed53b7a3ca232924f215c1a2f186ab6683e4f9b754bdb4340988ad4c0b3d4",
+      "../../api/src/schema/index.ts": "82ed4def2cd9e9cd88b7bd16a2bc11189094282f644bada42d65d9573e047dd2",
+      "../../api/src/reading.js": "c8ced7fdc68dc921f55b85ac625cdf5a848be8fa2dff7c670320bf3c6fe37c90",
+      "../../api/src/ability.js": "30604409b4e8ae655d4c15bdf2520a376b78dc87ebe26cae7b1b0832400f33dd",
+      "./production.mjs": "6b2583c6c7a91a52902ea63d52ac2b9d25a8b0c057e460bfd59e14ff49dd1f21",
+      "./topic-conversion.mjs": "faff1933bc999acaaa2e6266dfcd12ff4b4060c319f33a49b7d18df1053ba14e",
+      "./review-contract.mjs": "0848968796e6fb694eef3bf20971937f78131a7c8dd460f3ba278b1741684780",
+      "./review-composition.mjs": "2bfffa80a144a989f81faa458dca6f6a371292cca46a1aeea2f3f6a61ef021d0",
+      "./repair-application.mjs": "7ff28a07f409548e11ed35a5230133d6a4ce3ec387982d8895c8c0701d092837",
+      "./contracts/detection.schema.json": "a12d6a9c193efbf4551de1e7e23913734992cabd3349da3c4956bc46cd100de5",
+      "./contracts/localized-repair.schema.json": "f0b473383ba04614c0a2254ed1d2a41813ee7007fd06a36fba54af257b9e9fde",
+      "./instructions.mjs": "ac83db367d0dae62dfcf10d5718cf7d60027926ef886f8789cfa032845791f40",
+      "./runner.mjs": "dbac7c63fb09cbbd67f896fda1a1d67d7b62d1fbcefe9c0583d402dbaff25407",
+      "../rubric.json": "0a8dfffc8c4f72423fdcff9c037d09ce7d4ba4e10e9c5d424f6184470481e764"
+    },
+    "configurationSources": {
+      "api/src/llm-config.js": "4ff390cc4b2d10fe453ae230967efd70544e274ee8cc3145ab3c5f4e79555257",
+      "evals/calibration/adapter.mjs": "8d2a4ef2de95ad49aa114bb5bc2478fd2f256454b22b6599b11c4eeb8d37c7a3"
+    },
+    "requests": [
+      {
+        "lane": "a",
+        "contextId": "shoes-zh",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "2615d74b7485381acab1003664ad7845499ad7be4fdb4b74025cd6ee90be2632",
+          "input": "9652b42b620eddc1561b695a56d7a89d34aa687e004e47271833c507c3a2da12",
+          "schema": null
+        }
+      },
+      {
+        "lane": "a",
+        "contextId": "allergy-ja",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "2615d74b7485381acab1003664ad7845499ad7be4fdb4b74025cd6ee90be2632",
+          "input": "6c81e907c384a41bd23672e423cb315b8b870a1b08ddbd9f91756108d8d08148",
+          "schema": null
+        }
+      },
+      {
+        "lane": "a",
+        "contextId": "tea-cs",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "2615d74b7485381acab1003664ad7845499ad7be4fdb4b74025cd6ee90be2632",
+          "input": "b9f2f4e87e6d905b1a8e0e257f2bd525b28a737286e36289962311851607fad7",
+          "schema": null
+        }
+      },
+      {
+        "lane": "a",
+        "contextId": "lost-bag-uk",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "2615d74b7485381acab1003664ad7845499ad7be4fdb4b74025cd6ee90be2632",
+          "input": "8ef7835a75abb57825d5a611cc2b7a0cdaad2533329b5f57a2a7ffe86c525992",
+          "schema": null
+        }
+      },
+      {
+        "lane": "a",
+        "contextId": "pottery-es",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "2615d74b7485381acab1003664ad7845499ad7be4fdb4b74025cd6ee90be2632",
+          "input": "ab8925e46739799d29da98e5e5b54274ee1075db95d75435551680fbae2ec0eb",
+          "schema": null
+        }
+      },
+      {
+        "lane": "b",
+        "contextId": "shoes-zh",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "98088d8a4ef0cc5c3e4c240d7b6d414224bed2750b33656fb15cdbc463ddc9af",
+          "input": "ccfbb3f51bbfbe196e56a01e7613591187f6a9da1ad6d15c3e46b62a1e23688b",
+          "schema": "7c45346d6ae8e63f0548a32b1c94633feb186118f804dad167700597f4f15a02"
+        }
+      },
+      {
+        "lane": "b",
+        "contextId": "allergy-ja",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "48621649c6c551fc78cf1cf9866631425f6120f8e0eadf7633c79b9fa820fe0b",
+          "input": "b9632a2b6eb62c43833c6c1131fc7795d016f8bf2f01a0660435478623e7f020",
+          "schema": "460c476518236e162e2d7da5569ea4a62659f824abc052c48d7b7f1be9ee5a09"
+        }
+      },
+      {
+        "lane": "b",
+        "contextId": "tea-cs",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "6cc2f7d9bec21991ea31190da9d231a55085d793e76c484361aa13fad745e619",
+          "input": "30bfbb73e913a1126c49f1328733f8fe4a3167bd12677a8c025ecfc0eb255573",
+          "schema": "efb564d42477f628407d6dfe4a6b9d892d66bd3f35aa7bafcd59461094a719cb"
+        }
+      },
+      {
+        "lane": "b",
+        "contextId": "lost-bag-uk",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "6cc2f7d9bec21991ea31190da9d231a55085d793e76c484361aa13fad745e619",
+          "input": "b4ae46fa129ccbe53197e6f632c8a2f104a772ea59fb38db8ca5225e83d7638c",
+          "schema": "efb564d42477f628407d6dfe4a6b9d892d66bd3f35aa7bafcd59461094a719cb"
+        }
+      },
+      {
+        "lane": "b",
+        "contextId": "pottery-es",
+        "identicalToSavedBaseline": true,
+        "hashes": {
+          "prompt": "6cc2f7d9bec21991ea31190da9d231a55085d793e76c484361aa13fad745e619",
+          "input": "543d101a59a8eed8a31afb27d45057d685b9dad34755eb9ff6e270d145503592",
+          "schema": "7c45346d6ae8e63f0548a32b1c94633feb186118f804dad167700597f4f15a02"
+        }
+      }
+    ],
+    "baselineRawArtifactHashes": {
+      "a": [
+        {
+          "contextId": "shoes-zh",
+          "sha256": "94c2ab61931f44fbafe7fdbfa72e1792ed041e088bbac4c5167449c3f39fbd60",
+          "representation": "exact saved raw response string"
+        },
+        {
+          "contextId": "allergy-ja",
+          "sha256": "e96ed71c69f76782e9fda0dbc511c6c94171a57a34cdc9114ef9b63b2b1b255a",
+          "representation": "exact saved raw response string"
+        },
+        {
+          "contextId": "tea-cs",
+          "sha256": "a8a2d02e274f2f56238cf6b0137a80818dd4e9d8a3e5e5a6b6182274cd2b6fb6",
+          "representation": "exact saved raw response string"
+        },
+        {
+          "contextId": "lost-bag-uk",
+          "sha256": "90c640faa8db9621127e235e22e52653de5f97fa3024a0b182d1e61409b8bc29",
+          "representation": "exact saved raw response string"
+        },
+        {
+          "contextId": "pottery-es",
+          "sha256": "23efa1eb0e2c46e7e79872e2fd3baf94d091ec621b0c517b252a55ac09f63172",
+          "representation": "exact saved raw response string"
+        }
+      ],
+      "b": [
+        {
+          "contextId": "shoes-zh",
+          "sha256": "3568bc02da126b6833414277166fdc45cf0b27a1aff9e2244b838c9940c494d5",
+          "representation": "exact saved raw response string"
+        },
+        {
+          "contextId": "allergy-ja",
+          "sha256": "3cf1baa18eaf016bda38f4b71a7beea1ccc963826587f6bbd36acf3e7412cac5",
+          "representation": "exact saved raw response string"
+        },
+        {
+          "contextId": "tea-cs",
+          "sha256": "e5ab30cf408084c00ffb996182440cf91f8c74e31fdcb01476bacabfd275377c",
+          "representation": "exact saved raw response string"
+        },
+        {
+          "contextId": "lost-bag-uk",
+          "sha256": "315c81fcd092a0e180a88c5ca65d7619c1bd1070dbef8adb79cedc1a1d97765f",
+          "representation": "exact saved raw response string"
+        },
+        {
+          "contextId": "pottery-es",
+          "sha256": "1847235ff82949b9f462e30c1fb31ea8604af2ee2bc9742a0430ba7d12141f66",
+          "representation": "exact saved raw response string"
+        }
+      ]
+    },
+    "limitation": "Dependency hashes are provenance, not executable snapshots. The exact A/B request bodies and native single-call adapter are frozen; no C requests are prepared.",
+    "collectionPolicy": {
+      "freshObservationsPerCase": 2,
+      "reusedObservationsPerCase": 1,
+      "totalObservationsPerCase": 3,
+      "selection": "All five contexts in each lane, no cherry-picking. Retained and fresh cohorts are reported separately, with per-case combined descriptive counts only; chronology and alias uncertainty stay explicit.",
+      "freshMaximumCalls": 20,
+      "callsToC": 0
+    }
+  },
+  "assessment": {
+    "rubricPath": "evals/rubric.json",
+    "rubricVersion": "1.2-proposed",
+    "rubricSha256": "0a8dfffc8c4f72423fdcff9c037d09ce7d4ba4e10e9c5d424f6184470481e764",
+    "retainedReview": "evals/baseline/review.json",
+    "retainedReviewSha256": "7765e063542b9c521b7e289c544cd693e63e3209f42c7d0e829d14ed7be6bea8",
+    "grading": "Independent assistant assessment plus user review; scores ordinal 0–4 by topic/dimension, higher better. No averages; missing/rejected deliverable scores null. Material risks retained separately. Assistant judgments are not qualified native/medical certification.",
+    "completionCriteria": [
+      "All selected observations are accounted for, including failures; no success-only filtering or mock replacement.",
+      "Each parser-accepted observation has attributable dimension assessments and cited findings; raw-only rejected outputs remain separate.",
+      "Report historical and new cohorts separately, then descriptive per-case counts across the compatible three observations; retain chronology and alias uncertainty.",
+      "Record known failures, disputed language judgments, raw/normalized differences, provider timing/tokens/cost and missing coverage.",
+      "User reviews the reference and remaining limits before any model/prompt comparison; collection does not infer final native baseline acceptance or promotion."
+    ]
+  },
+  "models": [
+    {
+      "lane": "a",
+      "id": "deepseek/deepseek-v4.1-flash",
+      "observedCanonicalSlug": "deepseek/deepseek-v4.1-flash-20260910",
+      "provider": "relace",
+      "metadataCheckedAt": "2026-10-28T23:33:02.126Z",
+      "endpointStatus": 0,
+      "maxOutputTokens": 6000,
+      "timeoutMs": 120000,
+      "settings": {
+        "reasoning": {
+          "enabled": false
+        }
+      },
+      "pricing": {
+        "inputPerMillion": 0.07,
+        "outputPerMillion": 0.5,
+        "currency": "USD",
+        "source": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash-20260910/endpoints#relace",
+        "date": "2026-10-28"
+      },
+      "productionParity": "Same checked-in model family/route and no reasoning; environment overrides/deployed revision unverified."
+    },
+    {
+      "lane": "b",
+      "id": "google/gemini-3.5-flash-lite",
+      "observedCanonicalSlug": "google/gemini-3.5-flash-lite-20260721",
+      "provider": "google-vertex/global",
+      "metadataCheckedAt": "2026-10-28T23:33:02.126Z",
+      "endpointStatus": 0,
+      "maxOutputTokens": 6000,
+      "timeoutMs": 15000,
+      "settings": {
+        "reasoning": {
+          "effort": "minimal"
+        }
+      },
+      "pricing": {
+        "inputPerMillion": 0.3,
+        "outputPerMillion": 2.5,
+        "currency": "USD",
+        "source": "https://openrouter.ai/api/v1/models/google/gemini-3.5-flash-lite-20260721/endpoints#google-vertex/global",
+        "date": "2026-10-28"
+      },
+      "productionParity": "Same checked-in model family; OpenRouter Vertex/minimal reasoning differs from production direct Vertex without that explicit setting. Not production transport or latency parity."
+    }
+  ],
+  "stages": [
+    {
+      "lane": "a",
+      "experiment": "E-1793230581015-a112cb939f80",
+      "suite": "baseline-a",
+      "suiteRevision": "e8ca2913cf5e944966f439171155ab55084584ff48e22dee1ee1a9a9fa11010d",
+      "planHash": "9396333db66d512cfac636f46866ca225b0935811ad0105b3067ccaaa16e07ea",
+      "preparedPlan": ".prompt-romp/ab-baseline-2026-10-28-r2/baseline-a.prepared.json",
+      "promptPath": ".prompt-romp/ab-baseline-2026-10-28-r2/evals/suites/baseline-a/prompt.md",
+      "caseIds": [
+        "shoes-zh--1",
+        "allergy-ja--2",
+        "tea-cs--3",
+        "lost-bag-uk--4",
+        "pottery-es--5"
+      ],
+      "newRepetitions": 2,
+      "maxAttempts": 10,
+      "maxSpendUsd": 0.04,
+      "nativeConservativeReservationUsd": 0.03422576,
+      "preflight": {
+        "zeroRuns": true,
+        "humanBriefApproved": false,
+        "savedPlanReloadHashMatched": true,
+        "requestsExactlyMatchHistorical": true
+      }
+    },
+    {
+      "lane": "b",
+      "experiment": "E-1793230581636-38ed6c044b75",
+      "suite": "baseline-b",
+      "suiteRevision": "983cae8c351da154148b65dc78f07827ab80606540b59bc4082caa20b3666e75",
+      "planHash": "83a16f73789ca2be884d4bf0dd0d4f589fc3e7df3105c0edc4f1c2fc0843014d",
+      "preparedPlan": ".prompt-romp/ab-baseline-2026-10-28-r2/baseline-b.prepared.json",
+      "promptPath": ".prompt-romp/ab-baseline-2026-10-28-r2/evals/suites/baseline-b/prompt.json",
+      "caseIds": [
+        "shoes-zh--1",
+        "allergy-ja--2",
+        "tea-cs--3",
+        "lost-bag-uk--4",
+        "pottery-es--5"
+      ],
+      "newRepetitions": 2,
+      "maxAttempts": 10,
+      "maxSpendUsd": 0.18,
+      "nativeConservativeReservationUsd": 0.179412,
+      "preflight": {
+        "zeroRuns": true,
+        "humanBriefApproved": false,
+        "savedPlanReloadHashMatched": true,
+        "requestsExactlyMatchHistorical": true
+      }
+    }
+  ],
+  "stopRules": [
+    "Immediately before dispatch, recheck callable aliases, exact provider endpoints, capabilities, quoted prices and frozen source/request hashes. Drift requires a new plan and approval; never substitute a model/provider.",
+    "Execute A first under its exact 10-attempt/$0.04 stage approval, then inspect native results before B. On provider/transport or unsupported-schema error, uncertain start/unknown charge, charge above reservation or plan drift, stop before B and request direction. Native caps apply within each stage.",
+    "B has its own exact 10-attempt/$0.18 stage approval. The package total never exceeds 20 attempts/$0.22 under the frozen billing assumptions. Every started/failed/uncertain attempt consumes its slot; unknown charges retain full native reservations, never zero.",
+    "Production-parser rejection and semantic findings are baseline evidence, not permission to repair, regenerate, retry, truncate, substitute a mock or extend the sample. Account for all observations.",
+    "Zero automatic retries, paid judges, C/repair calls, model switches, prompt edits, neutral repairs or deployment. No automatic resume or make-up calls; any further collection needs explicit approval."
+  ],
+  "limits": [
+    "This is a restricted five-context development/reference baseline, not product-wide confidence. Language and scenario are confounded, so do not infer per-language model quality.",
+    "Three ordinary and two challenge contexts, four basics and one none; no conversational-level, multi-topic, real-user or unseen holdout coverage. Expanding representative coverage is a later separately reviewed sample decision, not a hidden extension.",
+    "Two fresh observations plus one compatible saved observation is descriptive only; no statistical-significance, reliable p95, production-prevalence or immutable-alias claim.",
+    "A native request uses production prompt-only JSON (schema=null); raw JSON parsing and the unchanged production parser are separate checks. B preserves its exact per-request structured schema. No production validation contract is loosened.",
+    "Native bounds assume frozen token rates and provider-honored output limits, and include full-request-byte input bounds plus maximum output/reasoning tokens with no discounts. Ancillary charges and hidden upstream work are not independently bounded; the cap is not a provider billing guarantee.",
+    "C remains paused. Existing rubric C checkpoint status is historical metadata, not an A/B blocking gate."
+  ],
+  "metadataSources": [
+    "https://openrouter.ai/api/v1/models",
+    "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash-20260910/endpoints",
+    "https://openrouter.ai/api/v1/models/google/gemini-3.5-flash-lite-20260721/endpoints"
+  ]
+}
