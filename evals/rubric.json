@@ -1,12 +1,13 @@
 {
-  "version": "1.0-proposed",
-  "status": "awaiting-user-review-and-paid-calibration",
+  "version": "1.1-proposed",
+  "status": "diagnostic-calibration-complete-awaiting-user-review",
   "authority": "Assistant-proposed review guidance; not linguistic certification or a production acceptance gate.",
   "canonicalAnchors": "../docs/API_DESIGN.md#evaluation-technical-validity-and-learning-quality",
   "priorities": [
     "Material meaning errors, harmful assurances and violations of supplied learner facts are explicit risk findings; never average them away.",
     "A: independently useful essentials first, relevant reusable vocabulary second; ordinary dialogue awkwardness is lower impact than missing communicative essentials.",
     "B: preserve frozen English intent, negation, quantities, referents and register; check target-language naturalness, dictionary forms, readings and exact lexical evidence separately.",
+    "Pronunciation is important: explicitly assess ruby readings and romanization. Incorrect ruby is a quality finding, not an automatic whole-topic failure; severity follows learner impact. Keep malformed, unrenderable reading data separate as technical validation.",
     "C: detect without changing correct content; measure detection, known-location repair and detector-gated whole-topic results separately. A rejected proposal is not a credited fix.",
     "Speed, reliability, quality and cost remain separate. A runtime reviewer is optional, not a required serial stage before initial content is useful."
   ],
@@ -21,7 +22,7 @@
   "dimensions": [
     { "id": "coverage", "question": "Can the learner initiate and accomplish this contextual task?", "lanes": ["a", "b", "ab", "c"] },
     { "id": "correctnessAndFit", "question": "Are meaning, supplied facts, register, learner level and teaching correct and contextually appropriate?", "lanes": ["a", "b", "ab", "c"] },
-    { "id": "vocabularyUsefulness", "question": "Are the dictionary words relevant, reusable and unpadded, with truthful forms, senses and evidence? An empty list can be appropriate.", "lanes": ["a", "b", "ab", "c"] },
+    { "id": "vocabularyUsefulness", "question": "Are the dictionary words relevant, reusable and unpadded, with truthful forms, meanings and evidence? An empty list can be appropriate.", "lanes": ["a", "b", "ab", "c"] },
     { "id": "conversationFlow", "question": "Are roles, alternatives and progression usable? Repetition alone is not a material failure.", "lanes": ["a", "b", "ab", "c"] }
   ],
   "separateChecks": [
@@ -65,7 +66,7 @@
     {
       "id": "ambiguous-word-intent",
       "paths": ["items[v:0].english.text", "items[v:0].card.senseKey"],
-      "observation": "'Light' alone could mean low weight or illumination; unrelated shopping context does not decide the intended sense.",
+      "observation": "'Light' alone could mean low weight or illumination; unrelated shopping context does not decide the intended meaning.",
       "proposedAssessment": { "disposition": "unresolved", "score": null },
       "why": "Do not manufacture a definitive correction or score a materially ambiguous item as correct."
     },

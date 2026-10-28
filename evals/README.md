@@ -11,12 +11,17 @@
 | `a` — English | Canonical learner request → essentials, useful vocabulary and two-sided dialogue | Structural completeness plus independently reviewed usefulness/fit |
 | `b` — translation | **Fixed authored English** and canonical context → target-language topic | Fidelity, readings, dictionary forms/meanings and evidence; independent of candidate A |
 | `c` — detection/optional repair | Fixed bilingual topic, correct controls and deliberately injected defects → findings and proposed/applied repairs | Detection misses/false alarms; known-location repair separately from counterfactual detector-gated composition |
-| `ab` — composed check | Canonical request → **actual A output** → translation | Integration/association and whole-topic outcome; never silently substitutes B's fixed English |
+| `ab` — optional integration smoke check | Canonical request → **actual A output** → translation | Technical handoff/association checks, not a fourth quality pipeline or required paid comparison |
 
 These are evaluation workflows, not required runtime API calls. A/B reuse unchanged production
 prompts and parsers; C reuses validated local patch/composition contracts. There is no second
 provider/accounting runner: paid execution belongs exclusively to native `../prompt-romp`.
 No production prompt changes, model switch, paid calls or deployment are authorized by these scripts.
+
+A and B can identify content errors separately: B can review translations of frozen English outputs
+collected from A as well as authored controls. A separate paid A→B evaluation is not required.
+The existing `ab` command is retained only as an optional integration check for technical handoff
+failures, such as translating five entries when A produced six. It is not another linguistic rubric.
 
 Saved localized replies reused under detector-gated routing are explicitly **counterfactual composition
 checks**, not independent observations from a different neutral repair prompt. Fresh neutral-request
@@ -24,22 +29,28 @@ behavior requires separately approved native calls; it is not measured by the ca
 
 ## Offline proof and representative review sample
 
-Actual CLI smoke covered all five contexts in A/B/C/AB and saved-response imports. Mock C produced
-five unchanged controls, five repaired defects and one unresolved case, retaining 52/52 source records
-across the eleven review cases. An added sixth A essential with stale five-essential B was rejected;
-the composed path did not substitute fixed fixture English. **Quality remains unassessed.**
+Offline CLI smoke covers all five contexts in A/B/C/AB and saved-response imports. Current mock C
+produced five unchanged controls, six repaired defects and one unscored uncertainty probe, retaining
+56/56 source records across twelve cases. An added sixth A essential with stale five-essential B was
+rejected rather than substituting fixed English. **Quality remains unassessed.**
 
 Selected `shoes-zh` example: the learner usually wears European size 39, wants a larger size if tight,
 and has not specified a hold duration or purchase commitment.
 
-| Authored case | Actual field/text | Mock result, not a linguistic verdict |
+| Pipeline C authored case | Actual field/text | Expected mock action, not a linguistic verdict |
 |---|---|---|
-| Correct control | `/items/0/card/text`: `我平时穿欧码三十九号。` | Unchanged; 4/4 source records retained |
-| Injected wrong size | English: “I usually wear European size 39.”; target: `我平时穿欧码三十八号。` (38) | Restore `三十九号` (39) and aligned `card.reading`; frozen English/evidence unchanged |
-| Debatable keep/hold wording | `/items/4/card/text`: `可以帮我保管这双鞋吗？` | Retain and flag unresolved safekeeping-versus-sales-reservation intent; not a definitive error/synonym judgment |
+| Correct translation | `/items/0/card/text`: `我平时穿欧码三十九号。` | Leave unchanged; 4/4 supporting source records retained |
+| Wrong size | English: “I usually wear European size 39.”; target: `我平时穿欧码三十八号。` (38) | Change 38 to 39 and update the pronunciation annotation; keep the English and source records unchanged |
+| Wording needing language review | English: “Can you keep these for me?”; target: `可以帮我保管这双鞋吗？` | Do not rewrite automatically. Check whether this wording asks staff to look after shoes rather than hold a pair for possible purchase. This possible distinction is not an established error. |
 
 The repair **reason** explains restoring size 39 and aligned pinyin; it is not saved usage teaching.
 This sample, the proposed rubric and relative priorities are the next selective human review gate.
+
+In pipeline C, **unresolved** means “the reviewer cannot confidently decide whether a correction is
+needed; leave the text unchanged and record the question.” It does not mean the whole phrasebook
+failed, that A/B cannot assess the text, or that a runtime follow-up question is required.
+Every review example should name its pipeline, show the English and target text, state the possible
+learner impact, and say whether to change, leave unchanged, or request further review.
 
 ## Discover fixtures and run offline
 
@@ -71,8 +82,9 @@ not zero. Fixture checks prove workflow behavior, not multilingual correctness o
 
 **All subjective examples and expectations are assistant-proposed, not approved gold labels or
 native-speaker certification.** Exposed development cases are not unseen holdouts. Deliberate challenge
-frequencies must not be presented as production error prevalence. Current authored English is a
-proposed calibration control, not an independently reviewed baseline yet.
+frequencies must not be presented as production error prevalence. Current authored English remains
+a proposed control, not a qualified linguistic baseline; assistant calibration reviews are recorded
+in [`calibration/findings.md`](calibration/findings.md).
 
 ## Prepare real requests without dispatch
 
@@ -95,17 +107,21 @@ runner: `prepareComposedTranslation(fixtures, contextId, englishResponse)` prepa
 `prepareDetectedRepairs(input, detection)` prepares neutral requests for actual detected handles.
 Use `loadFixtures()` for the shared registry. These helpers prepare only; native Romp owns dispatch.
 
-The calibration plan proposes a small baseline sample and call inventory. It is **not execution-ready**
-until the user approves the rubric/priorities/sample, current exact model/provider configurations and
-prices are bound to a native Romp plan, and the exact call cap, timeout, retry policy, dollar cap,
-unknown-charge reserve and stop rules receive explicit approval. Old approvals/unused budgets are retired.
-No automatic paid judges, retries, resumed experiments or conditional expansion are implied.
+`calibration --plan` emits the model-independent inventory. The
+[exact native calibration package](calibration/README.md) binds models/providers, dated prices,
+token/time limits, frozen request hashes and stop rules: **29 maximum attempts / $0.40 approved cap**.
+The user approved that package; all 29 calls completed once for **$0.034841798 reported spend**,
+with no unknown charges or reservation overruns. Native conservative reservations were $0.38537448.
+See [reviewed findings](calibration/findings.md) and [measured results](calibration/results.json).
 
-The current inventory is **27 proposed calls**: 5 A, 5 fixed-English B, 11 C detection, and 6
-known-location replies (5 material corrections plus 1 unresolved-intent abstention probe). It includes
-all reply slots required for saved C evaluation; a missing paid reply must never be filled by a mock.
-No independent neutral repair calls, paid judges or retries are included. The manifest hashes each
-request/context/schema and relevant source/rubric dependencies; configuration/pricing/budget are unbound.
+The inventory is 5 A, 5 fixed-English B, 12 C detection, and 7 known-location replies:
+6 proposed corrections (including one reading-only case) plus 1 leave-unchanged uncertainty probe.
+The unestablished Chinese wording concern is excluded from defect-recall/false-alarm scoring; a clean
+or uncertain leave-unchanged judgment is allowed. No missing paid reply may be filled by a mock.
+No independent neutral repair calls, paid judges, retries, resumed historical approvals or conditional
+expansion were included. Caps rely on the package's billing assumptions, not a provider billing
+guarantee. This consumed approval grants no reruns; model/prompt comparisons and production changes
+remain outside its scope.
 
 ## Evaluate saved responses
 
@@ -144,14 +160,23 @@ not a new runtime scoring field or automatic promotion threshold.
    truthful source occurrences separately. Attribute English-origin problems to A.
 4. C: measure misses/false alarms and repair capability independently; distinguish proposed versus
    applied corrections, correct-control changes, source retention, introduced harm and unresolved cases.
+5. Pronunciation matters: assess ruby readings, pinyin/romanization and their agreement with the
+   written phrase explicitly. Incorrect ruby is a quality finding, not an automatic whole-topic
+   failure. Severity depends on what the learner would say: a minor annotation issue differs from
+   pronunciation that changes the intended meaning. Malformed data that cannot render is a separate
+   technical-validation issue; this guidance does not relax the production schema.
 
 | Term | Concrete path/example | Why it matters |
 |---|---|---|
 | Displayed English meaning, sometimes **gloss** | `items[0].card.translation = "pair"` | Learner-facing English equivalent, not another field |
-| Meaning identifier, **sense** | `items[0].card.senseKey = "drinking-cup"` | Distinguishes a vessel from a cupful; not teaching prose |
+| Meaning identifier | `items[0].card.senseKey = "drinking-cup"` | Distinguishes a vessel from a cupful; `senseKey` is the existing schema name, not the preferred review term |
 | Repair explanation, **reason** | `repairs[0].response.reason` | Explains a correction/source removal; not saved teaching |
 | Usage teaching | `card.notes` / `card.example` | Existing Card fields; support depends on producer/repair contract |
 | Lexical evidence | `items[0].sources[0].snapshot` and `.span` | Exact historical occurrence, UTF-16 offsets; inflection can support a lemma |
+
+This section is the terminology reference. Prefer plain-English **meaning**, **pronunciation**,
+**supporting source**, and **repair explanation** in reports; include schema names only to locate
+the exact data. Readers should not need a glossary to understand a finding.
 
 Example rubric distinction: an allergy topic with only ingredient questions lacks its requested
 allergy statement (**coverage 2**, correction/supplementation needed). Repeated but usable dance
@@ -161,8 +186,8 @@ as “I can eat peanuts” is a material meaning/safety defect despite valid JSO
 For user review, show one canonical context, its actual English/target phrase, the concrete field,
 a proposed finding/correction and uncertainty. A generator cannot certify its own output; independent
 assistant/model/human reviews must remain attributable. Material linguistic disagreement stays unresolved
-pending qualified adjudication. Initial user approval concerns the rubric/priorities/sample only,
-**not spending or deployment**.
+pending qualified adjudication. Rubric/sample approval alone does not authorize spending or deployment;
+the separately recorded calibration execution approval authorized only that completed bounded sample.
 
 ## Retained implementation and checks
 
@@ -211,9 +236,10 @@ Do not append experiment diaries or automatically persist every intermediate rep
 
 1. Cleanup and BRIEF verification — separate committed checkpoint.
 2. Offline pipelines/fixtures/rubric/skill and actual CLI proof — separate committed checkpoint.
-3. User reviews rubric, priorities and representative fixture/report. Then freeze and explicitly
-   approve the exact native paid calibration plan; run only that sample, reconcile uncertainty,
-   version expectations and commit concise findings. Calibration is not a candidate-ranking study.
+3. Diagnostic calibration checkpoint — user approved the exact 29-attempt/$0.40 package; all calls
+   completed and concise findings are in `calibration/`. C completeness/attribution/severity reporting
+   and the cited A/B findings need reconciliation before comparison. Calibration is not candidate ranking.
 4. Only then compare **models**, **prompts** and **systemic changes** under separate controlled studies:
-   A and B independently, small composed A→B, then C's incremental benefit versus unchanged topics.
+   A and B independently, then C's incremental benefit versus unchanged topics. Optional A→B smoke
+   checks cover integration; they are not a required fourth paid quality study.
    Freeze sampling, repetitions, gates and stop rules; no automatic model/prompt promotion or deployment.

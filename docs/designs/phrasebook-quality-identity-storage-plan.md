@@ -1,9 +1,10 @@
 # Phrasebook quality, identity, storage, and client convergence
 
-Current plan: 2026-10-28. **Offline checkpoint: A/B/C and composed A→B workflows are implemented.**
-Five canonical contexts, authored mocks and saved-response imports have offline smoke proof;
-provider performance, language quality and paid calibration remain unverified. This guide replaces
-the historical diary; it does not authorize inference or production changes.
+Current plan: 2026-10-28. **A/B/C workflows and optional A→B integration checks are implemented.**
+The separately approved diagnostic calibration completed 29 calls for $0.034841798 reported spend;
+[reviewed findings](../../evals/calibration/findings.md) separate parser failures, content quality,
+detector protocol failures and oracle-assisted repair. This small assistant-reviewed sample is not
+linguistic acceptance, model ranking or authorization for further inference or production changes.
 Tooling and review entrypoint: [`evals/README.md`](../../evals/README.md).
 Normative contracts remain [`API_DESIGN.md`](../API_DESIGN.md) and
 [`CARD_SCHEMA.md`](../CARD_SCHEMA.md); this plan does not change them.
@@ -54,7 +55,7 @@ can start its inventory now, but implementation consumes approved contracts rath
    This checkpoint does not claim the replacement pipelines already work.
 2. **Implement usable independent A/B/C offline workflows.** Supply fixtures, deterministic mocks,
    scripts and subjective-review skills, with one shared discoverable scenario registry. Reuse existing
-   assets and contracts. Prove each lane and a small canonical-context A→B run offline, then **commit**.
+   assets and contracts. Prove each lane offline; optionally smoke the A→B technical handoff, then **commit**.
    Mock success proves workflow/validation behavior, not model quality or linguistic correctness.
 3. **Calibrate only under separate paid approval.** First obtain human approval of the rubric,
    priorities, sample and exact bounded request plan. Use a small sample to check instructions,
@@ -62,7 +63,8 @@ can start its inventory now, but implementation consumes approved contracts rath
    linguistic disputes unresolved until qualified adjudication. Record limitations, then **commit**.
 4. **Compare candidates only after calibration.** Freeze task-specific configurations, representative
    inputs, repetitions, numeric gates and stop rules; obtain fresh paid approval. Compare A and B
-   separately, then small composed A→B behavior and C's incremental benefit against unchanged input.
+   separately, then C's incremental benefit against unchanged input. A→B is an optional integration
+   smoke check, not a fourth quality pipeline or required paid comparison.
    Commit concise findings and selected regressions; no automatic prompt/model promotion or deployment.
 
 No live provider/catalog checks are needed for cleanup/offline implementation. Historical approvals,
@@ -75,7 +77,7 @@ covering behavior, latency and tokens. API/card migrations and deployment requir
 | Lane | Controlled input → output | Main questions |
 |---|---|---|
 | **A — English generation** | Canonical situation, learner facts/level and selected topics → English essentials, vocabulary, two-sided dialogue | Useful essentials? Relevant words? Intent/level fidelity? Usable dialogue? Completeness and time to use? |
-| **B — Translation** | Same frozen reviewed English topics and original context → target-language content/readings/associations | Faithful meaning, natural register, dictionary form, POS/sense, pronunciation and truthful evidence? |
+| **B — Translation** | Frozen English topics (authored controls or outputs collected from A) and original context → target-language content/readings/associations | Faithful meaning, natural register, dictionary form, POS/meaning, pronunciation and truthful evidence? |
 | **C — Detection and optional repair** | Frozen bilingual topics with reviewed defects and correct controls → findings; separately proposed corrections | Detection/localization/false alarms? Known-location repair? New harm or evidence loss? Net whole-topic benefit? |
 
 These are independent evaluation workflows, not three required runtime calls. Detection and localized
@@ -84,6 +86,9 @@ define an evaluation control, not a selected production protocol. A one-pass rev
 comparison, but no unused implementation is retained in anticipation of it.
 The native `../prompt-romp` tool remains the sole paid execution/accounting engine. Repo scripts are
 thin offline preparation/validation/review adapters, not a second runner, ledger or resume system.
+Pronunciation is an explicit quality priority. Wrong ruby/readings or romanization are findings graded
+by learner impact, not automatic whole-topic failures. Malformed, unrenderable data remains a separate
+technical failure; no production validation changes are implied.
 
 The registry must make scenarios discoverable by situation, language/level and coverage, and retain
 one canonical initial context (`seed`, `language`, `ability`, `answers`, ordered `checklist`, from the
@@ -107,7 +112,7 @@ component success does not prove composed-topic success or production prevalence
 ### Terms grounded in the current schema
 
 - **Gloss:** displayed equivalent, `card.translation` (for example, “eat”); not `card.senseKey`.
-  A Word's **sense** identifier, such as `consume-food`, distinguishes its intended concept.
+  A Word's **meaning identifier**, such as `consume-food`, is stored in the existing `card.senseKey` field.
 - **POS:** `card.partOfSpeech`, the target expression's part of speech, not the English label's grammar.
   Language-aware counter/classifier proposals are evaluation questions, not new production enum values.
 - **Evidence:** a Word candidate's `sources[]` or a Chunk's `card.source`, with an exact historical
@@ -119,7 +124,7 @@ component success does not prove composed-topic success or production prevalence
 
 ## Selected historical lessons, not model rankings
 
-- Historical translation review found meaning/negation, referent, spelling, reading, dictionary-sense
+- Historical translation review found meaning/negation, referent, spelling, reading, dictionary-meaning
   and false-evidence problems despite valid output. Reviews were assistant-authored, not native/human
   certification, and the selected cases do not estimate production error rates.
 - Localized repair could succeed while detector-gated whole topics still missed defects. A one-pass
@@ -140,7 +145,7 @@ support failure hypotheses, not rejection of a model family or automatic resumpt
 
 **R2 — identity/schema:** distinguish record identity, revision equality, semantic equivalence,
 similarity and placement deduplication. Use labeled same/related/distinct/uncertain examples (`allergy`
-vs `allergic`, negation, doses, senses and inflections). Evaluate exact rules and embeddings for candidate
+vs `allergic`, negation, doses, meanings and inflections). Evaluate exact rules and embeddings for candidate
 retrieval; proximity is not equality or authority to merge. Decide sharing, repair propagation, stars,
 saved teaching, historical evidence and migration with concrete examples before changing contracts.
 

@@ -1,0 +1,384 @@
+{
+  "version": 1,
+  "date": "2026-10-28",
+  "status": "diagnostic-complete-not-production-acceptance",
+  "approval": {
+    "path": "execution-approval.json",
+    "packageSha256": "142da06528e40424763b6694a0379dd59ac0a771f9c84c9377891e99729e883b",
+    "maximumAttempts": 29,
+    "maxSpendUsd": 0.4
+  },
+  "evidence": {
+    "engine": "native ../prompt-romp",
+    "workingRoot": ".prompt-romp/calibration-2026-10-28-r1",
+    "rawEvidenceCommitted": false,
+    "repetitions": 1,
+    "concurrency": 1,
+    "retries": 0,
+    "paidJudgeCalls": 0,
+    "neutralRepairCalls": 0,
+    "productionChanges": false
+  },
+  "execution": {
+    "attempts": 29,
+    "reportedSpendUsd": 0.034841798,
+    "unknownChargeAttempts": 0,
+    "providerErrors": 0,
+    "reservationOverruns": 0,
+    "stages": [
+      {
+        "stage": "a",
+        "run": "run-1793204997541-d83820d44b4e",
+        "experiment": "E-1793204997128-a889e59bbc5e",
+        "planHash": "e17c1792b7ee66c25d6e3dde9e3155119d605ae0a01f5be274e6531e1fc9e684",
+        "attempts": 5,
+        "reportedSpendUsd": 0.0014647980000000002,
+        "unknownChargeAttempts": 0,
+        "wallMs": 8887.059979,
+        "requestMs": {
+          "count": 5,
+          "knownCount": 5,
+          "unknownCount": 0,
+          "mean": 1771.1145468000002,
+          "median": 1641.3384290000004,
+          "max": 2537.316377,
+          "p95": null,
+          "p95Method": null
+        },
+        "inputTokens": 5705,
+        "outputTokens": 2242,
+        "cachedTokens": 896,
+        "reasoningTokens": 0,
+        "providers": [
+          "Relace"
+        ]
+      },
+      {
+        "stage": "b",
+        "run": "run-1793204998178-9ccc12c00ecd",
+        "experiment": "E-1793204997765-8a69c71f3cff",
+        "planHash": "3f0eb208fb1f761ae4c9f978d6b33a9829b3b9af3c0c2d97a31da6b520321d6b",
+        "attempts": 5,
+        "reportedSpendUsd": 0.013062800000000001,
+        "unknownChargeAttempts": 0,
+        "wallMs": 13520.588818,
+        "requestMs": {
+          "count": 5,
+          "knownCount": 5,
+          "unknownCount": 0,
+          "mean": 2687.8426376,
+          "median": 2271.1979460000002,
+          "max": 3691.614552,
+          "p95": null,
+          "p95Method": null
+        },
+        "inputTokens": 12201,
+        "outputTokens": 3761,
+        "cachedTokens": 0,
+        "reasoningTokens": 0,
+        "providers": [
+          "Google"
+        ]
+      },
+      {
+        "stage": "c-detection",
+        "run": "run-1793204998870-a51b257f1fe0",
+        "experiment": "E-1793204998434-3d53fd505e17",
+        "planHash": "3f0a1b1dc0373e1e4a581ef4ac356a6b48b375591ce2f1fac3b792bf2e09a1d6",
+        "attempts": 12,
+        "reportedSpendUsd": 0.0121572,
+        "unknownChargeAttempts": 0,
+        "wallMs": 14087.772003,
+        "requestMs": {
+          "count": 12,
+          "knownCount": 12,
+          "unknownCount": 0,
+          "mean": 1159.5075095,
+          "median": 1166.5235165,
+          "max": 1434.0112449999997,
+          "p95": null,
+          "p95Method": null
+        },
+        "inputTokens": 33149,
+        "outputTokens": 885,
+        "cachedTokens": 0,
+        "reasoningTokens": 0,
+        "providers": [
+          "Google"
+        ]
+      },
+      {
+        "stage": "c-known-location-repair",
+        "run": "run-1793204999589-9a71f91d792a",
+        "experiment": "E-1793204999172-07a2df7b8d57",
+        "planHash": "0add35d7628478a1b6039198ecf45659d94ec6a5d0a871350f81a1f0b9008757",
+        "attempts": 7,
+        "reportedSpendUsd": 0.008157,
+        "unknownChargeAttempts": 0,
+        "wallMs": 9477.736048,
+        "requestMs": {
+          "count": 7,
+          "knownCount": 7,
+          "unknownCount": 0,
+          "mean": 1337.02706,
+          "median": 1314.2528810000003,
+          "max": 1897.7718340000001,
+          "p95": null,
+          "p95Method": null
+        },
+        "inputTokens": 18965,
+        "outputTokens": 987,
+        "cachedTokens": 0,
+        "reasoningTokens": 0,
+        "providers": [
+          "Google"
+        ]
+      }
+    ]
+  },
+  "assessment": {
+    "authority": "Assistant reviews of one observation per authored case; not blind, qualified linguistic certification, a model ranking or production acceptance.",
+    "a": {
+      "productionParserPasses": 4,
+      "total": 5,
+      "rejectedContext": "pottery-es",
+      "rawRejectedCounts": {
+        "essentials": 10,
+        "dialogue": 12
+      }
+    },
+    "b": {
+      "productionParserPasses": 5,
+      "total": 5,
+      "optionalSourceDiagnostics": [
+        {
+          "contextId": "shoes-zh",
+          "vocabIndex": 2,
+          "code": "vocab-source-missing",
+          "reason": "unresolved"
+        }
+      ],
+      "confirmedFindings": "findings.md"
+    },
+    "c": {
+      "defectCases": 6,
+      "controlCases": 5,
+      "uncertaintyProbes": 1,
+      "validDetectionEnvelopes": 12,
+      "incompleteDefectDetections": 6,
+      "exactAuthoredLocationMatches": 2,
+      "exactAuthoredLocationMisses": 4,
+      "unmatchedPredictedLocations": 5,
+      "interpretation": "All six authored defects are recognized in reasons. Strict attribution mismatches are not equivalent to linguistic non-recognition; one additional correct Ukrainian dialogue item is spuriously flagged. No findings on the five control topics.",
+      "knownLocationDefectChecksPassed": 6,
+      "knownLocationDefectChecksTotal": 6,
+      "knownLocationUncertaintyPreservationPassed": false,
+      "counterfactualAppliedFieldEdits": 0,
+      "counterfactualSourceRecordsBefore": 56,
+      "counterfactualSourceRecordsRetained": 56,
+      "neutralRepairBehavior": "unmeasured",
+      "reviews": [
+        {
+          "contextId": "shoes-zh",
+          "id": "shoes-zh-correct",
+          "kind": "correct-control",
+          "detectionComplete": true,
+          "exactMatches": 0,
+          "exactMisses": 0,
+          "unmatchedPredictions": 0,
+          "knownLocationOutcome": "clean",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 0,
+          "counterfactualStatus": "assembled",
+          "counterfactualOutcome": "clean",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": true
+        },
+        {
+          "contextId": "shoes-zh",
+          "id": "shoes-zh-size-defect",
+          "kind": "defect",
+          "detectionComplete": false,
+          "exactMatches": 0,
+          "exactMisses": 1,
+          "unmatchedPredictions": 1,
+          "knownLocationOutcome": "repaired",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 2,
+          "counterfactualStatus": "detection-incomplete",
+          "counterfactualOutcome": "unresolved",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": false
+        },
+        {
+          "contextId": "shoes-zh",
+          "id": "shoes-zh-reading-defect",
+          "kind": "defect",
+          "detectionComplete": false,
+          "exactMatches": 0,
+          "exactMisses": 1,
+          "unmatchedPredictions": 1,
+          "knownLocationOutcome": "repaired",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 1,
+          "counterfactualStatus": "detection-incomplete",
+          "counterfactualOutcome": "unresolved",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": false
+        },
+        {
+          "contextId": "shoes-zh",
+          "id": "shoes-zh-hold-intent-unresolved",
+          "kind": "unresolved",
+          "detectionComplete": true,
+          "exactMatches": 0,
+          "exactMisses": 0,
+          "unmatchedPredictions": 0,
+          "knownLocationOutcome": "unresolved",
+          "knownLocationChecksPassed": false,
+          "knownLocationChangedFields": 2,
+          "counterfactualStatus": "assembled",
+          "counterfactualOutcome": "clean",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": false
+        },
+        {
+          "contextId": "allergy-ja",
+          "id": "allergy-ja-correct",
+          "kind": "correct-control",
+          "detectionComplete": true,
+          "exactMatches": 0,
+          "exactMisses": 0,
+          "unmatchedPredictions": 0,
+          "knownLocationOutcome": "clean",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 0,
+          "counterfactualStatus": "assembled",
+          "counterfactualOutcome": "clean",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": true
+        },
+        {
+          "contextId": "allergy-ja",
+          "id": "allergy-ja-negation-defect",
+          "kind": "defect",
+          "detectionComplete": false,
+          "exactMatches": 0,
+          "exactMisses": 1,
+          "unmatchedPredictions": 1,
+          "knownLocationOutcome": "repaired",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 3,
+          "counterfactualStatus": "detection-incomplete",
+          "counterfactualOutcome": "unresolved",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": false
+        },
+        {
+          "contextId": "tea-cs",
+          "id": "tea-cs-correct",
+          "kind": "correct-control",
+          "detectionComplete": true,
+          "exactMatches": 0,
+          "exactMisses": 0,
+          "unmatchedPredictions": 0,
+          "knownLocationOutcome": "clean",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 0,
+          "counterfactualStatus": "assembled",
+          "counterfactualOutcome": "clean",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": true
+        },
+        {
+          "contextId": "tea-cs",
+          "id": "tea-cs-sugar-defect",
+          "kind": "defect",
+          "detectionComplete": false,
+          "exactMatches": 1,
+          "exactMisses": 0,
+          "unmatchedPredictions": 0,
+          "knownLocationOutcome": "repaired",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 1,
+          "counterfactualStatus": "detection-incomplete",
+          "counterfactualOutcome": "unresolved",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": false
+        },
+        {
+          "contextId": "lost-bag-uk",
+          "id": "lost-bag-uk-correct",
+          "kind": "correct-control",
+          "detectionComplete": true,
+          "exactMatches": 0,
+          "exactMisses": 0,
+          "unmatchedPredictions": 0,
+          "knownLocationOutcome": "clean",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 0,
+          "counterfactualStatus": "assembled",
+          "counterfactualOutcome": "clean",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": true
+        },
+        {
+          "contextId": "lost-bag-uk",
+          "id": "lost-bag-uk-route-defect",
+          "kind": "defect",
+          "detectionComplete": false,
+          "exactMatches": 0,
+          "exactMisses": 1,
+          "unmatchedPredictions": 2,
+          "knownLocationOutcome": "repaired",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 1,
+          "counterfactualStatus": "detection-incomplete",
+          "counterfactualOutcome": "unresolved",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": false
+        },
+        {
+          "contextId": "pottery-es",
+          "id": "pottery-es-correct",
+          "kind": "correct-control",
+          "detectionComplete": true,
+          "exactMatches": 0,
+          "exactMisses": 0,
+          "unmatchedPredictions": 0,
+          "knownLocationOutcome": "clean",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 0,
+          "counterfactualStatus": "assembled",
+          "counterfactualOutcome": "clean",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": true
+        },
+        {
+          "contextId": "pottery-es",
+          "id": "pottery-es-wheel-defect",
+          "kind": "defect",
+          "detectionComplete": false,
+          "exactMatches": 1,
+          "exactMisses": 0,
+          "unmatchedPredictions": 0,
+          "knownLocationOutcome": "repaired",
+          "knownLocationChecksPassed": true,
+          "knownLocationChangedFields": 1,
+          "counterfactualStatus": "detection-incomplete",
+          "counterfactualOutcome": "unresolved",
+          "counterfactualAppliedFieldEdits": 0,
+          "fixtureExpectationPass": false
+        }
+      ]
+    }
+  },
+  "limits": [
+    "No repeatability, prevalence, reliable tail-latency percentile or before/after prompt effect is established.",
+    "B/C use OpenRouter Vertex global with minimal reasoning, not exact production direct-Vertex parity.",
+    "Known-location patches are oracle-assisted; offline detector-gated reuse is counterfactual.",
+    "Chinese keep/hold wording, Czech black-tea meaning granularity, regional/register and tone conventions remain unadjudicated.",
+    "Exact authored checks are development expectations, not linguistic gold.",
+    "Execution approval is consumed by this completed sample; it grants no retries, reruns, comparisons or deployment."
+  ]
+}

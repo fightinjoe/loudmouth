@@ -39,7 +39,7 @@ Production contracts: `docs/API_DESIGN.md` and `docs/CARD_SCHEMA.md`.
 ## Mode 2: independent assessment
 
 Review the context and actual candidate artifact before opening answer expectations or candidate names.
-If blind review is impossible, disclose it. Use rubric version `1.0-proposed` until explicitly replaced.
+If blind review is impossible, disclose it. Record the actual version from `evals/rubric.json`.
 
 ### A — English generation
 
@@ -52,20 +52,32 @@ If blind review is impossible, disclose it. Use rubric version `1.0-proposed` un
 
 ### B — translation
 
-- Compare against the exact pinned English, not what you wish it had said. In composed A→B review,
-  use the actual A output. Attribute English-origin defects separately from translator-added defects.
+- Compare against the exact pinned English, not what you wish it had said. B can assess translations
+  of frozen A outputs as well as authored controls; attribute English-origin defects separately from
+  translator-added defects. A→B is an optional technical integration check, not a fourth quality pipeline.
 - Check negation, referents, quantities, register, dictionary forms and meanings; then written text,
   readings/romanization, source occurrence and optional enrichment independently.
+- Pronunciation is an explicit quality concern. Incorrect ruby/readings or romanization do not
+  automatically fail the whole topic; explain what the learner would say and grade the impact.
+  Keep minor annotation defects separate from materially misleading pronunciation, and both separate
+  from malformed data that cannot render. Do not change production reading validation.
 - A truthful exact span must support the intended lexical occurrence, not merely exist. A lemma can
   validly be supported by an inflected occurrence: 买 with 买了 is not automatically false evidence.
 - Distinguish `card.translation` (displayed English equivalent, often called a **gloss**) from
-  `card.senseKey` (a concept identifier, e.g. `drinking-cup`). Check target-language `partOfSpeech`,
+  `card.senseKey` (the existing schema name for a meaning identifier, e.g. `drinking-cup`). Use
+  **meaning**, not **sense**, in review prose. Check target-language `partOfSpeech`,
   not the English label's grammatical role. Do not count normalized structural validity as accurate speech.
 
 ### C — detection and optional repair
 
 - First identify defects independently of curated expected findings. Record missed defects and
   false alarms/localization; measure known-location repair separately from detector-gated repair.
+- Report strict handle/field/category matches separately from semantic recognition. A recognized
+  defect with a different field/category is an attribution mismatch, not automatically an unnoticed
+  linguistic defect plus an independent false alarm. Never silently remap the recorded response.
+- `complete=false` declares incomplete review coverage, not merely a topic containing defects.
+  Preserve fail-closed composition and report its zero applied fixes separately from valid patches.
+  Repair restraint on correct controls is unmeasured when those controls received no repair calls.
 - Compare original, proposed and actually applied whole topics. Report fixed defects, introduced
   harm, changed correct controls, unresolved intent and retained/deleted evidence with denominators.
 - Atomic rejection preserves the original but earns zero credited fixes. Unchanged output is not
@@ -87,6 +99,10 @@ Use the record contract in `evals/rubric.json`: context ID, lane, artifact SHA-2
 reviewer, four dimension scores or null, findings, uncertainties and overall disposition. Keep
 assistant, independent model and qualified human assessments attributable and separate. Use
 `usable`, `material-failure` or `unresolved` as review dispositions, not a fabricated promotion seal.
+Name A, B or C in every review sample. Explain `unresolved` as “cannot confidently decide whether
+a correction is needed; leave unchanged and record the question,” not as an unexplained failure label.
+An unestablished uncertainty probe is not a gold defect: accept a defensible clean leave-unchanged
+judgment too, and exclude that probe from defect recall and false-alarm denominators.
 
 Show a concise table and at most the representative findings needed to explain the decision.
 Do not emit a diary, duplicate full outputs, average ordinal grades or assign a zero to missing review.

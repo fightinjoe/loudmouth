@@ -99,6 +99,28 @@
           "note": "Assistant-authored mutation and localized proposed correction, not a collected model failure or certified linguistic judgment. The independent dialogue offer of size 40 must remain unchanged."
         },
         {
+          "id": "shoes-zh-reading-defect",
+          "kind": "defect",
+          "mutations": [
+            {"handle": "e:2", "field": "reading", "value": [["有大一码的吗", "yǒu xiǎo yī mǎ de ma"], ["？", null]]}
+          ],
+          "expectedFindings": [{"handle": "e:2", "field": "reading", "category": "reading-romanization"}],
+          "mockDetection": {"complete": true, "findings": [
+            {"handle": "e:2", "field": "reading", "category": "reading-romanization", "severity": "material", "origin": "translation", "reason": "The written 大 asks for a larger size, but its supplied reading xiǎo says smaller. This changes the spoken request even though the written translation is correct."}
+          ], "unresolved": []},
+          "repairs": [
+            {"focus": {"handle": "e:2", "field": "reading", "category": "reading-romanization"}, "response": {"handle": "e:2", "status": "repaired", "reason": "Read written 大 as dà, not xiǎo, so pronunciation matches the request for a larger size. Change only the reading.", "changes": [
+              {"field": "reading", "value": [["有大一码的吗", "yǒu dà yī mǎ de ma"], ["？", null]]}
+            ], "dropSourceIndexes": []}}
+          ],
+          "expected": {"outcome": "repaired", "checks": [
+            {"handle": "e:2", "field": "text", "value": "有大一码的吗？"},
+            {"handle": "e:2", "field": "translation", "value": "Do you have one size larger?"},
+            {"handle": "e:2", "field": "reading", "value": [["有大一码的吗", "yǒu dà yī mǎ de ma"], ["？", null]]}
+          ]},
+          "note": "Pipeline C reading-only negative, also informative for B pronunciation review. The written phrase is unchanged and structurally valid; the authored reading says smaller instead of larger. Proposed severity is material because the spoken request changes, not because every ruby error fails a topic. Independent review remains required."
+        },
+        {
           "id": "shoes-zh-hold-intent-unresolved",
           "kind": "unresolved",
           "mutations": [
@@ -107,19 +129,19 @@
           ],
           "expectedFindings": [{"handle": "e:4", "field": "text", "category": "source-ambiguity"}],
           "mockDetection": {"complete": true, "findings": [
-            {"handle": "e:4", "field": "text", "category": "source-ambiguity", "severity": "minor", "origin": "translation", "reason": "The authored target uses 保管, which emphasizes safekeeping or custody. English keep these for me could mean storing shoes or reserving an unpurchased pair; the task does not establish custody or a purchase commitment. Whether 保管 fits the intended request is unresolved, not a certified mistranslation."}
+            {"handle": "e:4", "field": "text", "category": "source-ambiguity", "severity": "minor", "origin": "translation", "reason": "Pipeline C language-review question: does 保管 ask staff to look after shoes rather than hold a pair for possible purchase? The English is Can you keep these for me. This possible difference needs independent language review; it is not an established translation error."}
           ], "unresolved": [
-            {"handle": "e:4", "reason": "Clarify whether the learner wants safekeeping or a sales reservation, and seek linguistic review of 保管 in that situation. Do not silently certify it as equivalent to neutral 留着 or invent a reservation."}
+            {"handle": "e:4", "reason": "Leave the text unchanged. Check whether 保管 is suitable when asking a shop to hold a pair before buying; do not assume it is wrong or rewrite it without enough evidence."}
           ]},
           "repairs": [
-            {"focus": {"handle": "e:4", "field": "text", "category": "source-ambiguity"}, "response": {"handle": "e:4", "status": "unresolved", "reason": "保管 proposes a custody/safekeeping sense, but the learner's English does not settle storage versus reservation. Preserve the authored wording with uncertainty recorded rather than certify it or select an intended sense on the learner's behalf.", "changes": [], "dropSourceIndexes": []}}
+            {"focus": {"handle": "e:4", "field": "text", "category": "source-ambiguity"}, "response": {"handle": "e:4", "status": "unresolved", "reason": "Pipeline C cannot confidently decide whether this wording needs correction. Leave it unchanged and record the question about looking after shoes versus holding a pair before purchase; do not choose the learner's intended meaning.", "changes": [], "dropSourceIndexes": []}}
           ],
           "expected": {"outcome": "unresolved", "checks": [
             {"handle": "e:4", "field": "text", "value": "可以帮我保管这双鞋吗？"},
             {"handle": "e:4", "field": "reading", "value": [["可以帮我保管这双鞋吗", "kěyǐ bāng wǒ bǎoguǎn zhè shuāng xié ma"], ["？", null]]},
             {"handle": "e:4", "field": "translation", "value": "Can you keep these for me?"}
           ]},
-          "note": "Assistant-proposed, genuinely distinct target-wording challenge: 留着 in the clean control is replaced by 保管 with aligned pinyin. The possible custody-versus-reservation sense mismatch needs learner-intent clarification and independent linguistic review; it is not labeled a definite error or an approved synonym. Unresolved means retain the original mutated card without silently certifying the usage."
+          "note": "Pipeline C example, not a confirmed error: the authored phrase uses 保管 instead of 留着. The review question is whether a shop would understand this as looking after shoes rather than holding a pair for possible purchase. Independent language review is still needed. Expected action: leave the text unchanged, record that question, and do not count it as a repaired defect or a failed phrasebook."
         }
       ]
     },

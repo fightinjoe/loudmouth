@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "author": {
+    "name": "co-design assistant",
+    "role": "assistant"
+  },
+  "approved": false,
+  "scope": "diagnostic calibration only; no model/prompt comparison or production change",
+  "preparedAt": "2026-10-28",
+  "workingRoot": ".prompt-romp/calibration-2026-10-28-r1",
+  "sourceManifest": {
+    "planSha256": "4b33741596183e1bc1da3a7fe63dc82d9aa9f3c71f38f22572998a563b641a8e",
+    "dependencyHashes": {
+      "../../api/src/phrasebook/prompt.js": "e1eb7c9158baef312b958cc8dae5cc583f462ddfdc9fb8319fe3ce586812986a",
+      "../../api/src/phrasebook/parse.js": "836afb34e8f9dfed1e98d24f01f4aede595aaf2347cadd95a1d576f765d5054d",
+      "../../api/src/phrasebook/index.js": "c03addf9a23d429f04ec7bb96d63cacb25e0ac016e0776ff4b7c330ed7773252",
+      "../../api/src/phrasebook/prompt.txt": "2615d74b7485381acab1003664ad7845499ad7be4fdb4b74025cd6ee90be2632",
+      "../../api/src/phrasebook/translate-prompt.txt": "bd9e161fb4ced037d26210a0a26f4ca4d34acff95204f107d0d0963171ea265c",
+      "../../api/src/phrasebook/reading-rules-ja.txt": "58085761e5d4019c28396d62d827bffab5fc10caef8d6652d07d0f43287b1ba3",
+      "../../api/src/phrasebook/reading-rules-zh.txt": "6a4ed53b7a3ca232924f215c1a2f186ab6683e4f9b754bdb4340988ad4c0b3d4",
+      "../../api/src/schema/index.ts": "82ed4def2cd9e9cd88b7bd16a2bc11189094282f644bada42d65d9573e047dd2",
+      "../../api/src/reading.js": "c8ced7fdc68dc921f55b85ac625cdf5a848be8fa2dff7c670320bf3c6fe37c90",
+      "../../api/src/ability.js": "30604409b4e8ae655d4c15bdf2520a376b78dc87ebe26cae7b1b0832400f33dd",
+      "./production.mjs": "6b2583c6c7a91a52902ea63d52ac2b9d25a8b0c057e460bfd59e14ff49dd1f21",
+      "./topic-conversion.mjs": "faff1933bc999acaaa2e6266dfcd12ff4b4060c319f33a49b7d18df1053ba14e",
+      "./review-contract.mjs": "0848968796e6fb694eef3bf20971937f78131a7c8dd460f3ba278b1741684780",
+      "./review-composition.mjs": "2bfffa80a144a989f81faa458dca6f6a371292cca46a1aeea2f3f6a61ef021d0",
+      "./repair-application.mjs": "7ff28a07f409548e11ed35a5230133d6a4ce3ec387982d8895c8c0701d092837",
+      "./contracts/detection.schema.json": "a12d6a9c193efbf4551de1e7e23913734992cabd3349da3c4956bc46cd100de5",
+      "./contracts/localized-repair.schema.json": "f0b473383ba04614c0a2254ed1d2a41813ee7007fd06a36fba54af257b9e9fde",
+      "./instructions.mjs": "9745866ba5dafaaf5090e11893a8c20b4e2f39633c59ea8ee3fbd31b496761a3",
+      "./runner.mjs": "fd0d07e8287fa05480159dd0fea1017153309fef35f64286df23ee0404c5d8ef",
+      "../rubric.json": "6286ee5997e2dcb128456f5a01094fe0749f6b654a45a159b2d8c2c734cf8882"
+    },
+    "fixtureHashes": {
+      "contexts": "6c95903cc8a7ef9a11b6305f11f86448eb404934e864b9b5fd9c1b374673aeff",
+      "fixtures": "217fc3f055c3340006f253fda737f12f5f3c41a89321e9d304d63f83ce418f91"
+    },
+    "contextHashes": {
+      "shoes-zh": "9652b42b620eddc1561b695a56d7a89d34aa687e004e47271833c507c3a2da12",
+      "allergy-ja": "6c81e907c384a41bd23672e423cb315b8b870a1b08ddbd9f91756108d8d08148",
+      "tea-cs": "b9f2f4e87e6d905b1a8e0e257f2bd525b28a737286e36289962311851607fad7",
+      "lost-bag-uk": "8ef7835a75abb57825d5a611cc2b7a0cdaad2533329b5f57a2a7ffe86c525992",
+      "pottery-es": "ab8925e46739799d29da98e5e5b54274ee1075db95d75435551680fbae2ec0eb"
+    },
+    "promptHashes": {
+      "a": "2615d74b7485381acab1003664ad7845499ad7be4fdb4b74025cd6ee90be2632",
+      "bTemplate": "bd9e161fb4ced037d26210a0a26f4ca4d34acff95204f107d0d0963171ea265c",
+      "readingRulesJa": "58085761e5d4019c28396d62d827bffab5fc10caef8d6652d07d0f43287b1ba3",
+      "readingRulesZh": "6a4ed53b7a3ca232924f215c1a2f186ab6683e4f9b754bdb4340988ad4c0b3d4",
+      "cDetection": "d519c38f4ec5040b3b24be9f04f814fe1d0c7cc8b6f22d02fdb4de0e143942fd",
+      "cRepair": "0626abcff68270503abefc38f3d68e756983e85d294947ddbd8c2b74dddc7b1a"
+    },
+    "rubric": {
+      "path": "evals/rubric.json",
+      "version": "1.1-proposed",
+      "sha256": "6286ee5997e2dcb128456f5a01094fe0749f6b654a45a159b2d8c2c734cf8882",
+      "scores": null,
+      "status": "pending subjective review"
+    },
+    "materializerSha256": "7d7478eee44aa21c1625e0f77362df94a98f2a990311b0180a2258ab9b422d9a",
+    "adapterSha256": "8d2a4ef2de95ad49aa114bb5bc2478fd2f256454b22b6599b11c4eeb8d37c7a3",
+    "limitation": "Source hashes are provenance, not executable dependency snapshots. Requests and the standalone replay adapter are frozen in these suites."
+  },
+  "maximumAttempts": 29,
+  "maxSpendUsd": 0.4,
+  "nativeConservativeReservationUsd": 0.38537448,
+  "unknownChargePolicy": "Every started attempt consumes its slot. Unknown or estimated charges retain the full native per-request reservation inside the same stage cap; never treat them as zero or replay them.",
+  "automaticRetries": 0,
+  "paidJudgeCalls": 0,
+  "repetitions": 1,
+  "concurrency": 1,
+  "order": [
+    "a",
+    "b",
+    "c-detection",
+    "c-known-location-repair"
+  ],
+  "sample": {
+    "contexts": 5,
+    "languages": [
+      "zh",
+      "ja",
+      "cs",
+      "uk",
+      "es"
+    ],
+    "cDetection": {
+      "correctControls": 5,
+      "authoredDefects": 6,
+      "unscoredUncertaintyProbes": 1
+    },
+    "knownLocationReplies": {
+      "proposedCorrections": 6,
+      "leaveUnchangedProbe": 1
+    },
+    "changesFromEarlierInventory": "Added one reading-only defect: written 大 (larger) is given the wrong reading xiǎo (smaller). Unestablished 保管 concern is excluded from defect-recall/false-alarm scoring; clean or unresolved leave-unchanged judgments are both allowed."
+  },
+  "models": {
+    "a": {
+      "id": "deepseek/deepseek-v4.1-flash",
+      "observedCanonicalSlug": "deepseek/deepseek-v4.1-flash-20260910",
+      "provider": "relace",
+      "checkedAt": "2026-10-28T16:23:53.495Z",
+      "source": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash-20260910/endpoints"
+    },
+    "bAndC": {
+      "id": "google/gemini-3.5-flash-lite",
+      "observedCanonicalSlug": "google/gemini-3.5-flash-lite-20260721",
+      "provider": "google-vertex/global",
+      "checkedAt": "2026-10-28T16:24:30.950Z",
+      "source": "https://openrouter.ai/api/v1/models/google/gemini-3.5-flash-lite-20260721/endpoints"
+    }
+  },
+  "plans": [
+    {
+      "stage": "a",
+      "experiment": "E-1793204997128-a889e59bbc5e",
+      "calls": 5,
+      "maximumUsd": 0.01711288,
+      "planHash": "e17c1792b7ee66c25d6e3dde9e3155119d605ae0a01f5be274e6531e1fc9e684",
+      "preparedPlan": ".prompt-romp/calibration-2026-10-28-r1/calibration-a.prepared.json",
+      "suiteRevision": "01aaa0c73260d4962994a34c2379a731ddcbf5135df8074b9a4bce9e516b4204",
+      "inputBytes": 30184,
+      "outputTokenCap": 6000,
+      "warnings": [
+        "Visible attempts are recorded; hidden upstream retries or routing work cannot be fully accounted for.",
+        "Preview only: current brief and suite revision must be human-approved before paid execution."
+      ],
+      "maxSpendUsd": 0.02,
+      "model": "deepseek/deepseek-v4.1-flash",
+      "provider": "relace",
+      "maxOutputTokens": 6000,
+      "timeoutMs": 120000,
+      "settings": {
+        "reasoning": {
+          "enabled": false
+        }
+      }
+    },
+    {
+      "stage": "b",
+      "experiment": "E-1793204997765-8a69c71f3cff",
+      "calls": 5,
+      "maximumUsd": 0.089706,
+      "planHash": "3f0eb208fb1f761ae4c9f978d6b33a9829b3b9af3c0c2d97a31da6b520321d6b",
+      "preparedPlan": ".prompt-romp/calibration-2026-10-28-r1/calibration-b.prepared.json",
+      "suiteRevision": "23c9cc1bba4bdacef9955b5a8462c2e895d952d1b39a34d50b755ec4664ba56f",
+      "inputBytes": 49020,
+      "outputTokenCap": 6000,
+      "warnings": [
+        "Visible attempts are recorded; hidden upstream retries or routing work cannot be fully accounted for.",
+        "Preview only: current brief and suite revision must be human-approved before paid execution."
+      ],
+      "maxSpendUsd": 0.09,
+      "model": "google/gemini-3.5-flash-lite",
+      "provider": "google-vertex/global",
+      "maxOutputTokens": 6000,
+      "timeoutMs": 15000,
+      "settings": {
+        "reasoning": {
+          "effort": "minimal"
+        }
+      }
+    },
+    {
+      "stage": "c-detection",
+      "experiment": "E-1793204998434-3d53fd505e17",
+      "calls": 12,
+      "maximumUsd": 0.22058580000000003,
+      "planHash": "3f0a1b1dc0373e1e4a581ef4ac356a6b48b375591ce2f1fac3b792bf2e09a1d6",
+      "preparedPlan": ".prompt-romp/calibration-2026-10-28-r1/calibration-c-detection.prepared.json",
+      "suiteRevision": "7340648a5599a01a3357bbf1616b6007d2fcd6654466b04772a92568dbc302d7",
+      "inputBytes": 135286,
+      "outputTokenCap": 6000,
+      "warnings": [
+        "Visible attempts are recorded; hidden upstream retries or routing work cannot be fully accounted for.",
+        "Preview only: current brief and suite revision must be human-approved before paid execution."
+      ],
+      "maxSpendUsd": 0.23,
+      "model": "google/gemini-3.5-flash-lite",
+      "provider": "google-vertex/global",
+      "maxOutputTokens": 6000,
+      "timeoutMs": 60000,
+      "settings": {
+        "reasoning": {
+          "effort": "minimal"
+        }
+      }
+    },
+    {
+      "stage": "c-known-location-repair",
+      "experiment": "E-1793204999172-07a2df7b8d57",
+      "calls": 7,
+      "maximumUsd": 0.0579698,
+      "planHash": "0add35d7628478a1b6039198ecf45659d94ec6a5d0a871350f81a1f0b9008757",
+      "preparedPlan": ".prompt-romp/calibration-2026-10-28-r1/calibration-c-known-location-repair.prepared.json",
+      "suiteRevision": "b4fc5b135ded312dcb50cfd7f0ca288296b921e431cf6a28a83c32e70fc23479",
+      "inputBytes": 76566,
+      "outputTokenCap": 2000,
+      "warnings": [
+        "Visible attempts are recorded; hidden upstream retries or routing work cannot be fully accounted for.",
+        "Preview only: current brief and suite revision must be human-approved before paid execution."
+      ],
+      "maxSpendUsd": 0.06,
+      "model": "google/gemini-3.5-flash-lite",
+      "provider": "google-vertex/global",
+      "maxOutputTokens": 2000,
+      "timeoutMs": 60000,
+      "settings": {
+        "reasoning": {
+          "effort": "minimal"
+        }
+      }
+    }
+  ],
+  "stopRules": [
+    "Recheck model aliases, selected providers, capability metadata and quoted rates immediately before dispatch; any drift requires a new prepared plan and approval.",
+    "Run stages serially. Inspect each completed native stage before starting the next. Stop before the next stage on provider/transport error, unsupported schema, uncertain start/unknown charge, unreviewed plan drift or a reported charge above its reservation. Request direction; do not retry or substitute.",
+    "Native attempt/spend-reservation limits are enforced within each stage. A reported reservation overrun stops further native dispatch. No extra calls, paid judges, automatic retries or independent neutral repair calls are authorized."
+  ],
+  "limitations": [
+    "No generation request has been made. Public metadata does not prove provider schema compatibility or language quality.",
+    "Provider billing is not a guaranteed hard ceiling: native reservations assume frozen rates and output limits cover billable tokens. Ancillary charges and hidden upstream work cannot be independently bounded.",
+    "OpenRouter model IDs are aliases; observed canonical slugs are metadata, not proof of immutable revision pinning. Revalidate before dispatch.",
+    "Google calibration calls use OpenRouter Google Vertex global with explicit minimal reasoning; production calls Google Vertex directly without an explicit reasoning setting. This is a calibration configuration, not a production-parity or end-to-end latency claim.",
+    "C known-location repair supplies the issue location. Reusing these replies for detector-gated composition is counterfactual, not independent neutral-request evidence.",
+    "Fixture review is assistant-authored, not blind or qualified native-speaker adjudication. Chinese hold wording and Czech black-tea meaning granularity remain unresolved."
+  ],
+  "packageSha256": "142da06528e40424763b6694a0379dd59ac0a771f9c84c9377891e99729e883b"
+}

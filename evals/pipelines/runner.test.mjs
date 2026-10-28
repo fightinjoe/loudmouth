@@ -86,3 +86,29 @@ test('unknown fixture identity and unknown context filter fail explicitly', () =
   malformed.cases.cases[0].id = 'foreign-fixture';
   assert.throws(() => validateFixtures(malformed), /Cases must match canonical context IDs/);
 });
+
+test('an unestablished language concern accepts no correction without inventing a missed defect', () => {
+  const fixtures = fixture();
+  const item = fixtures.cases.cases.find(item => item.id === 'shoes-zh');
+  const review = item.reviews.find(review => review.kind === 'unresolved');
+  const input = createReviewInput(fixtures, item.id, review.id);
+  const repairs = review.repairs.map(repair => ({
+    focus: repair.focus,
+    response: { handle: repair.focus.handle, status: 'unchanged', reason: 'No confident correction is justified.', changes: [], dropSourceIndexes: [] },
+  }));
+  const saved = { id: review.id, detection: { complete: true, findings: [], unresolved: [] }, repairs };
+  const accepted = evaluateReview(input, review, saved);
+  assert.equal(accepted.structural.pass, true);
+  assert.equal(accepted.fixtureExpectation.pass, true);
+  assert.deepEqual(accepted.detection.misses, []);
+  assert.deepEqual(accepted.detection.falseAlarms, []);
+  const changed = structuredClone(saved);
+  changed.repairs[0].response = {
+    handle: repairs[0].focus.handle, status: 'repaired', reason: 'An unjustified pronunciation change.',
+    changes: [{ field: 'reading', value: [['可以帮我保管这双鞋吗', 'kěyǐ bāng wǒ bǎoguǎn zhè shuāng xiá ma'], ['？', null]] }],
+    dropSourceIndexes: [],
+  };
+  const rejected = evaluateReview(input, review, changed);
+  assert.equal(rejected.knownLocationRepair.changedFields, 1);
+  assert.equal(rejected.fixtureExpectation.pass, false);
+});

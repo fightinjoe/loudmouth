@@ -205,11 +205,12 @@ export function prepareComposedTranslation(fixtures, contextId, englishResponse)
 export function evaluateReview(input, review, saved, { provenance = 'saved-response' } = {}) {
   const errors = []; let detection; let detectionValid = false;
   try { detection = parsedResponse(saved?.detection); validateDetection(detection, input); detectionValid = true; } catch (error) { errors.push(`Detection: ${error.message}`); }
+  const preservationOnly = review.kind === 'unresolved';
   const expected = new Set(review.expectedFindings.map(location));
   const actual = new Set(detectionValid ? detection.findings.map(location) : []);
-  const matches = review.expectedFindings.filter(finding => actual.has(location(finding)));
-  const misses = review.expectedFindings.filter(finding => !actual.has(location(finding)));
-  const falseAlarms = detectionValid ? detection.findings.filter(finding => !expected.has(location(finding))) : [];
+  const matches = preservationOnly ? [] : review.expectedFindings.filter(finding => actual.has(location(finding)));
+  const misses = preservationOnly ? [] : review.expectedFindings.filter(finding => !actual.has(location(finding)));
+  const falseAlarms = !preservationOnly && detectionValid ? detection.findings.filter(finding => !expected.has(location(finding))) : [];
   const repairs = []; const seen = new Set();
   if (!Array.isArray(saved?.repairs)) errors.push('Repairs must be an array');
   for (const repair of Array.isArray(saved?.repairs) ? saved.repairs : []) {
@@ -252,7 +253,7 @@ export function evaluateReview(input, review, saved, { provenance = 'saved-respo
   return {
     id: review.id, kind: review.kind, note: review.note,
     structural: { pass: errors.length === 0, immutableEnglishIntent: effective.items.every((item, index) => equal(item.english, input.items[index].english) && item.card.translation === input.items[index].card.translation) }, errors,
-    detection: { valid: detectionValid, raw: saved?.detection === undefined ? null : rawInfo(saved.detection).summary, complete: detectionValid ? detection.complete : false, findings: detectionValid ? detection.findings : [], matches, misses, falseAlarms, unresolved: detectionValid ? detection.unresolved : [], interpretation: 'Matches are against authored fixture locations, not independent linguistic truth.' },
+    detection: { valid: detectionValid, raw: saved?.detection === undefined ? null : rawInfo(saved.detection).summary, complete: detectionValid ? detection.complete : false, findings: detectionValid ? detection.findings : [], matches, misses, falseAlarms, unresolved: detectionValid ? detection.unresolved : [], assessment: preservationOnly ? 'unscored-uncertainty-probe' : 'authored-proposed-locations', interpretation: preservationOnly ? 'No established defect label: do not count a defensible leave-unchanged judgment as a miss or require this proposed concern.' : 'Matches are against authored fixture locations, not independent linguistic truth.' },
     knownLocationRepair: { oracleAssisted: true, outcome: knownOutcome, application: known.application, error: known.error ?? null, checks: knownChecks, unresolvedHandles: known.unresolvedHandles, changedFields: knownChanges.length, correctControlChangedItems: review.kind === 'correct-control' ? new Set(knownChanges.map(change => change.handle)).size : 0 },
     proposedRepairs: repairs.map(repair => ({ handle: repair.handle, requestFocus: repair.focus, status: repair.status, raw: repair.raw ?? null, reason: repair.response?.reason ?? null, proposedFieldEdits: Array.isArray(repair.response?.changes) ? repair.response.changes.length : 0, proposedSourceRemovals: Array.isArray(repair.response?.dropSourceIndexes) ? repair.response.dropSourceIndexes.length : 0, error: repair.error ?? null })),
     responseInventory: { detectionResponsesSupplied: saved?.detection === undefined ? 0 : 1, localizedRepairResponsesSupplied: repairs.length, independentNeutralRepairResponsesSupplied: 0 },
@@ -270,7 +271,14 @@ export function evaluateReview(input, review, saved, { provenance = 'saved-respo
       examples: applied.slice(0, 6).map(change => ({ path: change.path, english: quote(input.items.find(item => item.handle === change.handle).card.translation), before: quote(change.before), after: quote(change.after), reason: repairs.find(repair => repair.handle === change.handle)?.response?.reason ?? null })),
     },
     example,
-    fixtureExpectation: { expectedOutcome: review.expected.outcome, actualOutcome: outcome, checks, pass: outcome === review.expected.outcome && checks.every(check => check.pass) },
+    fixtureExpectation: {
+      scope: preservationOnly ? 'content-preservation-only' : 'authored-outcome',
+      expectedOutcome: preservationOnly ? 'clean or unresolved; no changes' : review.expected.outcome,
+      actualOutcome: outcome, checks,
+      pass: checks.every(check => check.pass) && (preservationOnly
+        ? applied.length === 0 && knownChanges.length === 0
+        : outcome === review.expected.outcome),
+    },
   };
 }
 
@@ -393,7 +401,7 @@ export function calibrationPlan(fixtures) {
     detectorGatedLiveEvaluation: { status: 'not-observed-not-in-this-plan', independentNeutralRepairCalls: null, offlinePatchReuse: 'counterfactual-composition-check-only', requirement: 'Measure neutral handle-only repair behavior with separate explicitly approved native Romp requests; do not count known-location replies as those observations.' },
     blockers: ['Obtain user approval of the proposed rubric, priorities and representative fixture/report sample.', 'Bind exact native Romp provider/model/revision and pricing for every call.', 'Bind output-token limits, timeout, retry policy, cost ceiling, unknown-charge reserve and stop rules to this exact native Romp plan before paid approval.', 'This proposal is not approval and does not authorize execution.'],
     manifest,
-    note: 'Five A calls and five standalone B calls pinned to authored English; C detection for every review case and six known-location replies: five material translation corrections plus one unresolved-intent abstention probe. The latter must not invent learner intent or change immutable English. All C reply slots required by saved-response evaluation are accounted for; no mock reply fills a missing paid observation. A/B quality and all C judgments require independent linguistic review. No retry or paid judge.',
+    note: `Single calibration sample: ${counts.a} A calls and ${counts.b} B calls pinned to authored English; ${counts['c-detection']} C detection calls and ${counts['c-known-location-repair']} known-location replies. These include a reading-only correction and an unscored uncertainty probe that must preserve learner intent. All saved C reply slots are accounted for; no mock fills a missing paid observation. Independent review remains required. No retry or paid judge.`,
   };
 }
 
