@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "status": "proposed",
+  "contexts": [
+    {
+      "id": "shoes-zh",
+      "kind": "ordinary",
+      "task": {
+        "seed": "Buying comfortable walking shoes in a Mandarin-speaking shoe shop",
+        "language": "zh",
+        "ability": "basics",
+        "answers": {
+          "Situation": "I need comfortable shoes for walking all day. I usually wear European size 39 and want to try both shoes before deciding.",
+          "Constraints": "Ask for one size larger if they are tight, ask the price in yuan, and do not imply a purchase commitment.",
+          "Practical goal": "Ask staff to keep a pair for me if needed; I have not specified a hold duration. Use polite, short spoken Mandarin with simplified characters and tone-marked pinyin readings."
+        },
+        "checklist": ["Trying on walking shoes"]
+      },
+      "reviewFocus": [
+        "Assistant-proposed ordinary example, not a prevalence estimate or native-speaker certification.",
+        "Preserve European size 39 and the request for a larger, not smaller, size.",
+        "Useful essentials and dictionary-form Words should support fit, price and trying on both shoes.",
+        "The neutral hold request can remain faithful without duration or purchase commitment. In the distinct 保管 wording challenge, keep the possible safekeeping-versus-reservation sense mismatch proposed and unresolved until learner intent and usage are reviewed."
+      ]
+    },
+    {
+      "id": "allergy-ja",
+      "kind": "challenge",
+      "task": {
+        "seed": "Checking a restaurant meal for a severe peanut allergy in Japan",
+        "language": "ja",
+        "ability": "none",
+        "answers": {
+          "Situation": "I have a severe peanut allergy. Even a small amount is unsafe. I need to speak to restaurant staff before ordering.",
+          "Constraints": "Ask about ingredients and shared cooking utensils. Do not treat removing visible peanuts as safe, and do not substitute a different allergen.",
+          "Practical goal": "If staff cannot confirm safety, I will not eat the dish. Use short polite Japanese, kanji readings and explicit Latin romanization; do not claim to provide medical advice."
+        },
+        "checklist": ["Checking peanut allergy safety before ordering"]
+      },
+      "reviewFocus": [
+        "Assistant-proposed safety challenge, deliberately oversampled; not evidence of production prevalence or medical/linguistic certification.",
+        "Keep peanut identity, severe allergy and even-small-amount quantifier intact.",
+        "Ask staff to check ingredients and utensils without promising that any meal is safe.",
+        "Japanese readings and romanization must preserve particles, negation and the allergy statement."
+      ]
+    },
+    {
+      "id": "tea-cs",
+      "kind": "ordinary",
+      "task": {
+        "seed": "Ordering tea to drink in a Czech café",
+        "language": "cs",
+        "ability": "basics",
+        "answers": {
+          "Situation": "I want black tea without sugar, with lemon if available, and I will drink it in the café.",
+          "Constraints": "Ask the price in Czech crowns and whether I can pay by card. Do not change black tea to green tea or add sugar.",
+          "Practical goal": "Keep the exchange short and polite, with a complete staff reply and a decision if lemon is available. Use correct Czech diacritics."
+        },
+        "checklist": ["Ordering black tea without sugar"]
+      },
+      "reviewFocus": [
+        "Assistant-proposed ordinary example; not a prevalence estimate or native-speaker certification.",
+        "Preserve without-sugar negation, black tea, drink-in choice and Czech-crown price.",
+        "Words should use dictionary forms rather than copying inflected phrase fragments.",
+        "Prioritize order correctness over optional dialogue stylistic preferences."
+      ]
+    },
+    {
+      "id": "lost-bag-uk",
+      "kind": "challenge",
+      "task": {
+        "seed": "Reporting a bag left on a train at a Ukrainian railway station",
+        "language": "uk",
+        "ability": "basics",
+        "answers": {
+          "Situation": "I left a small blue bag on the train from Lviv to Kyiv. It arrived at 14:30 today. My passport is inside.",
+          "Constraints": "Report a lost bag, not a stolen bag. Do not invent a train number, police report or recovery guarantee.",
+          "Practical goal": "Describe the bag, give the route and arrival time, ask where lost property is and where to leave a phone number. Use Ukrainian Cyrillic, not Russian or Latin transliteration."
+        },
+        "checklist": ["Reporting a blue bag left on a train"]
+      },
+      "reviewFocus": [
+        "Assistant-proposed challenge for route direction, time and identity-document urgency; not representative sampling or native-speaker certification.",
+        "Preserve Lviv-to-Kyiv direction, 14:30 arrival and the blue bag; do not turn loss into theft.",
+        "Use grammatical Ukrainian Cyrillic and practical station vocabulary.",
+        "Staff can offer a search and contact procedure, never a guaranteed recovery."
+      ]
+    },
+    {
+      "id": "pottery-es",
+      "kind": "ordinary",
+      "task": {
+        "seed": "Booking a beginner pottery class at a Spanish-speaking studio",
+        "language": "es",
+        "ability": "basics",
+        "answers": {
+          "Situation": "I am a complete beginner and want one place in a pottery class on Saturday. I would like to make a small bowl by hand, not use a wheel.",
+          "Constraints": "I have two hours available. Ask whether clay and firing are included and when the finished bowl can be collected; do not assume same-day collection.",
+          "Practical goal": "Agree on a class time and price in euros before booking. Use broadly understandable polite Spanish with correct accents."
+        },
+        "checklist": ["Booking a beginner hand-building pottery class"]
+      },
+      "reviewFocus": [
+        "Assistant-proposed ordinary example; not a prevalence estimate or native-speaker certification.",
+        "Preserve beginner level, one place, Saturday and the two-hour constraint.",
+        "Distinguish hand-building from wheel throwing and firing from cooking.",
+        "Make price inclusions and later collection explicit without inventing same-day availability."
+      ]
+    }
+  ]
+}

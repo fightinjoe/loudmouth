@@ -1,8 +1,10 @@
 # Phrasebook quality, identity, storage, and client convergence
 
-Current plan: 2026-10-28. **Cleanup checkpoint: the new A/B/C pipelines are not implemented yet.**
-This guide replaces the historical experiment diary; it does not authorize inference or production
-changes. Tooling entrypoint: [`evals/README.md`](../../evals/README.md) (planned in step 2).
+Current plan: 2026-10-28. **Offline checkpoint: A/B/C and composed A→B workflows are implemented.**
+Five canonical contexts, authored mocks and saved-response imports have offline smoke proof;
+provider performance, language quality and paid calibration remain unverified. This guide replaces
+the historical diary; it does not authorize inference or production changes.
+Tooling and review entrypoint: [`evals/README.md`](../../evals/README.md).
 Normative contracts remain [`API_DESIGN.md`](../API_DESIGN.md) and
 [`CARD_SCHEMA.md`](../CARD_SCHEMA.md); this plan does not change them.
 
@@ -111,7 +113,7 @@ component success does not prove composed-topic success or production prevalence
   related word cannot. `card.reading` annotates written text; `card.romanization` is separate.
 - **Reason:** an evaluation repair proposal's explanation of an edit/source removal, not learner
   teaching in `card.notes`, and not a new Card field. Unchanged entries need no invented explanation.
-  The planned tooling README will document each lane's concrete fixture/proposal paths and examples.
+  The tooling README documents concrete fixture/proposal paths and representative review examples.
 
 ## Selected historical lessons, not model rankings
 

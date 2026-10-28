@@ -150,15 +150,17 @@ highest content priority; ordinary dialogue awkwardness is lower impact than mat
 errors. Improve initial output before presuming a runtime reviewer is needed. Repair is not implemented
 and remains optional; it must not become a required serial stage before usable initial content.
 
-At the cleanup checkpoint, the new offline A/B/C workflows are still pending. The ordered plan is
-cleanup/commit → offline implementation/proof/commit → separately approved paid calibration/commit →
-comparisons. R2 identity/schema follows quality findings; R3 storage follows R2. iOS/web convergence
-is an independent contract/catch-up track, not implied feature parity.
+Independent offline A/B/C and composed A→B workflows now exist with five canonical contexts,
+authored mocks, saved-response evaluation, a proposed rubric and a subjective-review skill.
+They prove validation/workflow behavior, not provider performance or linguistic correctness.
+Cleanup and offline implementation are separate committed checkpoints; paid calibration still requires
+rubric/sample review and exact bounded native approval before comparisons. R2 identity/schema follows
+quality findings; R3 storage follows R2. iOS/web convergence remains an independent contract/catch-up track.
 
 See the [current quality, identity, storage, and convergence plan](designs/phrasebook-quality-identity-storage-plan.md)
-for gates, review priorities, schema-grounded terms and historical caveats; the planned
-[`evals/README.md`](../evals/README.md) will be the tooling entrypoint. No production prompt changes,
-new paid calls, deployment or API/card contract changes are authorized by this strategy.
+for gates, review priorities, schema-grounded terms and historical caveats;
+[`evals/README.md`](../evals/README.md) is the tooling entrypoint. No production prompt changes,
+paid calls, deployment or API/card contract changes are authorized by this strategy.
 
 ## Open decisions
 

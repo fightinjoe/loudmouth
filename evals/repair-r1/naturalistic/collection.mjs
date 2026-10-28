@@ -29,13 +29,13 @@ export function normalizeEnglish(parsed, input, context = {}) {
   if (original) {
     for (const section of ['essentials', 'vocab']) {
       if (original[section].length !== value.conversations[0][section].length) changes.push({
-        path: `/conversations/0/${section}`, reason: `Production parser retained ${value.conversations[0][section].length} of ${original[section].length} entries; full raw output remains retained.`,
+        path: `/conversations/0/${section}`, reason: `Production parser retained ${value.conversations[0][section].length} of ${original[section].length} entries; raw response retention is controlled by the caller, not this normalizer.`,
       });
     }
     value.conversations[0].lines.forEach((line, index) => {
       if (line.alternative) changes.push({ path: `/conversations/0/lines/${index}/alternative`, reason: 'Production parser marks consecutive same-speaker entries as local alternatives.' });
     });
-  } else changes.push({ path: '', reason: 'Production parser accepted raw content not parsed by the generic reader; retain its raw findings and original text.' });
+  } else changes.push({ path: '', reason: 'Production parser accepted raw content not parsed by the generic reader; raw findings and original text are distinct from normalized output. This normalizer does not persist them.' });
   return { value, changes };
 }
 
@@ -52,5 +52,5 @@ export function buildTranslationPrompt(input, variant) {
 export function normalizeTranslation(parsed, input, context = {}) {
   const task = validatedTask(input.task);
   const value = validateTranslationResponse(context.raw ?? JSON.stringify(parsed), input.conversation, task.language);
-  return { value, changes: [{ path: '', reason: `Production translation parser applied unchanged; failureLevel=${value.failureLevel}. Preserve raw output, optional-source flags and any Japanese romanization fallback as collection diagnostics, not reviewer repairs.` }] };
+  return { value, changes: [{ path: '', reason: `Production translation parser applied unchanged; failureLevel=${value.failureLevel}. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it.` }] };
 }
