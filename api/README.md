@@ -360,10 +360,9 @@ extraction is evidence of a failure; no observed extraction is not a confidentia
 Review raw outputs alongside automated scoring and normal language-learning baselines. The runner
 does not retry invalid output or provider errors itself; provider SDK retries still apply.
 
-Historical Romp suite snapshots that import former production v2 validators must be replayed against
-their recorded dependency revision. They are retained evidence, not live v3 compatibility adapters.
-The code-only cutover's raw prompt regressions, five native API scenarios, budget ledger references,
-and browser evidence are under `.prompt-romp/product-cutover-2026-10-01/`.
+Historical Romp runs and raw cutover captures were intentionally deleted during the evaluation reset;
+they are no longer replayable. Retained regression lessons, current tooling and approval boundaries
+are documented in [`evals/README.md`](../evals/README.md). The API-local security evals above are unchanged.
 
 Active attack coverage includes schema-preserving extraction, encoded disclosure, instruction
 overrides in seed, answer, and checklist fields, generated translation source, and the complete

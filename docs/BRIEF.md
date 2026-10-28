@@ -75,26 +75,16 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 - Whole-phrasebook regeneration, undo, and user editing of card content.
 - Spaced repetition until a useful signal exists without introducing scoring.
 
-## Phases
+## Implemented capabilities
 
-### Phase 1 — Prep and review
-
-- Guided phrasebook creation through `/context` → `/phrasebook`.
-- Dynamic context questions and a checklist of the conversations to prepare.
+- Guided phrasebook creation through `/context` → `/phrasebook`, with dynamic context questions and
+  a checklist of conversations to prepare.
 - Topic-first generation: independent essential phrases, useful words, and complete two-sided dialogue.
-- Web contents-first browsing with topic pages and optional supplemental collections; phrasebook-scoped
-  review with reveal, direction toggle, swipe navigation, and audio. This does not change iOS.
-- Web phrase breakdowns: source-aligned semantic parts, contextual explanations, and nested
-  dictionary Words. Every distinct target can be starred into the active phrasebook's review set.
-
-### Phase 2 — Library durability
-
-- Structured ruby rendering on web, including source spans and contextual review.
-- Versioned content exchange and atomic full-library JSON backup/restore.
-
-### Phase 3 — Retention
-
-- Spaced repetition after the no-scoring/self-rating decision is resolved.
+- Web contents-first browsing, topic pages, optional supplemental collections, and phrasebook-scoped
+  review with reveal, direction toggle, swipe navigation, and audio. This does not establish iOS parity.
+- Web phrase breakdowns with source-aligned semantic parts, contextual explanations, and dictionary
+  Words; explicit stars save learning targets to the active phrasebook.
+- Structured ruby rendering, versioned content exchange, and atomic full-library JSON backup/restore.
 
 ## Platform and architecture
 
@@ -117,9 +107,12 @@ analysis without overwriting saved teaching. Character and Grammar card types re
   Analysis is disposable; candidate stars resolve current library identities and memberships,
   never cached star state. Explicit saves preserve immutable source snapshots for Word examples
   and contextual Chunks, even after the source Phrase or phrasebook is deleted.
-- **LLMs:** `PHRASEBOOK_GENERATION_BACKEND=deepseek-v4.1-flash` selects Relace-only English generation
-  with reasoning disabled. `LLM_BACKEND=gemini-3.5-flash-lite` selects translation and other text endpoints;
-  alternate translation values remain `g-flash`, `claude`, and `chatgpt`. Clients cannot select models.
+- **LLMs:** checked-in defaults in `api/src/llm-config.js` are
+  `PHRASEBOOK_GENERATION_BACKEND=deepseek-v4.1-flash` (DeepSeek V4.1 Flash, Relace-only,
+  reasoning disabled) and `LLM_BACKEND=gemini-3.5-flash-lite` (Gemini 3.5 Flash Lite for translation
+  and other text endpoints). Generation also accepts Gemini 3.5 Flash Lite; alternate translation
+  values are `g-flash`, `claude`, and `chatgpt`. Clients cannot select models. Deployed revision and
+  environment overrides have not been verified; these defaults do not establish live configuration.
 - **Creation ability:** `none | basics | conversational`, remembered per language in this browser
   only after successful generation and library import. Unknown ability is asked during clarification.
   Remembered ability is sent to both endpoints; `/phrasebook` defaults invalid or missing values to
@@ -145,18 +138,27 @@ API, gateway, and web must ship together. The 2026-10-01 promotion is production
 no deployment was authorized. Known translation defects remain accepted product risk and separate
 quality work, not a linguistic acceptance claim.
 
-## Creation quality work (planned)
+## Creation quality strategy
 
-- Keep value scoring separate from translation verification. Evaluate Jev alongside translation,
-  without delaying the first usable phrasebook; related words and dialogue repetition remain valid.
-- Background translation review/repair should target completion within 60 seconds of first display,
-  including dispatch, model work, validation, and patch application. This is a target, not measured
-  performance or a claim that the initial content is 80% correct.
-- Next evaluate repair models on saved translations, including missing/incorrect readings, meaning
-  errors, and already-correct controls. Compare Luna reasoning settings and another capable model;
-  measure fixes, missed defects, introduced defects, latency, and cost before selecting a reviewer.
-- Repair triggering, persistence, and patch identity are not implemented. The design must account
-  for final topic selection, shared canonical cards, stale responses, and deleted phrasebooks.
+**Fast** means time to usable content; **reliable** means complete, valid, correctly associated results,
+including retries/failures; **trustworthy** means faithful meaning and learner intent, useful teaching,
+and avoidance of harmful learner-facing errors. Structural validation alone is not linguistic assurance.
+
+R1 evaluates English generation (A), translation (B), and detection/optional repair (C) independently
+using shared canonical learner contexts and qualitative review. Useful English essentials have the
+highest content priority; ordinary dialogue awkwardness is lower impact than material meaning/safety
+errors. Improve initial output before presuming a runtime reviewer is needed. Repair is not implemented
+and remains optional; it must not become a required serial stage before usable initial content.
+
+At the cleanup checkpoint, the new offline A/B/C workflows are still pending. The ordered plan is
+cleanup/commit → offline implementation/proof/commit → separately approved paid calibration/commit →
+comparisons. R2 identity/schema follows quality findings; R3 storage follows R2. iOS/web convergence
+is an independent contract/catch-up track, not implied feature parity.
+
+See the [current quality, identity, storage, and convergence plan](designs/phrasebook-quality-identity-storage-plan.md)
+for gates, review priorities, schema-grounded terms and historical caveats; the planned
+[`evals/README.md`](../evals/README.md) will be the tooling entrypoint. No production prompt changes,
+new paid calls, deployment or API/card contract changes are authorized by this strategy.
 
 ## Open decisions
 

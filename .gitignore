@@ -1,3 +1,5 @@
 **/tmp/*
 .gstack/
 **/.DS_Store
+.prompt-romp/
+evals/.runs/

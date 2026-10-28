@@ -20,62 +20,16 @@ has 8 passes and 11 material failures, including Japanese romanization polarity 
 That evidence remains failed; there is no linguistic acceptance seal. Earlier experiment sections
 below are historical measurements, not the current wire contract.
 
-### Cutover verification and prompt impact
+### Cutover verification and evidence retention
 
-Evidence is retained under `.prompt-romp/product-cutover-2026-10-01/`, particularly
-`prompt-regression-report.json`, `live-smoke-runs.json`, `live-provider-calls.jsonl`,
-`eight-topic-router-smoke.json`, and `browser-proof.json`. Failed observations remain in those records.
-Commit cleanup removes redundant CLI exports and superseded browser/debug captures, not original
-observations. Canonical experiment runs, evaluations, reviews, prompts, approvals, accounting ledgers,
-direct-review inputs/findings and historical decisions remain retained, including failed results.
+The code-only v3 cutover included API, web and browser verification; it did not authorize deployment.
+Historical prompt/model/architecture comparisons changed multiple variables together and do not
+establish current model rankings or isolated prompt effects. Structural success did not establish
+translation, pronunciation or teaching quality.
 
-The three English baselines used the old whole-book Gemini prompt; the selected after-path uses
-four concurrent DeepSeek topic calls. These are combined prompt/model/architecture/workload changes,
-not an isolated wording A/B or statistical latency benchmark:
-
-| Scenario | Before English ms; input/output tokens | After English phase ms; aggregate input/output tokens |
-|---|---|---|
-| Restaurant | 2708; 1439/622 | 3139; 4294/1275 |
-| Salsa | 1253; truncated JSON, provider reported 0/0 | 16315; 4242/1266 |
-| Pharmacy | 2142; 1440/598 | 7213; 4306/1564 |
-
-All three new English chapters passed structural validation. Context before/after used the same
-Gemini backend/settings; all six responses passed their corresponding validators:
-
-| Scenario | Context ms before → after | Input/output tokens before → after |
-|---|---|---|
-| Restaurant | 2216 → 2565 | 1014/223 → 1510/393 |
-| Salsa | 1520 → 2349 | 1018/278 → 1514/501 |
-| Pharmacy | 1465 → 2239 | 1014/268 → 1510/531 |
-
-The extra context tokens produce seed-specific bowl, dance-object, and pharmacy still-life prompts.
-Question quality is not certified: the salsa result still includes an interaction-shaped question.
-The retained 19-topic translation order trial increased output tokens from 19,265 to 19,691
-and reported cost from $0.0618878 to $0.0629528, without resolving its material translation failures.
-
-Five actual native API requests returned HTTP 200: Japanese restaurant 13,146ms, Spanish salsa
-19,993ms, Chinese pharmacy 14,374ms, Czech restaurant 12,235ms, Ukrainian restaurant 11,204ms.
-Their 28 provider calls required no application retry. The separate offline eight-topic request
-preserved duplicate-title identity and input order despite out-of-order completion, with peak
-English concurrency four and no translation before all English completed.
-
-Final checks: API 128 tests passed; web 234 tests across 18 files passed; strict typecheck and
-production build passed; gateway YAML parsed. Actual browser checks covered contents/topic layouts
-at 320/390/768/1280px, all five scripts, enlarged romanized text and reduced motion, keyboard/focus,
-shared stars and Review, phrase details, supplemental Chunks, section-local reorder/reload,
-v3 backup round-trip/old-backup rejection, and untouched legacy databases/preferences.
-The credential-free guided replay took 1520ms from checklist display and 1221ms from final Continue;
-its bilingual HTTP response took 26ms and the existing minimum loading interval is 1000ms.
-Those replay timings are not live model or deployed Cloud Run latency.
-
-Decoded fixture PNGs proved image contract validation, nonfatal timeout, persisted ready art,
-and late hero-only updates preserving page, cards, focus, scroll and edit state. Pending art became
-failed on reload with zero provider requests. These synthetic layout images do **not** establish
-watercolor or matting quality. At promotion, the original two-provider cover pipeline lacked
-matting credentials and live verification. It is superseded by the OpenRouter-only implementation
-described below. No deployment or secret provisioning was performed.
-Lifetime conservative accounting is $2.3876218931 against the $5 cap; unknown-charge reservations
-remain included. Full per-call reported/estimated cost distinctions are in the regression report.
+The subsequent evaluation reset intentionally deleted historical raw captures, native experiment
+histories and duplicated evidence rather than archiving them. Those runs are no longer replayable.
+See [`evals/README.md`](../evals/README.md) for retained regression lessons, tooling and approval gates.
 
 ## Source layout
 
@@ -223,233 +177,16 @@ This 0–4 evaluation rubric is distinct from historical production v2's 1–5 `
 `featuredPhraseIds`. Current v3 removes those fields; the rubric adds no runtime quality scoring
 or semantic retries.
 
-### Approved topic-first experiment: server-derived alternatives
+### Evaluation reset
 
-The experimental topic-first model contract removes model-authored `or`. Each dialogue entry
-contains only `{speaker, text}`. Under this contract, consecutive entries from the same speaker
-are alternatives, not successive pieces of one continuous turn; the prompt asks for a continuous
-turn in one entry. The server derives `alternative:true` exactly when the immediately preceding
-entry has the same speaker. The first entry is never an alternative, including at a topic boundary.
+Historical topic-first, bilingual and translation-order trials exposed meaningful errors despite
+valid response structure: changed meaning, incorrect readings, dictionary-form/sense mismatches
+and unrelated source links. Output reordering did not establish a reliable quality improvement.
+These are development lessons, not a current model ranking or a native-speaker acceptance claim.
 
-Derivation preserves text, speaker and order; it does not reorder an awkward exchange, infer
-unwritten branches, or prove pedagogic correctness. Conversation quality is scored separately.
-Clients consume the server-derived field rather than independently interpreting adjacency.
-Historical `or` output stays historical evidence, not silently repaired passing output.
-This policy originated in the experimental suites and now also governs the production v3 parser.
-
-Experimental implementation lives in `evals/suites/phrasebook-english-no-or.mjs` and the
-`phrasebook-english-no-or-{gemini,deepseek,parallel}` suites. The separate
-`evals/suites/phrasebook-quality-ordinal/` suite assesses exact saved evidence with a native
-numeric response schema and validates every cited pointer/quote. Its model assessments run through
-Romp's recorded-call interface, not a direct provider runner: the installed built-in judge verdict
-enum cannot represent five ordinal levels. The suite's required `judge` configuration is not an
-instruction to judge the assessor again. A score of 0, 1 or 2—or a cited risk—is valid assessment
-data, not a failed assessment request. Citation/score/schema errors are assessment failures and
-leave quality unassessed. Gemini assessment routing explicitly pins `google-ai-studio`; an empty
-`only:[]` allowlist is never used to mean unrestricted routing.
-
-Live assessor probes on 2026-10-01 did not produce scores: Google rejected the original schema's
-references and then rejected an explicitly approved flattened native-schema probe with a generic
-invalid-argument error. The isolated `phrasebook-quality-ordinal-flat` suite preserves that second
-attempt with unchanged strict local validation. Offline tests do not establish provider schema
-compatibility. Until a live assessor succeeds, report direct assistant grades as assistant-authored
-and model assessment as missing; do not silently count one as the other.
-
-### Score-free bilingual pilot: independent topic sections
-
-The bilingual candidate translates authored essentials directly; it neither requests `lineScores`
-nor selects featured dialogue lines. Essentials, vocabulary and dialogue remain independent,
-ordered lists. The pilot used `schemaVersion: 3` with `groups`, each containing
-`essentials`, `vocab` and `dialogue`. That shape is now the public API/client contract following
-the explicit product promotion above; the pilot observations below remain historical evidence.
-
-Implementation: `evals/suites/phrasebook-topic-first-content.mjs` owns English normalization,
-flat per-topic translation schemas, translation validation and chapter assembly.
-`evals/suites/phrasebook-bilingual-adapter.mjs` runs the unchanged translation control,
-score-free translation candidate and complete DeepSeek-parallel/Gemini-translation pipeline
-through Romp's recorded-call interface. Independent English calls finish and validate before
-translation dispatch; required failure rejects the chapter without discarding sibling evidence.
-English generation remains Relace-pinned with reasoning disabled; Gemini translation uses its
-own unpinned routing and native schema, not inherited DeepSeek settings.
-
-The candidate validates every independent list element before retaining at most eight essentials
-and ten vocabulary items. Such overflow is level 1; malformed required content is level 2.
-Dialogue adjacency derives `alternative` without changing text or order. Vocabulary may have no
-source occurrence: omission is normal, while a supplied invalid hint is dropped at level 1.
-Valid hints identify an exact occurrence in either essentials or dialogue within the same group.
-Japanese essentials receive the same reading/romanization treatment as dialogue. Missing Phrase
-reading enrichment can degrade at level 1; required dictionary-form Word readings still validate
-against the shared Card contract. Operational validity does not certify pronunciation accuracy.
-
-The approved 2026-10-01 pilot used **38 provider calls**, one observation per case: five unchanged
-translation controls, five score-free translations (ja/zh/es/cs/uk), and five complete pipelines.
-All provider calls succeeded; all ten translation-only samples completed. Four of five complete
-pipelines produced chapters. Japanese restaurant failed at level 2 because a translated dictionary
-entry such as `原材料` omitted its required Han reading; no retry or fallback hid that result.
-
-| Complete pipeline | Topics | English stage | Translation stage | Pipeline wall | Runtime level |
-|---|---:|---:|---:|---:|---:|
-| Japanese restaurant | 4 | 6.14s | 5.30s | 11.47s to rejection | 2 |
-| Spanish salsa | 4 | 6.65s | 2.92s | 9.59s | 1 |
-| Chinese pharmacy | 4 | 6.64s | 5.84s | 12.52s | 1 |
-| Czech restaurant | 1 | 2.61s | 2.52s | 5.16s | 0 |
-| Ukrainian restaurant | 1 | 7.58s | 3.05s | 10.66s | 1 |
-
-Stage timings are recorded dispatch-to-last-completion spans, not summed concurrent call times.
-Pipeline wall includes generation, translation and assembly; it excludes the subsequent local
-evaluation pass and does not measure the application's final-Continue-to-render wait.
-These are individual observations, not latency percentiles or a reliability estimate.
-
-Before/after translation used the same six dialogue lines and first six words in each language;
-the candidate additionally translated seven independent essentials and four more words.
-Total input tokens decreased from 10,864 to 9,621; output tokens increased from 2,682 to 3,546.
-Individual translation wall times increased by 0.19–1.02s. The output cap also changed from 4,000
-to 6,000, so these measurements do not isolate the effect of deleting ranking instructions.
-Reported pilot cost was $0.06932215, with no unknown charges in these 38 calls.
-
-**Do not promote this candidate yet.** Direct assistant review found material defects despite
-structurally complete output: Japanese `聞きいて`, Mandarin `一[yè]` and `吃[yào]`, Czech
-`Můžete zkontrolovat složiti?`, and Spanish `Gracias por the baile.`. Some valid source spans point
-to semantically unrelated words; exact substring resolution cannot establish lexical correctness.
-The pharmacy example also changes repeated vomiting into wanting to vomit. English-origin
-medication assurances/instructions remain separate unresolved content-review risks, not
-translator-added claims; an illustrative penicillin allergy is not itself a fabricated user fact.
-Existing controls also have weaknesses, so these observations do not establish a general model
-ranking. Preserve all before/after findings rather than selecting only favorable examples.
-
-Translation fidelity, readings, dictionary senses/evidence and the cited English-content risks
-need a separately approved regression cycle before atomic API/UI migration. Structural success
-is not a language-quality verdict. All 24 topics were reviewed, including four Japanese raw-only
-siblings that never formed a delivered chapter. Ordinal grades use the existing rubric; 356
-pointer/quote comparisons matched the saved evidence. Direct assistant review is not native-
-speaker review or a successful model-assessor run. There was no paid assessment retry,
-production switch, deployment or 429 fallback in this pilot.
-
-Romp owners: `E-1790864915610-705ce803ae36` (before),
-`E-1790864916107-f32e66a93d1b` (score-free translation),
-`E-1790864946301-1b4e01420b33` (complete pipeline). Exact requests, raw outputs, normalized chapters,
-latency/token/cost measurements and direct-review artifacts are retained in their runs and the
-translation owner's `bilingual-study/` directory. The source suites are
-`phrasebook-bilingual-{before,topic,pipeline}`. Local verification passed 31 targeted tests and an
-isolated run through the actual recorder covering all three modes, four-call concurrency,
-native-schema separation, complete assembly and non-fatal list clamping.
-
-### Focused translation regression: production-derived prompt
-
-The subsequent approved cycle kept DeepSeek → Gemini as the intended architecture and tested
-translation changes only. `phrasebook-translation-regression` reuses the exact 19 English inputs
-from the score-free pilot: five language fixtures and fourteen generated topics. Existing actual
-translation outputs are the baseline, including siblings of the rejected Japanese chapter.
-One new Gemini observation per input was authorized, followed by five complete pipelines only
-if the translation review passed. No baseline regeneration, automatic retries or paid judge calls.
-
-The candidate restores production translation wording where compatible, adds independent
-essentials, removes ranking, extends the unchanged reading rules to essentials, and clarifies
-fidelity, dictionary forms and optional lexical evidence. It is frozen only in experiment
-`E-1790872484108-b9d164cd6d1a`, at `prompts/translation-minimal.txt`. Production prompts,
-reading-rule files, shared validators and the public v2 contract were not changed.
-
-All 19 new topic translations completed: ten runtime level 0, nine level 1, no level 2.
-Actual recorded request comparisons verified identical English input and identical non-prompt
-controls, including model, native schema, token cap and routing. Both sets were served by Google
-through OpenRouter. The previously fatal dictionary-reading case now assembles as a single
-translated topic; this is not evidence of a new successful four-topic end-to-end pipeline.
-
-The review gate is **complete output, preserved meaning and no unresolved material translation,
-pronunciation, dictionary or evidence defect**. Minor weaknesses and safe optional-enrichment
-recovery are allowed. Existing ordinal grades are descriptive, not an automatic all-dimensions
-≥3 requirement. Faithfully translated awkward English and English-origin clinical/example risks
-remain separate content-generation findings, not translation failures.
-
-Direct assistant review passed nine topics and flagged ten:
-
-- Fixed: the Japanese dictionary-reading omission, Czech ingredient-check wording, Spanish
-  English leakage and widespread accent loss, plus several wrong dictionary forms/source hints.
-- Remaining/new: Japanese `吃べられません` and malformed `食られます`; Chinese `丰蜜`
-  instead of `蜂蜜`, repeated vomiting rendered as wanting to vomit, and `反应` with `yīng`
-  rather than `yìng`; dictionary mismatches such as dose → `服用` and daily → `天`.
-- Some real spans still identify unrelated lexical items, including Ukrainian `містити`
-  (“contain”) linked to `Чи` (a question particle). A wrong retained hint is distinct from
-  harmless omission of optional evidence.
-
-The gate therefore failed: **none of the conditional 28 pipeline calls were dispatched**.
-No additional tuning loop, fallback, deployment or API/UI migration followed. All 19 outputs
-were reviewed; 176 exact pointer/quote comparisons matched the saved evidence. Review remains
-assistant-authored, not native-speaker certification or a successful provider-assessor run.
-
-| Paired translation measurement | Saved baseline | Revised prompt |
-|---|---:|---:|
-| Input tokens, 19 calls | 38,113 | 45,751 |
-| Output tokens, 19 calls | 17,897 | 19,265 |
-| Reported cost | $0.0561764 historical | $0.0618878 new |
-| Median provider-request duration | 3.60s | 3.35s |
-
-New request durations ranged from 2.18s to 6.21s. These are one-off, noncontemporaneous observations;
-the original pipeline translations overlapped while the regression calls were sequential. They
-do not establish a latency improvement, reliability rate or user-visible wait. Lifetime
-conservative accounting reached $2.2221653481 under the unchanged $5 cap/$0.50 margin.
-
-The owner's `translation-regression/` directory retains baseline associations, prompt/dependency
-provenance, exact request comparisons, per-case measurements, attributed reviews and the gate
-decision. Observations and review/reproduction notes are preserved through Romp under
-`evals/failures/phrasebook-translation-regression/`. The next step requires a separately scoped
-decision about the remaining defects; this cycle does not reopen model selection or waive
-outstanding production-cutover gates.
-
-### Dialogue-first translation output-order trial
-
-The user approved testing dialogue → essentials → vocabulary. Experiment
-`E-1790877269770-080d4864e82d` (`phrasebook-translation-dialogue-first`) reused the
-same 19 English inputs and the preceding regression's saved outputs. Each topic
-still makes **one translation request containing all three sections**. Only the
-prompt's JSON example and native schema property/required-list order changed;
-input serialization, other instructions, reading rules, schema constraints,
-shared dependencies, model, routing, token cap, timeout and retries stayed fixed.
-Japanese romanization field order also stayed fixed. Production was not changed.
-
-All 19 actual requests matched that treatment, and all 19 raw responses emitted
-`lines`, `essentials`, `vocab` first. All completed: ten runtime level 0, nine
-level 1, no level 2. Direct assistant review passed eight topics and flagged
-eleven. Relative to the saved reviews, five previously flagged topics passed,
-six previously passing topics gained material defects, and five stayed flagged.
-These are review classifications, not measured reliability rates.
-
-The four previously flagged essential-phrase defects were repaired: Chinese
-`丰蜜`, Japanese `食られます` and `吃べられません`, and repeated vomiting
-rendered merely as wanting to vomit. Several false Spanish/Ukrainian evidence
-links disappeared. New defects included Japanese ruby/spelling errors, a
-six-line romanization alignment failure (a negative dashi answer received an
-affirmative pronunciation), Chinese `超过` read as `chāo chāo`, Czech omission
-of named dashi, and new false vocabulary evidence. Dose/daily meanings and
-`反应` pronounced `fǎn yīng` remained defective. One pre-existing Czech
-noun/adjective evidence issue was reclassified as material; it is explicitly
-not an introduced regression, and that topic independently lost dashi.
-
-| Paired translation measurement | Saved essentials-first | Dialogue-first |
-|---|---:|---:|
-| Input tokens, 19 calls | 45,751 | 45,751 |
-| Output tokens, 19 calls | 19,265 | 19,691 |
-| Reported cost | $0.0618878 historical | $0.0629528 new |
-| Median provider-request duration | 3.35s | 4.03s |
-| Maximum provider-request duration | 6.21s | 5.96s |
-
-All calls reported Google through OpenRouter and ended normally. One observation
-per input with noncontemporaneous controls cannot isolate stochastic, routing or
-time effects; neither a quality nor latency improvement is established. The
-material-quality gate still fails, so this trial does not justify promotion or
-reopen the conditional pipeline/application cutover. No new English generation,
-paid judging, automatic repair or deployment occurred.
-
-An offline execution of the actual adapter checked all 19 saved responses before
-paid dispatch. All 300 review pointer/quote citations matched the paired evidence.
-The owner's `translation-order/` directory retains hashes, exact request checks, per-case metrics,
-paired direct-review inputs/findings, disclosed disagreements and reproduction notes; original
-runs and attributed reviews remain in the owner's canonical `runs/` and `reviews/` directories.
-Romp preserves all 19 underlying observations and their reviewed snapshots under
-`evals/failures/phrasebook-translation-dialogue-first/`; repeated captures are not
-additional observations. Lifetime conservative accounting is $2.2851181481 under
-the unchanged $5 cap/$0.50 margin. Review remains assistant-authored, not native
-certification; no formal human acceptance seal is claimed.
+Current production contracts are specified below. New evaluation separates English generation,
+translation and optional detection/repair under shared learner contexts; see
+[`evals/README.md`](../evals/README.md). Production prompts remain unchanged by this reset.
 
 
 ## Shared conventions

@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "provenance": "Distilled from assistant-authored repair-r1 development fixtures (2026-10). These are examples, not raw model logs, independent holdout data or native-speaker certification. Original experiment payloads are intentionally deleted under the user's retention policy.",
+  "examples": [
+    {
+      "id": "paired-object-usage",
+      "sourceCase": "pu-zh-01",
+      "context": "Buying one pair of shoes",
+      "example": {"text": "双", "translation": "pair (classifier for paired objects)", "partOfSpeech": "noun"},
+      "lesson": "The English noun 'pair' does not determine the Chinese category. Teach the numeral-classifier-noun construction, e.g. 一双鞋. Counter/classifier labels remain evaluation-only, not production enum values.",
+      "status": "assistant-proposed; teaching policy requires rubric/sample approval"
+    },
+    {
+      "id": "inflected-occurrence-supports-lemma",
+      "sourceCase": "pu-zh-02",
+      "context": "Telling a friend you bought tea",
+      "example": {"dictionaryWord": "买", "sourceText": "我买了茶。", "selectedSpan": [1, 3], "selectedText": "买了"},
+      "lesson": "A valid encountered inflection/aspect-bearing occurrence need not exactly equal the dictionary headword. Correcting the headword is not grounds for deleting this source.",
+      "status": "assistant-reviewed development example"
+    },
+    {
+      "id": "wrong-selected-occurrence",
+      "sourceCase": "pu-zh-04",
+      "context": "Buying one pair of shoes",
+      "example": {"dictionaryWord": "双", "sourceText": "我想买一双鞋。", "invalidSpan": [5, 6], "invalidSelection": "鞋", "validSpan": [4, 5], "validSelection": "双"},
+      "lesson": "Check the exact selected occurrence. Remove the incompatible link without changing the source snapshot or discarding the valid link. Retaining every source is not a correct general policy.",
+      "status": "assistant-reviewed development example"
+    },
+    {
+      "id": "vessel-versus-cupful",
+      "sourceCase": "pu-zh-09",
+      "context": "Ordering a cup of tea",
+      "example": {"vessel": {"text": "杯", "partOfSpeech": "noun", "senseKey": "drinking-cup", "sourceText": "这个杯是我的。"}, "cupful": {"text": "杯", "senseKey": "cupful-classifier", "sourceText": "我想要一杯茶。"}},
+      "lesson": "Keep vessel and cupful meanings distinct. A more common alternative such as 杯子 is not by itself evidence that an existing occurrence is invalid.",
+      "status": "qualified register/reference uncertainty; not a definitive linguistic pass/fail oracle"
+    },
+    {
+      "id": "underspecified-english-intent",
+      "sourceCase": "pu-zh-16",
+      "context": "A checkout exchange plus an independent request for 'light'",
+      "example": {"english": "light", "candidate": "轻", "senseKey": "low-weight"},
+      "lesson": "The existing translation cannot prove intended meaning. Unrelated dialogue does not distinguish low weight from illumination; preserve uncertainty instead of inventing intent.",
+      "status": "unresolved intent; excluded from definitive correctness scoring"
+    },
+    {
+      "id": "reading-and-response-contract",
+      "sourceCase": "preservation-v2 core diagnostic",
+      "context": "Any Japanese/Chinese example or repair response",
+      "example": {"punctuationReading": ["。", null], "invalidPunctuationReading": ["。", ""]},
+      "lesson": "Structural reading validity is separate from pronunciation accuracy. An extra forbidden top-level title can invalidate a repair even when punctuation is correct; atomic rejection protects originals but is not a successful model repair.",
+      "status": "contract lesson; no raw response retained"
+    }
+  ]
+}

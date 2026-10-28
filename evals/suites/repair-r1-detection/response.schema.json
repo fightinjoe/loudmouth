@@ -1,0 +1,107 @@
+{
+  "type": "object",
+  "properties": {
+    "complete": {
+      "type": "boolean"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "field": {
+            "enum": [
+              "card",
+              "text",
+              "translation",
+              "reading",
+              "romanization",
+              "partOfSpeech",
+              "senseKey",
+              "sources",
+              "english"
+            ]
+          },
+          "category": {
+            "enum": [
+              "meaning",
+              "spelling-grammar",
+              "reading-romanization",
+              "headword-pos",
+              "evidence",
+              "reading-accuracy",
+              "reading-coverage",
+              "evidence-adequacy",
+              "dictionary-sense",
+              "safety-quantifier",
+              "medical-safety",
+              "source-ambiguity",
+              "dialogue-flow"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "minor",
+              "material",
+              "critical"
+            ]
+          },
+          "origin": {
+            "enum": [
+              "english",
+              "translation"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "handle",
+          "field",
+          "category",
+          "severity",
+          "origin",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "handle",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "complete",
+    "findings",
+    "unresolved"
+  ],
+  "additionalProperties": false
+}
