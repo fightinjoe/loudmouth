@@ -114,3 +114,21 @@ separate attribution/severity diagnostics and observed replay results. The retai
 **49 tests**. Original `results.json`, findings, approvals and execution-time hashes remain historical
 and unchanged; no new provider calls or evidence of improved model behavior were produced.
 
+## Prepared detection-only recalibration
+
+[`c-recalibration-request.json`](c-recalibration-request.json) freezes **12 C detection calls / $0.23
+maximum**, with native conservative reservations of **$0.227289**. Same five contexts: five controls,
+six authored defects and one unscored keep/hold probe. Gemini/provider/settings/schema and inputs
+match the saved detector baseline; revised detection instructions and proposed rubric 1.2 are explicit.
+
+Fresh native plan: `d8be6a10366201c5cb347dd2b8c87deffc0ac9ed9ca9cd9547d6987d38f123fe`.
+Public provider metadata was rechecked; saved-plan reload and baseline-request compatibility checks
+passed. Native status records **zero runs and no human brief approval**. The user's general approval
+to proceed is not recorded as approval of this previously unpresented hash or spending cap.
+
+No new A/B, repair or judge calls, retries, fallback or deployment. Existing known-location replies
+may be reused only for counterfactual offline composition; the historical hold-probe repair failure
+is not a newly generated detector failure. Both old and new detections must be assessed under the
+same proposed rubric without overwriting the historical calibration results. Explicit approval of
+this exact request is required before execution; caps are reservations, not a provider billing guarantee.
+
