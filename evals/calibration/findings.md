@@ -1,9 +1,33 @@
 # Diagnostic calibration findings — 2026-10-28
 
-**29/29 authorized attempts completed; $0.034841798 reported spend against the $0.40 cap.**
-No provider/transport errors, uncertain starts, unknown charges, reservation overruns, retries,
-fallbacks or paid judges were observed. No production code, prompts, model defaults or deployment changed.
-This completes the diagnostic sample, **not** linguistic acceptance or permission to compare candidates.
+**RECAP:** This was the first paid diagnostic exercise of the already-built evaluation pipelines:
+5 new English-generation calls (A), 5 translations of fixed authored English (B), and C's 12 detection
+calls plus 7 separate repair calls. A and B were independent, not an end-to-end A→B run. C used saved
+bilingual examples with deliberately inserted errors; repair calls were told where to look.
+
+**GOAL:** Check whether the evaluation method distinguishes usable content from merely valid data,
+and measures error detection separately from correction, before comparing models. For C, finding an
+inserted error is a success; changing a correct or unestablished example without justification is not.
+
+**RESULT:** ⚠️ The sample exposed English/translation issues and a C review-coverage blocker.
+✅ C recognized all six inserted errors; ❌ it declared review complete for **0/6** defective examples
+(target **6/6**, so higher is better), preventing all detector-gated corrections. Separate repair
+responses passed the six supplied defect checks but failed one leave-unchanged probe. This is not
+linguistic acceptance or permission to compare candidates.
+
+## Run logistics
+
+| Item | Observed |
+|---|---|
+| Authorized model calls | ✅ 29/29 completed |
+| Reported spend / approved maximum | $0.034841798 / $0.40 |
+| Execution failures | — None; no provider errors, uncertain starts, unknown charges or overruns |
+| Retries, fallback, paid judges or production changes | — None |
+
+This historical report's presentation was clarified later; measurements, observations and approvals
+were not changed. See the [C response key](../README.md#c-review-response-plain-language-key) for
+`complete`, findings, item IDs (“handles”) and unresolved items. ✅/❌ mark the named check only,
+not overall linguistic quality. The [later detection-only run](c-recalibration-findings.md) is separate.
 
 Approval provenance: the user's actual reply **“approved”** bound the preceding 29-attempt/$0.40
 package. [`execution-approval.json`](execution-approval.json) records it separately; the original
@@ -49,7 +73,7 @@ expectations were not re-pinned. The approval package retains the original execu
 
 ## A — English usefulness and technical validity
 
-**4/5 production-parser passes.** Shoes, allergy, tea and lost-bag essentials preserve the supplied
+**✅ 4/5 production-parser passes; ❌ 1 rejection.** Shoes, allergy, tea and lost-bag essentials preserve the supplied
 core facts; peer review found no confirmed material essential-content defect in those four observations.
 Vocabulary is relevant and reusable. This is not certification of every wording choice.
 
@@ -71,7 +95,7 @@ Vocabulary is relevant and reusable. This is not certification of every wording 
 
 ## B — translation, pronunciation and lexical evidence
 
-**5/5 production-parser passes; linguistic quality is not implied.** B translated fixed authored
+**✅ 5/5 production-parser passes; linguistic quality is not implied.** B translated fixed authored
 English, not these live A outputs. No paid A→B study was performed.
 
 | Context and path | Exact observed discrepancy | Impact and proposed action |
@@ -103,18 +127,19 @@ confirmed defects or automatic failures. The disputed `保管` wording does not 
 ## C — detection is not the same as a usable correction
 
 All **12 detection envelopes validate**. The five controls return complete, empty findings; the
-unscored keep/hold probe also returns a defensible clean judgment. All **six authored defects are
-recognized in finding reasons**, but each returns `complete:false`, with no unresolved handles.
-The contract defines false as incomplete review coverage. Offline composition therefore reports
-`detection-incomplete`, retains the original topic and applies **zero** proposed field edits in every
-defect case. Why the model returned false is unknown; interpreting it as “not clean” is only a hypothesis.
+unscored keep/hold probe also returns a defensible clean judgment. ✅ All **six deliberately inserted
+errors are recognized in the detector's reasons**. ❌ Each response nevertheless says `complete:false`
+(“I did not finish reviewing the whole topic”), with no item-specific uncertainty entries.
+The correction step therefore retains each original defective topic and applies **zero** field edits.
+An empty `unresolved` list does not override the incomplete-review flag. Why the model returned false
+is unknown; interpreting it as “not clean” is only a hypothesis.
 Keep this fail-closed boundary; do not silently reinterpret the flag to manufacture correction success.
 
 Strict authored `handle + field + category` matching yields **2 matches, 4 misses and 5 unmatched
 predicted locations**. These are not four unnoticed linguistic defects plus five independent false
 alarms: four unmatched predictions concern the recognized defects but use different attribution.
 
-| Case | Actual vs authored attribution | Meaning/impact assessment |
+| Case | Actual detector response vs expected item/field/category | Meaning/impact assessment |
 |---|---|---|
 | Chinese size | `e:0/translation/meaning` vs `e:0/text/meaning` | Correctly notices `三十八号` (38) against “I usually wear European size 39.” Wrong field points at correct immutable English. |
 | Chinese reading | `e:2/reading/reading-accuracy` vs `e:2/reading/reading-romanization` | Correctly notices `xiǎo` vs `dà` for `有大一码的吗？` / “Do you have one size larger?” Same recognized spoken-meaning defect, different allowed category. Material impact; critical label is excessive here. |

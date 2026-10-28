@@ -1,62 +1,89 @@
-# C detection recalibration — 2026-10-28
+# C detection: revised review instructions vs saved baseline — 2026-10-28
 
-**12/12 approved calls completed for $0.0132374 reported spend against the $0.23 cap.**
-No provider/transport errors, uncertain starts, unknown charges, reservation overruns, retries,
-fallbacks or paid judges were observed. No new A/B or repair calls, production changes or deployment.
+**RECAP:** The evaluation pipeline already existed. This was a new live run of **only C's detection
+stage**, not pipeline construction or a full generation→translation→repair run. We sent the same
+12 saved bilingual examples to the model with revised review instructions, then compared its replies
+with the earlier saved detector replies. Both sets were assessed under the same proposed rubric 1.2.
 
-The actual user reply **“approved”** followed presentation of the exact 12-call/$0.23 plan.
-[`c-recalibration-approval.json`](c-recalibration-approval.json) binds that approval to the immutable
-[proposal](c-recalibration-request.json), package hash and native prepared-plan hash. Provider metadata
-was rechecked before dispatch with no observed drift. The approval is consumed, not reusable permission.
+**GOAL:** Check whether the revised instructions help the detector identify deliberately inserted
+errors, identify the correct item/field, grade their impact, and declare that it reviewed the whole
+topic—without flagging correct examples. The sample contains **6 deliberately defective examples,
+5 correct examples and 1 unscored wording question**. A defect here means an inserted translation or
+pronunciation error, such as saying size 38 when the English says 39; it is not a newly discovered
+software bug. “Recalibration” means retesting the review instructions, not training the model.
 
-## Decision
+**RESULT:** ✅ The detector identified all six inserted errors, according to two independent assistant
+checks of its actual replies. ❌ It declared the whole-topic review finished in only **2/6** defective
+examples, so correction remained blocked for the other four. **2/6 is better than the baseline's 0/6;
+the target is 6/6.** Recognizing an error is positive, but is not the same as completing review or fixing it.
 
-**Attribution and severity agreement improved on this sample; coverage remains a blocker.**
-Four defect responses still declare `complete:false`, including the severe-allergy denial. Preserve
-the fail-closed correction gate. Do not force coverage true, credit withheld corrections, promote a
-model or infer general reliability from one observation per exposed development case.
+## Run logistics
 
-[Concise measurements and per-case outcomes](c-recalibration-results.json) retain the native run refs.
-Original baseline findings, results and approvals remain unchanged. Both detector sets were reassessed
-under the same proposed rubric **1.2**, not compared using different grading rules.
+| Item | Observed |
+|---|---|
+| Live model calls | ✅ 12/12 completed; detection only |
+| Reported spend / approved maximum | $0.0132374 / $0.23 |
+| Execution failures | — None; no provider errors, uncertain starts, unknown charges or overruns |
+| Additional A/B, repair or paid-judge calls | — None; no retries, fallback or production changes |
 
-## Observed contrast
+The actual user reply “approved” authorized the exact [proposal](c-recalibration-request.json);
+[approval provenance](c-recalibration-approval.json) records its package and native-plan hashes.
+Provider metadata was rechecked with no observed drift. This approval is consumed.
+[Measurements and per-case outcomes](c-recalibration-results.json) retain the native run references.
+Historical measurements, responses and approvals are unchanged; this report's presentation was clarified.
 
-| Measure | Saved baseline | Revised detection instructions |
-|---|---:|---:|
-| Valid detection envelopes | 12/12 | 12/12 |
-| Coverage-complete authored-defect reviews | 0/6 | **2/6** |
-| Exact authored handle/field/category matches | 2/6 | **5/6** |
-| Unmatched expectations / predictions | 4 / 5 | **1 / 1** |
-| Severity disagreements with proposed authored labels | 4 | **0** |
-| Correct controls with findings | 0/5 | 0/5 |
-| Keep/hold uncertainty probe | Clean, unchanged | Clean, unchanged |
-| Counterfactual repaired defect topics | 0/6 | **2/6** |
-| Counterfactual applied field edits | 0 | **3** |
-| Historical source records retained | 56/56 | 56/56 |
+## Comparison: what got better?
 
-The remaining unmatched expectation and prediction concern the **same correctly recognized Japanese
-allergy denial**, categorized `meaning` rather than the authored `medical-safety`. This is category
-granularity, not an unnoticed safety contradiction plus an independent false alarm. All six new
-findings point to the defective target field; none repeats the baseline's spurious Ukrainian dialogue
-allegation. Semantic recognition remains an independent review judgment, not automatic metric credit.
+✅ = the named check passed; ❌ = it failed; ⚠️ = partial/limited result. These are not whole-topic
+quality seals. **Expected** means the proposed test target; **observed** means what the detector returned.
+
+| Check | Desired result | Earlier replies | New replies |
+|---|---|---:|---:|
+| Identifies inserted errors, independently checked by assistants | Higher: 6/6 | 6/6 | ✅ 6/6 |
+| Says the entire topic was reviewed, even when it contains an error | Higher: 6/6 | 0/6 | ⚠️ 2/6 |
+| Reports the expected item, field and error category together | Higher: 6/6 | 2/6 | ⚠️ 5/6 |
+| Severity labels disagree with proposed impact labels | Lower: 0 | 4 | ✅ 0 |
+| Flags an error in a correct example | Lower: 0/5 | 0/5 | ✅ 0/5 |
+
+The remaining category mismatch concerns the **same correctly recognized Japanese allergy denial**:
+the detector returned `meaning`, not the expected, more specific `medical-safety`. This is not an
+unnoticed allergy error plus a separate false alarm. The new replies also avoid the baseline's extra
+allegation against correct Ukrainian dialogue. Assistant judgments are not native-language or medical certification.
+
+## Reading the C review response
+
+This is a **local evaluation contract**, not the production `/lookup` response schema.
+
+| Field or term | Plain-language meaning |
+|---|---|
+| `complete: true` | “I examined the entire topic.” The detector may still find errors or record uncertainty. It does **not** mean “everything is correct.” |
+| `complete: false` | “I did not finish reviewing the entire topic.” The pipeline therefore applies **no corrections to that topic**. A valid reply can still say false; that is a review-coverage blocker, not a failed network call. |
+| `findings` | The detector's reported problems: item ID, affected field, error category, severity, origin and reason. These are observed model allegations, not the expected answers. |
+| `handle` | A stable item ID: `e:0` is the first essential phrase, `d:2` the third dialogue line, `v:0` the first vocabulary item. Numbering starts at zero. |
+| Detector `unresolved` | Items it cannot confidently judge, each with an item ID and reason. Leave those items unchanged. An empty list does **not** override `complete:false`. |
+| Pipeline `unresolvedHandles` | Items the correction step could not safely resolve. This is a different list: an incomplete review blocks **all** items, even when the detector listed no specific uncertainty. |
+
+“Counterfactual correction” below means replaying the local correction gate with **previously saved
+repair replies** to see which changes it would accept. No new repair-model call or production fix occurred.
 
 ## Concrete findings and learner impact
 
 All item paths below refer to the corresponding complete topic's `items` array. English remains fixed.
+The error/desired action columns describe the **test input and target**; the other columns describe
+the **actual response and observed local replay**, not what we hoped the model would return.
 
-| Context / path | Exact English and target contrast | Revised outcome and disposition |
-|---|---|---|
-| Chinese size, `/items/0/text` and `/items/0/reading` | “I usually wear European size 39.” vs `我平时穿欧码三十八号。` / `sānshíbā` (38) | Correct `e:0/text/meaning/material`; complete coverage. Saved patch changes to `三十九号` / `sānshíjiǔ`; **2 counterfactual field edits**. Preserve correct dialogue counterparts. |
-| Chinese reading, `/items/2/reading/0/1` | “Do you have one size larger?” and written `有大一码的吗？` vs `yǒu xiǎo yī mǎ de ma` | Correct `e:2/reading/reading-romanization/material`; complete coverage. Saved patch changes only `xiǎo`→`dà`; **1 counterfactual edit**. Material spoken-meaning reversal, not unrenderable data or automatic critical severity. |
-| Japanese allergy, `/items/0/text` | “I have a severe peanut allergy.” vs `ピーナッツアレルギーはありません。` (“no peanut allergy”) | Correct target field, critical risk and reason; category `meaning`, not authored `medical-safety`. **Incomplete coverage: correction withheld**, including the saved aligned reading/Latin-text patch. No claim of safety from recognition alone. |
-| Czech tea, `/items/0/text` | “A black tea without sugar, please.” vs `Černý čaj s cukrem, prosím.` (“with sugar”) | Correct exact attribution and material severity; **incomplete coverage**, saved correction withheld. A changed preference is material here; no supplied medical condition warrants critical severity. |
-| Ukrainian route, `/items/1/text` | “The train from Lviv to Kyiv arrived today at 14:30.” vs `Поїзд із Києва до Львова прибув сьогодні о 14:30.` (Kyiv→Lviv) | Correct target field and material severity; **incomplete coverage**, saved correction withheld. Correct `d:2`, `У поїзді зі Львова до Києва. Він прибув сьогодні о 14:30.`, is no longer spuriously flagged. |
-| Spanish pottery, `/items/2/text` | “I would like to make a small bowl by hand, without a wheel.” vs `Quisiera hacer un cuenco pequeño con torno.` (“with a wheel”) | Correct exact attribution and material severity; **incomplete coverage**, saved correction withheld. Correct hand-building dialogue remains outside repair scope. |
+| Test input: deliberately inserted error | Expected detector behavior / desired correction | Actual new detector response | Local replay with saved repair replies |
+|---|---|---|---|
+| Chinese size, `/items/0/text` and `/items/0/reading`: “I usually wear European size 39.” vs `我平时穿欧码三十八号。` / `sānshíbā` (38) | Flag the wrong size; restore 39 and aligned pronunciation. | ✅ Finds `e:0/text/meaning`, material; says review is complete. | ✅ 2 field edits: `三十九号` / `sānshíjiǔ`. Correct dialogue preserved. |
+| Chinese reading, `/items/2/reading/0/1`: “Do you have one size larger?” and written `有大一码的吗？` vs `yǒu xiǎo yī mǎ de ma` (“small”) | Flag pronunciation, not correct written text; pronounce 大 as `dà`. | ✅ Finds `e:2/reading/reading-romanization`, material; says review is complete. | ✅ 1 reading edit: `xiǎo`→`dà`; written text unchanged. |
+| Japanese allergy, `/items/0/text`: “I have a severe peanut allergy.” vs `ピーナッツアレルギーはありません。` (“no peanut allergy”) | Flag the dangerous denial as critical/medical-safety; restore the affirmative severe-allergy statement with aligned pronunciation. | ✅ Recognizes the critical denial and correct field. ⚠️ Category is `meaning`. ❌ Says review is incomplete. | ❌ Correction blocked; original erroneous topic retained. |
+| Czech tea, `/items/0/text`: “A black tea without sugar, please.” vs `Černý čaj s cukrem, prosím.` (“with sugar”) | Flag the reversed preference as material; restore `bez cukru` (“without sugar”). | ✅ Correct finding and material severity. ❌ Says review is incomplete. | ❌ Correction blocked; original erroneous topic retained. |
+| Ukrainian route, `/items/1/text`: “The train from Lviv to Kyiv arrived today at 14:30.” vs `Поїзд із Києва до Львова прибув сьогодні о 14:30.` (Kyiv→Lviv) | Flag the reversed route as material; restore Lviv→Kyiv and preserve correct `d:2` dialogue. | ✅ Correct finding and material severity; no allegation against correct dialogue. ❌ Says review is incomplete. | ❌ Correction blocked; original erroneous topic retained. |
+| Spanish pottery, `/items/2/text`: “I would like to make a small bowl by hand, without a wheel.” vs `Quisiera hacer un cuenco pequeño con torno.` (“with a wheel”) | Flag the wrong pottery method as material; restore `a mano, sin torno`. | ✅ Correct finding and material severity. ❌ Says review is incomplete. | ❌ Correction blocked; original erroneous topic retained. |
 
-The Japanese, Czech, Ukrainian and Spanish responses all emit an accurate finding with
-`complete:false` and no unresolved handles. This declares incomplete review coverage under the
-unchanged contract; it does not establish why the model chose false or that the defect was unnoticed.
+The four incomplete responses all recognize the inserted error and list no specifically uncertain
+items. The whole-topic flag still blocks correction. Why the detector declared review incomplete is
+unknown; the pipeline is behaving as designed by retaining the original rather than bypassing that flag.
 
 Five correct controls return complete empty findings. The uncertainty probe “Can you keep these for
 me?” / `可以帮我保管这双鞋吗？` also returns a defensible clean judgment. Whether that wording suitably

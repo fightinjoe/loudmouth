@@ -95,6 +95,13 @@ If blind review is impossible, disclose it. Record the actual version from `eval
 
 ## Evidence and compact output
 
+Start findings and chat handoffs with **RECAP → GOAL → RESULT** using the
+[reporting convention](../../../evals/README.md#findings-and-chat-update-format). Identify the stage,
+live versus saved/mock inputs, baseline and deliberate test errors before presenting judgments.
+Explain whether higher/lower is better and the target; use ✅/❌ only for the named check, ⚠️ for
+partial/uncertain results. Separate expected behavior, actual response, review judgment and correction.
+Keep calls/spend/execution failures in a compact table; define C response terms using the linked key.
+
 Every finding contains the actual artifact path, exact quote, user impact, severity, origin,
 confidence and disposition. Include both English and target text for a meaning claim. Resolve concrete
 array indexes and, where available, include the stable handle; `items[e:0]` is descriptive notation,

@@ -111,8 +111,8 @@ detector-gated correction; known-location success is not end-to-end success. Pro
 The current evaluator uses proposed rubric **1.2** and clarified evaluation-only C detection guidance.
 See [C reconciliation](../README.md#c-reconciliation--proposed-rubric-12) for the JSON-field cutover,
 separate attribution/severity diagnostics and observed replay results. That offline checkpoint passed
-**49 tests**. Original `results.json`, findings, approvals and execution-time hashes remain historical
-and unchanged; the offline work alone produced no new provider calls or generated-behavior evidence.
+**49 tests**. Historical measurements, `results.json`, approvals and execution-time hashes remain
+unchanged; findings presentation was later clarified. The offline work alone produced no new provider calls.
 
 ## Completed detection-only recalibration
 

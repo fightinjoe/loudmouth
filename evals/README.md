@@ -52,6 +52,48 @@ failed, that A/B cannot assess the text, or that a runtime follow-up question is
 Every review example should name its pipeline, show the English and target text, state the possible
 learner impact, and say whether to change, leave unchanged, or request further review.
 
+## Findings and chat-update format
+
+Start assistant-authored findings and progress/result handoffs with **RECAP**, then **GOAL**, before
+results or spending. Do not rely on a recap shown at the bottom of the conversation.
+
+- **RECAP:** Name A, B or C and say whether this is pipeline implementation, an offline/mock check,
+  a replay of saved replies, or a new live model run. Identify the input, the comparison baseline,
+  what changed and which stages did **not** run.
+- **GOAL:** State the human task and expected behavior. Say whether errors were deliberately inserted.
+  For comparisons, explain what is being retested; do not assume “recalibration” explains it.
+- **RESULT:** Separate expected behavior, actual model responses, independent review judgments and
+  actually applied corrections. Give each metric a desired result/direction and denominator.
+  “2/6 is better than 0/6, but the target is 6/6” is clearer than an unexplained improvement.
+- Use **✅ named check passed**, **❌ named check failed**, **⚠️ partial/uncertain**, and **— none or
+  not measured, explicitly labeled**. A detected inserted error is a detection success; it does not
+  make the input correct or prove correction. An improvement below the target is not a full pass.
+- Keep logistics in a short table: calls, reported spend/cap and execution failures (— if none;
+  otherwise list them). Keep quality problems and blocked corrections separate from execution failures.
+  Put provenance and detailed latency/token accounting after the result, not ahead of the context.
+- Label columns **Expected behavior**, **Actual model response** and **Applied/replayed correction**,
+  not an ambiguous “outcome and disposition.” Define schema terms on first use or link the key below.
+
+### C review response: plain-language key
+
+This is the **local evaluation detector's response**, not the production `/lookup` API schema.
+The detector reports problems; a separate correction step decides whether it can safely apply repairs.
+
+| Field or term | Meaning and consequence |
+|---|---|
+| Defect | A content error, such as a wrong size, reversed route or misleading pronunciation. In the six C negative examples these errors were inserted deliberately, not discovered as unexpected software bugs. |
+| `complete` | Whether the detector says it examined the **entire topic**, not whether the content is correct. `true` can accompany errors or uncertainty. `false` blocks every correction in that topic, even if a finding is accurate. |
+| `findings` | Problems the model believes it found. Each gives `handle` (item ID), `field` (affected part), `category` (error type), `severity` (impact), `origin` (English or translation) and `reason`. These are observed allegations, not fixture answer labels. |
+| `handle` | Stable item ID; numbering starts at zero. `e:0` is the first essential phrase, `d:2` the third dialogue line, `v:0` the first vocabulary item. |
+| Detector `unresolved` | Item IDs and reasons where the detector cannot confidently judge whether a correction is needed. Keep those items unchanged; this is not a list of all unfixed errors. `[]` means no specific uncertainty was listed, not “all work is complete.” |
+| Correction-step `unresolvedHandles` | Items not safely resolved by routing/application. This differs from detector uncertainty: when `complete:false`, **all** topic items remain blocked even if detector `unresolved` is empty. |
+
+Thus `{complete:true, findings:[], unresolved:[]}` declares a fully reviewed clean topic.
+`{complete:true, findings:[…], unresolved:[]}` can declare fully reviewed content **with errors**.
+`{complete:false, findings:[…], unresolved:[]}` can recognize an error while still blocking correction.
+These are shape illustrations, not additional observed responses. Completion is a model declaration,
+not independent proof of review quality; parser validity, recognition and correction remain separate checks.
+
 ## Discover fixtures and run offline
 
 Use Bun; this workstation's default Node binary has a known missing dynamic-library dependency.
@@ -166,8 +208,8 @@ an actual repair response. Human recognition/false-alarm judgments remain separa
 Offline replay of the original 12 saved detector responses preserves **2 exact matches, 4 unmatched
 expectations, 5 unmatched predictions, 6 incomplete defect reviews and zero applied edits**. It exposes
 6 same-handle candidates and 4 severity disagreements without rewriting a response or fixture label.
-The historical `calibration/results.json`, findings and approval package remain unchanged. Revised
-reporting is a separate reassessment, not new model evidence. That offline checkpoint alone did not
+The historical `calibration/results.json`, measurements and approval package remain unchanged.
+Revised reporting is a separate reassessment, not new model evidence. That offline checkpoint alone did not
 establish improved generated behavior.
 
 Verification: **49 tests pass**; the actual saved-response CLI and the five-context mock C workflow
