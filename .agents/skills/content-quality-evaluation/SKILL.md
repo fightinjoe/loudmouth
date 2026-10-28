@@ -72,8 +72,9 @@ If blind review is impossible, disclose it. Use rubric version `1.0-proposed` un
   automatically correct. A defensible source deletion can still reduce teaching value; assess it.
 - A proposal's `reason` explains a correction/source removal; it is not `card.notes` or learner-facing
   teaching. Do not demand an invented explanation for a valid unchanged entry.
-- Counter/classifier and new teaching-field repair policies remain experimental; do not silently
-  judge production behavior against a different schema or migrate consumers.
+- The C patch protocol is an evaluation control, not a selected production API or architecture.
+  Counter/classifier and new teaching-field repair policies are not implemented by this control;
+  do not silently change schema expectations or migrate consumers.
 
 ## Evidence and compact output
 

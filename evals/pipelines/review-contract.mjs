@@ -84,14 +84,6 @@ export function validateDetection(value, input) {
   }
   return value;
 }
-export function checkDetection({ parsed, caseInput }) {
-  try {
-    validateDetection(parsed, caseInput);
-    return parsed.complete ? [] : [{ code: 'REVIEW_INCOMPLETE', criterion: 'coverage', severity: 'minor', layer: 'parsed', path: '/complete', message: 'Review abstained or did not cover the entire topic; not a clean result.' }];
-  } catch (error) {
-    return [{ code: 'DETECTION_INVALID', criterion: 'contract', severity: 'major', hard: true, layer: 'parsed', path: '', message: error.message }];
-  }
-}
 
 export function applyLocalizedRepair(value, input) {
   exact(value, ['handle', 'status', 'reason', 'changes', 'dropSourceIndexes'], 'Repair');
@@ -133,7 +125,4 @@ export function applyLocalizedRepair(value, input) {
     assert(after.card.reading.every(([base, annotation]) => !/\p{Script=Han}/u.test(base) || typeof annotation === 'string'), 'Han headword segments require pronunciation');
   }
   return { response: value, items: input.items.map(item => item.handle === value.handle ? after : structuredClone(item)), application: 'applied-in-memory', semanticReview: 'not-assessed' };
-}
-export function normalizeRepair(parsed, input) {
-  return { value: applyLocalizedRepair(parsed, input), changes: [{ path: '', reason: 'Assemble the localized field changes against the frozen input; retain untouched metadata and historical snapshots. Structural application is not linguistic approval.' }] };
 }

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { parsePhrasebookRequest } = require('../../../api/src/phrasebook/parse');
-const { validateCandidate } = require('../../../api/src/schema');
+const { parsePhrasebookRequest } = require('../../api/src/phrasebook/parse');
+const { validateCandidate } = require('../../api/src/schema');
 
 const sections = [
   ['essentials', 'essentials', 'e', 'phrase'],
@@ -43,7 +43,7 @@ export function toReviewInput({ task, conversation, group }) {
   return input;
 }
 
-export function fromReviewInput(input) {
+function fromReviewInput(input) {
   const group = structuredClone(input.topic);
   const remaining = new Set(input.items);
   for (const [section, , prefix] of sections) {

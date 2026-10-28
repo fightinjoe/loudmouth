@@ -79,7 +79,9 @@ covering behavior, latency and tokens. API/card migrations and deployment requir
 | **C — Detection and optional repair** | Frozen bilingual topics with reviewed defects and correct controls → findings; separately proposed corrections | Detection/localization/false alarms? Known-location repair? New harm or evidence loss? Net whole-topic benefit? |
 
 These are independent evaluation workflows, not three required runtime calls. Detection and localized
-repair must be measurable separately; a one-pass reviewer is also a candidate, not a selected design.
+repair must be measurable separately. Current C helpers/contracts live alongside the pipelines and
+define an evaluation control, not a selected production protocol. A one-pass reviewer remains a possible
+comparison, but no unused implementation is retained in anticipation of it.
 The native `../prompt-romp` tool remains the sole paid execution/accounting engine. Repo scripts are
 thin offline preparation/validation/review adapters, not a second runner, ledger or resume system.
 

@@ -1,10 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { validateSchema } from '../../../prompt-romp/src/suite.mjs';
-import { repairCaseInput, routeDetection, applyTopicRepairs, composeTopic, buildOnePassPrompt, normalizeOnePass } from './composition.mjs';
+import { repairCaseInput, routeDetection, applyTopicRepairs, composeTopic } from './review-composition.mjs';
 
-const repairSchema = JSON.parse(readFileSync(new URL('../suites/repair-r1-localized-repair/response.schema.json', import.meta.url), 'utf8'));
 
 function fixture() {
   return { task: { language: 'ja', ability: 'basics', answers: {} }, topic: { title: 'Taking the train' }, items: [
@@ -43,13 +40,6 @@ function wordRepair() {
 }
 function detectionOutcome(response) { return { status: 'completed', rawValid: true, response }; }
 function repairOutcome(response) { return { handle: response.handle, status: 'completed', rawValid: true, applicationValid: true, response }; }
-function allResponses() { return [phraseRepair(), wordRepair(), retained('e:0'), retained('v:1')]; }
-function request(input = fixture()) {
-  return buildOnePassPrompt(input, { instructions: 'Review every original item.', schema: { type: 'object', properties: { items: { type: 'array', items: repairSchema } } } });
-}
-function rejectsSchema(value, schema) {
-  assert(validateSchema(value, schema).some(finding => finding.code === 'SCHEMA_INVALID' && finding.hard));
-}
 
 test('item-review inputs detach editable context and exclude oracle focus, diagnosis and private references', () => {
   const input = freezeTree({ ...fixture(), focus: { handle: 'v:1', field: 'reading', category: 'reading-accuracy' },
@@ -311,62 +301,4 @@ test('all successful selected reviews yield complete structural assembly, includ
   assert.deepEqual(result.unresolvedHandles, []);
   assert.deepEqual(result.items[1].card.reading, [['電車', 'でんしゃ']]);
   assert.deepEqual(result.items[2], input.items[2]);
-});
-
-test('one-pass normalization requires exact coverage, rejects duplicates and foreign handles, and accepts reordered responses', () => {
-  const input = freezeTree(fixture());
-  const parsed = freezeTree({ items: allResponses().toReversed() });
-  const normalized = normalizeOnePass(parsed, input);
-  assert.equal(normalized.value.application, 'applied-in-memory');
-  assert.deepEqual(normalized.value.items.map(item => item.handle), input.items.map(item => item.handle));
-  assert.equal(normalized.value.items[0].card.text, '駅はどこですか。');
-  assert.deepEqual(normalized.value.items[1].card.reading, [['電車', 'でんしゃ']]);
-  assert.deepEqual(normalized.value.response, parsed);
-  assert.deepEqual(normalized.value.unresolvedHandles, []);
-  for (const items of [
-    allResponses().slice(1), [...allResponses(), retained('foreign')],
-    [phraseRepair(), wordRepair(), retained('e:0'), retained('e:0')],
-    [phraseRepair(), wordRepair(), retained('e:0'), retained('foreign')],
-  ]) assert.throws(() => normalizeOnePass({ items }, input));
-  for (const value of [null, [], {}, { items: allResponses(), complete: true }, { items: 'not an array' }]) {
-    assert.throws(() => normalizeOnePass(value, input));
-  }
-});
-
-test('one-pass keeps abstentions explicit and never fixes a model patch or coerces invalid values', () => {
-  const input = freezeTree(fixture());
-  const responses = input.items.map(item => retained(item.handle, item.handle === 'v:0' ? 'unresolved' : 'unchanged'));
-  const normalized = normalizeOnePass({ items: responses }, input);
-  assert.equal(normalized.value.application, 'original-retained');
-  assert.deepEqual(normalized.value.items, input.items);
-  assert.deepEqual(normalized.value.unresolvedHandles, ['v:0']);
-  for (const changes of [
-    [{ field: 'text', value: '電車' }],
-    [{ field: 'reading', value: 'でんしゃ' }],
-    [{ field: 'reading', value: [['電車', null]] }, { field: 'text', value: '電車' }],
-  ]) {
-    const parsed = freezeTree({ items: [phraseRepair(), { ...wordRepair(), changes }, retained('e:0'), retained('v:1')] });
-    assert.throws(() => normalizeOnePass(parsed, input));
-    assert.equal(input.items[0].card.text, '図書館はどこですか。');
-  }
-});
-
-test('one-pass wire schemas bind each handle to its card fields and source indices and require closed full-length output', () => {
-  const input = freezeTree(fixture());
-  const variant = freezeTree({ instructions: 'Review each item.', schema: { properties: { items: { items: structuredClone(repairSchema) } } } });
-  const schema = buildOnePassPrompt(input, variant).schema;
-  const valid = { items: allResponses() };
-  assert.deepEqual(validateSchema(valid, schema), []);
-  rejectsSchema({ items: valid.items.slice(1) }, schema);
-  rejectsSchema({ items: [...valid.items, retained('d:0')] }, schema);
-  rejectsSchema({ ...valid, complete: true }, schema);
-  for (const response of [
-    retained('foreign'),
-    { ...phraseRepair(), changes: [{ field: 'partOfSpeech', value: 'noun' }] },
-    { ...phraseRepair(), changes: [{ field: 'senseKey', value: 'station' }] },
-    { ...phraseRepair(), dropSourceIndexes: [0] },
-  ]) rejectsSchema({ items: [response, ...valid.items.slice(1)] }, schema);
-  const omitted = { ...retained('v:1'), status: 'repaired', reason: 'Omit one source.', dropSourceIndexes: [1] };
-  assert.deepEqual(validateSchema({ items: [...valid.items.slice(0, 3), omitted] }, schema), []);
-  rejectsSchema({ items: [...valid.items.slice(0, 3), { ...omitted, dropSourceIndexes: [2] }] }, schema);
 });

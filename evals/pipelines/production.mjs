@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 const require = createRequire(import.meta.url);
-const { parsePhrasebookRequest, validateGenerationResponse, validateTranslationResponse } = require('../../../api/src/phrasebook/parse');
-const { buildPhrasebookGenerationPrompt, buildPhrasebookTranslationPrompt } = require('../../../api/src/phrasebook/prompt');
-const { buildTranslationResponseJsonSchema } = require('../../../api/src/phrasebook');
-const translationTemplate = readFileSync(new URL('../../../api/src/phrasebook/translate-prompt.txt', import.meta.url), 'utf8');
+const { parsePhrasebookRequest, validateGenerationResponse, validateTranslationResponse } = require('../../api/src/phrasebook/parse');
+const { buildPhrasebookGenerationPrompt, buildPhrasebookTranslationPrompt } = require('../../api/src/phrasebook/prompt');
+const { buildTranslationResponseJsonSchema } = require('../../api/src/phrasebook');
+const translationTemplate = readFileSync(new URL('../../api/src/phrasebook/translate-prompt.txt', import.meta.url), 'utf8');
 
 function validatedTask(input) {
   const result = parsePhrasebookRequest(input);

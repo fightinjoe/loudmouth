@@ -166,17 +166,22 @@ pending qualified adjudication. Initial user approval concerns the rubric/priori
 
 ## Retained implementation and checks
 
-- `pipelines/*.mjs`: offline CLI, fixture validation, prepared requests and response evaluation/reports.
-- `repair-r1/{tasks,composition,conditional-reason}.mjs`: allowlisted reviewer projection, detection
-  routing and atomic patch application; no paid execution.
-- `repair-r1/naturalistic/{collection,conversion}.mjs`: production prompt/parser adapters and topic conversion.
-- `repair-r1/pos-usage/policy.mjs`: experimental classifier/teaching policy, **not current production approval**.
-- `suites/*/response.schema.json`: retained helper/test contracts, not runnable historical experiments.
+- `pipelines/cli.mjs`, `runner.mjs`, `report.mjs`: current offline workflows, preparation and reporting.
+- `pipelines/production.mjs`, `topic-conversion.mjs`: unchanged production prompt/parser adapters
+  and lossless bilingual-topic conversion, consumed by A/B/C.
+- `pipelines/review-contract.mjs`: allowlisted C model input, detection validation and localized patches.
+- `pipelines/review-composition.mjs`, `repair-application.mjs`: C routing and atomic patch application.
+- `pipelines/contracts/*.schema.json`: the two detection/localized-repair contracts used by C requests.
+
+C's patch protocol is an **evaluation control**, not a selected production architecture or future API
+commitment. It preserves English intent and historical snapshots while measuring proposals against
+frozen inputs. A different repair design needs an explicit comparison, not compatibility with this control.
+Unused POS-policy and one-pass experiments, their test-only contracts and obsolete wrappers were deleted.
+Retain code for a current pipeline consumer, not hypothetical future reuse; selected failure lessons
+remain in `fixtures/regressions.json`.
 
 ```sh
-bun test evals/repair-r1/tasks.test.mjs evals/repair-r1/composition.test.mjs \
-  evals/repair-r1/conditional-reason.test.mjs evals/repair-r1/pos-usage/policy.test.mjs \
-  evals/pipelines
+bun test evals/pipelines
 ```
 
 Permanent tests cover consumer-visible boundaries/invariants; mock CLI runs provide actual workflow

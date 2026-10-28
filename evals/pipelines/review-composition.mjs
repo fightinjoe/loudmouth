@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { modelInput, buildRepairPrompt, validateDetection, applyLocalizedRepair } from './tasks.mjs';
+import { validateDetection, applyLocalizedRepair } from './review-contract.mjs';
 
 function topicHandles(input) {
   assert(Array.isArray(input?.items) && input.items.length, 'Topic items are required');
@@ -105,27 +105,4 @@ export function composeTopic(input, detectionOutcome, repairOutcomes) {
   const unresolvedHandles = handles.filter(handle => remaining.has(handle));
   return { status: 'assembled', ...applied, repairHandles: route.repairHandles, unresolvedHandles,
     complete: unresolvedHandles.length === 0, semanticReview: 'not-assessed' };
-}
-
-export function buildOnePassPrompt(input, variant) {
-  const handles = topicHandles(input);
-  const itemSchema = variant.schema.properties.items.items;
-  return {
-    instructions: variant.instructions,
-    input: modelInput(input, false),
-    schema: {
-      type: 'object',
-      properties: { items: { type: 'array', minItems: handles.length, maxItems: handles.length,
-        items: { anyOf: handles.map(handle => buildRepairPrompt(repairCaseInput(input, handle), { ...variant, schema: itemSchema }).schema) } } },
-      required: ['items'], additionalProperties: false,
-    },
-  };
-}
-
-export function normalizeOnePass(parsed, input) {
-  assert(parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
-    && Object.keys(parsed).length === 1 && Object.hasOwn(parsed, 'items'), 'One-pass response must contain exactly items');
-  const applied = applyTopicRepairs(input, topicHandles(input), parsed.items);
-  return { value: { response: parsed, ...applied }, changes: [{ path: '',
-    reason: 'Strictly assemble exactly one valid response per original handle atomically; retain metadata and historical snapshots without coercing model output. Structural application is not linguistic approval.' }] };
 }

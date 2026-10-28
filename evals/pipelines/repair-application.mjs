@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { applyTopicRepairs } from './composition.mjs';
+import { applyTopicRepairs } from './review-composition.mjs';
 
 const responseKeys = new Set(['handle', 'status', 'reason', 'changes', 'dropSourceIndexes']);
 
-// New evaluation policy; historical one-pass contracts and their source hashes stay frozen.
-export function normalizeConditionalReason(parsed, input) {
+// Evaluation-control application: unchanged/unresolved entries need no invented explanation.
+export function applyRepairResponses(parsed, input) {
   assert(parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
-    && Object.keys(parsed).length === 1 && Object.hasOwn(parsed, 'items'), 'One-pass response must contain exactly items');
+    && Object.keys(parsed).length === 1 && Object.hasOwn(parsed, 'items'), 'Repair response collection must contain exactly items');
   assert(Array.isArray(input?.items) && input.items.length, 'Topic items are required');
   const handles = input.items.map(item => item.handle);
   const available = new Set(handles);
@@ -34,8 +34,5 @@ export function normalizeConditionalReason(parsed, input) {
     }
   }
   const applied = applyTopicRepairs(input, repairs.map(response => response.handle), repairs);
-  return {
-    value: { response: parsed, ...applied, unresolvedHandles: handles.filter(handle => unresolved.has(handle)) },
-    changes: [{ path: '', reason: 'Apply the approved conditional-reason policy atomically: explanations required for changes/source removal only; preserve raw responses and all original metadata without filling ignored reasons. Structural application is not linguistic approval.' }],
-  };
+  return { ...applied, unresolvedHandles: handles.filter(handle => unresolved.has(handle)) };
 }

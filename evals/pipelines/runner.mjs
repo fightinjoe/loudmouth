@@ -3,11 +3,11 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { isDeepStrictEqual as equal } from 'node:util';
-import { buildEnglishPrompt, buildTranslationPrompt, normalizeEnglish, normalizeTranslation } from '../repair-r1/naturalistic/collection.mjs';
-import { toReviewInput } from '../repair-r1/naturalistic/conversion.mjs';
-import { buildDetectionPrompt, buildRepairPrompt, validateDetection, applyLocalizedRepair } from '../repair-r1/tasks.mjs';
-import { repairCaseInput, routeDetection, composeTopic } from '../repair-r1/composition.mjs';
-import { normalizeConditionalReason } from '../repair-r1/conditional-reason.mjs';
+import { buildEnglishPrompt, buildTranslationPrompt, normalizeEnglish, normalizeTranslation } from './production.mjs';
+import { toReviewInput } from './topic-conversion.mjs';
+import { buildDetectionPrompt, buildRepairPrompt, validateDetection, applyLocalizedRepair } from './review-contract.mjs';
+import { repairCaseInput, routeDetection, composeTopic } from './review-composition.mjs';
+import { applyRepairResponses } from './repair-application.mjs';
 import { detectionSchema, repairSchema, detectionInstructions, repairInstructions } from './instructions.mjs';
 
 const require = createRequire(import.meta.url);
@@ -73,7 +73,7 @@ function fullConditional(input, responses) {
   const byHandle = new Map();
   for (const response of responses) { assert(!byHandle.has(response.handle), 'Duplicate repair response'); byHandle.set(response.handle, response); }
   assert([...byHandle.keys()].every(handle => input.items.some(item => item.handle === handle)), 'Unknown repair handle');
-  return normalizeConditionalReason({ items: input.items.map(item => byHandle.get(item.handle) ?? { handle: item.handle, status: 'unchanged', changes: [], dropSourceIndexes: [] }) }, input).value;
+  return applyRepairResponses({ items: input.items.map(item => byHandle.get(item.handle) ?? { handle: item.handle, status: 'unchanged', changes: [], dropSourceIndexes: [] }) }, input);
 }
 
 export function loadFixtures({ contextsPath = new URL('../fixtures/contexts.json', import.meta.url), casesPath = new URL('../fixtures/pipeline-cases.json', import.meta.url) } = {}) {
@@ -281,10 +281,10 @@ function dependencyHashes() {
     '../../api/src/phrasebook/prompt.txt', '../../api/src/phrasebook/translate-prompt.txt',
     '../../api/src/phrasebook/reading-rules-ja.txt', '../../api/src/phrasebook/reading-rules-zh.txt',
     '../../api/src/schema/index.ts', '../../api/src/reading.js', '../../api/src/ability.js',
-    '../repair-r1/naturalistic/collection.mjs', '../repair-r1/naturalistic/conversion.mjs',
-    '../repair-r1/tasks.mjs', '../repair-r1/composition.mjs', '../repair-r1/conditional-reason.mjs',
-    '../suites/repair-r1-detection/response.schema.json', '../suites/repair-r1-localized-repair/response.schema.json',
-    '../suites/repair-r1-conditional-reason/response.schema.json', './instructions.mjs', './runner.mjs', '../rubric.json',
+    './production.mjs', './topic-conversion.mjs',
+    './review-contract.mjs', './review-composition.mjs', './repair-application.mjs',
+    './contracts/detection.schema.json', './contracts/localized-repair.schema.json',
+    './instructions.mjs', './runner.mjs', '../rubric.json',
   ];
   return Object.fromEntries(paths.map(path => [path, sha256(readFileSync(new URL(path, import.meta.url), 'utf8'))]));
 }

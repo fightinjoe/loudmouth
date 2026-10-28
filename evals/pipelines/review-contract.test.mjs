@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validateSchema } from '../../../prompt-romp/src/suite.mjs';
-import { modelInput, buildRepairPrompt, validateDetection, applyLocalizedRepair } from './tasks.mjs';
+import { modelInput, buildRepairPrompt, validateDetection, applyLocalizedRepair } from './review-contract.mjs';
 
-const repairSchema = JSON.parse(readFileSync(new URL('../suites/repair-r1-localized-repair/response.schema.json', import.meta.url), 'utf8'));
+const repairSchema = JSON.parse(readFileSync(new URL('./contracts/localized-repair.schema.json', import.meta.url), 'utf8'));
 
 function fixture() {
   return { task: { language: 'es', ability: 'basics' }, topic: { title: 'Transport' },
