@@ -75,18 +75,19 @@ not that its content is error-free.
 | Comparable results | Record per-topic quality dimensions and exact findings separately from parser/runtime failures, latency, tokens and cost. Missing assessment stays null. Retain known baseline failures rather than filtering them out. |
 | Bounded collection | Prepare an A/B-only native request plan for missing evidence, with exact inputs, repetitions, caps and stop rules. New paid calls need explicit approval; existing approvals are consumed. No challenger, production prompt edit or deployment is included. |
 
-Inventory, independent assessment of all ten retained outputs and exact native-plan preparation are
-now recorded in the [baseline findings](../../evals/baseline/findings.md) and
-[unapproved request](../../evals/baseline/approval-request.json): **20 new A/B calls / $0.22 maximum**,
-reusing one compatible observation per case and proposing two additional observations. No new paid
-calls have run. This first proposal is explicitly limited to the existing five contexts; conversational,
-multi-topic, real-user and unseen coverage remain absent. It does not complete product-wide confidence.
+The [baseline findings](../../evals/baseline/findings.md) now combine ten retained observations with
+**20 completed, explicitly approved A/B-only calls / $0.029976204 reported spend against $0.22 maximum**.
+The original [request](../../evals/baseline/approval-request.json), separate
+[execution approval](../../evals/baseline/execution-approval.json) and
+[measured receipts](../../evals/baseline/collection-results.json) preserve provenance and known failures.
+One historical plus two new observations per case remain identifiable. This reference is limited to
+the same five exposed contexts; conversational, multi-topic, real-user and unseen coverage remain
+absent. Collection does not establish product-wide confidence or final human acceptance.
 
-Review this sample/assessment and approve the exact collection scope before dispatch. No C repair
-success is needed. After collection and independent review, decide whether this limited reference is
-adequate for the intended like-for-like comparison or whether a broader sample is needed before
-generalizing. Compare models and prompts in separate controlled studies, one changed variable at a
-time. Optional A→B smoke checks prove handoff, not a fourth study.
+Review the per-observation assessments and decide whether this limited reference is adequate for the
+intended like-for-like comparison or needs a broader sample before generalizing. No C repair success
+is needed, and no additional calls are authorized. Compare models and prompts in separate controlled
+studies, one changed variable at a time. Optional A→B smoke checks prove handoff, not a fourth study.
 
 ## Four ordered steps and commit gates
 

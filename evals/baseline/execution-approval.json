@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "author": {
+    "name": "User in this conversation",
+    "role": "human"
+  },
+  "approved": true,
+  "quote": "approved",
+  "recordedAt": "2026-10-28T23:57:24.990Z",
+  "proposal": "evals/baseline/approval-request.json",
+  "packageSha256": "fe2e0dcc3605bdc98cf24b86f96924425f4f1627392b465edabc65890d8a8615",
+  "maxAttempts": 20,
+  "maxSpendUsd": 0.22,
+  "stages": [
+    {
+      "lane": "a",
+      "experiment": "E-1793230581015-a112cb939f80",
+      "planHash": "9396333db66d512cfac636f46866ca225b0935811ad0105b3067ccaaa16e07ea",
+      "maxAttempts": 10,
+      "maxSpendUsd": 0.04
+    },
+    {
+      "lane": "b",
+      "experiment": "E-1793230581636-38ed6c044b75",
+      "planHash": "83a16f73789ca2be884d4bf0dd0d4f589fc3e7df3105c0edc4f1c2fc0843014d",
+      "maxAttempts": 10,
+      "maxSpendUsd": 0.18
+    }
+  ],
+  "scope": "Execute the presented exact A/B plans once, A before B with the approved operational stop gate; two new observations per case plus retained evidence. No C, retries, additional scope, production change, ranking or final quality acceptance."
+}

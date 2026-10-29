@@ -141,8 +141,11 @@ retries, fallback or deployment. The consumed authorization does not permit addi
 
 **Current disposition: C is optional and deferred.** Its
 [process and unresolved status](c-recalibration-findings.md#status-deferred-optional-investigation)
-are retained without further reconciliation. The next quality checkpoint is a reviewed A/B baseline;
-its [prepared findings](../baseline/findings.md) and [exact request](../baseline/approval-request.json)
-reuse these ten historical A/B observations and propose 20 additional calls / $0.22 maximum.
-This limited-reference proposal is unapproved and unexecuted. C does not gate that work.
+are retained without further reconciliation. The [A/B baseline findings](../baseline/findings.md)
+reuse these ten historical A/B observations alongside **20 newly completed calls**, with
+**$0.029976204 reported spend / $0.22 approved maximum**. The exact
+[request](../baseline/approval-request.json), [actual approval](../baseline/execution-approval.json)
+and [measured receipts](../baseline/collection-results.json) remain separate. Three observations per
+case form only a limited five-context reference, not final acceptance or product-wide confidence.
+C does not gate A/B; this consumed authorization permits no additional spending.
 

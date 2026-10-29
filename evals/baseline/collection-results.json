@@ -1,0 +1,1133 @@
+{
+  "version": 1,
+  "status": "approved-collection-completed-independently-assessed-human-acceptance-not-granted",
+  "recordedAt": "2026-10-29T00:01:33.763Z",
+  "authority": "Native measured provider calls plus offline unchanged production parser replay; semantic judgments recorded separately.",
+  "proposal": "evals/baseline/approval-request.json",
+  "proposalSha256": "fe2e0dcc3605bdc98cf24b86f96924425f4f1627392b465edabc65890d8a8615",
+  "approval": "evals/baseline/execution-approval.json",
+  "executionOrder": [
+    "a",
+    "b"
+  ],
+  "aBeforeBGate": {
+    "passed": true,
+    "checks": [
+      "10/10 calls completed with HTTP 200",
+      "all charges reported and within per-call reservations",
+      "no unknown starts, retries, transport/provider/schema errors or plan drift",
+      "A parser/content failures preserved, not an operational stop condition"
+    ]
+  },
+  "providerMetadataPreflight": {
+    "checkedAt": "2026-10-28T23:57:08.467Z",
+    "aliasRateCapabilityDriftObserved": false,
+    "sources": [
+      "https://openrouter.ai/api/v1/models",
+      "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash-20260910/endpoints",
+      "https://openrouter.ai/api/v1/models/google/gemini-3.5-flash-lite-20260721/endpoints"
+    ],
+    "resolvedAliases": {
+      "a": "deepseek/deepseek-v4.1-flash-20260910",
+      "b": "google/gemini-3.5-flash-lite-20260721"
+    },
+    "qualification": "Public alias metadata, not proof of immutable weights or production environment parity."
+  },
+  "totals": {
+    "newAttempts": 20,
+    "completed": 20,
+    "reportedSpendUsd": 0.029976204,
+    "approvedCapUsd": 0.22,
+    "unknownChargeAttempts": 0,
+    "executionFailures": 0,
+    "retries": 0,
+    "paidJudges": 0,
+    "cCalls": 0
+  },
+  "retained": {
+    "count": 10,
+    "review": "evals/baseline/review.json",
+    "reviewSha256": "7765e063542b9c521b7e289c544cd693e63e3209f42c7d0e829d14ed7be6bea8",
+    "records": [
+      {
+        "observationId": "a-shoes-zh-retained",
+        "lane": "a",
+        "contextId": "shoes-zh",
+        "rawResponseSha256": "94c2ab61931f44fbafe7fdbfa72e1792ed041e088bbac4c5167449c3f39fbd60",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-a.responses.json"
+      },
+      {
+        "observationId": "a-allergy-ja-retained",
+        "lane": "a",
+        "contextId": "allergy-ja",
+        "rawResponseSha256": "e96ed71c69f76782e9fda0dbc511c6c94171a57a34cdc9114ef9b63b2b1b255a",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-a.responses.json"
+      },
+      {
+        "observationId": "a-tea-cs-retained",
+        "lane": "a",
+        "contextId": "tea-cs",
+        "rawResponseSha256": "a8a2d02e274f2f56238cf6b0137a80818dd4e9d8a3e5e5a6b6182274cd2b6fb6",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-a.responses.json"
+      },
+      {
+        "observationId": "a-lost-bag-uk-retained",
+        "lane": "a",
+        "contextId": "lost-bag-uk",
+        "rawResponseSha256": "90c640faa8db9621127e235e22e52653de5f97fa3024a0b182d1e61409b8bc29",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-a.responses.json"
+      },
+      {
+        "observationId": "a-pottery-es-retained",
+        "lane": "a",
+        "contextId": "pottery-es",
+        "rawResponseSha256": "23efa1eb0e2c46e7e79872e2fd3baf94d091ec621b0c517b252a55ac09f63172",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-a.responses.json"
+      },
+      {
+        "observationId": "b-shoes-zh-retained",
+        "lane": "b",
+        "contextId": "shoes-zh",
+        "rawResponseSha256": "3568bc02da126b6833414277166fdc45cf0b27a1aff9e2244b838c9940c494d5",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-b.responses.json"
+      },
+      {
+        "observationId": "b-allergy-ja-retained",
+        "lane": "b",
+        "contextId": "allergy-ja",
+        "rawResponseSha256": "3cf1baa18eaf016bda38f4b71a7beea1ccc963826587f6bbd36acf3e7412cac5",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-b.responses.json"
+      },
+      {
+        "observationId": "b-tea-cs-retained",
+        "lane": "b",
+        "contextId": "tea-cs",
+        "rawResponseSha256": "e5ab30cf408084c00ffb996182440cf91f8c74e31fdcb01476bacabfd275377c",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-b.responses.json"
+      },
+      {
+        "observationId": "b-lost-bag-uk-retained",
+        "lane": "b",
+        "contextId": "lost-bag-uk",
+        "rawResponseSha256": "315c81fcd092a0e180a88c5ca65d7619c1bd1070dbef8adb79cedc1a1d97765f",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-b.responses.json"
+      },
+      {
+        "observationId": "b-pottery-es-retained",
+        "lane": "b",
+        "contextId": "pottery-es",
+        "rawResponseSha256": "1847235ff82949b9f462e30c1fb31ea8604af2ee2bc9742a0430ba7d12141f66",
+        "assessment": "evals/baseline/review.json",
+        "rawArtifact": ".prompt-romp/calibration-2026-10-28-r1/actual-b.responses.json"
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "lane": "a",
+      "experiment": "E-1793230581015-a112cb939f80",
+      "run": "run-1793230581400-2454f739a557",
+      "planHash": "9396333db66d512cfac636f46866ca225b0935811ad0105b3067ccaaa16e07ea",
+      "suiteRevision": "e8ca2913cf5e944966f439171155ab55084584ff48e22dee1ee1a9a9fa11010d",
+      "approvedCapUsd": 0.04,
+      "reservationUsd": 0.03422576,
+      "execution": {
+        "planHash": "9396333db66d512cfac636f46866ca225b0935811ad0105b3067ccaaa16e07ea",
+        "maxAttempts": 10,
+        "maxSpendUsd": 0.04,
+        "attempts": 10,
+        "reportedSpendUsd": 0.0024331039999999997,
+        "reservedUnknownUsd": 0,
+        "committedUsd": 0.0024331039999999997,
+        "unknownChargeAttempts": 0,
+        "boundExceeded": false
+      },
+      "requestMs": {
+        "count": 10,
+        "knownCount": 10,
+        "unknownCount": 0,
+        "mean": 2483.7397683000004,
+        "median": 2386.8645925,
+        "max": 3584.35693,
+        "p95": null,
+        "p95Method": null
+      },
+      "wallMs": 24903.227432,
+      "usage": {
+        "prompt_tokens": {
+          "knownSubtotal": 11410,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        },
+        "completion_tokens": {
+          "knownSubtotal": 4237,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        },
+        "total_tokens": {
+          "knownSubtotal": 15647,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        },
+        "prompt_tokens_details.cached_tokens": {
+          "knownSubtotal": 7808,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        },
+        "completion_tokens_details.reasoning_tokens": {
+          "knownSubtotal": 0,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        }
+      },
+      "productionParserPassed": 6,
+      "observations": 10
+    },
+    {
+      "lane": "b",
+      "experiment": "E-1793230581636-38ed6c044b75",
+      "run": "run-1793230582011-664c5034cd7f",
+      "planHash": "83a16f73789ca2be884d4bf0dd0d4f589fc3e7df3105c0edc4f1c2fc0843014d",
+      "suiteRevision": "983cae8c351da154148b65dc78f07827ab80606540b59bc4082caa20b3666e75",
+      "approvedCapUsd": 0.18,
+      "reservationUsd": 0.179412,
+      "execution": {
+        "planHash": "83a16f73789ca2be884d4bf0dd0d4f589fc3e7df3105c0edc4f1c2fc0843014d",
+        "maxAttempts": 10,
+        "maxSpendUsd": 0.18,
+        "attempts": 10,
+        "reportedSpendUsd": 0.0275431,
+        "reservedUnknownUsd": 0,
+        "committedUsd": 0.0275431,
+        "unknownChargeAttempts": 0,
+        "boundExceeded": false
+      },
+      "requestMs": {
+        "count": 10,
+        "knownCount": 10,
+        "unknownCount": 0,
+        "mean": 2824.9425025,
+        "median": 2418.063558500001,
+        "max": 4066.9600339999997,
+        "p95": null,
+        "p95Method": null
+      },
+      "wallMs": 28496.186165,
+      "usage": {
+        "prompt_tokens": {
+          "knownSubtotal": 24402,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        },
+        "completion_tokens": {
+          "knownSubtotal": 8089,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        },
+        "total_tokens": {
+          "knownSubtotal": 32491,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        },
+        "prompt_tokens_details.cached_tokens": {
+          "knownSubtotal": 0,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        },
+        "completion_tokens_details.reasoning_tokens": {
+          "knownSubtotal": 0,
+          "knownCalls": 10,
+          "unknownCalls": 0
+        }
+      },
+      "productionParserPassed": 10,
+      "observations": 10
+    }
+  ],
+  "records": [
+    {
+      "observationId": "a-shoes-zh-new-1",
+      "lane": "a",
+      "contextId": "shoes-zh",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581403-9650a8421b2d",
+      "callId": "call-1793230581406-90a765dd7111",
+      "requestId": "gen-1793231872-CXkF8vnidq3jkZZPDBv8",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "79cbbe361beacfa4086722d808d1eccec129234ef78d0742e66abc161f386305",
+      "rawResponseSha256": "f11af744e4b26d5dd7fdb0598f7a321350e0244fe65bd501bdbda01bf3a26121",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r1.responses.json",
+      "startedAt": "2026-10-28T23:57:51.955Z",
+      "endedAt": "2026-10-28T23:57:55.540Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 3584.35693,
+      "reportedUsage": {
+        "promptTokens": 1142,
+        "completionTokens": 491,
+        "totalTokens": 1633,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.00032544,
+      "reservationUsd": 0.00342294,
+      "productionParser": {
+        "status": "failed",
+        "structural": false,
+        "error": "conversations[0].lines[5].alternative is not allowed",
+        "failureLevel": null,
+        "normalizationChanges": [],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "a-allergy-ja-new-1",
+      "lane": "a",
+      "contextId": "allergy-ja",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581403-18eae1202d27",
+      "callId": "call-1793230581406-f88de23c02ea",
+      "requestId": "gen-1793231875-uSgWUlmClKkPfzgbFcMW",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "6c57418055f78edc31a2ced030aba03e45fdb2810f5ae7bd68f62e0788c63ea5",
+      "rawResponseSha256": "d1d10443352b6b08abe430f9a7f22e226c01a18c6a0da1ee9ba111701a7dea20",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r1.responses.json",
+      "startedAt": "2026-10-28T23:57:55.545Z",
+      "endedAt": "2026-10-28T23:57:57.328Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 1782.9931419999998,
+      "reportedUsage": {
+        "promptTokens": 1141,
+        "completionTokens": 386,
+        "totalTokens": 1527,
+        "cachedPromptTokens": 768,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.000225254,
+      "reservationUsd": 0.0034261599999999997,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "a-tea-cs-new-1",
+      "lane": "a",
+      "contextId": "tea-cs",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581403-3c1f6d9fa753",
+      "callId": "call-1793230581406-7e4064f98aaf",
+      "requestId": "gen-1793231877-IbzDNVZPAdWMMJpZzFdf",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "b833831eeb66fd6d8ac94f6f0315a41c34b6b820eef927efae82ea4ac425ef03",
+      "rawResponseSha256": "ce37c577d7c1c2878e77f78ef1fc2767334576841db00f0cac745e8ccebf3b5d",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r1.responses.json",
+      "startedAt": "2026-10-28T23:57:57.343Z",
+      "endedAt": "2026-10-28T23:57:58.890Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 1546.8953769999998,
+      "reportedUsage": {
+        "promptTokens": 1131,
+        "completionTokens": 357,
+        "totalTokens": 1488,
+        "cachedPromptTokens": 768,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.000210054,
+      "reservationUsd": 0.00341692,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "a-lost-bag-uk-new-1",
+      "lane": "a",
+      "contextId": "lost-bag-uk",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581403-e50cbe967cb1",
+      "callId": "call-1793230581407-0ab35439c1f3",
+      "requestId": "gen-1793231879-lYN5DmQvCgWM70gifLxP",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "b845d8a5909679d3bdf99e49f7da6906289fb4ef561cafe37f7b0f76ede3800a",
+      "rawResponseSha256": "3eee407ce772a985e77d909e22165033b527656c9329590c289ab13b96d099f9",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r1.responses.json",
+      "startedAt": "2026-10-28T23:57:58.894Z",
+      "endedAt": "2026-10-28T23:58:02.066Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 3171.9047800000008,
+      "reportedUsage": {
+        "promptTokens": 1150,
+        "completionTokens": 404,
+        "totalTokens": 1554,
+        "cachedPromptTokens": 768,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.000234884,
+      "reservationUsd": 0.00342238,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "a-pottery-es-new-1",
+      "lane": "a",
+      "contextId": "pottery-es",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581404-d4dbb6fa03e9",
+      "callId": "call-1793230581407-43d9c617b9cc",
+      "requestId": "gen-1793231882-kn0weZSjUzjIbmvVeQKw",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "f485aa328544bad54a12cfeae5aeba48e65fa32ad55d28ed0e773773abccd3e2",
+      "rawResponseSha256": "aa81bc2e19aa0110437c0f674eb0dc934ddd9f7d18a4e3ca19e39ae3f8e61b49",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r1.responses.json",
+      "startedAt": "2026-10-28T23:58:02.070Z",
+      "endedAt": "2026-10-28T23:58:04.783Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 2713.0413309999985,
+      "reportedUsage": {
+        "promptTokens": 1141,
+        "completionTokens": 500,
+        "totalTokens": 1641,
+        "cachedPromptTokens": 896,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.000274318,
+      "reservationUsd": 0.00342448,
+      "productionParser": {
+        "status": "failed",
+        "structural": false,
+        "error": "conversations[0].lines must contain 2 to 10 items",
+        "failureLevel": null,
+        "normalizationChanges": [],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "a-shoes-zh-new-2",
+      "lane": "a",
+      "contextId": "shoes-zh",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581404-b79532cab9e4",
+      "callId": "call-1793230581407-7c78d11b395c",
+      "requestId": "gen-1793231884-kSja1FOp9tfH55PZzftw",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "79cbbe361beacfa4086722d808d1eccec129234ef78d0742e66abc161f386305",
+      "rawResponseSha256": "71b43637d100074acab10880e8bd6f3538da9876f80296d903182d6e1125c4ab",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r2.responses.json",
+      "startedAt": "2026-10-28T23:58:04.791Z",
+      "endedAt": "2026-10-28T23:58:06.876Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 2084.8641990000015,
+      "reportedUsage": {
+        "promptTokens": 1142,
+        "completionTokens": 449,
+        "totalTokens": 1591,
+        "cachedPromptTokens": 1024,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.000240952,
+      "reservationUsd": 0.00342294,
+      "productionParser": {
+        "status": "failed",
+        "structural": false,
+        "error": "conversations[0].lines must contain 2 to 10 items",
+        "failureLevel": null,
+        "normalizationChanges": [],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "a-allergy-ja-new-2",
+      "lane": "a",
+      "contextId": "allergy-ja",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581404-89c45f8528c9",
+      "callId": "call-1793230581407-2c9896f1177d",
+      "requestId": "gen-1793231887-xVbh2HKOY93zsU9njOuD",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "6c57418055f78edc31a2ced030aba03e45fdb2810f5ae7bd68f62e0788c63ea5",
+      "rawResponseSha256": "f78fd4f7b59ac6dc3dd4329ab38147e1fc1a10366749b8aa88ead93229fac3bd",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r2.responses.json",
+      "startedAt": "2026-10-28T23:58:06.880Z",
+      "endedAt": "2026-10-28T23:58:08.611Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 1731.4247049999994,
+      "reportedUsage": {
+        "promptTokens": 1141,
+        "completionTokens": 356,
+        "totalTokens": 1497,
+        "cachedPromptTokens": 896,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.000202318,
+      "reservationUsd": 0.0034261599999999997,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 1,
+        "normalizationChanges": [
+          {
+            "path": "/conversations/0/essentials",
+            "reason": "Production parser retained 8 of 9 entries; raw response retention is controlled by the caller, not this normalizer."
+          },
+          {
+            "path": "/conversations/0/lines/2/alternative",
+            "reason": "Production parser marks consecutive same-speaker entries as local alternatives."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "a-tea-cs-new-2",
+      "lane": "a",
+      "contextId": "tea-cs",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581404-41271847e66e",
+      "callId": "call-1793230581407-5848821271d7",
+      "requestId": "gen-1793231888-Zuz79OJ7SUJP9fmFrgGh",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "b833831eeb66fd6d8ac94f6f0315a41c34b6b820eef927efae82ea4ac425ef03",
+      "rawResponseSha256": "e2c589afc93a6b2ad6679443756b4f768fe94e52d5d5a41dc9fcb9bc89427a2c",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r2.responses.json",
+      "startedAt": "2026-10-28T23:58:08.615Z",
+      "endedAt": "2026-10-28T23:58:11.246Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 2631.346096999998,
+      "reportedUsage": {
+        "promptTokens": 1131,
+        "completionTokens": 404,
+        "totalTokens": 1535,
+        "cachedPromptTokens": 896,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.000225618,
+      "reservationUsd": 0.00341692,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "a-lost-bag-uk-new-2",
+      "lane": "a",
+      "contextId": "lost-bag-uk",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581404-9b9da7f9607b",
+      "callId": "call-1793230581408-3879a1f84d5f",
+      "requestId": "gen-1793231891-M1UA1PYbC61ppXPEhoFs",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "b845d8a5909679d3bdf99e49f7da6906289fb4ef561cafe37f7b0f76ede3800a",
+      "rawResponseSha256": "7a1e32dc6b88c675544eaf9193985efebfcb037bd83ec36a3869677b20d647d4",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r2.responses.json",
+      "startedAt": "2026-10-28T23:58:11.250Z",
+      "endedAt": "2026-10-28T23:58:13.392Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 2142.3830880000023,
+      "reportedUsage": {
+        "promptTokens": 1150,
+        "completionTokens": 369,
+        "totalTokens": 1519,
+        "cachedPromptTokens": 896,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.000209448,
+      "reservationUsd": 0.00342238,
+      "productionParser": {
+        "status": "failed",
+        "structural": false,
+        "error": "conversations[0].lines[7].alternative is not allowed",
+        "failureLevel": null,
+        "normalizationChanges": [],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "a-pottery-es-new-2",
+      "lane": "a",
+      "contextId": "pottery-es",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230581400-2454f739a557",
+      "sampleId": "sample-1793230581404-ca5570314d83",
+      "callId": "call-1793230581408-123c467f5828",
+      "requestId": "gen-1793231893-LMS8ZfVf8BSFU6FsIXJq",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "f485aa328544bad54a12cfeae5aeba48e65fa32ad55d28ed0e773773abccd3e2",
+      "rawResponseSha256": "35b849664e735724b6b889fd733fef106c6a2fe54193da5d1a73e1408a420f61",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-a-r2.responses.json",
+      "startedAt": "2026-10-28T23:58:13.397Z",
+      "endedAt": "2026-10-28T23:58:16.845Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "deepseek/deepseek-v4.1-flash",
+      "reportedProvider": "Relace",
+      "finishReason": "stop",
+      "requestMs": 3448.1880340000025,
+      "reportedUsage": {
+        "promptTokens": 1141,
+        "completionTokens": 521,
+        "totalTokens": 1662,
+        "cachedPromptTokens": 896,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.000284818,
+      "reservationUsd": 0.00342448,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 1,
+        "normalizationChanges": [
+          {
+            "path": "/conversations/0/essentials",
+            "reason": "Production parser retained 8 of 10 entries; raw response retention is controlled by the caller, not this normalizer."
+          },
+          {
+            "path": "/conversations/0/lines/4/alternative",
+            "reason": "Production parser marks consecutive same-speaker entries as local alternatives."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-shoes-zh-new-1",
+      "lane": "b",
+      "contextId": "shoes-zh",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582016-43384247a576",
+      "callId": "call-1793230582026-4b8615f0b0fd",
+      "requestId": "gen-1793231929-CEPp3ne8WacsdvgtqoAT",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "45cb66b60d6791a6b2bc8c92c8a39d1a3952ee23205964c43f7227ec1725e0dd",
+      "rawResponseSha256": "d2e32d099d3c082208119a5ec3c425bc3e114a7edcf7f6ff0da19c95f3be11d7",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r1.responses.json",
+      "startedAt": "2026-10-28T23:58:49.437Z",
+      "endedAt": "2026-10-28T23:58:53.504Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 4066.9600339999997,
+      "reportedUsage": {
+        "promptTokens": 2337,
+        "completionTokens": 1140,
+        "totalTokens": 3477,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0035511,
+      "reservationUsd": 0.0178479,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-allergy-ja-new-1",
+      "lane": "b",
+      "contextId": "allergy-ja",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582017-ea356a59502c",
+      "callId": "call-1793230582026-5417d92cff9c",
+      "requestId": "gen-1793231933-UkF8HPo8XCL2dn0mCY3E",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "261b2d78ef7c06d1b8687b07dd232abbf5b66040abbc7fa9f05411cd0a678ec0",
+      "rawResponseSha256": "ff959db7ace6ff124682424ed869273165a2e9e6a129d5bcd9b6779e955b8258",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r1.responses.json",
+      "startedAt": "2026-10-28T23:58:53.552Z",
+      "endedAt": "2026-10-28T23:58:57.106Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 3554.516815,
+      "reportedUsage": {
+        "promptTokens": 3079,
+        "completionTokens": 1180,
+        "totalTokens": 4259,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0038737,
+      "reservationUsd": 0.0185844,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-tea-cs-new-1",
+      "lane": "b",
+      "contextId": "tea-cs",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582017-75cf2905bdd1",
+      "callId": "call-1793230582027-378c19ce2eac",
+      "requestId": "gen-1793231937-EEQ8sGi0IheNzEjLgos1",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "3b013ec643c6bfd3917b17f989a5bd5514c65355b2a163d62a925276a69da322",
+      "rawResponseSha256": "e6c417098d32a1f4359a98a571bb1d5ec9bdecc3d9266c25f7348196ea3e11f5",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r1.responses.json",
+      "startedAt": "2026-10-28T23:58:57.129Z",
+      "endedAt": "2026-10-28T23:58:59.516Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 2387.0742310000005,
+      "reportedUsage": {
+        "promptTokens": 2206,
+        "completionTokens": 577,
+        "totalTokens": 2783,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0021043,
+      "reservationUsd": 0.0176784,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-lost-bag-uk-new-1",
+      "lane": "b",
+      "contextId": "lost-bag-uk",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582018-e06e16ff2673",
+      "callId": "call-1793230582027-bb5adf10cc1b",
+      "requestId": "gen-1793231939-aT9oWM6lIKT7NoJ2Ahvk",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "abad1e99c08ff16bb46795643d128e61debc4be72e3bff7d898f085b0e9e3a9d",
+      "rawResponseSha256": "7b671df01ef0babdb7ec506d9c1b59b17ba518a9f0a16ab8b09572fae3bd0271",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r1.responses.json",
+      "startedAt": "2026-10-28T23:58:59.541Z",
+      "endedAt": "2026-10-28T23:59:01.990Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 2449.0528860000013,
+      "reportedUsage": {
+        "promptTokens": 2267,
+        "completionTokens": 641,
+        "totalTokens": 2908,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0022826,
+      "reservationUsd": 0.017751299999999998,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-pottery-es-new-1",
+      "lane": "b",
+      "contextId": "pottery-es",
+      "cohort": "new",
+      "repetition": 1,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582018-a81a76236f42",
+      "callId": "call-1793230582027-7490c2b1bd46",
+      "requestId": "gen-1793231942-Qbj0E17LT941tIFq2P28",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "3a3f18508a2c441ba0482d96219acdac46d3057740e1c7631e59ebe0cd667639",
+      "rawResponseSha256": "f5fd38d8e4f2a3d04ac4a3733b894f365cb9c82d626bb6c95cac7de0303e8cdd",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r1.responses.json",
+      "startedAt": "2026-10-28T23:59:01.999Z",
+      "endedAt": "2026-10-28T23:59:04.182Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 2183.971902000001,
+      "reportedUsage": {
+        "promptTokens": 2312,
+        "completionTokens": 646,
+        "totalTokens": 2958,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0023086,
+      "reservationUsd": 0.017844,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-shoes-zh-new-2",
+      "lane": "b",
+      "contextId": "shoes-zh",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582019-a4624caa488b",
+      "callId": "call-1793230582028-bbcd0ce0deb4",
+      "requestId": "gen-1793231944-AhvMf5bZAgCpbFfHixEQ",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "45cb66b60d6791a6b2bc8c92c8a39d1a3952ee23205964c43f7227ec1725e0dd",
+      "rawResponseSha256": "d8909c31b5aa9c9101634cdae9731bc26b41afc13ea6136e1a21ef2af3a1dbed",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r2.responses.json",
+      "startedAt": "2026-10-28T23:59:04.202Z",
+      "endedAt": "2026-10-28T23:59:07.711Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 3509.6555089999983,
+      "reportedUsage": {
+        "promptTokens": 2337,
+        "completionTokens": 1109,
+        "totalTokens": 3446,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0034736,
+      "reservationUsd": 0.0178479,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-allergy-ja-new-2",
+      "lane": "b",
+      "contextId": "allergy-ja",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582019-537a87523687",
+      "callId": "call-1793230582028-4c184c5cfec5",
+      "requestId": "gen-1793231947-2Y0ZPRHe5CEBH62G7zzs",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "261b2d78ef7c06d1b8687b07dd232abbf5b66040abbc7fa9f05411cd0a678ec0",
+      "rawResponseSha256": "4fdd6fdf3706c8881d1b09ea4341733367c797dd50cd98f22522c21dc1df9d0c",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r2.responses.json",
+      "startedAt": "2026-10-28T23:59:07.730Z",
+      "endedAt": "2026-10-28T23:59:11.271Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 3541.141072999999,
+      "reportedUsage": {
+        "promptTokens": 3079,
+        "completionTokens": 1179,
+        "totalTokens": 4258,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0038712,
+      "reservationUsd": 0.0185844,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-tea-cs-new-2",
+      "lane": "b",
+      "contextId": "tea-cs",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582020-4e60cda1838f",
+      "callId": "call-1793230582028-f82a9b3ff6b3",
+      "requestId": "gen-1793231951-w9Jc4heuile3mZMsfSQK",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "3b013ec643c6bfd3917b17f989a5bd5514c65355b2a163d62a925276a69da322",
+      "rawResponseSha256": "0c28321d3a7fb4114a2c5aec9f0f96db224cdf522cda34639db2b4ec57e81d7f",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r2.responses.json",
+      "startedAt": "2026-10-28T23:59:11.298Z",
+      "endedAt": "2026-10-28T23:59:13.508Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 2209.923417000002,
+      "reportedUsage": {
+        "promptTokens": 2206,
+        "completionTokens": 577,
+        "totalTokens": 2783,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0021043,
+      "reservationUsd": 0.0176784,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-lost-bag-uk-new-2",
+      "lane": "b",
+      "contextId": "lost-bag-uk",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582020-e8041e287aff",
+      "callId": "call-1793230582028-4767c4036982",
+      "requestId": "gen-1793231953-eTnbDZa1bpJSM1jimOlz",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "abad1e99c08ff16bb46795643d128e61debc4be72e3bff7d898f085b0e9e3a9d",
+      "rawResponseSha256": "4786ed4bb18188358773645e7a70ef7c0ccf53c65df65b560f904cd499a985e1",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r2.responses.json",
+      "startedAt": "2026-10-28T23:59:13.522Z",
+      "endedAt": "2026-10-28T23:59:15.482Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 1960.1063810000014,
+      "reportedUsage": {
+        "promptTokens": 2267,
+        "completionTokens": 393,
+        "totalTokens": 2660,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0016626,
+      "reservationUsd": 0.017751299999999998,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    },
+    {
+      "observationId": "b-pottery-es-new-2",
+      "lane": "b",
+      "contextId": "pottery-es",
+      "cohort": "new",
+      "repetition": 2,
+      "nativeRun": "run-1793230582011-664c5034cd7f",
+      "sampleId": "sample-1793230582021-58da8eea0abd",
+      "callId": "call-1793230582029-5466db77ace0",
+      "requestId": "gen-1793231955-YPPd0iYv899LZhVLTR0S",
+      "requestExactlyMatchesFrozenPlan": true,
+      "requestSha256": "3a3f18508a2c441ba0482d96219acdac46d3057740e1c7631e59ebe0cd667639",
+      "rawResponseSha256": "be5cc707ee0bf673d9ac3fd7052a81967df1ab9dfcea500bf9d541e3101982d6",
+      "rawArtifact": ".prompt-romp/ab-baseline-2026-10-28-r2/actual-b-r2.responses.json",
+      "startedAt": "2026-10-28T23:59:15.506Z",
+      "endedAt": "2026-10-28T23:59:17.893Z",
+      "status": "completed",
+      "httpStatus": 200,
+      "reportedModel": "google/gemini-3.5-flash-lite",
+      "reportedProvider": "Google",
+      "finishReason": "stop",
+      "requestMs": 2387.0227769999983,
+      "reportedUsage": {
+        "promptTokens": 2312,
+        "completionTokens": 647,
+        "totalTokens": 2959,
+        "cachedPromptTokens": 0,
+        "reasoningTokens": 0
+      },
+      "reportedSpendUsd": 0.0023111,
+      "reservationUsd": 0.017844,
+      "productionParser": {
+        "status": "passed",
+        "structural": true,
+        "error": null,
+        "failureLevel": 0,
+        "normalizationChanges": [
+          {
+            "path": "",
+            "reason": "Production translation parser applied unchanged; failureLevel=0. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it."
+          }
+        ],
+        "flags": []
+      }
+    }
+  ],
+  "limitations": [
+    "Three observations per case/lane: one retained and two fresh. Descriptive within-case evidence only, not statistical significance, population reliability or a reliable tail-latency estimate.",
+    "Language and scenario are confounded: one scenario per target language; A is English in every case.",
+    "Three ordinary and two challenge scenarios; four basics and one none; conversational level and multi-topic requests are absent.",
+    "No production prevalence, reliable tail latency, qualified native/medical acceptance or new repair evidence is established.",
+    "C remains paused; neither a runtime review stage nor C success is required for A/B."
+  ]
+}

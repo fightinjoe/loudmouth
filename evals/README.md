@@ -4,15 +4,17 @@
 [Current strategy](../docs/designs/phrasebook-quality-identity-storage-plan.md) ·
 [Proposed rubric](rubric.json) · [Subjective-review skill](../.agents/skills/content-quality-evaluation/SKILL.md)
 
-**Current priority: establish a confident A/B baseline before comparing future models or prompts.**
+**Current priority: review the collected A/B baseline before comparing future models or prompts.**
 C is optional and deferred, not a prerequisite for A/B. The
-[prepared baseline findings](baseline/findings.md) inventory 10 retained observations and propose
-**20 additional A/B-only calls / $0.22 maximum**, with exact native hashes in the
-[unapproved request](baseline/approval-request.json). This is a limited five-context reference, not
-product-wide confidence; no new paid calls have run. Follow the
-[baseline checkpoint](../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline);
-retain C's [current process/status](calibration/c-recalibration-findings.md#status-deferred-optional-investigation)
-without further reconciliation.
+[baseline findings](baseline/findings.md) combine 10 retained observations with **20 newly completed
+A/B-only calls**, costing **$0.029976204 against the approved $0.22 maximum**.
+[Measured receipts](baseline/collection-results.json) preserve every attempt and parser failure;
+[execution approval](baseline/execution-approval.json) binds the original exact
+[request](baseline/approval-request.json). This is a limited five-context reference, not product-wide
+confidence or final baseline acceptance. Follow the
+[baseline checkpoint](../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline).
+Keep C's [current process/status](calibration/c-recalibration-findings.md#status-deferred-optional-investigation)
+without further reconciliation or spending.
 
 ## Three independent pipelines
 

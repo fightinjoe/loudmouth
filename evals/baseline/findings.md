@@ -1,31 +1,40 @@
-# A/B baseline preparation — 2026-10-28
+# A/B baseline collection — 2026-10-28
 
-**RECAP:** A creates English learning content; B translates fixed English. Their evaluation workflows
-already exist. This work reuses **10 retained real observations** (5 A, 5 B), reviews them independently,
-and prepares an A/B-only collection proposal. **No new model calls or prompt changes occurred. C stays paused.**
+**RECAP:** A creates English learning content; B translates fixed authored English, not live A output.
+The user approved the exact additional **20-call / $0.22** proposal. Both live native collections ran
+once, A before B, with unchanged prompts/settings and no inserted defects. Ten retained observations
+remain separately identifiable. C, repairs, paid judges and production changes did not run.
 
-**GOAL:** Establish an honestly characterized reference for future like-for-like model/prompt comparisons,
-without improving the control first or treating valid JSON as accurate learning content.
+**GOAL:** Characterize the unchanged reference, including failures, for future like-for-like
+model/prompt comparisons. Do not silently improve the control or equate valid JSON with learning quality.
 
-**RESULT:** ✅ All 10 current prepared requests exactly match the saved requests, and their execution
-bindings match the retained baseline. ✅ Independent assistant assessments and original-response hashes
-are recorded in [review.json](review.json). ⚠️ One observation per case does not measure variability.
-The proposed next collection adds **2 observations per case**, reusing the saved one for **3 total**.
-**This is a limited five-context reference, not a product-wide or unseen-validation baseline.**
+**RESULT:** ✅ **20/20 provider calls completed**, all charges reported and below reservations.
+❌ **A production-parser acceptance: 6/10 fresh, 10/15 including retained**; rejected deliveries have
+null quality scores. ✅ **B parser acceptance: 10/10 fresh, 15/15 combined**, not a semantic quality seal.
+Independent assistant review found material content problems in **3/6 accepted fresh A outputs** and
+**5/10 fresh B outputs**. Combined: **3/10 accepted A** and **7/15 B** have material findings.
+These are observed case counts, not estimated population error rates or whole-topic failure labels.
 
-## Logistics and exact proposal
+## Logistics and consumed authorization
 
-| Scope | Calls | Reported spend / proposed cap | Execution failures |
+| Scope | New provider calls | Reported spend / approved cap | Provider/transport failures |
 |---|---:|---:|---|
-| This preparation and retained-output assessment | 0 paid | $0 | — |
-| Proposed A collection | 10 new | $0.04 maximum | Not run |
-| Proposed B collection | 10 new | $0.18 maximum | Not run |
-| Proposed total | **20 new**, plus 10 retained | **$0.22 maximum** | Not run; approval required |
+| A — English collection | 10 | $0.002433104 / $0.04 | — |
+| B — fixed-English translation | 10 | $0.027543100 / $0.18 | — |
+| Total | **20**, plus 10 retained at no new generation cost | **$0.029976204 / $0.22** | — |
 
-Native conservative reservations total **$0.21363776**. [approval-request.json](approval-request.json)
-freezes both exact native plans, source/request hashes, sample, assessment policy, settings and stop rules.
-Both plans reload successfully and have **zero runs and no human brief approval**. “Please proceed”
-authorized preparation, not these previously unpresented hashes/caps. No execution approval was fabricated.
+The original [approval-request.json](approval-request.json) remains unchanged, SHA256
+`fe2e0dcc3605bdc98cf24b86f96924425f4f1627392b465edabc65890d8a8615`.
+[execution-approval.json](execution-approval.json) records the subsequent actual human approval.
+Conservative reservations totaled **$0.21363776**. A passed the operational gate before B:
+no uncertain starts, unknown charges, provider/schema errors, reservation overruns or plan drift.
+No retries, substitutions, repairs or additional calls followed content failures.
+
+[collection-results.json](collection-results.json) records exact native runs/plans, every new call,
+raw-response hashes, charges, tokens and parser results; it references all ten retained observations.
+[collection-review.json](collection-review.json) records every new independent assessment, verified
+evidence citation and combined per-case ordinal distribution. The authorization is consumed, not
+permission for another run or final human acceptance.
 
 ## What is frozen
 
@@ -35,12 +44,12 @@ authorized preparation, not these previously unpresented hashes/caps. No executi
 | B — translation | `google/gemini-3.5-flash-lite` / `google-vertex/global` | Minimal reasoning; 6,000 output-token limit; 15s timeout; exact per-request structured schema |
 
 Serial concurrency 1, zero retries/fallbacks/paid judges; no challenger, A→B collection, C or repair calls.
-Public alias/provider capabilities and rates were checked at **2026-10-28T23:33:02.126Z**:
+Public alias/provider capabilities and rates were rechecked immediately before dispatch at **2026-10-28T23:57:08.467Z**:
 [Relace](https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash-20260910/endpoints)
 ($0.07 input / $0.50 output per million tokens) and
 [Vertex global](https://openrouter.ai/api/v1/models/google/gemini-3.5-flash-lite-20260721/endpoints)
 ($0.30 input / $2.50 output/reasoning per million tokens). No observed alias/rate/capability drift.
-Recheck immediately before dispatch. Aliases are not immutable revisions.
+Aliases are not immutable revisions; provider-reported model aliases do not establish fixed weights.
 
 A uses the checked-in production prompt/model family and route. B uses the production prompt and
 parser but **OpenRouter Vertex with explicit minimal reasoning**, not production's direct-Vertex
@@ -95,28 +104,115 @@ affect different dimensions, not a claim that both whole topics are unusable.
 [review.json](review.json) supplies raw artifact hashes, concrete packet pointers, all cited findings,
 score rationale, normalization distinctions and uncertainties. Nothing was corrected or filtered out.
 
+## Independent assessment of all 20 fresh observations
+
+Separate **FreshEnglishBaselineReview** and **FreshTranslationBaselineReview** read each complete
+lane packet before frozen rubric examples or prior findings. Packets included exact input, raw reply,
+production-parser outcome and normalized English/cards, but omitted model identity, operational
+measurements, old grades and fixture answers. All **25 finding quotations and JSON pointers** were
+checked against the packet. Recognizable development cases are not a fully blinded or unseen sample.
+Reviewer confidence values are uncalibrated self-reports, not probabilities of correctness.
+
+The table preserves all three observations instead of averaging or selecting the best.
+Each vector is **coverage / correctness-and-fit / vocabulary-usefulness / conversation-flow**,
+ordinal 0–4, higher better. **Rejected** means all delivered scores are null; raw-only diagnostic
+scores are recorded separately. “Material / accepted” counts outputs with at least one material
+content finding among parser-accepted outputs, not findings or failed provider calls.
+
+| Lane / context | Retained scores | Fresh 1 scores | Fresh 2 scores | Parser accepted / 3 | Material / accepted |
+|---|---|---|---|---:|---:|
+| A / shoes | 4/4/4/3 | Rejected | Rejected | 1/3 | 0/1 |
+| A / allergy | 4/4/4/3 | 4/3/4/3 | 2/3/4/2 | 3/3 | 1/3 |
+| A / tea | 4/4/4/4 | 4/4/3/4 | 4/4/4/4 | 3/3 | 0/3 |
+| A / lost bag | 4/4/4/3 | 4/2/3/2 | Rejected | 2/3 | 1/2 |
+| A / pottery | Rejected | Rejected | 2/3/4/2 | 1/3 | 1/1 |
+| B / shoes | 4/3/2/3 | 3/2/4/3 | 3/3/3/4 | 3/3 | 2/3 |
+| B / allergy | 4/3/4/4 | 3/2/2/3 | 4/3/4/4 | 3/3 | 1/3 |
+| B / tea | 4/2/4/4 | 3/2/4/3 | 3/2/4/3 | 3/3 | 3/3 |
+| B / lost bag | 4/4/4/4 | 4/3/4/4 | 4/3/4/3 | 3/3 | 0/3 |
+| B / pottery | 4/4/4/4 | 4/4/4/4 | 3/2/2/4 | 3/3 | 1/3 |
+
+### Fresh A: expected useful English, observed contract and content defects
+
+- **Four rejected replies:** shoes 1 and lost-bag 2 emit forbidden raw `alternative` properties;
+  shoes 2 has 12 dialogue lines and pottery 1 has 11, above the maximum 10. Together with retained
+  pottery's rejection, five of fifteen A replies are unavailable as delivered content.
+- **Allergy 2 — material normalization loss:** raw essential 9,
+  “If you can't confirm it's safe, I won't order it.”, is truncated to the first eight essentials.
+  No dialogue line preserves the refusal. The final “We'll do our best to accommodate you” is not a
+  safety confirmation. This is missing communication, not evidence that a learner ate an unsafe dish.
+- **Lost bag 1 — material role inversion:** staff asks “Where is lost property?” and “Can I leave my
+  phone number?”, while the traveller supplies office directions and permission. The essentials
+  remain usable; the dialogue teaches the wrong roles. Rejected lost-bag 2 has a related raw-only defect.
+- **Pottery 2 — material standalone/branch loss:** normalization removes the price and available-time
+  questions from essentials 9–10. Dialogue still contains time, price and booking, so these facts are
+  not globally absent. It also marks “We also have one from 2 to 4 in the afternoon.” as an alternative
+  to the morning offer, then selects “The morning class works for me.”: that branch is inconsistent.
+- **Allergy 1 — minor dialogue caveat:** “It has peanut oil, but we can remove the peanuts.” is not
+  endorsed by the learner, who states danger and refusal. It merits review, not an invented observed
+  safety guarantee. Both tea outputs remain usable; repetitions and lexical polish are lower impact.
+
+### Fresh B: expected fidelity, observed meaning, spelling and pronunciation defects
+
+- **Czech 1 and 2 — material quantity error:** both render frozen “Forty-five crowns” as
+  `Padesát korun.` (fifty), surviving normalization. The retained observation did the same.
+  Fresh `Budu to tady.` also lacks the verb/complement for “I will drink it here.”
+- **Japanese 1 — material written/read-aloud mismatch:** normalized `少しでも食ることができません。`
+  omits written okurigana; related cards contain `食られません` / `食ません`. Raw annotations assign
+  `たべ` to `食` without the written `べ`. Peanut vocabulary romanization `rakkakasei` also disagrees
+  with ruby `らっかせい` and phrase-level `rakkasei`. No allergen substitution or negation reversal is
+  established. Japanese 2 has no supported material defect; heavy/formal phrasing remains minor.
+- **Chinese 1 — material reading/text alignment:** raw `[zhè]双[shuāng]鞋[xié]多[duō]少[shǎo]钱[qián]？`
+  has no written `这`. Normalized `双鞋多少钱？` loses the demonstrative and leaves an incomplete
+  classifier construction. Chinese 2 is usable with minor redundancy. Unsourced optional `价格`
+  in both fresh replies is absent evidence, not the retained reply's false lexical source.
+- **Spanish 2 — material literal entity spelling:** normalized
+  `Me gustar&iacute;a reservar una plaza para la clase de cer&aacute;mica del s&aacute;bado.`
+  retains entity text rather than accents; dictionary `cocci&oacute;n` likewise remains encoded.
+  The linked span faithfully selects the encoded text but does not make its spelling correct.
+  No extra UI decoding step was observed or credited. Spanish 1 remains usable.
+- **Ukrainian:** both replies preserve route, time, passport and lost-not-stolen intent. Masculine
+  `забув` is speaker-dependent with unspecified learner gender, not a proven universal mistranslation.
+  Chinese tone conventions, regional lexical choices and Ukrainian idiom retain qualification limits.
+
+The B reviewer examined **50 essentials, 88 dialogue turns, 50 vocabulary cards, 47 supplied lexical
+sources**, all Mandarin readings and **36 Japanese card romanizations**. Mechanically correct spans
+do not establish lexical meaning or spelling. No content was repaired, and no assistant review is
+native-language or medical certification. See the attributed full assessments for uncertainties.
+
+## Measured runtime, not a model comparison
+
+| Fresh lane | Request median | Request maximum | Serial run wall time | Input / output tokens | Cached input / reasoning tokens |
+|---|---:|---:|---:|---:|---:|
+| A, 10 calls | 2.387s | 3.584s | 24.903s | 11,410 / 4,237 | 7,808 / 0 |
+| B, 10 calls | 2.418s | 4.067s | 28.496s | 24,402 / 8,089 | 0 / 0 |
+
+Request durations are native dispatch-to-response observations; wall time includes serial collection.
+Token categories can overlap: cached input is part of input, reasoning part of output. Reported spend
+includes provider-reported cache treatment; it is not the conservative reservation. No reliable p95,
+production latency, first-usable phrasebook time or comparative provider ranking is established.
+
 ## Coverage and confidence boundary
 
 The shared sample remains **shoes/Chinese, allergy/Japanese, tea/Czech, lost bag/Ukrainian,
 pottery/Spanish**: 3 ordinary cases and 2 explicit challenges; 4 `basics` and 1 `none`.
 It covers the supported target scripts/readings, but has **one scenario per language**, no
 `conversational` learner, no multi-topic request, no real-user sample and no unseen holdout.
-A's five outputs are all English; they are not five independent English-language populations.
+A outputs are English in every context; the five contexts are not independent English-language populations.
 
-Two new observations plus the compatible historical one can describe variation **on these exact
-cases**. Keep historical/new cohorts identifiable; do not select winners or imply immutable model
-versions. Three is descriptive, not statistical significance, reliable p95 or production error prevalence.
-A broader sample and qualified adjudication remain separate decisions before generalizing beyond this
-reference. Mandarin usage/tone conventions, Czech idiom, Ukrainian speaker applicability and Spanish
-regional wording remain uncertain where no material error was established.
+One retained plus two fresh observations describe variation **on these exact cases**. Historical/new
+cohorts remain identifiable; none was replaced, selected as a winner or silently repaired.
+Three is descriptive, not statistical significance, reliable p95 or production error prevalence.
+A broader sample and qualified adjudication remain separate decisions before generalizing beyond
+this reference. Mandarin usage/tone conventions, Czech idiom, Ukrainian speaker applicability and
+Spanish regional wording remain uncertain where no material error was established.
 
-## Execution and review boundary
+## Review and decision boundary
 
-If this exact proposal is approved, run **A first**, inspect its native results, then B. Stop before B on
-provider/transport/unsupported-schema errors, uncertain start/unknown charge, reservation overrun or
-plan drift. Every started attempt consumes a slot; unknown charges retain their full reservation.
-Native bounds assume frozen rates and honored output limits, not a provider billing guarantee.
-Parser/content failures are retained evidence, not permission to retry, truncate, substitute a mock or
-repair. Reassess every new observation independently with the frozen rubric and report per-case
-counts/distributions, exact weaknesses and runtime measurements separately. No automatic extension,
-final baseline acceptance, model ranking, prompt edit, promotion or deployment. C remains deferred.
+The consumed approval authorized this unchanged collection and assessment, not final baseline
+acceptance. Human review must decide whether the known failures and limited sample are adequate for
+the intended like-for-like comparison or whether separately approved broader evidence is needed.
+Neither collecting more cases nor fixing the baseline is silently authorized. No automatic extension,
+model ranking, prompt edit, promotion or deployment follows these findings. C remains deferred and
+is not a prerequisite for A/B. Native bounds depend on frozen rates and honored output limits, not a
+provider billing guarantee.
