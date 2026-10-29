@@ -7,9 +7,11 @@ Always load these docs when context is relevant:
 |-----|------|--------------|
 | Product brief | `docs/BRIEF.md` | Goals, user, phases, schema, architecture decisions |
 | UX design spec | `docs/DESIGN.md` | Navigation structure, interaction states, action panes, UI layout |
-| API design (current) | `docs/API_DESIGN.md` | The `/lookup` endpoint — contract, execution model, prompt/validation design, tests. Source of truth for the new API. |
+| API overview | `docs/API_DESIGN.md` | Shared architecture, trust boundaries, runtime outcome conventions, and endpoint directory; not required for endpoint-only work |
+| Endpoint design | `docs/api/<endpoint>.md` | Load only the relevant endpoint: `context`, `phrasebook-title`, `phrasebook`, `phrase-breakdown`, or `phrasebook-image`; owns I/O, pipeline, limits, recovery, and known gaps |
+| Evaluation guidance | `evals/README.md` and `evals/rubric.json` | Evaluation methods, scoped reporting, quality dimensions and scoring; load for evaluation work, not ordinary endpoint implementation |
 | Fan-out design (deferred) | `docs/FANOUT_DESIGN.md` | Planner + parallel-fillers optimization for `/lookup`; load only when building the fan-out |
-| API reference | `api/README.md` | Endpoint reference, deploy/dev setup, and gateway config for the `/lookup` service; see `docs/API_DESIGN.md` for the endpoint contract itself. |
+| API operations | `api/README.md` | Local development, configuration, tests, deployment, and gateway setup; endpoint contracts live in `docs/api/` |
 
 ## Prompt changes
 

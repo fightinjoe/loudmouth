@@ -9,8 +9,8 @@ is recorded without resolving its coverage blocker. **C is optional and deferred
 The next checkpoint is a confident A/B baseline, not further C reconciliation.** These small
 assistant-reviewed samples are not linguistic acceptance, model ranking or authorization for further
 inference or production changes. Tooling and review entrypoint: [`evals/README.md`](../../evals/README.md).
-Normative contracts remain [`API_DESIGN.md`](../API_DESIGN.md) and
-[`CARD_SCHEMA.md`](../CARD_SCHEMA.md); this plan does not change them.
+Normative endpoint contracts are indexed in [`API_DESIGN.md`](../API_DESIGN.md);
+shared cards follow [`CARD_SCHEMA.md`](../CARD_SCHEMA.md). This plan does not change them.
 
 ## Goal and priorities
 
@@ -75,14 +75,17 @@ not that its content is error-free.
 | Comparable results | Record per-topic quality dimensions and exact findings separately from parser/runtime failures, latency, tokens and cost. Missing assessment stays null. Retain known baseline failures rather than filtering them out. |
 | Bounded collection | Prepare an A/B-only native request plan for missing evidence, with exact inputs, repetitions, caps and stop rules. New paid calls need explicit approval; existing approvals are consumed. No challenger, production prompt edit or deployment is included. |
 
-The [baseline findings](../../evals/baseline/findings.md) now combine ten retained observations with
-**20 completed, explicitly approved A/B-only calls / $0.029976204 reported spend against $0.22 maximum**.
-The original [request](../../evals/baseline/approval-request.json), separate
+The [dated A/B working log](../../evals/baseline/log-findings-2026-10-28.md) combines ten earlier
+observations with **twenty completed, explicitly approved additional calls / $0.029976204 reported
+spend against $0.22 maximum**. Its selected expected/actual excerpts are self-contained. The original
+[request](../../evals/baseline/approval-request.json), separate
 [execution approval](../../evals/baseline/execution-approval.json) and
-[measured receipts](../../evals/baseline/collection-results.json) preserve provenance and known failures.
-One historical plus two new observations per case remain identifiable. This reference is limited to
-the same five exposed contexts; conversational, multi-topic, real-user and unseen coverage remain
-absent. Collection does not establish product-wide confidence or final human acceptance.
+[measured receipts](../../evals/baseline/collection-results.json) are historical records, not acceptance.
+Assistant grades remain proposals; relevant but unfinished dialogue is not automatically a failure.
+Local prompt-romp artifacts are temporary, and hashes cannot reconstruct missing inputs or responses.
+This is not yet an accepted portable/replayable baseline. The same five exposed contexts also lack
+conversational, multi-topic, real-user and unseen coverage. Do not commit evaluation results or
+reporting edits without explicit instruction; running an approved collection does not authorize that.
 
 Review the per-observation assessments and decide whether this limited reference is adequate for the
 intended like-for-like comparison or needs a broader sample before generalizing. No C repair success

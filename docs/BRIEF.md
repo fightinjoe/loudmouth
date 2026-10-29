@@ -174,5 +174,5 @@ paid calls, deployment or API/card contract changes are authorized by this strat
 ## References
 
 - [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md) — card and reading-token contract.
-- [`docs/API_DESIGN.md`](./API_DESIGN.md) — API request, response, and model-behavior contracts.
+- [`docs/API_DESIGN.md`](./API_DESIGN.md) — shared API rules and index of endpoint-specific contracts.
 - [`docs/DESIGN.md`](./DESIGN.md) and [`docs/journeys.md`](./journeys.md) — interaction design.

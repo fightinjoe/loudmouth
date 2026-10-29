@@ -4,6 +4,43 @@
   "reviewedAt": "2026-10-29T00:04:59.105Z",
   "rubric": "1.2-proposed",
   "authority": "Independent assistant judgments, not native-language or medical certification. Numerical reviewer confidence is uncalibrated self-report, not a probability of correctness.",
+  "reportingCorrection": {
+    "currentInterpretation": "evals/baseline/log-findings-2026-10-28.md",
+    "originalRecordsAndCountsPreserved": true,
+    "originalScoresAndMaterialCountsAreAcceptanceDecisions": false,
+    "sourcePacketAvailability": "Temporary ignored local artifacts, not guaranteed long-term attachments. Hashes identify but cannot reconstruct missing bytes.",
+    "observationLabels": {
+      "retained": "Earlier saved response; no new generation.",
+      "new-1": "Additional response 1 to the same unchanged request.",
+      "new-2": "Additional response 2 to the same unchanged request."
+    },
+    "findingInterpretationOverrides": [
+      {
+        "observationId": "a-allergy-ja-new-2",
+        "category": "incomplete_task_progression",
+        "currentDisposition": "warning-improvement-opportunity-not-failure",
+        "reason": "The accommodation acknowledgement is relevant dialogue. Reaching a preferred ending is not required; the original material label and flow score 2 are not endorsed as acceptance judgments."
+      },
+      {
+        "observationId": "a-allergy-ja-new-2",
+        "category": "essential_truncated_safety_boundary",
+        "currentDisposition": "observed-coverage-loss-task-failure-severity-not-agreed",
+        "reason": "The parser keeps eight of nine essentials and removes the explicit refusal. This is a recoverable normalization warning, separate from the relevant conversation ending; no unsafe-meal outcome is established."
+      },
+      {
+        "observationId": "a-pottery-es-new-2",
+        "categories": ["essential_truncated_price_question", "essential_truncated_time_question"],
+        "currentDisposition": "warning-standalone-phrase-improvement",
+        "reason": "The two standalone questions are dropped, but the dialogue retains price, time and booking. Do not present the whole task as missing that information."
+      },
+      {
+        "observationId": "a-pottery-es-new-2",
+        "category": "misleading_local_alternative",
+        "currentDisposition": "warning-potential-branch-inconsistency",
+        "reason": "The raw sequence is coherent. Alternative substitution may conflict with the following morning selection, but UI behavior was not exercised."
+      }
+    ]
+  },
   "retainedReview": {
     "path": "evals/baseline/review.json",
     "sha256": "7765e063542b9c521b7e289c544cd693e63e3209f42c7d0e829d14ed7be6bea8",

@@ -7,162 +7,30 @@ and nonblocking watercolor covers via **`/phrasebook-image`**. Existing phrases 
 The 2026-10-01 v3 promotion is **production code only; not deployed**. Known translation defects
 remain accepted risk and separate improvement work. Deploy API, gateway, and web together.
 
-[`docs/API_DESIGN.md`](../docs/API_DESIGN.md) is the endpoint contract; see
-[`docs/CARD_SCHEMA.md`](../docs/CARD_SCHEMA.md) for cards and reading tokens.
+[`docs/API_DESIGN.md`](../docs/API_DESIGN.md) is the shared architecture and endpoint index.
+Each endpoint design below owns its request/response contract, pipeline, bounds and recovery policy.
+This README owns development, configuration, tests and deployment—not a second endpoint specification.
+Shared cards/readings follow [`docs/CARD_SCHEMA.md`](../docs/CARD_SCHEMA.md);
+[evaluation guidance](../evals/README.md) owns assessment and reporting.
+
 
 ## Endpoints
 
-### `POST /context`
+| POST endpoint | Purpose | Contract and pipeline |
+|---|---|---|
+| `/context` | Situation questions, suggested conversations and image prompt | [Context design](../docs/api/context.md) |
+| `/phrasebook-title` | Independent English UI naming | [Title design](../docs/api/phrasebook-title.md) |
+| `/phrasebook` | English generation and translation for indexed topics | [Phrasebook design](../docs/api/phrasebook.md) |
+| `/phrasebook-image` | Independent nonblocking PNG cover generation | [Image design](../docs/api/phrasebook-image.md) |
+| `/phrase-breakdown` | Exact-source contextual teaching and lexical targets | [Breakdown design](../docs/api/phrase-breakdown.md) |
 
-```json
-{ "seed": "ordering vegan food", "language": "ja" }
-```
+## Structured diagnostics
 
-`seed` is required, trimmed, and limited to 200 characters. `language` must be one of `zh`, `ja`,
-`es`, `cs`, or `uk` (Ukrainian). Optional `ability` accepts `none`, `basics`, or `conversational`; invalid
-values are ignored. The prompt uses known ability and leaves proficiency questions to the client.
-
-Returns `{ questions, checklist, imagePrompt, usage }`. Questions have `label` and `options`;
-web requires an explicit answer, without preselection. Checklist entries have `label` and `checked`.
-The required English `imagePrompt` is trimmed and 1–2,000 characters. No server session is created.
-
-### `POST /phrasebook-title`
-
-```json
-{ "seed": "Making small talk with other people at a dog park" }
-```
-
-Returns `{ title, usage }`, for example `"Dog Park Chitchat 🐕"`. Seed validation matches `/context`.
-Uses its own prompt to produce a short English title, generally 2–6 words with an optional emoji.
-Titles are validated as non-empty, single-line strings of at most 80 characters.
-The client calls this in parallel with `/context` and freezes the available title or seed fallback
-when saving. It never waits for naming or sends the title to `/phrasebook`.
-
-### `POST /phrasebook`
-
-```json
-{
-  "seed": "ordering vegan food",
-  "language": "ja",
-  "ability": "basics",
-  "answers": { "Where are you eating?": "Standard restaurant" },
-  "checklist": ["State my dietary restrictions", "Ask about hidden ingredients"]
-}
-```
-
-`ability` accepts `none`, `basics`, or `conversational`; omitted or invalid values default to `basics`. The learner chooses 1–8
-checklist topics. `answers` and `checklist` are top-level fields, not nested under a context object.
-
-Returns `{schemaVersion:3,title,groups,flags,usage}`. Each group contains:
-
-```ts
-{
-  id: string; title: string;
-  essentials: {id:string; card:Phrase}[]; // 1–8, no speaker metadata
-  vocab: Candidate[];                  // 0–10 dictionary Words with POS/senseKey
-  dialogue: {id:string; card:Phrase; speaker:'you'|'partner'; alternative?:true}[]; // 2–10
-}
-```
-
-Essentials are independent phrases, not selected dialogue excerpts. Dialogue requires both speakers;
-code derives alternatives from adjacent same-speaker lines. Old phrases/featured IDs/scores are gone.
-Omitted vocabulary evidence is valid without a flag. Present unresolved source hints receive
-`vocab-source-missing` / `unresolved`; exact section-aware Evidence is attached when resolvable.
-
-Generation uses one English call per topic with at most four concurrent jobs. After all English is
-complete, one translation per complete topic runs in parallel. Both stages use 6,000-token ceilings.
-Assembly preserves request index order, including duplicate titles. Independent valid excess lists
-are clamped to eight essentials/ten words only after every item is validated; dialogue is not truncated.
-Existing validation retry, rate-limit backoff, cancellation, and 245-second overall bounds remain.
-There is no partial response or automatic fallback backend.
-
-The client validates every topic before selection, then atomically commits selected original indexes.
-At commit, exact repeated essentials/words belong to the earliest retained topic; unchecked topics
-cannot suppress them. Related vocabulary, within-topic repetition, and all dialogue remain.
-There is no global cap or extra API request. Canonical identity shares membership stars and unique
-Review entries. Server draft UUIDs are remapped at commit; removed essential refs are detached while
-preserving evidence snapshots. The API response itself is unchanged and retains every generated topic.
-
-### `POST /phrasebook-image`
-
-Exact request: `{prompt, output_format:"png"}`, with a 1–2,000-character
-trimmed prompt. Returns `{image:{dataUrl,mediaType:"image/png",width,height},usage:{model,costUsd,durationMs,stages}}`.
-The server makes one OpenRouter image call to `black-forest-labs/flux.2-klein-4b`, pinned to
-Black Forest Labs, with 16:9 aspect ratio and PNG output. The context prompt requests a close-up
-composition on plain white paper: large objects fill the frame with a narrow 3–5% target margin,
-without clipping. Actual margins vary; no automatic crop is applied. Transparency is neither
-requested nor required. Only decoded inline PNG output with visible pixels, ≤6 MiB, ≤4 MP,
-and 16:9 ±0.03 is accepted.
-No background-removal service, remote output URLs, redirects, automatic retries,
-or client-selected models. The operation has a 120-second deadline; disconnect aborts work.
-Usage contains one OpenRouter stage; reported cost is used for both stage and aggregate cost,
-or null when unavailable. All durations are integer milliseconds.
-Requires only server-side `OPENROUTER_API_KEY`; no separate image-provider account or key.
-An authenticated local HTTP smoke using a generated context image prompt returned an opaque
-1824×1024 PNG in 4.4 seconds at a reported $0.015. This is one observation, not a latency guarantee.
-The route logs `usage` on success and `request_invalid`/`request_failed` on rejection, each with
-`route: 'phrasebook-image'` and a failure level. Usage logs contain cost, model, and duration,
-not image bytes or credentials.
-
-### `POST /phrase-breakdown`
-
-```json
-{
-  "schemaVersion": 2,
-  "source": {
-    "snapshot": {
-      "lang": "ja", "text": "肉も魚も食べません。",
-      "translation": "I don't eat meat or fish."
-    }
-  },
-  "context": { "groupTitle": "Dietary restrictions", "speaker": "you" }
-}
-```
-
-Snapshot lang supports `zh`, `ja`, `es`, `cs`, `uk`; exact text/translation are nonblank and ≤2,000 UTF-16
-units. Source may include aligned reading tokens, romanization and advisory card/occurrence refs.
-Optional context contains active-book generation `{seed,ability,answers}`, groupTitle and speaker.
-The model receives snapshot/context, never IDs. Old flat requests are rejected.
-
-Returns `{schemaVersion:2,chunks,flags,usage}`. Each meaningful chunk contains
-`{start,end,text,gloss,role,explanation,words:Candidate[],target}` with Word candidates and exactly one
-`{kind:'word',index}` or `{kind:'chunk',card:Chunk}` target. There are 1–32 ordered source-aligned
-chunks and 0–32 Words per chunk. Word sources retain exact request snapshots and selected spans;
-dictionary readings align to their own headwords, never inflected source forms. Japanese/Chinese
-generated Words require readings. Spanish/Czech/Ukrainian generated Words omit readings; model-supplied
-`reading` fields (including `null`) are discarded. Every meaningful source character is covered;
-bounds cannot split surrogate pairs. Explicit equivalence collapses `caluroso` to one Word target but retains independent
-Chunk/Word targets for `食べません`/`食べる`. See API_DESIGN for model fields, offsets and all limits.
-Ukrainian targets retain native Cyrillic, without forced romanization or ruby readings. Ukrainian
-support does not change schema version 2; deploy the API, gateway, shared schema, and web together.
-
-Word source evidence is optional: a dictionary form such as `眠い` need not occur literally in an
-inflected source such as `眠くなってきたのかも`. Missing or unresolved surface/occurrence hints retain
-the valid Word without `sources` and add
-`{code:'word-source-missing',chunkIndex,wordIndex,reason:'omitted'|'unresolved'}` to `flags`.
-Indices refer to returned chunks and Words; `flags` is empty when none are missing evidence.
-Required card content, chunk coverage, present evidence, and explicit Word/Chunk equivalence remain
-strict. No retry or extra provider call is made for a missing source.
-
-One provider call, no automatic retry, 4,096-token ceiling and 15-second default timeout (alternate
-adapter timeout otherwise). Invalid requests return 400; invalid model output returns 502. Web
-caches validated content but resolves stars from the active phrasebook membership. Opening analysis
-does not persist it; explicit starring does. Regeneration never overwrites saved teaching.
-
-## Shared HTTP behavior
-
-All routes accept `POST` JSON and reject a client-supplied `llm` selector. `OPTIONS` returns `204`
-with CORS headers, unsupported methods return `405`, and unknown paths return `404`.
-
-- `400`: invalid request, missing required field, invalid enum, or client backend selection.
-- `502`: provider failure, deadline, or output still invalid after the endpoint's applicable retries.
-
-Structured API diagnostics include `failureLevel`: **0 none**, **1 non-fatal** (usable result with
-degraded enrichment or recovery), **2 fatal to the requested operation** (controlled HTTP error,
-not a service crash). Successful usage events record 0/1; rejection/failure events record 2.
-Unresolved source hints, romanization fallback, and declared independent-list clamping
-do not turn usable content into `502`. Failure levels are logged, not added to response envelopes.
-See [Runtime failure levels](../docs/API_DESIGN.md#runtime-failure-levels).
+API diagnostics use [runtime failure levels](../docs/API_DESIGN.md#runtime-failure-levels),
+not fields added to strict response envelopes. Count final outcomes rather than log lines.
+The image route logs `usage` on success and `request_invalid`/`request_failed` on rejection, with
+`route: 'phrasebook-image'` and a failure level. Usage contains cost, model and duration, not image
+bytes or credentials. Endpoint designs distinguish implemented warnings from intended recovery.
 
 ## Server-owned model selection
 
@@ -178,6 +46,9 @@ Clients cannot choose a backend. `LLM_BACKEND` selects translation and the other
 `PHRASEBOOK_GENERATION_BACKEND` independently selects English generation:
 `deepseek-v4.1-flash` (default, OpenRouter Relace only, reasoning disabled) or
 `gemini-3.5-flash-lite`. Neither selector enables an automatic fallback.
+
+Image generation separately requires server-side `OPENROUTER_API_KEY`; it needs no additional
+image-provider account/key. Its fixed routing and output contract are in the image design.
 
 Invalid configuration fails startup. To compare providers, restart the local API with another
 `LLM_BACKEND`, then use the same request. No request override or testing header is exposed.

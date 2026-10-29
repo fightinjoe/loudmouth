@@ -3,7 +3,7 @@ name: journeys
 description: >
   Current Catchphrase user journeys. Documents the retained guided-creation, phrasebook-browsing,
   suggested-phrasebook, and starred-card review flows. Defer to DESIGN.md and the Pane Protocol for
-  pane vocabulary, API_DESIGN.md for endpoint contracts, and CARD_SCHEMA.md for persisted data.
+  pane vocabulary, docs/api/ for endpoint contracts (indexed by API_DESIGN.md), and CARD_SCHEMA.md for persisted data.
 ---
 
 # User journeys

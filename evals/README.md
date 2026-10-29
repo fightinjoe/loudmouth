@@ -4,17 +4,17 @@
 [Current strategy](../docs/designs/phrasebook-quality-identity-storage-plan.md) ·
 [Proposed rubric](rubric.json) · [Subjective-review skill](../.agents/skills/content-quality-evaluation/SKILL.md)
 
-**Current priority: review the collected A/B baseline before comparing future models or prompts.**
-C is optional and deferred, not a prerequisite for A/B. The
-[baseline findings](baseline/findings.md) combine 10 retained observations with **20 newly completed
-A/B-only calls**, costing **$0.029976204 against the approved $0.22 maximum**.
-[Measured receipts](baseline/collection-results.json) preserve every attempt and parser failure;
-[execution approval](baseline/execution-approval.json) binds the original exact
-[request](baseline/approval-request.json). This is a limited five-context reference, not product-wide
-confidence or final baseline acceptance. Follow the
-[baseline checkpoint](../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline).
-Keep C's [current process/status](calibration/c-recalibration-findings.md#status-deferred-optional-investigation)
-without further reconciliation or spending.
+**Current priority: clarify the collected A/B evidence before accepting a comparison baseline.**
+C is optional and deferred, not a prerequisite for A/B. The dated working
+[evaluation log](baseline/log-findings-2026-10-28.md) explains the ten earlier responses and twenty
+additional responses, with expected behavior, actual values and parser/review distinctions.
+The additional calls cost **$0.029976204 against the approved $0.22 maximum**.
+[Measured receipts](baseline/collection-results.json) and
+[historical assistant reviews](baseline/collection-review.json) are records, not an accepted baseline;
+the original grades and counts are not settled pass/fail judgments. Local prompt-romp artifact paths
+are temporary provenance locators, not durable attachments or guaranteed replay inputs.
+See the [baseline checkpoint](../docs/designs/phrasebook-quality-identity-storage-plan.md#next-checkpoint-reviewed-ab-baseline).
+Further calls need separate approval. Keep edits uncommitted unless explicitly asked to commit.
 
 ## Three independent pipelines
 
@@ -38,6 +38,138 @@ failures, such as translating five entries when A produced six. It is not anothe
 Saved localized replies reused under detector-gated routing are explicitly **counterfactual composition
 checks**, not independent observations from a different neutral repair prompt. Fresh neutral-request
 behavior requires separately approved native calls; it is not measured by the calibration inventory below.
+
+## Learning-quality assessment
+
+[`rubric.json`](rubric.json) owns the proposed **0–4 ordinal scale**, dimension definitions,
+calibration examples, risk policy and review-record requirements. Do not duplicate or reinterpret
+its anchors in endpoint designs. Score coverage, correctness/contextual fit, vocabulary usefulness
+and conversation flow independently, with exact citations.
+
+**3 needs editing to become good; 2 needs correction or supplementation to accomplish the task.**
+Scores are ordered categories, not equal numerical distances. Report distributions, per-topic
+scores and cited weaknesses, not a mean as proof of quality. Missing assessment is null, never 0.
+Repetition can remain usable; relevant unfinished dialogue is not automatically a failure.
+
+Generic illustrative language is not automatically a claim about the learner: distinguish an example
+allergy from an invented personal fact. Record potentially harmful or materially misleading content
+as an attributable risk flag with the statement, concern and review disposition. An unsupported
+medication-safety assurance is not excused by strong coverage/vocabulary scores; structural validity
+does not establish clinical safety.
+
+Before paid decision work, freeze the rubric, calibration examples, risk policy and explicit promotion
+threshold. New versions may reassess saved evidence but must not overwrite historical findings,
+manufacture judgments or count reused output as a new observation. No rubric alone promotes a model.
+Keep quality, runtime levels, contract validity, safety review, latency and cost separate. The rubric
+adds no runtime scoring/semantic retry and is unrelated to legacy v2 `lineScores`/`featuredPhraseIds`.
+
+## Step outcomes and criteria
+
+Each [endpoint design](../docs/API_DESIGN.md#endpoints) owns its pipeline and exact checkpoint IDs.
+Use those IDs in reports: `english.call` is provider execution, `english.decode` is JSON decoding,
+`english.normalize` is deterministic shaping, and `english.validate` checks required content.
+**A** and **B** identify evaluation lanes, not individual steps or an endpoint's final outcome.
+
+This is the reporting/assessment standard. It does **not** claim that runtime logs or the current
+offline CLI already emit every checkpoint. Some checkpoints share one function. Current CLI
+`stage.status: passed|failed` and `structuralPass` summarize a combined parser path; they are not
+provider outcomes, full endpoint outcomes, or step-level quality verdicts. Reports must explain that
+scope rather than treating legacy `FAIL` wording as a failure of all work.
+
+### Success, warning and failure have a scope
+
+| Outcome | Meaning at the named step | Consequence |
+|---|---|---|
+| **Success** | The step's required output is available and meets that step's criterion. | Continue. A successful provider call proves neither decoding nor content accuracy. |
+| **Warning** | The step can supply usable required output, but safely ignores/normalizes surplus data, recovers a feature, loses optional enrichment, or exposes a quality concern. | Continue; show the exact transformation, lost feature or concern. Do not spend another model call merely to silence the warning. |
+| **Failure** | Required output is missing, unsafe, ambiguous to recover, or violates a non-recoverable requirement. | Stop the dependent path or apply only the existing approved recovery policy. Identify whether this is one attempt, one topic, the endpoint, or a client operation. |
+
+`blocked`, `cancelled`, `not run` and `not assessed` describe execution/assessment coverage, not
+additional success/warning/failure grades. If A supplies no valid English, its dependent translation
+is **blocked**, not a second independent translation failure. A skipped optional reviewer is **not
+run**, not failed. Missing measurements and grades remain null.
+
+Keep three scopes separate:
+
+1. **Attempt/step:** a particular provider or validation attempt may fail.
+2. **Endpoint:** existing bounded recovery may still produce complete usable output. That is success
+   with a recovery warning (`failureLevel = 1` where implemented), not an erased attempt failure.
+   Exhausted required work is endpoint failure (`failureLevel = 2` where implemented).
+3. **Client operation:** title or cover failure can leave phrasebook creation usable with a fallback
+   or missing illustration. That is degradation of creation, not failure of the text endpoint.
+
+For an unrecovered HTTP 400, report **request rejected**; do not blame a model that was never called.
+Keep cancellation separate from invalid output. Do not sum several step warnings/errors into several
+failed requests. Final request counts use final endpoint outcomes and explicit denominators.
+
+### Criteria for each documented step
+
+Each endpoint checkpoint uses a suffix below; apply its criterion to the named endpoint, topic and
+attempt. Endpoint designs own exact bounds and supported recovery; these generic criteria do not
+add recovery capabilities or replace the endpoint's contract.
+
+| Step suffix / kind | Success criterion | Warning criterion | Failure criterion |
+|---|---|---|---|
+| `.request` — input boundary | Required request fields, bounds and associations are valid. | A documented optional input is defaulted/ignored, such as invalid optional ability; ordinary specified trimming is not itself degradation. | Missing/invalid required input, prohibited client controls, unsafe source or ambiguous association; reject before calls. |
+| `.prompt` — trusted request construction | Correct task/context, trusted instructions, server settings and supported output contract reach the provider boundary. | A known adapter capability difference is disclosed without changing required meaning/contract. | Wrong topic/source, untrusted data substituted into trusted instructions, invalid configuration or unsupported required schema; do not dispatch an invalid request. |
+| `.call` — provider execution | A response arrives within the active deadline with required transport/provider completion. | An existing bounded retry recovers; retain failed-attempt details. Missing reported cost is unknown accounting, not automatically generation failure. | Provider/transport error, deadline or no usable response after allowed recovery. Unknown start/charge is an accounting uncertainty and may stop further paid work under its approval rules. |
+| `.decode` — response decoding | Model JSON, inline image envelope or PNG bytes decode using that endpoint's supported representation. | A supported representation is safely unwrapped/converted; report recovery when it is diagnostic. | Undecodable JSON/image or unsupported required representation; do not guess/repair meaning. Valid JSON with an extra field is not a JSON-decoding failure. |
+| `.normalize` — deterministic shaping | Required meaning and association survive the documented canonicalization. Ordinary trimming or server-owned ID derivation need not be warnings. | Safe ignored authoring metadata, valid list clamping, optional-reading fallback, or another supported recovery; show raw → retained/dropped values. | Required content cannot be shaped safely without guessing, changing its meaning or hiding a required-data defect. |
+| `.align` — source association/positioning | Required sections/indexes stay associated with the exact source; span-based steps also require valid ordered UTF-16 spans and meaningful coverage. | A recoverable optional association is discarded before fallback; describe the normalization/enrichment that follows. | Required counts, chunk/source alignment or topic association are missing, ambiguous, out of bounds or inconsistent. |
+| `.enrich` — optional relationships/features | Supplied evidence/reading enrichment resolves correctly; absence allowed by the endpoint is also success. | Optional source hints are unresolved, or optional pronunciation needs fallback/omission; keep valid required content. | Required Word/card fields are invalid despite enrichment recovery. Optionality does not excuse missing required readings or unsafe cards. |
+| `.validate` — required content/shape | Required fields, counts, speakers, topic/source association and applicable card/wire constraints pass. | The endpoint explicitly supports a recovery and the resulting required object is valid; attribute its transformation to `.normalize`/`.enrich`, not an unexplained validation failure. | Required content remains invalid; e.g. wrong translated counts, missing speaker, or dialogue above its hard bound with no supported recovery. |
+| `.join` — dependency barrier | Every required indexed predecessor is available; preserve topic identity, including duplicate titles. | A predecessor recovered and remains usable; carry its warning, do not invent another error. | A required predecessor is unavailable or identity is unsafe; dependent work is blocked. |
+| `.assemble` — deterministic result construction | Complete sections, cards, IDs/targets/evidence and usage are assembled without changing association. | Valid optional enrichment is absent or aggregate cost is unknown; preserve flags/null accounting and usable required output. | Required groups/targets are missing, IDs/refs or source association are invalid, or only a partial required result can be constructed. |
+| `.respond` — final endpoint delivery | A complete contract-valid response is returned with actual known usage. | Return usable output after documented recovery, preserving warnings in existing flags/logs; do not invent a new wire field. | Required validation/delivery fails or the operation exhausts its deadline; return a controlled error. A disconnected caller is separately labelled cancelled, not a content failure. |
+| `.quality` — evaluation-only review | The reviewed content supports the task/fidelity criterion with no supported concern in the assessed scope. | Relevant but unfinished/awkward dialogue, an improvement opportunity, applicability question or uncertain linguistic judgment. | A cited, supported violation of the named content criterion, such as 45 becoming 50 or an unrelated response. This is a **content-check finding**, not an automatic endpoint failure or promotion threshold. |
+
+Safety/linguistic severity remains a separate assessment with quoted evidence and reviewer identity.
+Do not turn a proposed “material” label, an ordinal score of 2, or a recoverable runtime level of 1 into
+an automatic whole-topic/endpoint failure. Strong disputed claims remain unresolved.
+
+### Endpoint contracts and implementation gaps
+
+Use the relevant endpoint's **Pipeline and step outcomes** and **Execution limits and recovery**:
+[context](../docs/api/context.md#pipeline-and-step-outcomes),
+[title](../docs/api/phrasebook-title.md#pipeline-and-step-outcomes),
+[phrasebook](../docs/api/phrasebook.md#pipeline-and-step-outcomes),
+[breakdown](../docs/api/phrase-breakdown.md#pipeline-and-step-outcomes), or
+[image](../docs/api/phrasebook-image.md#pipeline-and-step-outcomes).
+Those references—not a parallel evaluation catalog—own endpoint behavior and current-versus-intended
+implementation gaps.
+
+C is an optional evaluation-only detector/repair path, not an endpoint prerequisite. Distinguish
+detection, localized repair validation, atomic application and preservation review. Incomplete
+detector coverage can block repair without making the original endpoint a failed request.
+
+### Step-aligned report record
+
+For each reported observation, include:
+
+- Endpoint, lane if applicable, situation, earlier/additional response identifier, topic index and
+  attempt where known; live call versus saved replay versus hypothetical policy example.
+- Exact **step ID**, owner and scope; outcome `success|warning|failure`, or a coverage state such as
+  blocked/not assessed; and **current implementation versus intended policy**.
+- Expected behavior, exact received value/path, retained/dropped value, recovery taken, and concrete
+  consequence for the next step. Preserve enough selected evidence to read without temporary files.
+- Final endpoint outcome **only if exercised**, separately from content-check disposition and proposed
+  severity. A saved parser replay is not an exercised production endpoint.
+- Provider calls, known/unknown charges, latency and tokens separately. Replaying saved data creates
+  no new provider observation or spend. Keep original scores/receipts attributable and unchanged.
+
+For a concrete saved-response example, see the dated
+[step-aligned outcomes](baseline/log-findings-2026-10-28.md#step-aligned-outcomes-not-a-blanket-ab-verdict)
+and raw `alternative` excerpt in that log. Current rejection versus intended ignore-and-warn policy
+is owned by the [phrasebook implementation gap](../docs/api/phrasebook.md#known-implementation-gaps).
+
+
+## Historical evidence
+
+Earlier results are separate from current contracts:
+[v3 cutover, evaluation reset and legacy v2 comparisons](history/api-cutover-and-legacy-evaluations.md);
+[image smoke and prompt comparisons](history/image-prompt-evaluations.md).
+These migrated summaries preserve observations and limitations, not replayable raw captures or new
+verification. Current A/B evidence remains in the dated log linked above.
 
 ## Offline proof and representative review sample
 
@@ -85,6 +217,23 @@ results or spending. Do not rely on a recap shown at the bottom of the conversat
   Put provenance and detailed latency/token accounting after the result, not ahead of the context.
 - Label columns **Expected behavior**, **Actual model response** and **Applied/replayed correction**,
   not an ambiguous “outcome and disposition.” Define schema terms on first use or link the key below.
+- Define observation labels: **earlier response** is saved evidence; **additional response 1/2**
+  identifies repeat calls to the same unchanged request. Avoid unexplained “fresh” or “Allergy 2.”
+- Show the actual returned value before explaining the concern. For parser changes, distinguish
+  raw model output from retained application values. A recoverable warning is not a rejection.
+- Relevant dialogue need not reach a prescribed ending. Suggestions to extend or polish an exchange
+  are warnings, not failures; demonstrate a concrete contradiction, unrelated reply or misleading
+  meaning/role before making a stronger claim. A lost standalone essential is a separate concern.
+- Name the source of each result: provider receipt, production parser, assistant reviewer or human
+  adjudication. Proposed severity/scores are not automatic acceptance rules.
+- Use dated `log-findings-YYYY-MM-DD.md` names for run-specific working findings. Keep selected
+  expected/actual excerpts self-contained; an ignored local path plus a hash cannot preserve evidence.
+
+Use the [step outcome criteria](#step-outcomes-and-criteria) and exact
+[endpoint checkpoint IDs](../docs/API_DESIGN.md#endpoints). Never use an unqualified “A failed”
+when the evidence only shows a required-content check rejected one saved response.
+
+
 
 ### C review response: plain-language key
 
@@ -240,9 +389,8 @@ evidence, measured latency/tokens/cost and limitations. No production or additio
 
 ## Review priorities and concrete terms
 
-The existing API 0–4 ordinal quality anchors remain; `null` means unassessed, never score 0.
-The proposed [`rubric.json`](rubric.json) adds task-specific examples and review-record requirements,
-not a new runtime scoring field or automatic promotion threshold.
+The [quality-assessment policy](#learning-quality-assessment) and [`rubric.json`](rubric.json) own
+ordinal anchors, dimensions and calibration examples; null means unassessed, never score 0.
 
 1. Meaning/safety and supplied learner facts: explicit findings, never averaged away.
 2. A: useful independent essentials first, then reusable vocabulary. Ordinary dialogue repetition
@@ -269,10 +417,8 @@ This section is the terminology reference. Prefer plain-English **meaning**, **p
 **supporting source**, and **repair explanation** in reports; include schema names only to locate
 the exact data. Readers should not need a glossary to understand a finding.
 
-Example rubric distinction: an allergy topic with only ingredient questions lacks its requested
-allergy statement (**coverage 2**, correction/supplementation needed). Repeated but usable dance
-invitations can remain **flow 3**, not a material failure. English “I cannot eat peanuts” translated
-as “I can eat peanuts” is a material meaning/safety defect despite valid JSON.
+Use the rubric's missing-allergy, repeated-dance-invitation and reversed-negation calibration examples
+to distinguish needed supplementation, ordinary editing and material meaning/safety defects.
 
 For user review, show one canonical context, its actual English/target phrase, the concrete field,
 a proposed finding/correction and uncertainty. A generator cannot certify its own output; independent
@@ -323,6 +469,14 @@ Keep future payloads ephemeral in ignored `.prompt-romp/` or `evals/.runs/`; no 
 in these adapters. A selected reviewed regression is a fixture, not a whole run copied into Git.
 Do not append experiment diaries or automatically persist every intermediate representation.
 
+**Current review boundary:** approval to run an evaluation is not approval to commit its results.
+Keep mixed results and reporting edits uncommitted until explicitly asked to commit. Existing commits
+are not permission for further commits; do not reset/rewrite them without direction. Dated findings
+logs are observations, not permanent acceptance decisions. Where historical JSON records already
+exist, preserve their original judgments and identify later interpretation changes separately.
+The dated A/B log inventories reusable guidance, historical records and temporary local artifacts.
+
+
 ## Ordered next gates
 
 1. Cleanup and BRIEF verification — separate committed checkpoint.
@@ -332,11 +486,12 @@ Do not append experiment diaries or automatically persist every intermediate rep
    observed better attribution/severity agreement but four remaining incomplete defect reviews under
    proposed rubric 1.2. C is now optional and deferred; those unresolved questions do not gate A/B.
    Calibration is not candidate ranking or unseen reliability evidence.
-4. **Next: collect and review the proposed limited A/B baseline, only after exact paid approval.**
-   Inventory, independent retained-output assessment and native-plan preparation are complete; see
-   [`baseline/findings.md`](baseline/findings.md). Two new observations plus one retained observation
-   per case give three total. The 20-call/$0.22 request remains unapproved. Known failures stay in the
-   reference; five exposed contexts do not establish representative product-wide reliability.
+4. **Next: review the collected limited A/B evidence, not collect it again.**
+   The approved twenty additional calls completed; see
+   [`baseline/log-findings-2026-10-28.md`](baseline/log-findings-2026-10-28.md).
+   One earlier plus two additional responses per case give three total. Technical rejections,
+   recoverable warnings and proposed quality concerns remain distinct. No accepted portable baseline,
+   broad reliability claim, additional spending or Git commit follows automatically.
 5. Only after that baseline, compare **models**, **prompts** and **systemic changes** under separate
    controlled studies, A and B independently. C is reconsidered only if explicitly reopened, with
    process review before new experiments. Optional A→B smoke checks are not a fourth quality study.

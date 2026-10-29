@@ -3,6 +3,12 @@
   "status": "approved-collection-completed-independently-assessed-human-acceptance-not-granted",
   "recordedAt": "2026-10-29T00:01:33.763Z",
   "authority": "Native measured provider calls plus offline unchanged production parser replay; semantic judgments recorded separately.",
+  "reportingContext": {
+    "currentInterpretation": "evals/baseline/log-findings-2026-10-28.md",
+    "role": "Historical measured receipts and parser results, not an accepted comparison baseline.",
+    "localArtifactPaths": "Temporary provenance locators; availability and full replay are not guaranteed. Hashes do not preserve missing bytes.",
+    "qualityLabels": "Assistant-proposed review findings are separate from measured parser/provider failures. See the dated log for corrected interpretations."
+  },
   "proposal": "evals/baseline/approval-request.json",
   "proposalSha256": "fe2e0dcc3605bdc98cf24b86f96924425f4f1627392b465edabc65890d8a8615",
   "approval": "evals/baseline/execution-approval.json",

@@ -7,14 +7,18 @@ description: Propose or independently review phrasebook evaluation scenarios, En
 
 Read `evals/README.md`, `evals/rubric.json`, the selected canonical context in
 `evals/fixtures/contexts.json`, and the normative contract relevant to the artifact.
-Production contracts: `docs/API_DESIGN.md` and `docs/CARD_SCHEMA.md`.
+Production contracts: load the relevant endpoint design linked from
+[`docs/API_DESIGN.md`](../../../docs/API_DESIGN.md#endpoints), plus `docs/CARD_SCHEMA.md` for card work.
+The API overview is needed for shared rules, not as a mandatory load of every endpoint.
 
 ## Boundaries
 
 - No paid calls, production prompt edits, model switch or deployment without separate exact approval.
   Native `../prompt-romp` is the only paid execution/accounting engine. This skill is not a provider runner.
 - Never read `.env` or print credentials. Raw responses/logs stay in ignored temporary workspaces,
-  not Git. Commit only concise reviewed findings and deliberately selected regression examples.
+  not Git. Commit only when explicitly asked, and only concise reviewed findings and deliberately
+  selected regression examples. Paid-run approval does not authorize a Git commit. Keep mixed results
+  and reporting edits uncommitted; do not reset/rewrite an existing commit without direction.
 - Authored fixtures, mocks and your own agreement are not gold labels or linguistic certification.
   Exposed development cases are not unseen holdouts. Challenge rates do not estimate production rates.
 - A generating candidate cannot certify its own output. Identify reviewer identity, available language
@@ -53,6 +57,10 @@ If blind review is impossible, disclose it. Record the actual version from `eval
 - Score coverage, correctness/fit, vocabulary usefulness and conversation flow separately on the
   existing 0–4 ordinal anchors. Ordinary repetition can be flow 3; do not call every awkward dialogue
   unusable. An illustrative statement is not automatically an invented fact about the learner.
+- A relevant conversation can pause or continue in many plausible ways. Not reaching a preferred
+  ending is an improvement suggestion, not a material failure by itself. Cite a concrete unrelated
+  reply, contradiction or misleading meaning/role for stronger claims. Evaluate a missing standalone
+  essential separately from the example dialogue's ending; do not conflate them.
 
 ### B — translation
 
@@ -110,10 +118,33 @@ Explain whether higher/lower is better and the target; use ✅/❌ only for the 
 partial/uncertain results. Separate expected behavior, actual response, review judgment and correction.
 Keep calls/spend/execution failures in a compact table; define C response terms using the linked key.
 
+Use exact checkpoint IDs from the [relevant endpoint design](../../../docs/API_DESIGN.md#endpoints)
+and the primary [step outcome criteria](../../../evals/README.md#step-outcomes-and-criteria).
+Name endpoint, checkpoint, topic/attempt, live-versus-replay evidence and outcome scope. Distinguish
+provider completion, syntax decoding, normalization, required validation, optional enrichment,
+final response and evaluation-only quality. A/B are lanes containing steps, not blanket verdicts.
+Keep failed attempts, recovered endpoints and client-level fallback outcomes separate. Blocked,
+cancelled, not-run and not-assessed work is not another independent failure.
+
+Always distinguish **current behavior** from **intended policy**; consult the endpoint's documented
+implementation gaps rather than maintaining another behavior catalog here. Do not relabel historical
+observations as recovered or infer full endpoint failure from one saved parser replay. Do not invent
+per-step log events, runtime semantic review, retries or acceptance thresholds.
+
+
 Every finding contains the actual artifact path, exact quote, user impact, severity, origin,
 confidence and disposition. Include both English and target text for a meaning claim. Resolve concrete
 array indexes and, where available, include the stable handle; `items[e:0]` is descriptive notation,
 not a valid JSON array index. Source spans use UTF-16 offsets against the exact historical snapshot.
+
+Use dated `log-findings-YYYY-MM-DD.md` names for run-specific working findings. Define earlier versus
+additional responses and repeat numbers before using them. Show expected behavior, the actual returned
+value and any retained/dropped parser value before the judgment. Name whether the source is a parser,
+provider receipt, assistant assessment or human review. Keep selected evidence self-contained: local
+prompt-romp artifacts are temporary, and a hash does not archive or reconstruct their bytes. Distinguish
+reusable tooling, historical review records and temporary workspaces. Original scores remain attributable
+history; record disputed/revised interpretations separately rather than silently rewriting prior grades.
+
 
 Use the record contract in `evals/rubric.json`: context ID, lane, artifact SHA-256, rubric version,
 reviewer, four dimension scores or null, findings, uncertainties and overall disposition. Keep

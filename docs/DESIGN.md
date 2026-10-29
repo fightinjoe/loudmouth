@@ -67,8 +67,10 @@ language (first time or change) → topic → questions → conversation checkli
 
 Topic submission calls `/context` with `{ seed, language, ability? }` (using the remembered ability
 for this language when available) and independently starts `/phrasebook-title` with `{ seed }`. 
-Otherwise the client prepends "What is your language ability?" to the returned questions, with
-options None, Basics, Conversational. On web, each question occupies its own action-pane page.
+If ability is unknown, the client prepends "What is your language ability?" to the returned questions,
+with options None, Basics, Conversational. This client-owned question is outside the model's
+five-question cap; the model is instructed not to ask proficiency questions.
+On web, each question occupies its own action-pane page.
 Language and context questions share the same grouped-row radio component with circular indicators.
 Clicking a radio only selects it; **Next** advances. Context questions start unselected. Generated
 questions end with an Other radio and a text box whose placeholder is "other"; typing selects it,
@@ -76,22 +78,33 @@ and Next or Enter submits nonblank, trimmed text.
 Ability retains only its three supported choices. Previous and Next preserve answers, with Next
 disabled until the current question has an answer. Completing the last question
 starts `/phrasebook` with `{ seed, language, ability, answers, checklist }`, using the selected or
-remembered enum value and excluding the ability question from `answers`. `checklist` contains all 
-suggested topics. The learner selects 1–8 topics locally while generation runs; model selection 
-remains server-owned.
+remembered enum value and copied flat `answers` excluding the ability question. `checklist` contains
+all suggested labels in order; local topic selection starts from the model's checked defaults.
+The learner selects 1–8 topics locally while generation runs; toggling topics never sends another
+request and model selection remains server-owned.
+
+The parallel naming request never blocks advancing or saving. Immediately before creating the local
+phrasebook, the client freezes the available generated title or falls back to the original seed.
+Pending title work is aborted and late responses are ignored; naming errors remain silent. The title
+becomes the local phrasebook name and is not sent to `/phrasebook`. Answer changes and card-generation
+retries reuse it. A different seed replaces the naming request; dismissal aborts it. A failed local
+save retains the frozen title on retry.
 
 No phrasebook data is persisted while answering questions or selecting topics, even if generation has
 finished; the confirmed language preference is independent. Final Continue validates the whole v3
 draft, retains selected topics by original index, and atomically saves their sections and Word
 placements. Exact repeated essentials and words belong to the earliest retained topic; unchecked
 topics cannot suppress them. Related vocabulary and every dialogue line remain. There is no global
-word cap or duplicate text request. Back without changes reuses work; answer or seed changes invalidate
-text work. Changing the confirmed language preserves the prompt but clears context, answers, and
-checklist, aborts speculative work, and resolves the remembered ability for the new language.
+word cap or duplicate text request. Final Continue reuses pending or ready work; finishing speculative
+generation alone never saves or navigates. Back without changes reuses work; answer or seed changes
+invalidate and abort text work. Changing the confirmed language preserves the prompt but clears
+context, answers, and checklist, aborts speculative work, and resolves remembered ability for the
+new language. Request-identity guards ignore stale responses.
 Confirmation shows the loading state for at least 1000 ms before saving and displaying the phrasebook,
 configured by `PHRASEBOOK_MIN_LOADING_MS` in `web/app/src/components/creation-panel.ts`.
 This minimum overlaps any remaining generation time rather than adding a delay after generation.
-Background failure leaves the checklist usable until Continue surfaces it; retry preserves choices.
+Background failure leaves the checklist usable until Continue surfaces it; retry preserves choices
+and starts fresh text work.
 Dismissal aborts text requests and discards uncommitted results. Incomplete saves are rolled back.
 
 Context completion starts independent seed-based cover work. Answer/checklist changes reuse it;
@@ -105,6 +118,13 @@ Ability is saved as phrasebook metadata and remembered per language only after g
 succeed on final Continue. Failed saves and abandoned speculative results do not remember it. Future
 creation skips this question and sends the remembered value to both endpoints. Updating it is deferred.
 Historical setup preferences are not inferred or migrated to the new scale.
+
+API and web must deploy together for this response contract. Speculation hides generation behind
+checklist interaction but does not guarantee lower latency: English generation uses bounded
+per-topic concurrency, and the response waits for every translation, including topics later discarded.
+Usage includes all generated topics. Evaluate final Continue-to-usable-phrasebook time and cost per
+saved phrasebook. Durable transaction and cancellation boundaries remain authoritative in
+[the shared card schema](CARD_SCHEMA.md#atomic-lifecycle).
 
 ## Phrasebook view
 
@@ -227,11 +247,16 @@ available but save controls are unavailable.
 Opening calls `/phrase-breakdown` with the exact occurrence snapshot, source references, and only the
 active phrasebook context. The source remains visible during loading and errors; **Retry** makes a new
 request after failure. **Regenerate** bypasses the cache while retaining the current analysis if the
-new request fails. Valid teaching and candidates are cached in tab-scoped sessionStorage under the
-serialized versioned request. Editing the request source or context therefore cannot reuse stale
-analysis. Opening, closing, retrying, regenerating, and cache clearing make no durable library writes;
-only an explicit successful star action saves or reuses a card and membership. Closing aborts the
-client request and late results are ignored.
+new request fails. Valid teaching and candidates are cached in tab-scoped sessionStorage under
+`loudmouth-topic-v3.phrase-breakdown.v1:` plus the serialized exact versioned request, including
+refs, context, and readings. Invalid entries, including older responses without `flags`, are removed.
+Editing the request source or context therefore cannot reuse stale analysis. Opening, closing,
+retrying, regenerating, and cache clearing make no durable library writes; only an explicit successful
+star action saves or reuses a card and membership. Ready/reopened targets resolve stars from IndexedDB,
+not cached analysis. Regenerate never overwrites saved teaching. Closing aborts the client request
+and suppresses stale UI updates, not an already committed star. Atomic starring and Word-evidence
+persistence follow [the shared card schema](CARD_SCHEMA.md#atomic-lifecycle). API and web must deploy
+together.
 
 The conversation is inert while details is open. Focus enters Close; Tab stays within the modal.
 Close, Escape, or the scrim dismiss and restore focus to the original card without scrolling.
