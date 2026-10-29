@@ -44,17 +44,20 @@ situation-specific language. The learner chooses the topic count.
 
 ### Model tasks and raw authoring output
 
-Every call separates trusted instructions from `JSON.stringify`-serialized task data; no request
-content becomes trusted instructions. English receives sanitized `{seed,language,ability,answers,
-checklist}` with a singleton checklist for the original indexed topic. Its raw JSON shape is:
+Every call keeps fixed teaching instructions separate from the user's task data.
+[`english.prompt`](#english-generation) does **not** ask a model to write a custom prompt or substitute
+the seed into `prompt.txt`. It pairs that unchanged file with a JSON string containing
+`{seed,language,ability,answers,checklist}` for **one** topic. The English model is asked to return:
 
 ```ts
-{conversations: [{
-  title: string,
-  essentials: string[],
-  vocab: string[],
-  lines: {speaker: 'you' | 'partner', text: string}[]
-}]}
+type EnglishModelOutput = {
+  conversations: {
+    title: string;
+    essentials: string[];
+    vocab: string[];
+    lines: {speaker: 'you' | 'partner'; text: string}[];
+  }[];
+};
 ```
 
 The singleton title must exactly equal that topic. English entries are nonblank strings of at most
@@ -63,18 +66,20 @@ essentials or ten words; malformed tails reject the attempt. At least one essent
 vocab may be empty. Dialogue is 2–10 entries with both speakers and is never truncated. Raw unknown
 fields are rejected, including a model-authored `alternative` (see the implementation gap below).
 
-Translation receives `{seed,language,ability,answers,conversation}` with the retained English title,
-essentials, lines and vocab. It emits this smaller shape, not cards, IDs or Evidence:
+[`translation.prompt`](#translation) pairs the translation instructions and language reading rules
+with `{seed,language,ability,answers,conversation}` as a JSON string. `conversation` is one accepted
+English topic, including its code-derived boolean alternative markers. The translation model is
+asked to return translated strings and word descriptions, not cards, IDs or source snapshots:
 
 ```ts
-{
-  lines: string[], essentials: string[],
-  vocab: {target: string, partOfSpeech: string, senseKey: string,
-          source?: {section: 'essentials' | 'dialogue', index: number,
-                    surface: string, occurrence: number}}[],
+type TranslationModelOutput = {
+  lines: string[]; essentials: string[];
+  vocab: {target: string; partOfSpeech: string; senseKey: string;
+          source?: {section: 'essentials' | 'dialogue'; index: number;
+                    surface: string; occurrence: number}}[];
   // Japanese only:
-  essentialsRomanizations?: string[], lineRomanizations?: string[], vocabRomanizations?: string[]
-}
+  essentialsRomanizations?: string[]; lineRomanizations?: string[]; vocabRomanizations?: string[];
+};
 ```
 
 Each section count must exactly match retained English, including an empty vocabulary list. Target
@@ -185,35 +190,106 @@ API and web must deploy together.
 
 ## Pipeline and step outcomes
 
-These are logical reporting checkpoints, not separately emitted logs or extra model calls.
-Apply the [shared outcome criteria](../../evals/README.md#step-outcomes-and-criteria) to each named
-step; [runtime levels](../API_DESIGN.md#runtime-failure-levels) stay out of the wire envelope.
-Bounds above apply throughout this single authoritative pipeline description.
+Read each row as **what code or a model does**, **which data it consumes/produces**, then **how it can
+continue or stop**. Only `english.call` and `translation.call` ask models to generate content.
+The English rows run per topic; translation waits for all English topics to succeed.
 
-| Step | Responsibility / success | Warning / recovery | Failure |
+These are logical responsibilities, not 18 separate functions or emitted logs. In particular,
+`english.decode`, `english.validate` and `english.normalize` share `validateGenerationResponse`;
+the corresponding translation work shares `validateTranslationResponse`. Checks and shaping can
+interleave, but no accepted result is returned until all required checks pass.
+
+### Intermediate data shapes
+
+- **Model input** is `{instructions: string, input: string}`: fixed teaching instructions plus
+  user-specific JSON text. Preparing it is code work, not another model call.
+- **English model reply** / **Translation model reply** is the text returned by that model call,
+  wrapped by the backend integration as `{text: string, model: string}` plus token/cost metadata
+  when available. The default English integration reads `text` from the provider response's
+  `choices[0].message.content`. A **saved model reply** is that text recorded for later inspection;
+  it is not an additional pipeline step.
+- **Decoded English** / **Decoded translation** is `JSON.parse(reply.text)`, not yet accepted as
+  the required `EnglishModelOutput` / `TranslationModelOutput` [above](#model-tasks-and-raw-authoring-output).
+  Valid JSON can still contain forbidden fields.
+- **Shaped English** is code's accepted English data after checking required fields, bounding
+  independent lists and adding boolean alternative markers. “Normalize” means this deterministic
+  shaping, not a second model rewriting the content:
+
+```ts
+type EnglishTopic = {
+  title: string;
+  essentials: string[];
+  vocab: string[];
+  lines: {speaker: 'you' | 'partner'; text: string; alternative?: true}[];
+};
+// One topic's validateGenerationResponse return:
+type ShapedEnglish = {conversations: EnglishTopic[]; failureLevel: 0 | 1};
+```
+
+`alternative?: true` belongs to an **existing array entry**. It means that entry is an alternative
+to the immediately preceding same-speaker entry; it never contains another sentence. The model
+is asked to put another reply in another `{speaker,text}` entry, without authoring this marker.
+`phrasebook.english.join` returns `{conversations: EnglishTopic[]}` in original topic order;
+the orchestrator tracks recovery levels separately rather than copying `failureLevel` into topics.
+
+**Shaped translation** is the accepted return from `validateTranslationResponse` for one topic:
+
+```ts
+type ShapedTranslation = {
+  essentials: string[]; lines: string[];
+  vocab: TranslationModelOutput['vocab'];
+  // Japanese arrays can have undefined entries when pronunciation cannot be recovered:
+  essentialsRomanizations?: (string | undefined)[];
+  lineRomanizations?: (string | undefined)[];
+  vocabRomanizations?: (string | undefined)[];
+  flags: {code: 'vocab-source-missing'; vocabIndex: number; reason: 'unresolved'}[];
+  failureLevel: 0 | 1;
+};
+```
+
+Its target strings still contain any inline `base[reading]` notation. Optional `source` remains a
+checked `{section,index,surface,occurrence}` hint, not a source snapshot or card ID.
+`phrasebook.assemble` turns these strings/hints into cards, reading tokens, IDs and exact source
+snapshots/spans, returning `{schemaVersion,title,groups,flags}`. The orchestrator adds aggregate
+`usage`, then checks the complete [phrasebook response](#wire-response-and-source-evidence).
+
+### English generation
+
+| Step | What happens | Input → output | Outcome boundaries |
 |---|---|---|---|
-| `phrasebook.request` | Parser sanitizes task and ordered checklist. | Invalid optional ability defaults to basics. | Invalid required input, trimmed key collision or client `llm`: `400`. |
-| `english.prompt` | Trusted builder creates singleton indexed-topic instructions and JSON task. | No prompt substitution or semantic repair. | Required task/build failure cannot yield content. |
-| `english.call` | Provider/rate-limit helper returns raw English and usage. | Existing 429 backoff only. | Provider/call/deadline failure is not a content-validation retry. |
-| `english.decode` | `parseModelJson` decodes exterior-trimmed JSON. | One existing validation retry may recover syntax failure. | No Markdown-fence stripping or arbitrary JSON repair; exhausted invalid JSON fails. |
-| `english.validate` | Exact title/sections, bounded nonblank entries and both dialogue speakers validate. | One validation retry per topic, not per field. | Missing/wrong required data, malformed tails or raw extra fields, including `alternative`, reject attempt. |
-| `english.normalize` | Retain independent sections and derive alternatives from adjacency. | Clamp valid excess essentials/vocab, level 1. | Never truncate dialogue; intended raw-alternative ignore is not implemented. |
-| `phrasebook.english.join` | Barrier obtains every English result at its original index before translation. | Completion order/duplicate titles never change association. | Required failure blocks translation and aborts siblings; no partial book. |
-| `translation.prompt` | Trusted/schema builders send all retained sections with exact counts and language reading rules. | Provider schema support is not semantic validation. | No substituted source or guessed required structure. |
-| `translation.call` | One parallel job per complete topic returns raw translation/usage. | Existing 429 backoff; no extra call for optional enrichment. | Provider/call/deadline failure aborts required work. |
-| `translation.decode` | Syntax-only parser decodes translation JSON. | One existing validation retry for this topic's unusable output. | No fence stripping/repair; exhausted syntax failure fails. |
-| `translation.validate` | Required targets, exact counts, dictionary Word/POS/key/readings validate. | Optional source/romanization recovery only. | Missing/invalid required cards or count mismatch reject attempt. |
-| `translation.align` | Associate each translated section exactly with retained English indexes. | Discard wrong-count Japanese romanization arrays and mechanically rebuild whole arrays. | Never truncate/pad required sections or guess shifted associations. |
-| `translation.normalize` | Normalize annotated text, readings and pronunciation. | Invalid/missing/unaligned Japanese romanization falls back or is omitted, level 1; routine shaping need not warn. | Optional recovery never excuses invalid required text/readings. |
-| `translation.enrich` | Resolve optional Word source to an exact occurrence/span. | Omitted source is valid without flag; present unresolved source is dropped with `vocab-source-missing`, level 1. | Valid Word survives missing enrichment; invalid required Word does not. |
-| `phrasebook.translation.join` | Obtain all translations at original indexes. | Neither completion order nor duplicate titles determine association. | Required translation failure aborts sibling work. |
-| `phrasebook.assemble` | Build v3 cards, UUIDs, exact snapshots/refs/spans, flags and usage; derive alternatives again. | Optional flags/unknown cost alone do not invalidate content. | Missing required results or invalid candidates prevent response. |
-| `phrasebook.validate` | Shared validator checks every group/card/reading/ID/ref/association and usage. | No per-card repair/retry at this boundary. | Invalid final contract fails endpoint. |
-| `phrasebook.respond` | Handler returns complete validated `200` response. | Recovered endpoint success retains level 1. | No partial required content; exhausted operation is level 2, controlled error; disconnect cancels work. |
+| `phrasebook.request` — check the user's request | Code trims/checks the seed, language, ability, answers and ordered topic list. | HTTP body → accepted task with the [request fields](#request). | Invalid required input/key collision/client `llm`: 400 before model calls. Invalid optional ability defaults to basics. |
+| `english.prompt` — prepare English model input | Code uses unchanged `prompt.txt` as instructions and JSON-serializes the task with only this topic in `checklist`; it does not interpolate user values into the instructions. | Accepted task + one topic → **Model input**. | Construction must retain the user's task and topic identity; no model call, semantic repair or prompt substitution here. |
+| `english.call` — ask the English model | Backend code sends the instructions and task to the server-selected model, then extracts its returned text and accounting metadata. | **Model input** → **English model reply** (`reply.text` plus metadata). | Receiving text succeeds here, not at later content checks. Provider/deadline errors fail the call; existing 429 backoff may recover. Default DeepSeek has no provider-enforced output schema. |
+| `english.decode` — read the reply as JSON | Code trims exterior whitespace and parses `reply.text` into an object; it does not remove or rewrite object fields. | **English model reply** text → **Decoded English**. | Invalid JSON rejects the attempt; valid JSON alone does not prove the requested shape. No fence stripping or arbitrary repair. |
+| `english.validate` — check the English fields/content bounds | Code checks exact topic/title/allowed keys, every required phrase/word, dialogue count and both speakers. Each dialogue entry may contain only `speaker` and `text`. | **Decoded English** → checked data, or a thrown validation error. | Missing/wrong required data, malformed list tails or any raw extra key, including `alternative`, reject the attempt. An available validation retry can recover. |
+| `english.normalize` — shape accepted English | Code keeps bounded independent lists and marks an entry `alternative: true` when its speaker matches the preceding entry. It does not generate or translate sentences. | Checked English data → **Shaped English** for this topic. | Valid list overflow is clamped with level 1; dialogue is never truncated. Raw `alternative` ignore-and-warn is not implemented. No shaped result returns if required validation fails. |
+| `phrasebook.english.join` — collect every English topic | Code waits for all English jobs and places accepted topics at their original request indexes. | Per-topic **Shaped English** → `{conversations: EnglishTopic[]}`. | Translation starts only with all required topics. Exhausted failure blocks translation and aborts siblings; completion order/duplicate titles cannot change association. |
 
-`english.quality` and `translation.quality` independently review task coverage, meaning, vocabulary,
-roles, readings/pronunciation and evidence. They are **evaluation-only**, not runtime stages,
-semantic retry triggers or automatic endpoint-failure thresholds.
+### Translation
+
+| Step | What happens | Input → output | Outcome boundaries |
+|---|---|---|---|
+| `translation.prompt` — prepare translation model input | Code combines translation instructions with the target language's reading rules, serializes the task and one accepted English topic, and builds a response schema with exact section counts. | Task + **EnglishTopic** → **Model input** and provider response schema where supported. | All three English sections travel together; neither the topic nor required counts may be guessed or substituted. |
+| `translation.call` — ask the translation model | Backend code requests all translated sections for one topic and extracts the returned text/metadata; topic jobs run in parallel. | **Model input** + response schema → **Translation model reply**. | Provider/call/deadline failure fails required work; existing 429 backoff may recover. No extra call merely for optional enrichment. |
+| `translation.decode` — read the translation as JSON | Code parses the model's text into an object without repairing it. | **Translation model reply** text → **Decoded translation**. | Syntax failure rejects the attempt; no fence stripping/repair. An available validation retry may recover. |
+| `translation.validate` — check required translated content | Code checks target strings, exact section counts and dictionary Word fields/readings against the accepted English topic. | **Decoded translation** + **EnglishTopic** → checked translated data, or validation error. | Invalid required cards/counts reject the attempt; optional source/pronunciation recovery cannot excuse them. |
+| `translation.align` — keep source/translation indexes matched | Code associates each translated essential, dialogue entry and word with the same source-section index. | Translated arrays + English arrays → checked one-to-one associations. | Never pad/truncate required sections. Wrong-count Japanese pronunciation arrays are discarded for whole-array fallback, not attached to possibly shifted indexes. |
+| `translation.normalize` — shape text and pronunciation | Code trims target strings, checks that their readings can form valid cards, and retains or mechanically rebuilds Japanese pronunciation. | Checked translated data → shaped strings/pronunciation arrays. | Pronunciation fallback/omission is level 1, not another model call. Inline reading notation remains in returned strings until card assembly. |
+| `translation.enrich` — check optional word-source hints | Code checks whether a supplied section/index/surface/occurrence identifies an exact translated phrase occurrence; keeps the hint or drops it with a flag. | Optional raw source hints → checked hints or missing-source flags in **Shaped translation**. | Omitted hints are valid without flags. Present unresolved hints warn at level 1; valid required Word content survives. Snapshots and IDs are built later. |
+| `phrasebook.translation.join` — collect every translation | Code waits for every topic's accepted translation and retains the original topic order. | Per-topic **Shaped translation** → ordered translation array. | Required translation failure aborts sibling work; no partial phrasebook or title/completion-order reassociation. |
+
+### Final response
+
+| Step | What happens | Input → output | Outcome boundaries |
+|---|---|---|---|
+| `phrasebook.assemble` — build cards and the response | Code pairs source/translated items, converts inline readings into card reading tokens, creates IDs and exact source evidence, derives dialogue markers, and combines flags. The orchestrator adds usage. | English topics + ordered translations → complete **Phrasebook response** candidate. | Optional flags/unknown cost alone do not invalidate content. Missing required results/invalid cards prevent a response. |
+| `phrasebook.validate` — check the complete response | The shared validator checks all groups, cards, readings, IDs, source relationships, dialogue markers and usage. | Response candidate → accepted **Phrasebook response**, or error. | Invalid final contract fails the endpoint; no per-card model repair/retry here. |
+| `phrasebook.respond` — send the result to the client | The handler serializes the accepted response as HTTP JSON. | Accepted **Phrasebook response** → HTTP 200 body. | Recovered success remains level 1 in diagnostics; exhausted required work returns a controlled error, never partial required content. Disconnect cancels work. |
+
+`english.quality` and `translation.quality` are separate **evaluation-only** reviews of usefulness,
+meaning and pronunciation, not more model calls required by this endpoint. For report classifications,
+use the [shared outcome criteria](../../evals/README.md#step-outcomes-and-criteria);
+[runtime levels](../API_DESIGN.md#runtime-failure-levels) stay out of the response body.
 
 ## Execution limits and recovery
 
@@ -232,12 +308,16 @@ semantic retry triggers or automatic endpoint-failure thresholds.
 
 ## Known implementation gaps
 
-- Current `english.validate` rejects a raw model `alternative` field as an extra field; an available
-  validation retry may then be spent. Intended policy is to ignore it in `english.normalize`, derive
-  alternatives from adjacency and warn without a call merely to remove the field. The warning must
-  retain the exact ignored value for investigating why it appeared. Safe-ignore is **not implemented**;
-  preserve current rejection versus intended recovery in reports. See the
-  [baseline log](../../evals/baseline/log-findings-2026-10-28.md); no provenance cause is established.
+- **Unexpected `alternative` in the English model reply:** `english.validate` rejects that field
+  before returning **Shaped English**; an available validation retry may then be spent. This is a
+  check of the model's `{speaker,text}` entry, not `phrasebook.validate` checking the final client
+  response. A string holding another reply is also not the code-derived boolean marker described
+  under [intermediate data shapes](#intermediate-data-shapes).
+  **Intended, not implemented:** `english.normalize` should ignore the extra field, keep valid
+  speaker/text, derive markers from adjacent speakers, and warn without another call merely to remove
+  the field. Retain its exact ignored value for investigating why it appeared. Preserve current
+  rejection versus intended recovery; the [baseline log](../../evals/baseline/log-findings-2026-10-28.md)
+  contains the saved examples, not an established explanation of the model's choice.
 - Known translation defects remain accepted risk from the
   [code-only v3 cutover](../../evals/history/api-cutover-and-legacy-evaluations.md#2026-10-01-code-only-v3-cutover),
   not linguistic acceptance or deployment authorization.
