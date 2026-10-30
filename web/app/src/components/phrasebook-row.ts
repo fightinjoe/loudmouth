@@ -14,8 +14,6 @@ export interface PhrasebookRowOptions {
   subtitle?: string;
   selected?: boolean;
   chevron?: boolean;
-  card?: boolean;
-  highlighted?: boolean;
   leading?: string;
   rowAction?: string;
   rowData?: DataAttributes;
@@ -28,8 +26,6 @@ export function renderPhrasebookRow({
   subtitle = "",
   selected = false,
   chevron = false,
-  card = false,
-  highlighted = false,
   leading = "",
   rowAction = "",
   rowData = {},
@@ -41,7 +37,6 @@ export function renderPhrasebookRow({
     "flex",
     "items-center",
     "justify-between",
-    card && "deck-picker-card",
     rowAction && "tappable",
   ].filter(Boolean).join(" ");
   const trailing = chevron
@@ -51,7 +46,7 @@ export function renderPhrasebookRow({
       : "";
 
   return `
-    <div class="${classes}"${selected ? " data-selected" : ""}${highlighted ? ' data-highlighted="true"' : ""} ${actionAttribute} ${renderDataAttributes(rowData)}>
+    <div class="${classes}"${selected ? " data-selected" : ""} ${actionAttribute} ${renderDataAttributes(rowData)}>
       ${leading ? `<span class="deck-picker-leading" aria-hidden="true">${escapeHTML(leading)}</span>` : ""}
       <div class="deck-picker-row-text flex-col gap-sm">
         <span class="text-body-lg fg-body">${escapeHTML(title)}</span>

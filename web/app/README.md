@@ -1,6 +1,6 @@
-# Loudmouth
+# Catchphrase
 
-A mobile-first phrasebook and flashcard app for Chinese, Japanese, Spanish, Czech and Ukrainian.
+A mobile-first personal language textbook for Chinese, Japanese, Spanish, Czech, and Ukrainian.
 
 ## Prerequisites
 
@@ -141,7 +141,7 @@ directory available when building the web package: its local package dependency
 is linked using the checked-in `.npmrc` (`install-links=false`). No separately
 checked-in compiled schema is needed.
 
-Unit tests run with `npm test`. On Node 25, use
+Unit tests run with `npm test`. On Node 25 and 26, use
 `NODE_OPTIONS=--no-experimental-webstorage npm test` so happy-dom owns the isolated browser storage
 instead of Node's unrelated native Web Storage implementation.
 
@@ -199,13 +199,12 @@ live in `src/js/app-types.ts`; pane event handlers receive a shared `Host`, not 
 | File | Responsibility |
 |------|---------------|
 | `app.ts` | Shell markup, state registration, pane mounting, last-opened phrasebook |
-| `nav-pane.ts` | Recent phrasebooks, language browsing, creation entry point |
-| `content-pane.ts` | Phrasebook/browse state, page selection, reorder mode, pane coordination |
+| `nav-pane.ts` | Illustrated welcome, seeded creation ideas, complete library shelves, language browsing |
+| `content-pane.ts` | Continuous textbook/browse state, chapter jumps, reorder mode, pane coordination |
 | `content-pane-load.ts` | Load stored, suggested-preview, and language-wide content |
-| `content-pane-render.ts` | Contents, topic sections, supplemental collections, Starred markup |
+| `content-pane-render.ts` | Four-section topic chapters, learning shelves, exchanges/examples, supplemental collections, Starred markup |
 | `content-pane-actions.ts` | Stars, audio, details entry, section-local reordering |
-| `content-pane-gestures.ts` | Shell reveal, topic paging, section-local reorder |
-| `content-pane-tab-motion.ts` | Tab scrolling, selection animation, reduced-motion handling |
+| `content-pane-gestures.ts` | Native shelf interaction, desktop dragging, chapter jumps, section-local reorder |
 | `details-pane.ts` | On-demand phrase analysis, candidate stars, modal focus and expansion |
 | `action-pane.ts` | Lifecycle for creation, suggestion confirmation, Review, settings, JSON |
 
@@ -224,6 +223,37 @@ return markup. Web card-content editing is removed; phrasebook settings and card
 `phrasebook-illustration.ts` manages independent cover work; `phrase-breakdown.ts` validates and
 caches disposable analysis. `ability.ts` and `lang.ts` define the client enums reused by storage
 validation. Preferences remain separate from durable library content.
+
+### Textbook design
+
+The web uses a personal-textbook design: warm paper,
+fixed foreground speech-bubble titles, contextual illustrated backdrops, two-row Word
+and phrase shelves, and sequential exchanges and examples. `styles/textbook.css` owns shared tokens;
+`textbook-navigation.css`, `textbook-content.css`, and `textbook-creation.css` own their surfaces.
+Local neutral artwork lives in `public/textbook/`. Ready saved PNGs display as contained, nonrepeating
+phrasebook backdrops without cropping or paid regeneration. Missing/failed/pending artwork uses repeating frog paper.
+
+Creation retains its real language → situation → questions → checklist → generation lifecycle.
+Example situations seed the form, not a generated preview. Visible `.textbook-chapter` sections replace
+topic tabs; content state tracks `chapterKey`, and the `jump-chapter` transition scrolls to a chapter.
+The contents disclosure and Starred shortcut provide direct navigation without paging gestures.
+The unchanged API generates watercolor covers, not seamless pattern assets. Physical-phone reach,
+VoiceOver, and iOS Safari gestures require separate acceptance checks beyond desktop Chromium.
+
+Historical feature-branch verification (2026-10-27, before v4 integration): production build/strict TypeScript passed, 240 web unit tests
+and 129 API tests passed; all 12 browser cases passed across the final targeted runs after fixes.
+Desktop Chromium exercised a live Spanish creation and save, stars/Review, live phrase breakdown,
+Japanese suggested preview/Save, preserved seeded and retry inputs, cancellation, reduced motion,
+and narrow rendering. A controlled offline request exercised the error surface. A resized neutral
+image fixture verified late-artwork persistence without remounting cards or losing focus, scrolling,
+or edit state; it is not evidence of generated art quality or verification of the integrated v4 UI.
+
+Integrated v4 verification (2026-10-29): 130 API tests, 253 web unit tests, strict TypeScript,
+production build, and all 12 mobile Chromium Playwright cases passed. Web unit tests used
+`NODE_OPTIONS=--no-experimental-webstorage` on Node 26. A separate 390px Chromium smoke checked
+seeded first-time creation, a locally saved v4 four-section fixture, explicit reply alternatives,
+starring, and Review reveal without horizontal overflow or console errors. This used no paid
+provider calls and does not establish live generation quality or iOS Safari behavior.
 
 ### Storage and exchange
 

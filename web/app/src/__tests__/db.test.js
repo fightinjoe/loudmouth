@@ -724,7 +724,7 @@ describe("backup validation and atomic restore", () => {
     }],
     ["standalone section", (backup) => { delete backup.occurrences[0].groupId; }],
     ["section position gap", (backup) => { backup.occurrences[0].position = 5; }],
-    ["word position gap", (backup) => { backup.topicWords[0].position = 1; }],
+    ["word position gap", (backup) => { backup.topicWords[0].position = backup.topicWords.length; }],
     ["word wrong card type", (backup) => { backup.topicWords[0].cardId = backup.occurrences[0].cardId; }],
     ["word missing group", (backup) => { backup.topicWords[0].groupId = crypto.randomUUID(); }],
     ["word missing family", (backup) => { backup.topicWords[0].familyId = crypto.randomUUID(); }],

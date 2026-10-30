@@ -9,14 +9,14 @@ description: >
 
 > Prepare language for real conversations.
 
-Catchphrase creates bespoke, situation-specific phrasebooks through a short guided conversation. A
-learner describes an upcoming situation, answers a few context questions, chooses which conversations
-to prepare, and receives **Things to say**, **Likely exchanges** with explicit alternative responses,
-**Words** in titled families, and a linear **Example conversation**, in that order for each topic.
-Web opens a **Phrasebook** contents page with topic previews and an optional contextual
-watercolor cover. Each topic has its own swipeable page; saved standalone translations, words, and
-Chunks follow when present. A pinned Starred tab browses unique starred memberships; Review uses
-the same phrasebook-scoped set.
+Catchphrase creates a **personalized language textbook** for an upcoming situation through a short
+guided conversation. The learner answers context questions, chooses conversations to prepare, and
+receives **Things to say**, **Likely exchanges** with explicit alternative responses, **Words** in
+titled families, and a linear **Example conversation**, in that order for each topic.
+Its value is learning language on the learner's terms, not speaking on their behalf or imposing a
+fixed curriculum. Web presents continuous illustrated chapters with two-row Word/phrase shelves,
+sequential exchanges and examples, supplemental saved material, and a deduplicated Starred collection.
+Review uses the same phrasebook-scoped starred set.
 
 ## User and problem
 
@@ -49,8 +49,8 @@ The web app and API support Chinese, Japanese, Spanish, Czech, and Ukrainian.
    canonical cards and stars are shared. Initial memberships are unstarred; cover completion never delays text saving.
 4. **Prioritize:** stars belong to the current phrasebook. Starring an analysis candidate saves its
    learning target and historical evidence; unstarring retains both.
-5. **Review:** use the contents page to open a topic's Things to say, Likely exchanges, titled Word
-   families, and Example conversation, or open the pinned **Starred** collection. Review the current phrasebook's starred
+5. **Review:** browse continuous topic chapters containing Things to say, Likely exchanges, titled
+   Word families, and Example conversation, or jump to **Starred**. Review the phrasebook's starred
    set with reveal, direction switching, pronunciation, and swiping. Words use dictionary forms;
    Chunks retain their original source context.
 
@@ -81,8 +81,9 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 - Guided phrasebook creation through `/context` → `/phrasebook`, with dynamic context questions and
   a checklist of conversations to prepare.
 - Four-section topic generation: Things to say, Likely exchanges, Words in titled families, Example conversation.
-- Web contents-first browsing, topic pages, optional supplemental collections, and phrasebook-scoped
-  review with reveal, direction toggle, swipe navigation, and audio. This does not establish iOS parity.
+- Web continuous textbook chapters with two-row learning shelves, optional supplemental collections,
+  and phrasebook-scoped review with reveal, direction toggle, swipe navigation, and audio. This does not establish iOS parity.
+- Illustrated home navigation with seeded creation ideas and complete library shelves.
 - Web phrase breakdowns with source-aligned semantic parts, contextual explanations, and dictionary
   Words; explicit stars save learning targets to the active phrasebook.
 - Structured ruby rendering, versioned content exchange, and atomic full-library JSON backup/restore.
@@ -104,7 +105,7 @@ analysis without overwriting saved teaching. Character and Grammar card types re
   is deduplicated across retained topics; Word-family placements are never removed across topics,
   and there is no global word cap. Unselected topics never suppress retained content.
   Independent `/phrasebook-title` work freezes the available name or seed fallback at commit.
-  `/phrasebook-image` generates PNGs through OpenRouter FLUX.2 Klein 4B without blocking text;
+  `/phrasebook-image` generates PNGs through OpenRouter `black-forest-labs/flux.2-klein-4b` without blocking text;
   ready PNG bytes persist with the phrasebook. Missing or failed art leaves text usable.
   This promotion does not deploy API or web; their eventual release must be coordinated. Native iOS's
   retired-route integration remains unchanged. Semantic continuation after alternative responses

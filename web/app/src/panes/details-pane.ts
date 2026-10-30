@@ -127,7 +127,7 @@ function contentChanged(
   return next.deckId !== prev.deckId
     || next.deck !== prev.deck
     || next.browse !== prev.browse
-    || next.pageKey !== prev.pageKey
+    || next.chapterKey !== prev.chapterKey
     || next.editMode !== prev.editMode;
 }
 

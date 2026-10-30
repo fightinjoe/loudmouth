@@ -1,22 +1,14 @@
 import type { DeckIllustration, Group, LibraryEntry } from "../js/library-types";
 import { escapeHTML } from "../js/utils";
+import { LANG_NAMES, LANG_FLAGS } from "../js/lang";
 import { renderCardRow } from "../components/card";
 import { icon } from "../components/icon";
-import {
-  headerIconButton,
-  headerSpacer,
-  headerTitle,
-  renderPaneHeader,
-} from "../components/pane-header";
+import { headerIconButton, headerSpacer, headerTitle, renderPaneHeader } from "../components/pane-header";
 import type { ContentDeck } from "./content-pane";
 
-export const TRANSLATIONS_PAGE_KEY = "translations";
-export const CHUNKS_PAGE_KEY = "chunks";
-export const WORDS_PAGE_KEY = "words";
-export const CONTENTS_PAGE_KEY = "contents";
-export const STARRED_PAGE_KEY = "starred";
+export const STARRED_CHAPTER_KEY = "starred";
 
-export interface TopicPage {
+export interface TopicChapter {
   kind: "topic";
   key: string;
   title: string;
@@ -27,10 +19,17 @@ export interface TopicPage {
   exampleConversation: LibraryEntry[];
 }
 
-export type DeckPage =
-  | { kind: "contents"; key: string; title: string; topics: TopicPage[] }
-  | TopicPage
-  | { kind: "translations" | "words" | "chunks" | "starred"; key: string; title: string; entries: LibraryEntry[] };
+interface CollectionChapter {
+  key: string;
+  title: string;
+  entries: LibraryEntry[];
+}
+
+export type DeckChapter = TopicChapter
+  | (CollectionChapter & { kind: "translations" })
+  | (CollectionChapter & { kind: "words" })
+  | (CollectionChapter & { kind: "chunks" })
+  | (CollectionChapter & { kind: "starred" });
 
 function isPreview(deck: ContentDeck): boolean {
   return "preview" in deck && deck.preview;
@@ -42,24 +41,32 @@ function isSystem(deck: ContentDeck): boolean {
 
 export function renderHeader(deck: ContentDeck | null): string {
   if (!deck) return "";
-  return renderPaneHeader({
-    leading: headerIconButton("menu", { action: "content/menu", label: "Menu" }),
-    title: headerTitle(deck.name, { action: "content/deck-title" }),
-    trailing: isPreview(deck)
-      ? '<button class="deck-header-save-pill tappable" data-action="content/save-preview" aria-label="Save">Save</button>'
-      : isSystem(deck)
-        ? headerSpacer()
-        : `<button class="icon-button deck-header-done" data-action="content/done" aria-label="Done">${icon("check")}</button>`,
-  });
+  const stored = !isPreview(deck) && !isSystem(deck);
+  return `<header class="textbook-book-header" data-region="book-header">
+    <div class="textbook-book-bubble">
+      <div class="textbook-book-controls">
+        ${headerIconButton("menu", { action: "content/menu", label: "Library" })}
+        <div class="textbook-book-tools">
+          ${stored ? `<button type="button" class="icon-button" data-action="content/menu-settings" aria-label="Phrasebook settings">${icon("settings")}</button>
+          <button type="button" class="icon-button textbook-edit-button" data-action="content/menu-edit" aria-label="Reorder cards">${icon("edit")}</button>
+          <button type="button" class="icon-button deck-header-done" data-action="content/done" aria-label="Done">${icon("check")}</button>
+          <button type="button" class="textbook-cancel-edit" data-action="content/cancel-edit">Cancel</button>` : ""}
+          ${isPreview(deck) ? '<button type="button" class="deck-header-save-pill" data-action="content/save-preview" aria-label="Save">Save</button>' : ""}
+        </div>
+      </div>
+      <h1 class="textbook-book-title"><button type="button" class="pane-header-title" data-action="content/deck-title">${escapeHTML(deck.name)}</button></h1>
+      <span class="textbook-language-badge">${escapeHTML(LANG_NAMES[deck.lang])} ${LANG_FLAGS[deck.lang]}</span>
+    </div>
+  </header>`;
 }
 
-/** Group IDs keep equal-title topics distinct; row identities remain occurrence-local. */
-export function getDeckPages(
+/** Chapter identities are group IDs, never their potentially duplicated titles. */
+export function getDeckChapters(
   entries: readonly LibraryEntry[] = [],
   groups: readonly Group[] = [],
-): DeckPage[] {
+): DeckChapter[] {
   const phrases = entries.filter((entry) => entry.card.type === "phrase");
-  const topics: TopicPage[] = [...groups]
+  const chapters: DeckChapter[] = [...groups]
     .sort((left, right) => left.position - right.position || left.id.localeCompare(right.id))
     .map((group) => ({
       kind: "topic",
@@ -87,274 +94,115 @@ export function getDeckPages(
       exampleConversation: phrases.filter((entry) =>
         entry.occurrence?.groupId === group.id && entry.occurrence.section === "exampleConversation"),
     }));
-  const pages: DeckPage[] = [
-    { kind: "contents", key: CONTENTS_PAGE_KEY, title: "Phrasebook", topics },
-    ...topics,
-  ];
   const supplemental = [
-    { kind: "translations" as const, key: TRANSLATIONS_PAGE_KEY, title: "Translations",
-      entries: phrases.filter((entry) => entry.occurrence?.groupId === undefined) },
-    { kind: "words" as const, key: WORDS_PAGE_KEY, title: "Words",
-      entries: entries.filter((entry) => entry.card.type === "word" && !entry.wordPlacement) },
-    { kind: "chunks" as const, key: CHUNKS_PAGE_KEY, title: "Chunks",
-      entries: entries.filter((entry) => entry.card.type === "chunk") },
+    { kind: "translations" as const, key: "translations", title: "Translations", entries: phrases.filter((entry) => entry.occurrence?.groupId === undefined) },
+    { kind: "words" as const, key: "words", title: "Words", entries: entries.filter((entry) => entry.card.type === "word" && !entry.wordPlacement) },
+    { kind: "chunks" as const, key: "chunks", title: "Chunks", entries: entries.filter((entry) => entry.card.type === "chunk") },
   ];
-  pages.push(...supplemental.filter((page) => page.entries.length > 0));
-  const starredEntries: LibraryEntry[] = [];
+  chapters.push(...supplemental.filter((chapter) => chapter.entries.length > 0));
   const seenMemberships = new Map<string, Set<string>>();
-  // Match Review's saved entry order, independent of the learning collections.
-  for (const entry of entries) {
+  const starredEntries = entries.filter((entry) => {
     const membership = entry.membership;
-    if (membership?.starredAt == null) continue;
-    let seenCards = seenMemberships.get(membership.deckId);
-    if (seenCards?.has(membership.cardId)) continue;
-    if (!seenCards) {
-      seenCards = new Set();
-      seenMemberships.set(membership.deckId, seenCards);
-    }
-    seenCards.add(membership.cardId);
-    starredEntries.push(entry);
-  }
-  pages.unshift({
-    key: STARRED_PAGE_KEY,
-    title: "Starred",
-    kind: "starred",
-    entries: starredEntries,
+    if (membership?.starredAt == null) return false;
+    let seen = seenMemberships.get(membership.deckId);
+    if (seen?.has(membership.cardId)) return false;
+    if (!seen) { seen = new Set(); seenMemberships.set(membership.deckId, seen); }
+    seen.add(membership.cardId);
+    return true;
   });
-  return pages;
+  chapters.push({ kind: "starred", key: STARRED_CHAPTER_KEY, title: "Starred", entries: starredEntries });
+  return chapters;
 }
 
-export function normalizePageKey(
-  entries: readonly LibraryEntry[],
-  groups: readonly Group[],
-  requestedKey: string | null,
-): string {
-  const pages = getDeckPages(entries, groups);
-  return pages.find((page) => page.key === requestedKey)?.key
-    ?? pages.find((page) => page.kind !== "starred")!.key;
+export function normalizeChapterKey(entries: readonly LibraryEntry[], groups: readonly Group[], requestedKey: string | null): string | null {
+  return getDeckChapters(entries, groups).find((chapter) => chapter.key === requestedKey)?.key ?? null;
 }
 
+/** Static texture and generated cover art share non-flow backdrop geometry. */
 export function renderIllustration(illustration?: DeckIllustration): string {
-  if (!illustration) return "";
-  if (illustration.state === "failed") {
-    return '<p class="deck-illustration-unavailable fg-secondary">Illustration unavailable</p>';
-  }
-  return `<div class="deck-illustration"${illustration.state === "pending" ? ' aria-hidden="true"' : ""}>
-    ${illustration.state === "ready"
-      ? `<img src="${escapeHTML(illustration.image.dataUrl)}" alt="" width="${illustration.image.width}" height="${illustration.image.height}">`
-      : ""}
+  const ready = illustration?.state === "ready";
+  const source = ready ? illustration.image.dataUrl : "/textbook/frogs.png";
+  return `<div class="textbook-pattern${ready ? " textbook-cover" : ""}" aria-hidden="true" style="background-image:url(&quot;${escapeHTML(source)}&quot;)"></div>`;
+}
+
+export function renderChapterNavigation(chapters: readonly DeckChapter[]): string {
+  return `<nav class="textbook-chapter-nav" aria-label="Textbook chapters">
+    <details><summary>In this phrasebook</summary><div class="textbook-chapter-links">
+      ${chapters.map((chapter) => `<button type="button" data-action="content/jump-chapter" data-chapter-key="${escapeHTML(chapter.key)}">${escapeHTML(chapter.title)}${chapter.kind === "starred" ? ` (<span class="textbook-star-count">${chapter.entries.length}</span>)` : ""}</button>`).join("")}
+    </div></details>
+    <button type="button" class="textbook-star-link" data-action="content/jump-chapter" data-chapter-key="starred">${icon("star-fill")} Starred (<span class="textbook-star-count">${chapters.find((chapter) => chapter.kind === "starred")?.entries.length ?? 0}</span>)</button>
+  </nav>`;
+}
+
+export function renderChapter(chapter: DeckChapter, deck: ContentDeck, index: number): string {
+  const rows = (entries: readonly LibraryEntry[], conversation = false, wordTile = false, options = false): string =>
+    entries.map((entry, rowIndex) => renderCardRow(entry, deck.readingDisplay, {
+      readOnly: isPreview(deck), conversation, wordTile, optionSeparator: options && rowIndex > 0,
+    })).join("");
+  const empty = '<p class="textbook-section-empty fg-secondary">Nothing in this section yet.</p>';
+  const section = (title: string, key: string, content: string): string =>
+    `<section class="textbook-learning-section" data-topic-section="${key}">
+      <h3 class="section-label">${title}</h3>${content || empty}
+    </section>`;
+  const shelf = (title: string, key: string, entries: readonly LibraryEntry[], wordTile = false): string =>
+    `<div class="textbook-shelf" data-reorder-region="${escapeHTML(key)}" tabindex="0"
+      aria-label="${escapeHTML(title)}, two-row horizontal shelf">${rows(entries, false, wordTile)}</div>${entries.length ? "" : empty}`;
+  const body = chapter.kind === "topic"
+    ? section("Things to say", "thingsToSay", shelf("Things to say", "thingsToSay", chapter.thingsToSay))
+      + section("Likely exchanges", "likelyExchanges", chapter.likelyExchanges.map((exchange) =>
+        `<section class="topic-exchange" data-exchange-id="${escapeHTML(exchange.id)}">
+          <h4 class="topic-subheading">${escapeHTML(exchange.title)}</h4>
+          ${exchange.turns.length ? exchange.turns.map((turn) =>
+            `<div class="textbook-dialogue exchange-turn" data-turn-index="${turn[0].occurrence!.turnIndex}"
+              data-reorder-region="exchange:${escapeHTML(exchange.id)}:${turn[0].occurrence!.turnIndex}">${rows(turn, true, false, true)}</div>`).join("") : empty}
+        </section>`).join(""))
+      + section("Words", "words", chapter.words.map((family) =>
+        `<section class="topic-word-family" data-family-id="${escapeHTML(family.id)}">
+          <h4 class="topic-subheading">${escapeHTML(family.title)}</h4>
+          ${shelf(family.title, `family:${family.id}`, family.entries, true)}
+        </section>`).join(""))
+      + section("Example conversation", "exampleConversation",
+        `<div class="textbook-dialogue" data-reorder-region="exampleConversation">${rows(chapter.exampleConversation, true)}</div>${chapter.exampleConversation.length ? "" : empty}`)
+    : chapter.entries.length
+      ? `<div class="textbook-card-list"${chapter.kind === "starred" ? "" : ` data-reorder-region="${chapter.kind}"`}>${rows(chapter.entries)}</div>`
+      : '<p class="textbook-section-empty fg-secondary">No starred cards yet. Star cards in this phrasebook to review them here.</p>';
+  const id = `textbook-chapter-${encodeURIComponent(chapter.key)}`;
+  return `<section class="textbook-chapter" id="${escapeHTML(id)}" data-chapter-key="${escapeHTML(chapter.key)}" data-chapter-kind="${chapter.kind}" tabindex="-1" aria-labelledby="${escapeHTML(id)}-title">
+    <h2 id="${escapeHTML(id)}-title" class="textbook-chapter-title">${chapter.kind === "topic" ? `<span class="textbook-chapter-number">${String(index + 1).padStart(2, "0")}</span> ` : ""}${escapeHTML(chapter.title)}</h2>
+    <div data-region="chapter-cards">${body}</div>
+  </section>`;
+}
+
+export function renderTextbook(deck: ContentDeck, entries: readonly LibraryEntry[], groups: readonly Group[]): string {
+  const chapters = getDeckChapters(entries, groups);
+  return `<div class="textbook-reader" data-region="textbook-reader" tabindex="0" aria-label="Phrasebook chapters">
+    <div class="textbook-reading-paper">
+      <div data-region="chapter-navigation">${renderChapterNavigation(chapters)}</div>
+      <div class="textbook-star-status" data-region="starred-status" role="status" aria-live="polite" aria-atomic="true"></div>
+      <div data-region="textbook-chapters">${chapters.map((chapter, index) => renderChapter(chapter, deck, index)).join("")}</div>
+    </div>
   </div>`;
 }
 
-function renderContents(topics: readonly TopicPage[], deck: ContentDeck): string {
-  return `<div data-region="deck-hero">${renderIllustration("illustration" in deck ? deck.illustration : undefined)}</div>
-    ${topics.map((topic) => {
-      const words = topic.words.flatMap((family) => family.entries);
-      const firstSection = topic.thingsToSay.length ? "thingsToSay"
-        : topic.likelyExchanges.some((exchange) => exchange.turns.length) ? "likelyExchanges"
-          : words.length ? "words" : "exampleConversation";
-      return `
-      <section class="topic-preview" data-action="content/set-page"
-        data-page-key="${escapeHTML(topic.key)}" data-section="${firstSection}">
-        <h2 class="section-label">${escapeHTML(topic.title)}</h2>
-        <div class="topic-preview-card">
-          <div class="topic-preview-lines">
-            ${topic.thingsToSay.slice(0, 3).map((entry) =>
-              `<button type="button" class="topic-preview-line" data-action="content/set-page"
-                data-page-key="${escapeHTML(topic.key)}" data-section="thingsToSay">${escapeHTML(entry.card.translation)}</button>`).join("")}
-            ${words.slice(0, 2).map((entry) =>
-              `<button type="button" class="topic-preview-line" data-action="content/set-page"
-                data-page-key="${escapeHTML(topic.key)}" data-section="words">${escapeHTML(entry.card.translation)}${entry.card.type === "word" ? ` <span class="fg-secondary">(${escapeHTML(entry.card.partOfSpeech)})</span>` : ""}</button>`).join("")}
-          </div>
-          <div class="topic-preview-footer">
-            <span>${topic.thingsToSay.length} phrase${topic.thingsToSay.length === 1 ? "" : "s"} · ${topic.likelyExchanges.length} exchange${topic.likelyExchanges.length === 1 ? "" : "s"} · ${words.length} word${words.length === 1 ? "" : "s"} · ${topic.exampleConversation.length ? 1 : 0} example conversation</span>
-            <button type="button" class="topic-view tappable" data-action="content/set-page"
-              data-page-key="${escapeHTML(topic.key)}" data-section="${firstSection}" aria-label="View ${escapeHTML(topic.title)}">View${icon("next")}</button>
-          </div>
-        </div>
-      </section>`;
-    }).join("")}`;
+/** Language browsing retains every card type, without phrasebook star state. */
+export function renderBrowseCardsHTML(deck: ContentDeck, entries: readonly LibraryEntry[], _groups: readonly Group[]): string {
+  const sections = [{ type: "phrase", title: "Translations" }, { type: "word", title: "Words" }, { type: "chunk", title: "Chunks" }]
+    .map((section) => ({ ...section, entries: entries.filter((entry) => entry.card.type === section.type) })).filter((section) => section.entries.length > 0);
+  if (!sections.length) return '<div class="deck-view-empty text-center fg-secondary"><p>No cards in this library.</p></div>';
+  return sections.map((section) => `<h2 class="deck-view-section-header section-label">${section.title}</h2><div class="card-group"><div class="card-group-rows">${section.entries.map((entry) => renderCardRow(entry, deck.readingDisplay, { readOnly: isPreview(deck), conversation: false })).join("")}</div></div>`).join("");
 }
 
-function renderPageEntries(page: DeckPage, deck: ContentDeck): string {
-  if (page.kind === "contents") return renderContents(page.topics, deck);
-  const readOnly = isPreview(deck);
-  const rows = (entries: readonly LibraryEntry[], conversation = false, wordTile = false, options = false): string =>
-    entries.map((entry, index) => renderCardRow(entry, deck.readingDisplay, {
-      readOnly, conversation, wordTile, optionSeparator: options && index > 0,
-    })).join("");
-  if (page.kind === "topic") {
-    const section = (title: string, key: string, content: string): string =>
-      `<section class="topic-section" data-topic-section="${key}">
-        <h2 class="section-label">${title}</h2>${content}
-      </section>`;
-    return (page.thingsToSay.length ? section("Things to say", "thingsToSay",
-      `<div class="topic-card-list" data-reorder-region="thingsToSay">${rows(page.thingsToSay)}</div>`) : "")
-      + section("Likely exchanges", "likelyExchanges", page.likelyExchanges.map((exchange) =>
-        `<section class="topic-exchange" data-exchange-id="${escapeHTML(exchange.id)}">
-          <h3 class="topic-subheading">${escapeHTML(exchange.title)}</h3>
-          ${exchange.turns.map((turn) =>
-            `<div class="topic-card-list exchange-turn" data-turn-index="${turn[0].occurrence!.turnIndex}"
-              data-reorder-region="exchange:${escapeHTML(exchange.id)}:${turn[0].occurrence!.turnIndex}">${rows(turn, true, false, true)}</div>`).join("")}
-        </section>`).join(""))
-      + (page.words.length ? section("Words", "words", page.words.map((family) =>
-        `<section class="topic-word-family" data-family-id="${escapeHTML(family.id)}">
-          <h3 class="topic-subheading">${escapeHTML(family.title)}</h3>
-          <div class="topic-word-grid" data-reorder-region="family:${escapeHTML(family.id)}">${rows(family.entries, false, true)}</div>
-        </section>`).join("")) : "")
-      + section("Example conversation", "exampleConversation",
-        `<div class="topic-card-list" data-reorder-region="exampleConversation">${rows(page.exampleConversation, true)}</div>`);
-  }
-  if (page.kind === "starred" && page.entries.length === 0) {
-    return '<div class="deck-view-empty text-center fg-secondary"><p>No starred cards yet.</p><p>Star cards in this phrasebook to review them here.</p></div>';
-  }
-  return `<div class="topic-card-list"${page.kind === "starred" ? "" : ` data-reorder-region="${page.kind}"`}>${rows(page.entries)}</div>`;
-}
-
-function renderPageTab(page: DeckPage, activePageKey: string): string {
-  const selected = page.key === activePageKey;
-  const starred = page.kind === "starred";
-  const label = starred ? `Starred, ${page.entries.length} cards` : page.title;
-  const id = escapeHTML(encodeURIComponent(page.key));
-  return `
-    <button
-      id="deck-page-tab-${id}"
-      class="deck-tab${starred ? " deck-star-tab" : ""} tappable"
-      type="button"
-      role="tab"
-      data-action="content/set-page"
-      data-page-key="${escapeHTML(page.key)}"
-      aria-controls="deck-page-${id}"
-      aria-selected="${selected}"
-      tabindex="${selected ? "0" : "-1"}"
-      title="${escapeHTML(label)}"
-      aria-label="${escapeHTML(label)}"
-    >${starred
-      ? `${icon("star-fill")}<span class="deck-star-count" aria-hidden="true">${page.entries.length}</span>`
-      : `<span>${escapeHTML(page.title)}</span>`}</button>
-  `;
-}
-
-export function renderDeckPager(
-  deck: ContentDeck,
-  entries: readonly LibraryEntry[],
-  groups: readonly Group[],
-  requestedPageKey: string | null,
-): string {
-  const pages = getDeckPages(entries, groups);
-  const activePageKey = normalizePageKey(entries, groups, requestedPageKey);
-  const starredPage = pages.find((page) => page.kind === "starred");
-
-  return `
-    <div class="deck-pager flex-1 min-h-0 flex-col" data-region="deck-pager">
-      <div class="deck-tabs" data-region="deck-tabs" role="tablist" aria-label="Phrasebook pages">
-        <div class="deck-pinned-slot">${starredPage ? renderPageTab(starredPage, activePageKey) : ""}</div>
-        <div class="deck-tab-scroll" data-region="deck-tab-scroll">
-          ${pages.filter((page) => page.kind !== "starred").map((page) => renderPageTab(page, activePageKey)).join("")}
-        </div>
-      </div>
-      <div class="deck-star-status" data-region="starred-status" role="status" aria-live="polite" aria-atomic="true"></div>
-      <div class="deck-pages flex-1 min-h-0" data-region="deck-pages" aria-label="Swipe between phrasebook pages">
-        ${pages.map((page) => {
-          const selected = page.key === activePageKey;
-          const id = escapeHTML(encodeURIComponent(page.key));
-          return `
-            <section
-              id="deck-page-${id}"
-              class="deck-page"
-              role="tabpanel"
-              aria-labelledby="deck-page-tab-${id}"
-              data-page-key="${escapeHTML(page.key)}"
-              data-page-kind="${page.kind}"
-              tabindex="0"
-              ${selected ? "" : "inert"}
-            >
-              <div class="deck-page-list flex-col" data-region="card-list">
-                ${renderPageEntries(page, deck)}
-              </div>
-            </section>
-          `;
-        }).join("")}
-      </div>
-    </div>
-  `;
-}
-
-/** Language browse is independent of phrasebook topic pages. */
-export function renderBrowseCardsHTML(
-  deck: ContentDeck,
-  entries: readonly LibraryEntry[],
-  _groups: readonly Group[],
-): string {
-  const sections = [
-    { type: "phrase", title: "Translations" },
-    { type: "word", title: "Words" },
-    { type: "chunk", title: "Chunks" },
-  ].map((section) => ({
-    ...section, entries: entries.filter((entry) => entry.card.type === section.type),
-  })).filter((section) => section.entries.length > 0);
-  if (sections.length === 0) {
-    return '<div class="deck-view-empty text-center fg-secondary"><p>No cards in this library.</p></div>';
-  }
-  return sections.map((section) => `
-    <h2 class="deck-view-section-header section-label">${section.title}</h2>
-    <div class="card-group"><div class="card-group-rows">
-      ${section.entries.map((entry) => renderCardRow(entry, deck.readingDisplay, {
-        readOnly: isPreview(deck), conversation: false,
-      })).join("")}
-    </div></div>`).join("");
-}
-
-export function renderDeckBody(
-  deck: ContentDeck | null,
-  entries: readonly LibraryEntry[],
-  groups: readonly Group[],
-  pageKey: string | null,
-): string {
-  if (!deck) return "";
-  const browse = isSystem(deck);
-  const pager = browse
-    ? `<div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto" data-region="card-list">
-         ${renderBrowseCardsHTML(deck, entries, groups)}
-       </div>`
-    : renderDeckPager(deck, entries, groups, pageKey);
-  const reviewDisabled = entries.some((entry) => entry.membership?.starredAt != null)
-    ? ""
-    : " disabled";
-
-  return `
-    ${renderHeader(deck)}
+export function renderDeckBody(deck: ContentDeck | null, entries: readonly LibraryEntry[], groups: readonly Group[], _chapterKey: string | null): string {
+  if (!deck) return '<p class="content-inline-error fg-danger" data-region="content-error" role="alert" hidden></p>';
+  return `${renderHeader(deck)}
+    <div class="textbook-backdrop" data-region="deck-hero">${renderIllustration("illustration" in deck ? deck.illustration : undefined)}</div>
     <p class="content-inline-error fg-danger" data-region="content-error" role="alert" hidden></p>
-    ${pager}
-    ${browse || isPreview(deck)
-      ? ""
-      : `<div class="deck-view-action-bar shrink-0 flex items-center justify-center"${pageKey === STARRED_PAGE_KEY ? "" : " hidden"}>
-           <div class="deck-view-action-pill flex items-center">
-             <button class="deck-view-action-btn flex-col items-center" data-action="content/review" aria-label="Review"${reviewDisabled}>${icon("review")}<span>Review</span></button>
-           </div>
-         </div>`}
-  `;
+    ${isSystem(deck) ? `<div class="deck-view-list textbook-language-list flex-1 flex-col min-h-0 overflow-y-auto" data-region="card-list">${renderBrowseCardsHTML(deck, entries, groups)}</div>` : renderTextbook(deck, entries, groups)}
+    ${!isSystem(deck) && !isPreview(deck) ? `<div class="textbook-review-bar"><button type="button" data-action="content/review" aria-label="Review"${entries.some((entry) => entry.membership?.starredAt != null) ? "" : " disabled"}>${icon("review")} Review starred cards</button></div>` : ""}`;
 }
 
-function renderBrowseHeader(title: string): string {
-  return renderPaneHeader({
-    leading: headerIconButton("back", { action: "content/browse-back", label: "Back" }),
-    title: headerTitle(title),
-    trailing: headerSpacer(),
-  });
-}
-
-export interface ContentBrowse {
-  title: string;
-  groupsHtml: string;
-}
-
+export interface ContentBrowse { title: string; groupsHtml: string; }
 export function renderBrowseBody(browse: ContentBrowse | null): string {
   if (!browse) return "";
-  return `
-    ${renderBrowseHeader(browse.title)}
-    <div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto" data-region="browse-list">
-      ${browse.groupsHtml}
-    </div>
-  `;
+  return `${renderPaneHeader({ leading: headerIconButton("back", { action: "content/browse-back", label: "Back" }), title: headerTitle(browse.title), trailing: headerSpacer() })}<div class="deck-view-list flex-1 flex-col min-h-0 overflow-y-auto" data-region="browse-list">${browse.groupsHtml}</div>`;
 }

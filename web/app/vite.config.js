@@ -39,11 +39,11 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
-          name: 'Loudmouth',
-          short_name: 'Loudmouth',
+          name: 'Catchphrase',
+          short_name: 'Catchphrase',
           display: 'standalone',
-          background_color: '#f5f5f0',
-          theme_color: '#2d6a4f',
+          background_color: '#f5f1e6',
+          theme_color: '#f5f1e6',
           start_url: '/',
           handle_links: 'preferred',
           scope_extensions: [{ origin: 'https://loudmouth-gilt.vercel.app' }],

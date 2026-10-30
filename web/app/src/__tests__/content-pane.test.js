@@ -194,10 +194,10 @@ describe("phrasebook-scoped membership stars", () => {
         "2026-03-01T00:00:00.000Z",
         "2026-03-01T00:00:00.000Z",
       ]);
-    expect([...view.rootEl.querySelectorAll('.deck-page[data-page-kind="topic"] .card-star')]
+    expect([...view.rootEl.querySelectorAll('.textbook-chapter[data-chapter-kind="topic"] .card-star')]
       .map((button) => button.getAttribute("aria-pressed")))
       .toEqual(["true", "true"]);
-    expect([...view.rootEl.querySelectorAll('.deck-page[data-page-kind="topic"] .card-star')]
+    expect([...view.rootEl.querySelectorAll('.textbook-chapter[data-chapter-kind="topic"] .card-star')]
       .map((button) => button.getAttribute("aria-label")))
       .toEqual(["Unstar: go ahead", "Unstar: after you"]);
     expect(view.rootEl.querySelector('[data-action="content/review"]').disabled).toBe(false);
@@ -238,7 +238,7 @@ describe("phrasebook-scoped membership stars", () => {
       .toBe("storage unavailable");
   });
 
-  it("retains focus during a pending unstar, then focuses the next row or empty Starred tab", async () => {
+  it("retains focus during a pending unstar, then focuses the next row or empty collection", async () => {
     const view = mountPane();
     view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
@@ -255,10 +255,10 @@ describe("phrasebook-scoped membership stars", () => {
         membership: { ...entry.membership, starredAt: "2026-03-01T00:00:00.000Z" },
       })), word],
     });
-    view.ui.transition("content/set-page", { pageKey: "starred" });
+    view.ui.transition("content/jump-chapter", { chapterKey: "starred" });
     const pending = deferred();
     mocks.toggleCardStar.mockReturnValue(pending.promise);
-    const first = view.rootEl.querySelector('.deck-page[data-page-key="starred"] .card-star');
+    const first = view.rootEl.querySelector('.textbook-chapter[data-chapter-key="starred"] .card-star');
     first.focus();
     first.click();
     first.click();
@@ -266,16 +266,16 @@ describe("phrasebook-scoped membership stars", () => {
     expect(mocks.toggleCardStar).toHaveBeenCalledTimes(1);
     pending.resolve({ cardId: "shared-card", starredAt: null });
     await flush();
-    const next = view.rootEl.querySelector('.deck-page[data-page-key="starred"] .card-star');
+    const next = view.rootEl.querySelector('.textbook-chapter[data-chapter-key="starred"] .card-star');
     expect(next.dataset.cardId).toBe("word");
     expect(document.activeElement).toBe(next);
-    expect(view.rootEl.querySelector('.deck-star-count').textContent).toBe("1");
+    expect(view.rootEl.querySelector('.textbook-star-count').textContent).toBe("1");
     mocks.toggleCardStar.mockResolvedValue({ cardId: "word", starredAt: null });
     next.click();
     await flush();
-    expect(view.ui.get("content").pageKey).toBe("starred");
-    expect(document.activeElement).toBe(view.rootEl.querySelector(".deck-star-tab"));
-    expect(view.rootEl.querySelector(".deck-star-count").textContent).toBe("0");
+    expect(view.ui.get("content").chapterKey).toBe("starred");
+    expect(document.activeElement).toBe(view.rootEl.querySelector('.textbook-chapter[data-chapter-key="starred"]'));
+    expect(view.rootEl.querySelector(".textbook-star-count").textContent).toBe("0");
     expect(view.rootEl.querySelector('[data-action="content/review"]').disabled).toBe(true);
     expect(view.ui.get("content").cards).toHaveLength(3);
     expect([...view.rootEl.querySelectorAll(".card-star")].every((button) => !button.disabled)).toBe(true);
@@ -296,7 +296,6 @@ describe("review entry point", () => {
       starredAt: "2026-02-01T00:00:00.000Z",
     });
 
-    view.ui.transition("content/set-page", { pageKey: "starred" });
     view.rootEl.querySelector('[data-action="content/review"]').click();
     await flush();
 
@@ -319,7 +318,6 @@ describe("review entry point", () => {
       starredAt: "2026-02-01T00:00:00.000Z",
     });
 
-    view.ui.transition("content/set-page", { pageKey: "starred" });
     view.rootEl.querySelector('[data-action="content/review"]').click();
     view.ui.transition("content/select-deck", { id: "d2" });
     await flush();
@@ -450,7 +448,7 @@ it("refreshes Review availability when analysis adds a starred learning target",
 });
 
 describe("topic navigation and independent sections", () => {
-  it("opens the requested duplicate-title topic and transfers focus to its tab", async () => {
+  it("jumps to the requested duplicate-title topic without hiding other chapters", async () => {
     const view = mountPane();
     view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
@@ -458,11 +456,11 @@ describe("topic navigation and independent sections", () => {
       cards: view.ui.get("content").cards,
       groups: [...mocks.groups, { ...mocks.groups[0], id: "group-2", position: 1 }],
     });
-    const buttons = [...view.rootEl.querySelectorAll(".topic-view")];
+    const buttons = [...view.rootEl.querySelectorAll(".textbook-chapter-links [data-chapter-key]")];
     buttons[1].click();
-    expect(view.ui.get("content").pageKey).toBe("group:group-2");
-    expect(document.activeElement.dataset.pageKey).toBe("group:group-2");
-    expect(view.rootEl.querySelector('.deck-page[data-page-key="contents"]').inert).toBe(true);
+    expect(view.ui.get("content").chapterKey).toBe("group:group-2");
+    expect(document.activeElement.dataset.chapterKey).toBe("group:group-2");
+    expect(view.rootEl.querySelector('[inert]')).toBeNull();
   });
 
   it("opens essential analysis with its real occurrence and group, without inventing a speaker", async () => {
@@ -473,14 +471,13 @@ describe("topic navigation and independent sections", () => {
     delete entry.occurrence.speaker;
     entry.occurrence.section = "thingsToSay";
     view.ui.transition("content/cards-changed", { cards: [entry] });
-    view.rootEl.querySelector(".topic-view").click();
     view.rootEl.querySelector(".card-term").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
     expect(view.ui.get("details").entry.occurrence).toEqual(entry.occurrence);
     expect(view.ui.get("details").entry.occurrence).not.toHaveProperty("speaker");
     expect(view.ui.get("details").group.id).toBe("group-1");
   });
 
-  it("rejects reordering across essential and dialogue buckets", async () => {
+  it("rejects reordering across things-to-say and example-conversation buckets", async () => {
     const view = mountPane();
     view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
@@ -495,17 +492,17 @@ describe("topic navigation and independent sections", () => {
 });
 
 describe("illustration completion ownership", () => {
-  it("patches only the hero while preserving edit order, selected topic, mounted cards, scroll and focus", async () => {
+  it("patches only the backdrop while preserving edit order, chapter, mounted cards, scroll and focus", async () => {
     const view = mountPane();
     view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
     const pending = { requestId: "cover-1", prompt: "Watercolor", state: "pending" };
     const current = view.ui.get("content");
     view.ui.transition("content/loaded", { ...current, deck: { ...current.deck, illustration: pending } });
-    view.rootEl.querySelector(".topic-view").click();
+    view.ui.transition("content/jump-chapter", { chapterKey: "group:group-1" });
     view.ui.transition("content/enter-edit");
     view.ui.transition("content/reorder", { pageOrder: ["occ-2", "occ-1"] });
-    const page = view.rootEl.querySelector('.deck-page[data-page-key="group:group-1"]');
+    const page = view.rootEl.querySelector('[data-region="textbook-reader"]');
     const card = page.querySelector(".card-term");
     card.focus();
     page.scrollTop = 112;
@@ -516,11 +513,11 @@ describe("illustration completion ownership", () => {
     view.ui.transition("content/illustration-updated", { deckId: "d1", illustration: ready });
     expect(view.ui.get("content").editMode).toBe(true);
     expect(view.ui.get("content").editOrder).toBe(order);
-    expect(view.ui.get("content").pageKey).toBe("group:group-1");
+    expect(view.ui.get("content").chapterKey).toBe("group:group-1");
     expect(page.scrollTop).toBe(112);
     expect(page.querySelector(".card-term")).toBe(card);
     expect(document.activeElement).toBe(card);
-    expect(view.rootEl.querySelector(".deck-illustration img").getAttribute("src")).toBe(ready.image.dataUrl);
+    expect(view.rootEl.querySelector(".textbook-pattern").style.backgroundImage).toContain(ready.image.dataUrl);
     view.ui.transition("content/illustration-updated", { deckId: "d1", illustration: { ...pending, state: "failed" } });
     expect(view.ui.get("content").deck.illustration).toBe(ready);
   });
@@ -543,4 +540,34 @@ describe("illustration completion ownership", () => {
     view.ui.transition("content/illustration-updated", { deckId: "d1", illustration: { ...pending, state: "failed" } });
     expect(view.ui.get("content")).toBe(switched);
   });
+});
+
+it("browses a focused shelf with keyboard keys without changing the chapter or sibling shelf", async () => {
+  const view = mountPane();
+  view.ui.transition("content/select-deck", { id: "d1" });
+  await flush();
+  const cards = mocks.repeatedEntries().map(entry => ({
+    ...entry, occurrence: { ...entry.occurrence, section: "thingsToSay", speaker: undefined },
+  }));
+  cards.push({
+    key: "word-placement", cardId: "water",
+    card: { type: "word", lang: "ja", text: "水", translation: "water", partOfSpeech: "noun", senseKey: "water" },
+    membership: { deckId: "d1", cardId: "water", createdAt: "2026-01-01T00:00:00.000Z", position: 0, starredAt: null },
+    wordPlacement: { id: "word-placement", deckId: "d1", groupId: "group-1", familyId: "drinks", cardId: "water", position: 0 },
+    sources: [],
+  });
+  view.ui.transition("content/cards-changed", {
+    cards,
+    groups: [{ ...mocks.groups[0], wordFamilies: [{ id: "drinks", title: "Drinks", position: 0 }] }],
+  });
+  const shelf = view.rootEl.querySelector('[data-reorder-region="thingsToSay"]');
+  const words = view.rootEl.querySelector('[data-reorder-region="family:drinks"]');
+  Object.defineProperties(shelf, { clientWidth: { value: 200 }, scrollWidth: { value: 600 } });
+  shelf.focus();
+  shelf.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+  expect(shelf.scrollLeft).toBe(150);
+  expect(words.scrollLeft).toBe(0);
+  expect(view.ui.get("content").chapterKey).toBeNull();
+  shelf.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+  expect(shelf.scrollLeft).toBe(0);
 });

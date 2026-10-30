@@ -29,7 +29,7 @@ export interface AppPayloads {
   'content/cards-changed': {cards: LibraryEntry[]; groups?: Group[]; deckId?: string};
   'content/card-star-changed': {deckId: string; cardId: string; starredAt: string | null};
   'content/illustration-updated': {deckId: string; illustration: DeckIllustration};
-  'content/set-page': {pageKey: string};
+  'content/jump-chapter': {chapterKey: string};
   'content/enter-edit': undefined;
   'content/reorder': {pageOrder: string[]};
   'content/confirm-edit': undefined;

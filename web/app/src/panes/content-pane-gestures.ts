@@ -1,7 +1,6 @@
 import type { AppUI } from "../js/app-types";
-import { wireTabMotion } from "./content-pane-tab-motion";
 
-/** Options shared by the content pane's shell, pager, and reorder gestures. */
+/** Native shelves share the pane with shell and section-local reorder handles. */
 export interface WireContentGesturesOptions {
   rootEl: HTMLElement;
   handleEl: HTMLElement;
@@ -10,35 +9,15 @@ export interface WireContentGesturesOptions {
   isEdit: () => boolean;
 }
 
-export interface SyncPagerOptions {
-  animate?: boolean;
-  focus?: boolean;
-  preserveStrip?: boolean;
-}
 
 /** Imperative gesture state retained by the content pane between renders. */
 export interface ContentGesturesHandle {
-  captureTabGeometry: () => void;
-  syncPager: (pageKey: string | null, options?: SyncPagerOptions) => void;
   dispose: () => void;
 }
 
 type Axis = "h" | "v";
 
-type Point = {
-  x: number;
-  y: number;
-};
 
-type PageDrag = Point & {
-  pages: HTMLElement;
-  pointerId: number;
-  startLeft: number;
-  index: number;
-  active: boolean;
-  fromLeft: boolean;
-  shell: boolean;
-};
 
 type ReorderState = {
   region: HTMLElement;
@@ -54,14 +33,10 @@ type ReorderState = {
 };
 
 const OPEN_THRESHOLD = 100;
-const PAGE_THRESHOLD = 45;
-const PAGE_AXIS_LOCK = 8;
-const PAGE_GUTTER = 50;
-const PAGE_DURATION = 280;
 const CARD_WRAPPER_SEL = ".card-row-wrapper";
 const REORDER_THRESHOLD_PX = 4;
 const REORDER_PLACEHOLDER_CLASS = "card-row-reorder-placeholder";
-const REORDER_REORDERING_CLASS = "deck-page-list--reordering";
+const REORDER_REORDERING_CLASS = "textbook-list--reordering";
 const REORDER_GHOST_CLASS = "card-row-reorder-ghost";
 
 function closestHTMLElement(target: EventTarget | null, selector: string): HTMLElement | null {
@@ -74,10 +49,7 @@ function firstTouch(touches: TouchList): Touch | null {
   return touches.item(0);
 }
 
-/**
- * Wires the content pane's gesture surfaces without taking ownership of its
- * rendered DOM. Callers keep the returned handle for render-time pager sync.
- */
+/** Shelf touches stay native; only mouse drags and focused shelf keys are handled. */
 export function wireContentGestures({
   rootEl,
   handleEl,
@@ -86,6 +58,8 @@ export function wireContentGestures({
   isEdit,
 }: WireContentGesturesOptions): ContentGesturesHandle {
   // ── Shell edge swipe ────────────────────────────────────────────────────
+  const listeners = new AbortController();
+  const { signal } = listeners;
   let shellStartX: number | null = null;
   let shellStartY: number | null = null;
   let shellAxis: Axis | null = null;
@@ -102,7 +76,7 @@ export function wireContentGestures({
     shellStartY = touch.clientY;
     shellAxis = null;
     shellPaneWidth = rootEl.getBoundingClientRect().width;
-  }, { passive: true });
+  }, { passive: true, signal });
 
   handleEl.addEventListener("touchmove", (event) => {
     const touch = firstTouch(event.touches);
@@ -119,7 +93,7 @@ export function wireContentGestures({
     const base = open ? shellPaneWidth : 0;
     rootEl.dataset.dragging = "";
     rootEl.style.transform = `translateX(${Math.max(0, Math.min(shellPaneWidth, base + dx))}px)`;
-  }, { passive: false });
+  }, { passive: false, signal });
 
   function endShell(x: number): void {
     if (shellStartX === null) return;
@@ -139,252 +113,61 @@ export function wireContentGestures({
   handleEl.addEventListener("touchend", (event) => {
     const touch = firstTouch(event.changedTouches);
     if (touch) endShell(touch.clientX);
-  }, { passive: true });
-  handleEl.addEventListener("touchcancel", (event) => {
-    const touch = firstTouch(event.changedTouches);
-    endShell(touch?.clientX ?? shellStartX ?? 0);
-  }, { passive: true });
+  }, { passive: true, signal });
+  handleEl.addEventListener("touchcancel", () => {
+    delete rootEl.dataset.dragging;
+    rootEl.style.transform = "";
+    shellStartX = null;
+    shellStartY = null;
+    shellAxis = null;
+  }, { passive: true, signal });
 
-  // ── Phrasebook pager ────────────────────────────────────────────────────
-  const scrollAnimations = new WeakMap<HTMLElement, number>();
-  const tabMotion = wireTabMotion(rootEl);
-  let observedPages: HTMLElement | null = null;
-  let observedWidth = 0;
-  let pageDrag: PageDrag | null = null;
-  let suppressPageClick = false;
-
-  function stopScrollAnimation(element: HTMLElement): void {
-    const frame = scrollAnimations.get(element);
-    if (frame !== undefined) cancelAnimationFrame(frame);
-    scrollAnimations.delete(element);
-  }
-
-  function reduceMotion(): boolean {
-    return typeof matchMedia === "function"
-      && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }
-
-  function animateScroll(
-    element: HTMLElement,
-    requestedLeft: number,
-    animate = true,
-  ): void {
-    stopScrollAnimation(element);
-    const from = element.scrollLeft;
-    const to = Math.max(0, Math.min(
-      requestedLeft,
-      Math.max(0, element.scrollWidth - element.clientWidth),
-    ));
-    if (!animate || reduceMotion() || Math.abs(to - from) < 1) {
-      element.scrollLeft = to;
-      return;
-    }
-    const startedAt = performance.now();
-    function step(now: number): void {
-      if (!element.isConnected) {
-        scrollAnimations.delete(element);
-        return;
-      }
-      const progress = Math.min(1, (now - startedAt) / PAGE_DURATION);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      element.scrollLeft = reduceMotion() ? to : from + (to - from) * eased;
-      if (progress < 1 && !reduceMotion()) {
-        scrollAnimations.set(element, requestAnimationFrame(step));
-      } else {
-        scrollAnimations.delete(element);
-      }
-    }
-    scrollAnimations.set(element, requestAnimationFrame(step));
-  }
-
-  function watchPagerSize(pages: HTMLElement | null): void {
-    if (observedPages === pages) return;
-    if (observedPages) resizeObserver?.unobserve(observedPages);
-    observedPages = pages;
-    observedWidth = pages?.clientWidth ?? 0;
-    if (pages) resizeObserver?.observe(pages);
-  }
-
-  const resizeObserver = typeof ResizeObserver === "function"
-    ? new ResizeObserver((entries) => {
-        const target = entries[0]?.target;
-        if (!(target instanceof HTMLElement)
-          || !target.isConnected
-          || target.clientWidth === observedWidth) return;
-        observedWidth = target.clientWidth;
-        syncPager(ui.get("content").pageKey, { animate: false, preserveStrip: true });
-      })
-    : null;
-
-  function syncPager(
-    pageKey: string | null,
-    { animate = true, focus = false, preserveStrip = false }: SyncPagerOptions = {},
-  ): void {
-    const pages = rootEl.querySelector<HTMLElement>('[data-region="deck-pages"]');
-    const strip = rootEl.querySelector<HTMLElement>('[data-region="deck-tabs"]');
-    handleEl.toggleAttribute("data-paging", Boolean(pages) && !isEdit());
-    if (!pages || !strip) {
-      watchPagerSize(null);
-      tabMotion.sync(pageKey, animate, preserveStrip);
-      return;
-    }
-    watchPagerSize(pages);
-
-    const tabs = [...strip.querySelectorAll<HTMLElement>('[role="tab"]')];
-    const panels = [...pages.querySelectorAll<HTMLElement>('[role="tabpanel"]')];
-    let index = tabs.findIndex((tab) => tab.dataset.pageKey === pageKey);
-    if (index < 0) index = 0;
-
-    tabs.forEach((tab, tabIndex) => {
-      const selected = tabIndex === index;
-      tab.setAttribute("aria-selected", String(selected));
-      tab.tabIndex = selected ? 0 : -1;
-    });
-    panels.forEach((panel, panelIndex) => {
-      panel.inert = panelIndex !== index;
-    });
-
-    const selectedTab = tabs[index];
-    if (!selectedTab) return;
-    tabMotion.sync(selectedTab.dataset.pageKey ?? null, animate, preserveStrip);
-    animateScroll(pages, index * pages.clientWidth, animate);
-    if (focus) selectedTab.focus({ preventScroll: true });
-  }
-
-  function selectPage(pageKey: string, options?: SyncPagerOptions): void {
-    ui.transition("content/set-page", { pageKey });
-    // A bounded swipe or re-select returns the same slice reference, so the
-    // subscriber may not run. Always finish alignment from the current offset.
-    syncPager(pageKey, options);
-  }
+  let shelfDrag: { shelf: HTMLElement; pointerId: number; x: number; y: number; left: number; active: boolean } | null = null;
+  let suppressShelfClick = false;
 
   rootEl.addEventListener("keydown", (event) => {
-    const tab = closestHTMLElement(event.target, ".deck-tab");
-    if (!tab || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    const parent = tab.closest('[data-region="deck-tabs"]');
-    if (!parent) return;
-    const tabs = [...parent.querySelectorAll<HTMLElement>(".deck-tab")];
-    const current = tabs.indexOf(tab);
-    const next = event.key === "Home"
-      ? 0
-      : event.key === "End"
-      ? tabs.length - 1
-      : Math.max(0, Math.min(
-          tabs.length - 1,
-          current + (event.key === "ArrowRight" ? 1 : -1),
-        ));
-    const nextPageKey = tabs[next]?.dataset.pageKey;
-    if (!nextPageKey) return;
+    const shelf = closestHTMLElement(event.target, ".textbook-shelf");
+    if (!shelf || event.target !== shelf || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || isEdit()) return;
     event.preventDefault();
-    selectPage(nextPageKey, { focus: true });
-  });
+    const left = event.key === "Home" ? 0 : event.key === "End" ? shelf.scrollWidth
+      : shelf.scrollLeft + (event.key === "ArrowRight" ? 1 : -1) * shelf.clientWidth * 0.75;
+    shelf.scrollLeft = Math.max(0, left);
+  }, { signal });
 
   rootEl.addEventListener("pointerdown", (event) => {
-    const pages = closestHTMLElement(event.target, '[data-region="deck-pages"]');
-    if (!pages || isEdit() || !event.isPrimary || event.button !== 0) return;
-    const bounds = pages.getBoundingClientRect();
-    const fromLeft = event.clientX - bounds.left <= PAGE_GUTTER;
-    const fromRight = bounds.right - event.clientX <= PAGE_GUTTER;
-    if (!fromLeft && !fromRight) return;
-    stopScrollAnimation(pages);
-    const selectedTab = rootEl.querySelector<HTMLElement>('.deck-tab[aria-selected="true"]');
-    const tabs = [...rootEl.querySelectorAll<HTMLElement>(".deck-tab")];
-    pageDrag = {
-      pages,
-      pointerId: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-      startLeft: pages.scrollLeft,
-      index: Math.max(0, selectedTab ? tabs.indexOf(selectedTab) : -1),
-      active: false,
-      fromLeft,
-      shell: false,
-    };
-  });
-
+    const shelf = closestHTMLElement(event.target, ".textbook-shelf");
+    if (!shelf || event.pointerType !== "mouse" || event.button !== 0 || isEdit()) return;
+    shelfDrag = { shelf, pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: shelf.scrollLeft, active: false };
+  }, { signal });
   rootEl.addEventListener("pointermove", (event) => {
-    if (!pageDrag || event.pointerId !== pageDrag.pointerId) return;
-    const dx = event.clientX - pageDrag.x;
-    const dy = event.clientY - pageDrag.y;
-    if (!pageDrag.active) {
-      if (Math.abs(dx) <= PAGE_AXIS_LOCK && Math.abs(dy) <= PAGE_AXIS_LOCK) return;
-      if (Math.abs(dx) <= Math.abs(dy)) {
-        pageDrag = null;
-        return;
-      }
-      // Each gutter only accepts an inward swipe.
-      if ((pageDrag.fromLeft && dx < 0) || (!pageDrag.fromLeft && dx > 0)) {
-        pageDrag = null;
-        return;
-      }
-      pageDrag.shell = pageDrag.fromLeft && pageDrag.index === 0;
-      pageDrag.active = true;
-      pageDrag.pages.dataset.dragging = "";
+    if (!shelfDrag || shelfDrag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - shelfDrag.x;
+    const dy = event.clientY - shelfDrag.y;
+    if (!shelfDrag.active) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 6) return;
+      if (Math.abs(dy) > Math.abs(dx)) { shelfDrag = null; return; }
+      shelfDrag.active = true;
+      shelfDrag.shelf.dataset.dragging = "";
       rootEl.setPointerCapture?.(event.pointerId);
-      pageDrag.pages.style.userSelect = "none";
     }
     event.preventDefault();
-    if (pageDrag.shell) {
-      rootEl.dataset.dragging = "";
-      rootEl.style.transform = `translateX(${Math.max(0, Math.min(pageDrag.pages.clientWidth, dx))}px)`;
-    } else {
-      const width = pageDrag.pages.clientWidth;
-      pageDrag.pages.scrollLeft = pageDrag.startLeft - Math.max(-width, Math.min(width, dx));
-    }
-  }, { passive: false });
-
-  rootEl.addEventListener("touchmove", (event) => {
-    // Pointer capture and pointermove.preventDefault() do not claim native
-    // touch scrolling. Once horizontal intent is locked, prevent the browser
-    // from taking over on vertical drift and cancelling our pointer stream.
-    if (pageDrag?.active && event.touches.length === 1 && event.cancelable) {
-      event.preventDefault();
-    }
-  }, { passive: false });
-
-  function endPageDrag(event: PointerEvent, cancelled = false): void {
-    if (!pageDrag || event.pointerId !== pageDrag.pointerId) return;
-    const drag = pageDrag;
-    pageDrag = null;
-    delete drag.pages.dataset.dragging;
-    drag.pages.style.userSelect = "";
+    shelfDrag.shelf.scrollLeft = shelfDrag.left - dx;
+  }, { signal });
+  const endShelfDrag = (event: PointerEvent): void => {
+    if (!shelfDrag || shelfDrag.pointerId !== event.pointerId) return;
+    suppressShelfClick = shelfDrag.active;
+    delete shelfDrag.shelf.dataset.dragging;
+    shelfDrag = null;
     if (rootEl.hasPointerCapture?.(event.pointerId)) rootEl.releasePointerCapture(event.pointerId);
-    if (drag.shell) {
-      delete rootEl.dataset.dragging;
-      rootEl.style.transform = "";
-    }
-    const tabs = [...rootEl.querySelectorAll<HTMLElement>(".deck-tab")];
-    if (!tabs.length) return;
-    let nextIndex = drag.index;
-    if (drag.active && !cancelled) {
-      const dx = event.clientX - drag.x;
-      if (Math.abs(dx) > PAGE_THRESHOLD) {
-        if (drag.shell) ui.transition("shell/toggle");
-        else nextIndex += dx < 0 ? 1 : -1;
-      }
-      suppressPageClick = true;
-      setTimeout(() => {
-        suppressPageClick = false;
-      }, 0);
-    }
-    nextIndex = Math.max(0, Math.min(tabs.length - 1, nextIndex));
-    const nextPageKey = tabs[nextIndex]?.dataset.pageKey;
-    if (nextPageKey) selectPage(nextPageKey);
-  }
-
-  rootEl.addEventListener("pointerup", (event) => endPageDrag(event));
-  rootEl.addEventListener("pointercancel", (event) => endPageDrag(event, true));
-  rootEl.addEventListener("lostpointercapture", (event) => {
-    // Touch starts with implicit capture on the card; transferring it to the
-    // pane must not cancel the drag when that child's lost event bubbles.
-    if (event.target === rootEl) endPageDrag(event, true);
-  });
+    setTimeout(() => { suppressShelfClick = false; }, 0);
+  };
+  rootEl.addEventListener("pointerup", endShelfDrag, { signal });
+  rootEl.addEventListener("pointercancel", endShelfDrag, { signal });
   rootEl.addEventListener("click", (event) => {
-    if (!suppressPageClick) return;
+    if (!suppressShelfClick) return;
     event.preventDefault();
-    event.stopPropagation();
-    suppressPageClick = false;
-  }, true);
+    event.stopImmediatePropagation();
+  }, { signal, capture: true });
 
   // ── Edit-mode reorder ──────────────────────────────────────────────────
   let reorderState: ReorderState | null = null;
@@ -417,9 +200,7 @@ export function wireContentGestures({
     if (!isEdit()) return;
     const touch = firstTouch(event.touches);
     if (!touch) return;
-    const regions = [...rootEl.querySelectorAll<HTMLElement>(
-      '.deck-page:not([inert]) [data-reorder-region]',
-    )];
+    const regions = [...rootEl.querySelectorAll<HTMLElement>("[data-reorder-region]")];
     const row = regions.flatMap(visibleRows).find((candidate) => {
       const rect = candidate.getBoundingClientRect();
       return touch.clientY >= rect.top && touch.clientY < rect.bottom;
@@ -439,7 +220,7 @@ export function wireContentGestures({
       axis: null,
       active: false,
     };
-  }, { passive: true });
+  }, { passive: true, signal });
 
   reorderHandleEl.addEventListener("touchmove", (event) => {
     const touch = firstTouch(event.touches);
@@ -481,7 +262,7 @@ export function wireContentGestures({
       reorderState,
       ghostRect.top + ghostRect.height / 2,
     );
-  }, { passive: false });
+  }, { passive: false, signal });
 
   function endReorder(): void {
     if (!reorderState) return;
@@ -499,7 +280,7 @@ export function wireContentGestures({
     if (committed) ui.transition("content/reorder", { pageOrder });
   }
 
-  reorderHandleEl.addEventListener("touchend", endReorder);
+  reorderHandleEl.addEventListener("touchend", endReorder, { signal });
   reorderHandleEl.addEventListener("touchcancel", () => {
     if (!reorderState) return;
     const { ghostEl, placeholderEl, startIndex, region } = reorderState;
@@ -512,17 +293,13 @@ export function wireContentGestures({
     ghostEl?.remove();
     placeholderEl.classList.remove(REORDER_PLACEHOLDER_CLASS);
     reorderState = null;
-  });
-
-  syncPager(ui.get("content").pageKey, { animate: false });
+  }, { signal });
 
   return {
-    captureTabGeometry: tabMotion.captureTabGeometry,
-    syncPager,
     dispose: () => {
-      tabMotion.dispose();
-      resizeObserver?.disconnect();
-      if (observedPages) stopScrollAnimation(observedPages);
+      listeners.abort();
+      reorderState?.ghostEl?.remove();
+      if (shelfDrag) delete shelfDrag.shelf.dataset.dragging;
     },
   };
 }

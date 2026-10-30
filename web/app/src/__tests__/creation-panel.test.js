@@ -250,6 +250,38 @@ describe("openCreationPanel — language selection", () => {
     sheet.close();
   });
 
+  it("keeps a selected situation through first-time language selection without starting requests early", async () => {
+    const seed = "Dinner with my partner’s parents";
+    getContext.mockResolvedValueOnce(sampleQuestionsResponse);
+    const sheet = openCreationPanel(appElement, { seed }, () => {});
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-language-question")).not.toBeNull());
+    expect(getContext).not.toHaveBeenCalled();
+    expect(getPhrasebookTitle).not.toHaveBeenCalled();
+
+    appElement.querySelector('[data-action="creation/language"][value="es"]').click();
+    appElement.querySelector('[data-action="creation/next-language"]').click();
+    const input = appElement.querySelector(".creation-input-field");
+    expect(input.value).toBe(seed);
+    expect(appElement.querySelector('[data-action="creation/submit-topic"]').disabled).toBe(false);
+    expect(getContext).not.toHaveBeenCalled();
+    appElement.querySelector('[data-action="creation/submit-topic"]').click();
+    await vi.waitFor(() => expect(appElement.querySelector(".creation-question")).not.toBeNull());
+    expect(getContext).toHaveBeenCalledTimes(1);
+    expect(getContext.mock.calls[0][0]).toMatchObject({ seed, language: "es" });
+    expect(getPhrasebookTitle).toHaveBeenCalledTimes(1);
+    expect(getPhrasebookTitle.mock.calls[0][0].seed).toBe(seed);
+    sheet.close();
+  });
+
+  it("opens a seeded situation directly for an explicitly selected language", () => {
+    const seed = "Surf lessons in Costa Rica";
+    const sheet = openCreationPanel(appElement, { lang: "es", seed }, () => {});
+    expect(appElement.querySelector(".creation-input-field").value).toBe(seed);
+    expect(getDecks).not.toHaveBeenCalled();
+    expect(getContext).not.toHaveBeenCalled();
+    sheet.close();
+  });
+
   it("defaults returning learners to their last confirmed language and its remembered ability", async () => {
     getDecks.mockResolvedValueOnce([committedDeck]);
     setLastCreationLanguage("ja");
@@ -547,6 +579,24 @@ describe("openCreationPanel — input and context", () => {
     expect(generation.answers.__proto__).toBe("friends");
   });
 
+  it("exposes checklist selection and keeps keyboard focus on the changed conversation", async () => {
+    const sheet = await openQuestions();
+    gotoChecklist();
+    const selector = '[data-action="creation/toggle-checklist-item"][data-index="1"]';
+    const row = appElement.querySelector(selector);
+    expect(row.getAttribute("aria-pressed")).toBe("false");
+    row.focus();
+    row.click();
+    const selectedRow = appElement.querySelector(selector);
+    expect(selectedRow.getAttribute("aria-pressed")).toBe("true");
+    expect(document.activeElement).toBe(selectedRow);
+    selectedRow.click();
+    expect(appElement.querySelector(selector).getAttribute("aria-pressed")).toBe("false");
+    expect(document.activeElement).toBe(appElement.querySelector(selector));
+    expect(generatePhrasebook).toHaveBeenCalledTimes(1);
+    sheet.close();
+  });
+
   it("caps checklist selection at eight and never permits zero selected groups", async () => {
     await openQuestions({
       context: {
@@ -664,6 +714,19 @@ describe("openCreationPanel — speculative generation", () => {
     expect(generatePhrasebook).toHaveBeenCalledTimes(2);
     expect([...appElement.querySelectorAll(".creation-checklist-item")]
       .map((row) => row.dataset.checked)).toEqual(["true", "true"]);
+  });
+
+  it("cancels pending preparation through the visible Cancel action", () => {
+    getContext.mockReturnValueOnce(new Promise(() => {}));
+    openCreationPanel(appElement, { lang: "es", ability: "none" }, () => {});
+    typeAndSubmitTopic("dinner with family");
+    const contextSignal = getContext.mock.calls[0][0].signal;
+    const titleSignal = getPhrasebookTitle.mock.calls[0][0].signal;
+    appElement.querySelector('[data-action="creation/cancel"]').click();
+    expect(contextSignal.aborted).toBe(true);
+    expect(titleSignal.aborted).toBe(true);
+    expect(generatePhrasebook).not.toHaveBeenCalled();
+    expect(commitPhrasebook).not.toHaveBeenCalled();
   });
 
   it("aborts context, title, and generation work on dismissal", async () => {
