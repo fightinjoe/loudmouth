@@ -572,7 +572,7 @@ axis is required; most seeds get none.
   "checklist": [
     { "label": "string", "checked": true }
   ],
-  "imagePrompt": "A bounded, contextual watercolor still-life instruction...",
+  "imagePrompt": "A contextual, tileable vintage stamp-pattern background instruction...",
   "usage": {
     "model": "provider model string",
     "inputTokens": 0,
@@ -595,10 +595,10 @@ validated before question or checklist overflow is discarded; malformed items, e
 caps, can cause `502`.
 
 `imagePrompt` is required, trimmed, and 1–2,000 characters. The model receives the seed before answers
-are collected. It chooses a situation-specific subject using the approved airy wet-on-wet watercolor,
-16:9 vignette style, generous white margins, and no people, hands, lettering, logos, or outlines.
-Only the restaurant example uses the bowl/plate/water/wine still life; other seeds need their own
-subject. This is prompt guidance, not proof of image quality or actual alpha transparency.
+are collected. It chooses situation-specific motifs for a 16:9 tileable tossed pattern of vintage,
+hand-drawn spot illustrations, with imperfect rubber-stamp/block-print texture, coordinated greens,
+and warm plain ivory paper. No text, lettering, labels, signs, logos, or watermarks are requested.
+Seamless repetition is guidance, not a validator guarantee or evidence of generated-image quality.
 
 The following are prompt requirements, not semantic validator checks. Questions gather unknown
 **facts** about the learner or their situation — role, conversation partner, key preferences, or
@@ -653,20 +653,23 @@ art and text, but an illustration already bound to a completed text save may fin
 
 ## `/phrasebook-image`
 
-Independent, nonblocking cover generation. The exact request is:
+Independent, nonblocking contextual background generation. The exact request is:
 
 ```json
-{"prompt":"English watercolor instruction","output_format":"png"}
+{"prompt":"English contextual stamp-pattern instruction","output_format":"png"}
 ```
 
 The prompt is trimmed and 1–2,000 characters. Extra model/provider/URL/options fields are rejected.
-The server calls OpenRouter `black-forest-labs/flux.2-klein-4b`, pinned to Black Forest Labs with no
-fallback, requesting one 16:9 PNG. The context prompt requests a close-up on plain white paper,
-with large objects occupying 90–94% of the frame and a narrow 3–5% target safety margin. Long objects
-are arranged horizontally or diagonally. Margins are generation instructions, not enforced cropping.
+The server calls OpenRouter `google/gemini-3.1-flash-lite-image`, requesting one 16:9 image at
+`1K` resolution with provider fallbacks disabled. Inline PNG or JPEG is accepted; JPEG is converted
+to PNG before returning the unchanged public response contract.
+The context prompt requests a tossed repeating background with
+situation-specific spot illustrations, coordinated greens, imperfect block-print texture, and warm
+ivory paper. Matching tile edges is requested but not enforced by cropping or pixel processing.
 Transparency is neither requested nor required; there is no background-removal operation.
-The [OpenRouter endpoint capabilities](https://openrouter.ai/api/v1/images/models/black-forest-labs/flux.2-klein-4b/endpoints)
-advertise PNG and 16:9 support. Actual response cost is authoritative.
+The [OpenRouter endpoint capabilities](https://openrouter.ai/api/v1/images/models/google/gemini-3.1-flash-lite-image-20260630/endpoints)
+advertise `1K` resolution and 16:9 support on Google providers. The request does not send FLUX's
+`output_format` parameter or restrict routing to Black Forest Labs. Actual response cost is authoritative.
 
 Response:
 
@@ -682,11 +685,41 @@ Response:
 
 Usage contains exactly one OpenRouter generation stage. Reported cost is used for both stage and
 aggregate cost when supplied, otherwise both are null, never invented zero. Durations are integer milliseconds.
-Decoded PNG validation requires visible pixels, ≤4 megapixels, ≤6 MiB decoded file bytes, and a
-16:9 ratio within 0.03. Only inline PNG bytes are accepted; remote image URLs and redirects are
-rejected. Decoder validation rejects corrupt, entirely invisible, or non-PNG output, but accepts opaque RGB/RGBA.
+Input image validation requires ≤4 megapixels, ≤6 MiB decoded file bytes, a single frame, and a
+16:9 ratio within 0.03. Only inline PNG or JPEG bytes are accepted; remote image URLs, redirects,
+unsupported formats, and corrupt images are rejected. Existing PNG bytes and alpha are preserved,
+with entirely invisible PNGs rejected. JPEG is fully decoded and losslessly re-encoded as PNG
+without resizing or changing decoded pixels. The resulting PNG must also be ≤6 MiB.
 The complete operation has a 120-second deadline. Disconnect cancels work.
 No automatic retry or fallback. Invalid requests return 400; controlled provider/decode failures 502.
+
+### Stamp-pattern prompt evaluation (2026-10-27)
+
+With explicit user approval, only the image-prompt instructions and example changed from watercolor
+still life to the personal-textbook pattern direction. Questions/checklist rules, API/storage schemas,
+models, and image endpoint settings were unchanged during this evaluation.
+
+Same `gemini-3.5-flash-lite`, ability `basics`, one sample per input/version:
+
+| Context | Context latency ms before → after | Input tokens before → after | Output tokens before → after |
+|---|---:|---:|---:|
+| Costa Rica surf / Spanish | 6,398 → 5,495 | 1,619 → 1,481 | 461 → 400 |
+| Family dinner / Chinese | 1,619 → 1,385 | 1,622 → 1,484 | 504 → 437 |
+| Clinic / Spanish | 1,829 → 1,683 | 1,621 → 1,483 | 545 → 459 |
+| Bicycle repair / Japanese | 1,463 → 1,618 | 1,618 → 1,480 | 447 → 438 |
+
+All eight passed structural validation. All after image prompts expressed the intended contextual
+pattern style; instruction length fell by 536 characters and input usage by 138 tokens per case.
+Single nondeterministic samples do not establish causal latency or output-token effects.
+Setup quality is not certified: surf choices still mix axes, and the clinic after-response omitted
+symptom-kind/severity questions, an observed regression. No unrelated question rules were changed.
+
+Both saved surf image prompts exercised the production pinned FLUX route and returned OpenRouter
+HTTP 402 Payment Required, with no PNG bytes (251/161 ms). A funded/authorized image route is the
+missing prerequisite. Pattern appearance, ivory color, and seamless edge matching remain unverified.
+
+### Historical watercolor evaluations
+
 
 Only server-side `OPENROUTER_API_KEY` is required. An authenticated local `/phrasebook-image`
 smoke on 2026-10-01, using the revised `/context` image prompt for Japanese vegan dining, returned

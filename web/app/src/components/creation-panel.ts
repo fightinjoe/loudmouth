@@ -72,6 +72,7 @@ interface CreationState {
 export interface CreationPanelParams {
   lang?: Lang;
   ability?: Ability;
+  seed?: string;
 }
 
 export type PhrasebookCreatedCallback = (deck: Deck) => void;
@@ -83,7 +84,7 @@ export type PhrasebookCreatedCallback = (deck: Deck) => void;
  */
 export function openCreationPanel(
   appElement: HTMLElement,
-  { lang: initialLanguage, ability: initialAbility }: CreationPanelParams,
+  { lang: initialLanguage, ability: initialAbility, seed: initialSeed = "" }: CreationPanelParams,
   onCreated: PhrasebookCreatedCallback,
   onDismiss?: () => void,
   onIllustrationUpdated: (deckId: string, illustration: DeckIllustration) => void = () => {},
@@ -93,7 +94,7 @@ export function openCreationPanel(
   const state: CreationState = {
     step: lang ? "topic" : "initializing",
     pendingLanguage: lang,
-    topic: "",
+    topic: initialSeed,
     contextSeed: null,
     questions: [],
     questionIndex: 0,
@@ -267,6 +268,8 @@ export function openCreationPanel(
     if (focusInput) focusInputIfPresent(sheet.panel);
     if (state.step === "questions" || state.step === "language") {
       sheet.panel.querySelector<HTMLElement>(".creation-question-label")?.focus();
+    } else if (!focusInput) {
+      sheet.panel.querySelector<HTMLElement>("[data-creation-focus]")?.focus();
     }
   }
 
@@ -511,6 +514,8 @@ export function openCreationPanel(
   function bind(panel: HTMLElement): void {
     panel.querySelector<HTMLButtonElement>('[data-action="creation/back"]')
       ?.addEventListener("click", goBack);
+    panel.querySelector<HTMLButtonElement>('[data-action="creation/cancel"]')
+      ?.addEventListener("click", () => sheet.close());
 
     if (state.step === "language") bindLanguageStep(panel);
     if (state.step === "topic") bindTopicStep(panel);
@@ -632,6 +637,7 @@ export function openCreationPanel(
           if ((item.checked && checkedCount === 1) || (!item.checked && checkedCount === 8)) return;
           item.checked = !item.checked;
           rerender();
+          panel.querySelector<HTMLButtonElement>(`[data-action="creation/toggle-checklist-item"][data-index="${index}"]`)?.focus();
         });
       });
 
@@ -664,12 +670,20 @@ function errorMessage(error: unknown): string {
 }
 
 // ── Render ───────────────────────────────────────────────────────────────
+const CREATION_LOADING_MARK = `<div class="creation-loading-mark" aria-hidden="true"><span></span><span></span><span></span></div>`;
+const CREATION_CANCEL_FOOTER = `<div class="creation-context-footer"><button class="creation-secondary tappable" data-action="creation/cancel">Cancel</button></div>`;
+
 
 function renderStep(state: Readonly<CreationState>, lang: Lang | undefined): string {
   if (state.step === "initializing") {
     return renderSurface(`
-      ${renderHeader()}
-      <div class="creation-step-body" role="status">Loading your phrasebooks…</div>
+      ${renderHeader(undefined, { chapter: "Getting started", title: "A little preparation.", backLabel: "Cancel creation" })}
+      <div class="creation-step-body creation-wait-body flex-col" role="status">
+        ${CREATION_LOADING_MARK}
+        <p class="creation-status-copy">Opening your library…</p>
+        <p class="creation-supporting-copy">We’ll pick up with the language you last used.</p>
+      </div>
+      ${CREATION_CANCEL_FOOTER}
     `);
   }
   if (state.step === "language") return renderLanguageStep(state);
@@ -691,20 +705,33 @@ function languageLabel(lang: Lang): string {
   return `${LANG_FLAGS[lang]} ${LANG_NAMES[lang]}`.trim();
 }
 
-function renderHeader(lang?: Lang, { extra = "" }: { extra?: string } = {}): string {
-  return renderPaneHeader({
-    leading: headerIconButton("back", {
-      action: "creation/back",
-      label: "Back",
-      className: "creation-back",
-    }),
-    title: headerTitle(lang ? languageLabel(lang) : "New phrasebook"),
-    trailing: `<div class="creation-header-right flex items-center gap-sm">${extra}</div>`,
-  });
+function renderHeader(
+  lang?: Lang,
+  {
+    chapter = "Your own little textbook",
+    title = "Your next chapter.",
+    backLabel = "Back",
+  }: { chapter?: string; title?: string; backLabel?: string } = {},
+): string {
+  return `<header class="creation-heading">
+    ${renderPaneHeader({
+      leading: headerIconButton("back", {
+        action: "creation/back",
+        label: backLabel,
+        className: "creation-back",
+      }),
+      title: headerTitle(lang ? languageLabel(lang) : "New phrasebook"),
+      trailing: `<div class="creation-header-right"></div>`,
+    })}
+    <div class="creation-title-bubble">
+      <p class="creation-chapter-label">${escapeHTML(chapter)}</p>
+      <h1 class="creation-title" tabindex="-1" data-creation-focus>${escapeHTML(title)}</h1>
+    </div>
+  </header>`;
 }
 
 function renderTermLine(topic: string): string {
-  return `<div class="creation-term flex items-end"><p class="creation-term-text flex-1">${escapeHTML(topic)}</p></div>`;
+  return `<div class="creation-term"><p class="creation-term-text">${escapeHTML(topic)}</p></div>`;
 }
 
 function renderRadioList<T extends string>(
@@ -727,7 +754,7 @@ function renderRadioList<T extends string>(
     ${options.map((value, index) => `
       <label class="creation-radio-item flex items-center tappable">
         <input type="radio" name="${escapeHTML(name)}" data-action="${escapeHTML(action)}" data-option="${index}" value="${escapeHTML(value)}" ${selected === value ? "checked" : ""}>
-        <span class="text-body1 fg-body">${escapeHTML(label(value))}</span>
+        <span>${escapeHTML(label(value))}</span>
       </label>
     `).join("")}
     ${extra}
@@ -736,10 +763,11 @@ function renderRadioList<T extends string>(
 
 function renderLanguageStep(state: Readonly<CreationState>): string {
   return renderSurface(`
-    ${renderHeader()}
+    ${renderHeader(undefined, { chapter: "First, the language", title: "Where shall we begin?" })}
     <div class="creation-step-body flex-col">
       <fieldset class="creation-question creation-language-question">
-        <legend class="creation-question-label section-label" tabindex="-1">Which language would you like to learn?</legend>
+        <legend class="creation-question-label" tabindex="-1">Which language would you like to learn?</legend>
+        <p class="creation-supporting-copy">Choose a language for this phrasebook. You can change it before you begin.</p>
         ${renderRadioList(CONTENT_LANGUAGES, {
           name: "creation-language",
           action: "creation/language",
@@ -748,37 +776,42 @@ function renderLanguageStep(state: Readonly<CreationState>): string {
         })}
       </fieldset>
     </div>
-    <div class="creation-context-footer flex items-center justify-end">
-      <button class="creation-question-nav tappable" data-action="creation/next-language" ${state.pendingLanguage ? "" : "disabled"}><span>Next</span>${icon("next")}</button>
+    <div class="creation-context-footer">
+      <button class="creation-primary creation-question-nav tappable" data-action="creation/next-language" ${state.pendingLanguage ? "" : "disabled"}><span>Next</span>${icon("next")}</button>
     </div>
   `);
 }
 
 function renderTopicStep(state: Readonly<CreationState>, lang: Lang): string {
   const hasValue = state.topic.length > 0;
-  const clearButton = hasValue
-    ? `<button class="icon-button creation-input-clear" data-action="creation/clear" aria-label="Clear">${icon("close", { size: "sm" })}</button>`
-    : "";
-
   return renderSurface(`
-    ${renderHeader(undefined, { extra: clearButton })}
-    <div class="creation-input-form flex-col">
-      <div class="creation-input-wrap" data-has-value="${hasValue}">
-        <div class="creation-input-field-row flex items-center">
-          <textarea
-            class="creation-input-field flex-1 text-entry"
-            rows="1"
-            placeholder="Enter word, phrase, or topic"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-          ></textarea>
+    ${renderHeader()}
+    <div class="creation-step-body creation-topic-body flex-col">
+      <div class="creation-input-form flex-col">
+        <label class="creation-question-label" for="creation-situation">What are you getting ready for?</label>
+        <p class="creation-supporting-copy" id="creation-situation-help">Tell us about an upcoming situation. We’ll prepare the language you’ll want to say and understand.</p>
+        <div class="creation-input-wrap" data-has-value="${hasValue}">
+          <div class="creation-input-field-row">
+            <textarea
+              id="creation-situation"
+              class="creation-input-field"
+              rows="3"
+              placeholder="Dinner with my partner’s parents, a surf trip, my first dance class…"
+              aria-describedby="creation-situation-help"
+              autocomplete="off"
+              autocapitalize="sentences"
+              spellcheck="true"
+            ></textarea>
+            <button class="icon-button creation-input-clear" data-action="creation/clear" aria-label="Clear situation">${icon("close", { size: "sm" })}</button>
+          </div>
         </div>
+        <button class="creation-language-choice tappable flex items-center" data-action="creation/edit-language" aria-label="Change language: ${escapeHTML(LANG_NAMES[lang])}">
+          <span>${escapeHTML(languageLabel(lang))}</span><span class="creation-language-change">Change</span>${icon("next", { size: "sm" })}
+        </button>
       </div>
-      <button class="creation-language-choice tappable flex items-center text-body2" data-action="creation/edit-language" aria-label="Change language: ${escapeHTML(LANG_NAMES[lang])}">
-        <span>${escapeHTML(languageLabel(lang))}</span>${icon("next", { size: "sm" })}
-      </button>
-      <button class="icon-button creation-submit" data-action="creation/submit-topic" aria-label="Continue" ${hasValue ? "" : "disabled"}>${icon("next")}</button>
+    </div>
+    <div class="creation-context-footer">
+      <button class="creation-primary creation-submit tappable" data-action="creation/submit-topic" ${hasValue ? "" : "disabled"}><span>Prepare my phrasebook</span>${icon("next")}</button>
     </div>
   `);
 }
@@ -788,28 +821,30 @@ function renderQuestionsStep(state: Readonly<CreationState>, lang: Lang): string
   const value = state.answers[question.label];
   const isOther = state.otherQuestions.has(state.questionIndex);
   return renderSurface(`
-    ${renderHeader(lang)}
-    ${renderTermLine(state.topic)}
+    ${renderHeader(lang, { chapter: "A little about you", title: "Make it yours." })}
     <div class="creation-step-body flex-col">
+      ${renderTermLine(state.topic)}
       <fieldset class="creation-question">
-        <legend class="creation-question-label section-label" tabindex="-1">${escapeHTML(question.label)}</legend>
-        <p class="creation-question-progress text-body2 fg-secondary">Question ${state.questionIndex + 1} of ${state.questions.length}</p>
+        <legend class="creation-question-label" tabindex="-1">${escapeHTML(question.label)}</legend>
+        <p class="creation-question-progress">Question ${state.questionIndex + 1} of ${state.questions.length}</p>
         ${renderRadioList(question.options, {
           name: "creation-answer",
           action: "creation/answer",
           selected: isOther ? undefined : value,
           extra: question.label === ABILITY_QUESTION ? "" : `
-            <div class="creation-radio-item flex items-center">
+            <div class="creation-radio-item creation-other-item flex items-center">
               <input type="radio" name="creation-answer" data-action="creation/other" aria-label="Other" ${isOther ? "checked" : ""}>
-              <input class="creation-other-input text-body1" type="text" placeholder="other" aria-label="Other answer" value="${isOther ? escapeHTML(value ?? "") : ""}" autocomplete="off">
+              <label class="creation-other-label" for="creation-other-answer">Other
+                <input id="creation-other-answer" class="creation-other-input" type="text" placeholder="Tell us a little more…" aria-label="Other answer" value="${isOther ? escapeHTML(value ?? "") : ""}" autocomplete="off">
+              </label>
             </div>
           `,
         })}
       </fieldset>
     </div>
-    <div class="creation-context-footer creation-question-footer flex items-center">
-      <button class="creation-question-nav tappable" data-action="creation/previous-question">${icon("back")}<span>Previous</span></button>
-      <button class="creation-question-nav tappable" data-action="creation/next-question" ${value?.trim() ? "" : "disabled"}><span>Next</span>${icon("next")}</button>
+    <div class="creation-context-footer creation-question-footer">
+      <button class="creation-secondary creation-question-nav tappable" data-action="creation/previous-question">${icon("back")}<span>Previous</span></button>
+      <button class="creation-primary creation-question-nav tappable" data-action="creation/next-question" ${value?.trim() ? "" : "disabled"}><span>Next</span>${icon("next")}</button>
     </div>
   `);
 }
@@ -818,58 +853,66 @@ function renderChecklistStep(state: Readonly<CreationState>, lang: Lang): string
   const checklistHTML = state.checklist
     .map((item, index) => renderChecklistItem(item, index))
     .join("");
+  const selectedCount = state.checklist.filter((item) => item.checked).length;
   return renderSurface(`
-    ${renderHeader(lang)}
-    ${renderTermLine(state.topic)}
+    ${renderHeader(lang, { chapter: "Your table of contents", title: "What matters to you?" })}
     <div class="creation-step-body flex-col">
-      <div class="creation-checklist flex-col">
-        <div class="section-label">What do you most want to ask someone to do?</div>
+      ${renderTermLine(state.topic)}
+      <section class="creation-checklist flex-col" aria-labelledby="creation-checklist-title">
+        <h2 id="creation-checklist-title" class="creation-question-label">Choose the conversations to prepare.</h2>
+        <p class="creation-supporting-copy">Select 1–8 chapters. Each brings together useful phrases, words, and both sides of a conversation.</p>
+        <p class="creation-selection-count" role="status">${selectedCount} selected</p>
         <div class="creation-checklist-items flex-col">${checklistHTML}</div>
-      </div>
+      </section>
     </div>
-    <div class="creation-context-footer flex items-center justify-end">
-      <button class="icon-button creation-submit" data-action="creation/submit-context" aria-label="Generate phrasebook">${icon("next")}</button>
+    <div class="creation-context-footer">
+      <button class="creation-primary creation-submit tappable" data-action="creation/submit-context"><span>Create my phrasebook</span>${icon("next")}</button>
     </div>
   `);
 }
 
 function renderChecklistItem(item: ChecklistItem, index: number): string {
   return `
-    <button class="creation-checklist-item flex items-center tappable" data-action="creation/toggle-checklist-item" data-index="${index}" data-checked="${item.checked}">
-      <span class="creation-checklist-check flex items-center justify-center">${item.checked ? icon("check", { size: "sm" }) : ""}</span>
-      <span class="text-body1 fg-body">${escapeHTML(item.label)}</span>
+    <button class="creation-checklist-item flex items-center tappable" data-action="creation/toggle-checklist-item" data-index="${index}" data-checked="${item.checked}" aria-pressed="${item.checked}">
+      <span class="creation-checklist-check flex items-center justify-center" aria-hidden="true">${item.checked ? icon("check", { size: "sm" }) : ""}</span>
+      <span>${escapeHTML(item.label)}</span>
     </button>
   `;
 }
 
 function renderGeneratingStep(state: Readonly<CreationState>, lang: Lang): string {
+  const preparingChapters = state.resumeStep === "checklist";
   return renderSurface(`
-    ${renderHeader(lang)}
-    ${renderTermLine(state.topic)}
-    <div class="creation-generating flex-col flex-1 items-center justify-center">
-      ${renderSkeleton()}
-      <p class="text-body2 fg-secondary">Building your phrasebook…</p>
+    ${renderHeader(lang, {
+      chapter: preparingChapters ? "Putting it all together" : "Finding your starting point",
+      title: preparingChapters ? "A textbook, just for you." : "Let’s set the scene.",
+      backLabel: "Cancel creation",
+    })}
+    <div class="creation-step-body creation-generating creation-wait-body flex-col" role="status" aria-live="polite">
+      ${renderTermLine(state.topic)}
+      ${CREATION_LOADING_MARK}
+      <p class="creation-status-copy">${preparingChapters ? "Preparing your phrasebook…" : "Finding the right questions…"}</p>
+      <p class="creation-supporting-copy">${preparingChapters ? "Gathering the phrases, words, and conversations for your selected chapters." : "A few details will help make the language useful to you."}</p>
     </div>
+    ${CREATION_CANCEL_FOOTER}
   `);
 }
 
-function renderSkeleton(): string {
-  const card = `
-    <div class="creation-skeleton-card bg-surface flex-col">
-      <div class="creation-skeleton-line" style="width: 40%"></div>
-      <div class="creation-skeleton-line" style="width: 70%; height: 20px;"></div>
-    </div>
-  `;
-  return `<div class="creation-skeleton-list flex-col">${card}${card}${card}</div>`;
-}
 
 function renderErrorStep(state: Readonly<CreationState>, lang: Lang | undefined): string {
   return renderSurface(`
-    ${renderHeader(lang)}
-    ${state.topic ? renderTermLine(state.topic) : ""}
-    <div class="creation-error text-center fg-secondary flex-1 flex-col items-center justify-center">
-      <p>${escapeHTML(state.error)}</p>
-      <button class="tappable creation-retry" data-action="creation/retry">Try again</button>
+    ${renderHeader(lang, { chapter: "A pause in preparation", title: "Let’s try that again." })}
+    <div class="creation-step-body creation-error flex-col">
+      ${state.topic ? renderTermLine(state.topic) : ""}
+      <div class="creation-error-message" role="alert">
+        <p class="creation-question-label">We couldn’t finish this step.</p>
+        <p>${escapeHTML(state.error)}</p>
+        <p class="creation-supporting-copy">Your situation and choices are still here.</p>
+      </div>
+    </div>
+    <div class="creation-context-footer creation-question-footer">
+      <button class="creation-secondary tappable" data-action="creation/cancel">Cancel</button>
+      <button class="creation-primary creation-retry tappable" data-action="creation/retry">Try again</button>
     </div>
   `);
 }

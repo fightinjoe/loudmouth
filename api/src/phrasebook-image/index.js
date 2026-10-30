@@ -2,13 +2,12 @@
 
 const sharp = require('sharp');
 
-const IMAGE_MODEL = 'black-forest-labs/flux.2-klein-4b';
+const IMAGE_MODEL = 'google/gemini-3.1-flash-lite-image';
 const MAX_FILE_BYTES = 6 * 1024 * 1024;
 const MAX_BASE64_LENGTH = 8 * 1024 * 1024;
 const MAX_PIXELS = 4_000_000;
 const TOTAL_TIMEOUT_MS = 120_000;
 const PNG_PREFIX = 'data:image/png;base64,';
-const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 function requestError(message) {
   return Object.assign(new Error(message), { status: 400 });
@@ -76,34 +75,41 @@ async function readJson(response) {
   }
 }
 
-function decodePng(base64) {
+function decodeImage(base64) {
   if (typeof base64 !== 'string' || !base64.length || base64.length > MAX_BASE64_LENGTH
       || base64.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
-    throw new Error('Invalid PNG encoding');
+    throw new Error('Invalid image encoding');
   }
   const bytes = Buffer.from(base64, 'base64');
-  if (bytes.length > MAX_FILE_BYTES || !bytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
-    throw new Error('Invalid PNG file');
+  if (bytes.length > MAX_FILE_BYTES) {
+    throw new Error('Image file is too large');
   }
   return bytes;
 }
 
-async function inspectPng(bytes) {
+async function normalizePng(base64) {
+  const bytes = decodeImage(base64);
   const image = sharp(bytes, { limitInputPixels: MAX_PIXELS, failOn: 'warning' });
   const metadata = await image.metadata();
   const { width, height } = metadata;
-  if (metadata.format !== 'png' || !width || !height || width * height > MAX_PIXELS
+  if ((metadata.format !== 'png' && metadata.format !== 'jpeg') || !width || !height || width * height > MAX_PIXELS
       || (metadata.pages || 1) !== 1 || Math.abs(width / height - 16 / 9) > 0.03) {
-    throw new Error('Invalid PNG dimensions or format');
+    throw new Error('Invalid image dimensions or format');
   }
-  // stats decodes the pixels, rejecting corrupt compressed data rather than
-  // trusting a PNG header.
-  const stats = await image.stats();
-  const alpha = stats.channels[stats.channels.length - 1];
-  if (metadata.hasAlpha && alpha.max <= 0) {
-    throw new Error('PNG must contain visible pixels');
+  if (metadata.format === 'jpeg') {
+    // Gemini can return JPEG. Decode and encode it once; the client contract stays PNG.
+    const png = await image.png().toBuffer();
+    if (png.length > MAX_FILE_BYTES) throw new Error('PNG file is too large');
+    base64 = png.toString('base64');
+  } else {
+    // Decode existing PNG pixels without re-encoding or removing their transparency.
+    const stats = await image.stats();
+    const alpha = stats.channels[stats.channels.length - 1];
+    if (metadata.hasAlpha && alpha.max <= 0) {
+      throw new Error('PNG must contain visible pixels');
+    }
   }
-  return { width, height };
+  return { base64, width, height };
 }
 
 function reportedCost(result) {
@@ -124,17 +130,17 @@ async function performPhrasebookImage(body, { signal, fetchImpl = fetch } = {}) 
         signal: pipelineSignal,
         headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: IMAGE_MODEL, prompt, aspect_ratio: '16:9',
-          output_format: 'png', n: 1,
-          provider: { only: ['black-forest-labs'], allow_fallbacks: false } }),
+          resolution: '1K', n: 1,
+          provider: { allow_fallbacks: false } }),
       }));
-      if (!Array.isArray(generated.data) || generated.data.length !== 1) throw new Error('Expected one generated PNG');
+      if (!Array.isArray(generated.data) || generated.data.length !== 1) throw new Error('Expected one generated image');
       const generatedBase64 = generated.data[0]?.b64_json;
-      const dimensions = await inspectPng(decodePng(generatedBase64));
+      const { base64, width, height } = await normalizePng(generatedBase64);
       if (pipelineSignal.aborted) throw pipelineSignal.reason;
       const costUsd = reportedCost(generated);
       const stages = [{ provider: 'openrouter', model: IMAGE_MODEL, costUsd, durationMs: Math.round(performance.now() - stageStartedAt) }];
       return {
-        image: { dataUrl: PNG_PREFIX + generatedBase64, mediaType: 'image/png', ...dimensions },
+        image: { dataUrl: PNG_PREFIX + base64, mediaType: 'image/png', width, height },
         usage: { model: IMAGE_MODEL, costUsd, durationMs: Math.round(performance.now() - startedAt), stages },
       };
     }, signal, TOTAL_TIMEOUT_MS);

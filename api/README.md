@@ -2,7 +2,7 @@
 
 Stateless Node.js Cloud Run service for guided phrasebook creation and on-demand phrase analysis.
 Creation uses **`/context` → `/phrasebook`**, with independent naming via **`/phrasebook-title`**
-and nonblocking watercolor covers via **`/phrasebook-image`**. Existing phrases use **`/phrase-breakdown`**.
+and nonblocking contextual pattern artwork via **`/phrasebook-image`**. Existing phrases use **`/phrase-breakdown`**.
 
 The 2026-10-01 v3 promotion is **production code only; not deployed**. Known translation defects
 remain accepted risk and separate improvement work. Deploy API, gateway, and web together.
@@ -84,12 +84,15 @@ shares membership stars and unique Review entries. Server draft UUIDs are remapp
 
 Exact request: `{prompt, output_format:"png"}`, with a 1–2,000-character
 trimmed prompt. Returns `{image:{dataUrl,mediaType:"image/png",width,height},usage:{model,costUsd,durationMs,stages}}`.
-The server makes one OpenRouter image call to `black-forest-labs/flux.2-klein-4b`, pinned to
-Black Forest Labs, with 16:9 aspect ratio and PNG output. The context prompt requests a close-up
-composition on plain white paper: large objects fill the frame with a narrow 3–5% target margin,
-without clipping. Actual margins vary; no automatic crop is applied. Transparency is neither
-requested nor required. Only decoded inline PNG output with visible pixels, ≤6 MiB, ≤4 MP,
-and 16:9 ±0.03 is accepted.
+The server makes one OpenRouter image call to `google/gemini-3.1-flash-lite-image`, requesting
+one 16:9 image at `1K` resolution with provider fallbacks disabled. Inline JPEG output is decoded
+and losslessly re-encoded as PNG; valid PNG output is preserved without re-encoding.
+The approved context prompt requests a
+tileable tossed pattern of vintage hand-drawn, rubber-stamped/block-printed spot illustrations in
+coordinated greens on warm ivory paper, specific to the situation. Edge matching is requested, not
+validated. Existing saved art is reused; new art never blocks saving or reading text. Input must be
+inline PNG or JPEG, ≤6 MiB, ≤4 MP, and 16:9 ±0.03. PNG must contain visible pixels.
+The returned PNG is also bounded to ≤6 MiB; other formats are rejected.
 No background-removal service, remote output URLs, redirects, automatic retries,
 or client-selected models. The operation has a 120-second deadline; disconnect aborts work.
 Usage contains one OpenRouter stage; reported cost is used for both stage and aggregate cost,

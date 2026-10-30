@@ -26,6 +26,7 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   z-index: 300;
   min-width: 160px;
+  visibility: hidden;
   opacity: 0;
   transform: translateX(-50%) translateY(-4px);
   transition:
@@ -36,6 +37,7 @@
 }
 
 #content-pane[data-menu-open] #deck-title-menu {
+  visibility: visible;
   opacity: 1;
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
@@ -68,20 +70,6 @@
   background: var(--bg-primary);
 }
 
-/* ── Edit mode header toggle ── */
-
-/* Keep the Done button's 44px slot reserved even when hidden so the centered
-   title stays centered in non-edit mode (toggle visibility, not display). */
-#content-pane .deck-header-done {
-  visibility: hidden;
-  color: var(--accent);
-}
-
-#content-pane[data-edit-mode] .deck-header-done {
-  visibility: visible;
-}
-
-/* ── Deck mode (study / review / reverse) ── */
 
 /* ── Edit mode reorder handle ── */
 /* A static right-side lane stays above the active page. It is wide enough
@@ -96,9 +84,6 @@
   z-index: 50;
   pointer-events: none;
   touch-action: none;
-}
-#content-pane[data-edit-mode]:has(.deck-page:not([inert]) [data-reorder-region]) #reorder-handle {
-  pointer-events: auto;
 }
 
 .card-row-reorder-handle {
@@ -118,19 +103,12 @@
   display: flex;
 }
 
-#content-pane[data-edit-mode] .deck-page[data-page-kind="starred"] .card-row-reorder-handle {
-  display: none;
-}
 
 .card-row-reorder-placeholder {
   opacity: 0.25;
   transition: none;
 }
 
-.deck-page-list--reordering
-  .card-row-wrapper:not(.card-row-reorder-placeholder) {
-  transition: transform 150ms ease;
-}
 
 .card-row-reorder-ghost {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
@@ -160,324 +138,6 @@
   padding: 0 20px 96px;
 }
 
-/* ── Conversation tabs and pages ── */
-
-.deck-pager {
-  overflow: hidden;
-}
-
-.deck-tabs {
-  position: relative;
-  display: flex;
-  flex-shrink: 0;
-  min-width: 0;
-  border-bottom: 1px solid var(--border-default);
-  background: var(--bg-surface);
-}
-
-.deck-tab-scroll {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  touch-action: pan-x pinch-zoom;
-  -webkit-overflow-scrolling: touch;
-}
-
-.deck-tab-scroll::-webkit-scrollbar,
-.deck-page::-webkit-scrollbar {
-  display: none;
-}
-
-.deck-tab {
-  flex: 0 0 auto;
-  min-width: 44px;
-  min-height: 44px;
-  width: max-content;
-  padding: 30px 16px 10px;
-  background: var(--bg-surface);
-  border: 0;
-  color: var(--fg-caption);
-  font-family: var(--font-family-condensed);
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 18px;
-  letter-spacing: 0;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.deck-tab span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.deck-tab[aria-selected="true"] {
-  color: var(--accent);
-  box-shadow: inset 0 -3px 0 var(--accent);
-}
-
-.deck-pinned-slot {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex: 0 0 auto;
-  overflow: visible;
-  background: #fff;
-}
-
-.deck-pinned-slot:empty {
-  display: none;
-}
-
-.deck-star-tab,
-.deck-star-tab[aria-selected="true"] {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding-right: 12px;
-  padding-left: 12px;
-  background: #fff;
-  color: #0877c9;
-}
-
-.deck-star-tab[aria-selected="true"] {
-  box-shadow: inset 0 -3px 0 #1e9aff;
-}
-
-.deck-star-tab .icon {
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
-}
-
-.deck-star-count {
-  font-variant-numeric: tabular-nums;
-}
-
-.deck-pinned-slot::before,
-.deck-pinned-slot::after {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  content: "";
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 180ms ease-out;
-}
-
-.deck-pinned-slot::before {
-  right: 0;
-  width: 1px;
-  background: #ced7e3;
-}
-
-.deck-pinned-slot::after {
-  left: 100%;
-  width: 10px;
-  background: linear-gradient(to right, rgba(15, 24, 42, 0.09), transparent);
-  mask-image: linear-gradient(to bottom, transparent, #000 12px);
-}
-
-.deck-tabs[data-scrolled] .deck-pinned-slot::before,
-.deck-tabs[data-scrolled] .deck-pinned-slot::after {
-  opacity: 1;
-}
-
-.deck-star-status {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .deck-pinned-slot::before,
-  .deck-pinned-slot::after {
-    transition: none;
-  }
-}
-
-.deck-pages {
-  display: flex;
-  overflow-x: hidden;
-  overflow-y: hidden;
-  touch-action: pan-y pinch-zoom;
-}
-
-.deck-page {
-  flex: 0 0 100%;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  scrollbar-width: none;
-  touch-action: pan-y pinch-zoom;
-  -webkit-overflow-scrolling: touch;
-}
-
-.deck-page-list {
-  gap: 24px;
-  max-width: 48rem;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0 auto;
-  padding: 20px 20px calc(96px + env(safe-area-inset-bottom));
-}
-
-.deck-illustration {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-}
-
-.deck-illustration img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.deck-illustration-unavailable {
-  margin: 0;
-  font-size: 13px;
-}
-
-[data-region="deck-hero"]:empty {
-  display: none;
-}
-
-.topic-preview {
-  cursor: pointer;
-}
-
-.topic-preview h2,
-.topic-section h2 {
-  margin: 0 0 12px;
-}
-
-.topic-preview-card {
-  border: 1px solid hsl(var(--gray-200));
-  border-radius: 16px;
-  overflow: hidden;
-  background: hsl(var(--gray-50));
-}
-
-.topic-preview-lines {
-  overflow: hidden;
-}
-
-.topic-preview-line {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 16px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  line-height: 24px;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-
-/* Cut into the last text line, rather than hiding only its bottom padding. */
-.topic-preview-line:last-child {
-  margin-bottom: -28px;
-}
-
-.topic-preview-line + .topic-preview-line {
-  border-top: 1px solid var(--bg-surface);
-}
-
-.topic-preview-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 12px 8px 16px;
-  border-top: 1px solid hsl(var(--gray-200));
-  background: var(--bg-surface);
-  color: var(--fg-caption);
-  font-size: 13px;
-}
-
-.topic-preview-footer > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.topic-view {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  flex-shrink: 0;
-  min-width: 44px;
-  min-height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  text-transform: uppercase;
-}
-
-.topic-view .icon {
-  width: 20px;
-  height: 20px;
-}
-
-.topic-card-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.topic-section[data-topic-section="essentials"],
-.deck-page[data-page-kind="starred"] .topic-card-list {
-  margin-inline: -20px;
-}
-
-.topic-section[data-topic-section="essentials"] > h2 {
-  padding-inline: 20px;
-}
-
-.topic-section[data-topic-section="essentials"] .topic-card-list,
-.deck-page[data-page-kind="starred"] .topic-card-list {
-  gap: 0;
-}
-
-.topic-section[data-topic-section="essentials"] .card-row,
-.deck-page[data-page-kind="starred"] .card-row {
-  padding: 16px 20px;
-  border-radius: 0;
-  border-bottom: 1px solid var(--border-default);
-  background: var(--bg-surface);
-}
-
-.topic-section[data-topic-section="essentials"] .card-star,
-.deck-page[data-page-kind="starred"] .card-star {
-  right: 4px;
-}
-
-.topic-word-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  align-items: start;
-}
-
-#content-pane[data-edit-mode] .topic-word-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .card-word-tile {
   min-width: 0;
 }
@@ -494,11 +154,6 @@
   overflow-wrap: anywhere;
 }
 
-.deck-page .source-context mark {
-  background: #cfe9ff;
-  color: inherit;
-  border-radius: 3px;
-}
 
 /* ── Phrase cards ── */
 
@@ -656,156 +311,17 @@ ruby {
 }
 
 
-/* Conversation bubbles retain their speaker offset in the topic page. */
-.deck-page[data-page-kind="topic"] .card-row-wrapper[data-speaker] {
-  width: 89%;
-}
-
-.deck-page[data-page-kind="topic"] .card-row-wrapper[data-speaker="you"] {
-  align-self: flex-end;
-  margin-left: auto;
-}
-
-.deck-page[data-page-kind="topic"] .card-row-wrapper[data-speaker="partner"] {
-  align-self: flex-start;
-  margin-right: auto;
-}
-
-.deck-page[data-page-kind="topic"] [data-speaker="you"] .card-row {
-  background: hsl(var(--gray-100));
-}
-
-/* Selected colors follow the live button state without requiring a rerender.
-   The existing tint/speaker tokens correspond to Figma blue-50/blue-100. */
-.deck-page:not([data-page-kind="starred"]) .card-row:has(.card-star[data-selected="true"]),
+/* Browse rows retain live membership selection colors without rerendering. */
 .deck-view-list .card-row:has(.card-star[data-selected="true"]) {
   background: var(--bg-blue-tint);
 }
 
-.deck-page[data-page-kind="topic"] [data-speaker="you"] .card-row:has(.card-star[data-selected="true"]),
 .deck-view-list [data-speaker="you"] .card-row:has(.card-star[data-selected="true"]) {
   background: var(--bg-speaker);
 }
 
 .deck-view-empty {
   padding: 20px;
-}
-
-/* ── Nav Pane: brand header ── */
-/* Geometry from the converged navigation-pane study: 20px side gutters,
-   16px card radius/padding, 8px between cards, 24px section spacing. */
-
-.nav-hero {
-  padding: 1.5rem 1.25rem 0;
-  gap: 0.125rem;
-}
-
-.nav-hero-logo {
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.nav-hero-tagline {
-  line-height: 1.3;
-}
-
-/* ── Nav Pane: Jump back in + Library sections ── */
-
-.nav-scroll {
-  /* Bottom padding clears the pinned create bar and its fade. */
-  padding-bottom: 6.5rem;
-}
-
-.nav-pane[data-state="empty"] .nav-scroll {
-  padding-bottom: 14rem; /* the taller first-run callout */
-}
-
-.nav-section {
-  padding: 1.5rem 1.25rem 0;
-}
-
-.nav-section-label {
-  display: block;
-}
-
-.nav-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.625rem;
-}
-
-/* ── Nav Pane: bottom-anchored create action ── */
-
-.nav-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 3;
-  padding: 0.75rem 1.25rem 1.25rem;
-  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(
-    to top,
-    var(--bg-surface) 70%,
-    hsl(var(--white) / 0)
-  );
-}
-
-.nav-create-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  width: 100%;
-  min-height: 56px;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: var(--bg-surface);
-  font-size: var(--text-size-body1);
-  font-weight: 600;
-  box-shadow: var(--shadow-float);
-}
-
-.nav-create-btn::before {
-  content: "+";
-  font-size: 1.375em;
-  font-weight: 400;
-  line-height: 1;
-}
-
-.nav-create-btn:active {
-  opacity: 0.8;
-}
-
-.nav-callout {
-  gap: 0.5rem;
-  padding: 1.25rem;
-  border-radius: var(--radius);
-  background: var(--accent);
-  box-shadow: var(--shadow-float);
-}
-
-.nav-callout-title {
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.nav-callout-body {
-  line-height: 1.4;
-  opacity: 0.92;
-}
-
-.nav-callout-btn {
-  align-self: flex-start;
-  margin-top: 0.5rem;
-  min-height: 44px;
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-pill);
-  background: var(--bg-surface);
-  color: var(--accent);
-  font-size: var(--text-size-body2);
-  font-weight: 600;
 }
 
 /* ── Deck Picker Panel ── */
@@ -815,34 +331,6 @@ ruby {
   gap: 2px;
 }
 
-/* Card variant — the nav pane's Jump back in / Library cards. Recent and
-   Library share one geometry so the two sections read as a single rhythm;
-   the section labels and the flag do the separating. */
-.deck-picker-card {
-  min-height: 56px;
-  padding: 1rem;
-  gap: 0.75rem;
-  border-radius: 1rem;
-  background: hsl(var(--gray-50));
-}
-
-.deck-picker-card[data-highlighted="true"] {
-  background: hsl(var(--yellow-100));
-}
-
-.deck-picker-card:active {
-  opacity: 0.8;
-}
-
-.deck-picker-card .deck-picker-row-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.deck-picker-card .text-body-lg {
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
 
 .deck-picker-leading {
   flex-shrink: 0;
@@ -982,11 +470,8 @@ ruby {
   position: absolute;
   inset: 0;
   z-index: 0;
-  /* Plain white surface — the navigation-pane study dropped the
-     white → yellow-100 gradient so the yellow-100 highlight on the newest
-     phrasebook card reads as a highlight. */
-  background: var(--bg-surface);
-  overflow: hidden; /* the create bar is pinned inside this box */
+  background: var(--bg-primary);
+  overflow: hidden;
 }
 
 /* Content pane covers the full shell, slides right to reveal nav pane */
@@ -1067,43 +552,6 @@ ruby {
   width: 44px;
 }
 
-/* ── Deck view bottom Review action ── */
-
-/* Floating pill over the scrolling card list (Figma Action bar, node
-   606:6511: absolute, bottom 20px, centered). The bar is click-through so
-   taps fall to the list beneath; only the pill itself is interactive. The
-   list carries bottom padding (below) so the last card clears the pill. */
-.deck-view-action-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 5;
-  padding: 0 0 20px;
-  pointer-events: none;
-}
-
-.deck-view-action-bar[hidden] {
-  display: none;
-}
-
-.deck-view-action-pill {
-  pointer-events: auto;
-  background: var(--bg-surface);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-float);
-  gap: 10px;
-  padding: 8px 20px;
-}
-
-/* Icon stacked above its accent label in a fixed-width floating action. */
-.deck-view-action-btn {
-  width: 100px;
-  gap: 2px;
-  color: var(--accent);
-  font-size: 20px;
-  font-weight: 400;
-}
 
 /* ── Review Panel ── */
 
@@ -1343,280 +791,6 @@ ruby {
   text-align: center;
 }
 
-/* ── Guided Creation Panel ──
-   Linear flow: language → topic → context questions → checklist → generation. */
-
-.bottom-sheet.creation-panel {
-  z-index: 151;
-  border-radius: 40px 40px 0 0;
-  padding-bottom: env(safe-area-inset-bottom, 24px);
-}
-
-.creation-panel-inner {
-  min-height: 0;
-}
-
-.creation-panel .sheet-handle {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1;
-  margin: 0;
-}
-
-/* White, top-rounded content surface on the gray-100 pane. It hugs content
-   so the pane shows below it, shrinking and scrolling its body only when
-   content would overflow the sheet. */
-.creation-surface {
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-surface);
-  border-radius: 40px;
-}
-
-/* Persistent topic term line (Figma "Term"): the entered topic pinned under
-   the header on every post-topic step, above a hairline divider. */
-.creation-term {
-  flex-shrink: 0;
-  padding: 4px 20px 10px;
-  border-bottom: 1px solid hsl(var(--gray-300));
-}
-
-.creation-term-text {
-  font-size: 1.625rem;   /* Figma 26px */
-  line-height: 1.875rem; /* Figma 30px */
-  font-weight: 300;
-  color: var(--fg-body);
-  word-break: break-word;
-}
-
-/* Questions and checklist scroll independently of the header, term, and footer. */
-.creation-step-body {
-  min-height: 0;
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.creation-input-form {
-  gap: 20px;
-  padding-bottom: 20px;
-}
-
-.creation-input-wrap {
-  padding: 0 20px;
-}
-
-.creation-language-choice {
-  align-self: flex-start;
-  gap: 8px;
-  min-height: 44px;
-  margin: 0 20px;
-  color: var(--accent);
-}
-
-.creation-language-question .creation-radio-items {
-  margin-top: 12px;
-}
-
-.creation-input-field-row {
-  min-height: 82px;
-  border-bottom: 1px solid hsl(var(--gray-300));
-  padding-bottom: 10px;
-}
-
-.creation-input-field {
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--fg-body);
-  font-weight: 300;
-  width: 100%;
-  resize: none;
-  overflow: hidden;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.creation-input-field::placeholder {
-  color: hsl(220 20 80); /* Figma placeholder #cbd2e1 */
-  opacity: 1;
-}
-
-/* Forward-chevron submit for advancing through the creation flow. */
-.creation-submit {
-  align-self: flex-end;
-  margin-right: 20px;
-  width: 32px;
-  height: 32px;
-  color: var(--accent);
-}
-
-.creation-submit:disabled {
-  opacity: 0.35;
-  pointer-events: none;
-}
-
-.creation-question {
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.creation-question-label {
-  padding: 0;
-  width: 100%;
-}
-
-.creation-question-progress {
-  margin: 8px 0 12px;
-}
-
-.creation-radio-item {
-  gap: 12px;
-  padding: 16px;
-  cursor: pointer;
-  border-bottom: 1px solid hsl(var(--gray-900) / 0.06);
-}
-
-.creation-radio-item:last-child {
-  border-bottom: none;
-}
-
-.creation-radio-item:has(:checked) {
-  background: hsl(var(--blue-500) / 0.08);
-}
-
-.creation-radio-item input[type="radio"] {
-  appearance: none;
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  border: 2px solid var(--fg-caption);
-  border-radius: 50%;
-  background: var(--bg-surface);
-  cursor: pointer;
-}
-
-.creation-radio-item input[type="radio"]:checked {
-  border-color: var(--accent);
-  background: radial-gradient(circle, var(--accent) 0 5px, var(--bg-surface) 5px);
-}
-
-.creation-radio-item:focus-within {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.creation-other-input {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-  padding: 4px 0;
-  border: 0;
-  border-bottom: 1px solid var(--fg-caption);
-  border-radius: 0;
-  background: transparent;
-  color: var(--fg-body);
-}
-
-.creation-other-input::placeholder {
-  color: var(--fg-caption);
-  opacity: 1;
-}
-
-.creation-question-footer {
-  justify-content: space-between;
-}
-
-.creation-question-nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  color: var(--accent);
-}
-
-.creation-question-nav:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.creation-checklist {
-  gap: 12px;
-}
-
-.creation-radio-items,
-.creation-checklist-items {
-  border-radius: var(--radius);
-  background: hsl(var(--gray-100));
-  overflow: hidden;
-}
-
-.creation-checklist-item {
-  width: 100%;
-  gap: 12px;
-  padding: 16px;
-  text-align: left;
-  background: transparent;
-  border-bottom: 1px solid hsl(var(--gray-900) / 0.06);
-}
-
-.creation-checklist-item:last-child {
-  border-bottom: none;
-}
-
-.creation-checklist-check {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  color: var(--accent);
-}
-
-.creation-context-footer {
-  flex-shrink: 0;
-  padding: 12px 20px;
-}
-
-.creation-generating {
-  gap: 20px;
-  padding: 20px;
-}
-
-.creation-skeleton-list {
-  width: 100%;
-  gap: 12px;
-}
-
-.creation-skeleton-card {
-  height: 206px;
-  border-radius: var(--radius);
-  padding: 20px;
-  gap: 12px;
-}
-
-.creation-skeleton-line {
-  height: 16px;
-  border-radius: 4px;
-  background: hsl(var(--gray-200-tint) / 0.6);
-  animation: skeleton-pulse 1.2s ease-in-out infinite;
-}
-
-.creation-error {
-  padding: 20px;
-  gap: 12px;
-}
-
-.creation-retry {
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--bg-surface);
-  font-weight: 600;
-}
 
 /* ── Legacy grouped list for browse/system/preview modes ── */
 

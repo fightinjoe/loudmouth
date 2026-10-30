@@ -34,9 +34,10 @@ Content *(phrasebook)*.
 ### Step by step
 
 1. **Start from navigation.**
-   - In the empty state, the landing banner offers the first phrasebook.
-   - Returning users start from the navigation pane's new-phrasebook FAB.
-   - Both entry points immediately open the same full-height creation action pane.
+   - First use offers **New phrasebook** and slowly moving, clickable example situations.
+   - Returning users start from the library's creation bubble or separate creation button.
+   - Every entry opens the same full-height action pane; examples preserve their seed through
+     first-time language selection without submitting or saving automatically.
 
 2. **Choose language when needed.**
    - With no saved phrasebooks, the pane shows an unselected language radio list. Select a language,
@@ -49,7 +50,7 @@ Content *(phrasebook)*.
 3. **Enter the situation.**
    - The selected language appears below the textarea. Tap it to choose another using the same radio
      list. **Next** confirms; **Back** cancels the language edit. Both preserve the typed prompt.
-   - The learner enters a situation, activity, or topic in the `Enter word, phrase, or topic` field.
+   - The learner describes an upcoming situation in **What are you getting ready for?**
    - Continue is disabled while the trimmed field is empty.
    - Submitting calls `/context` with `{ seed, language, ability? }` and independently requests a title.
      A building state remains visible while context is pending.
@@ -107,14 +108,15 @@ they want in the review set.
 
 ### Step by step
 
-1. **Open a phrasebook.** Selecting a recent or language-grouped phrasebook opens its content pane on
-   **Phrasebook**, as does completing creation.
-2. **Browse tabs.**
-   - **Phrasebook** previews each topic with a clipped final item and a white **View** footer.
-     Tapping a phrase opens its topic's Essential phrases; tapping a word opens Useful words.
-   - Each topic contains full-width essentials, vocabulary tiles, and the complete conversation.
-     Unplaced entries occupy supplemental **Translations**, **Words**, or **Chunks** tabs.
-   - Stars mark the review set; the pinned **Starred** tab remains visible even at zero.
+1. **Open a phrasebook.** Selecting a recent or language-grouped phrasebook opens its continuous
+   illustrated textbook, as does completing creation.
+2. **Browse chapters.**
+   - Every Group remains a distinct chapter, including groups with equal titles.
+   - Each chapter has two-row **Essential vocab** and **Key phrases** shelves, then a sequential
+     **Conversation**. Swipe shelves horizontally while the textbook scrolls vertically.
+   - Unplaced entries occupy supplemental **Translations**, **Words**, or **Chunks** sections.
+   - **In this phrasebook** jumps to chapters; **Starred** is always available, even at zero.
+     **Review starred cards** stays reachable and is disabled until the phrasebook has stars.
 3. **Read a conversation.** Speaker metadata renders learner and partner lines on opposite sides.
    Alternatives remain in the same conversation group.
 4. **Use a card.** On web, tapping a card speaks it. Long-press a phrase for 500 ms to open its
@@ -122,7 +124,7 @@ they want in the review set.
    **SHOW ALL** to inspect every explanation; optional patterns include notes and another example.
    The source stays visible during generation and errors, with Retry after a failure.
 5. **Prioritize.** The star affordance changes the review set without opening details or speaking.
-   Starred cards turn blue in topic pages; the Starred collection uses white, full-width rows.
+   Starred cards turn blue; the final Starred chapter deduplicates memberships in Review order.
 6. **Return or maintain content.** Close, Escape, or the scrim returns to the original card and scroll
    position. Editing and deletion remain in edit mode; the phrasebook title menu exposes settings
    and reorder. Opening another pane dismisses the breakdown rather than stacking task interfaces.
@@ -185,7 +187,7 @@ phrasebook)*.
 2. Confirm the target language and learner ability in the action pane.
 3. Open the fully populated read-only preview in the content pane.
 4. Tap **Save** in the preview header to commit it to the local library.
-5. Continue in the normal phrasebook view with the same tabs, starring, details, and Review behavior.
+5. Continue in the normal continuous textbook with the same starring, details, and Review behavior.
 
 Dismissing before **Save** leaves the library unchanged. A preview is transient and does not behave as
 a partially created phrasebook.

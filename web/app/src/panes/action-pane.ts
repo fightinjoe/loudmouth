@@ -46,7 +46,7 @@ export interface PreviewDeck {
 export type ActionOpen =
   | { kind: "settings"; payload: { deck: Deck; cards: LibraryEntry[] } }
   | { kind: "review"; payload: { deck: Deck; cards: LibraryEntry[] } }
-  | { kind: "creation"; payload: { lang?: Lang } }
+  | { kind: "creation"; payload: { lang?: Lang; seed?: string } }
   | { kind: "new-phrasebook"; payload: { suggestion: SuggestedPhrasebook } }
   | { kind: "card-edit"; payload: { entry: LibraryEntry } }
   | { kind: "json"; payload: { title: string; jsonString: string } };
@@ -201,7 +201,10 @@ function openKind(
           ui.transition("content/select-deck", { id: deck.id });
         },
         onDismiss,
-        (deckId, illustration) => ui.transition("content/illustration-updated", { deckId, illustration }),
+        (deckId, illustration) => {
+          ui.transition("content/illustration-updated", { deckId, illustration });
+          ui.transition("nav/reload");
+        },
       );
 
     case "new-phrasebook": {

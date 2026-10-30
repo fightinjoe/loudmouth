@@ -112,9 +112,9 @@ function renderCardContent(
     <button type="button" class="card-term flex-col flex-1 min-w-0"
       aria-label="${actionLabel}"
       ${hasRuby ? "data-has-ruby" : ""}>
-      <span class="card-term-english fg-secondary">${escapeHTML(card.translation)}</span>
       <span class="card-term-target fg-body" lang="${escapeHTML(card.lang)}">${target}</span>
       ${reading ? `<span class="card-term-reading">${reading}</span>` : ""}
+      <span class="card-term-english fg-secondary">${escapeHTML(card.translation)}</span>
       ${card.type === "word" && card.definition ? `<span class="card-term-definition">${escapeHTML(card.definition)}</span>` : ""}
     </button>
   `;

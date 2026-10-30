@@ -421,7 +421,7 @@ it("retains ready analysis when regeneration fails and keeps keyboard focus in t
       cards: [],
       groups: [],
       browse: null,
-      pageKey: null,
+      chapterKey: null,
       editMode: false,
     },
   };

@@ -1,6 +1,6 @@
-# Loudmouth
+# Catchphrase
 
-A mobile-first phrasebook and flashcard app for Chinese, Japanese, Spanish, Czech and Ukrainian.
+A mobile-first personal language textbook for Chinese, Japanese, Spanish, Czech, and Ukrainian.
 
 ## Prerequisites
 
@@ -197,13 +197,12 @@ live in `src/js/app-types.ts`; pane event handlers receive a shared `Host`, not 
 | File | Responsibility |
 |------|---------------|
 | `app.ts` | Shell markup, state registration, pane mounting, last-opened phrasebook |
-| `nav-pane.ts` | Recent phrasebooks, language browsing, creation entry point |
-| `content-pane.ts` | Phrasebook/browse state, page selection, edit mode, pane coordination |
+| `nav-pane.ts` | Illustrated welcome, seeded creation ideas, complete library shelves, language browsing |
+| `content-pane.ts` | Continuous textbook/browse state, chapter jumps, edit mode, pane coordination |
 | `content-pane-load.ts` | Load stored, suggested-preview, and language-wide content |
-| `content-pane-render.ts` | Contents, topic sections, supplemental collections, Starred markup |
+| `content-pane-render.ts` | Topic chapters, learning shelves, dialogue, supplemental collections, Starred markup |
 | `content-pane-actions.ts` | Card actions, editing, stars, audio, details entry |
-| `content-pane-gestures.ts` | Shell reveal, topic paging, section-local reorder |
-| `content-pane-tab-motion.ts` | Tab scrolling, selection animation, reduced-motion handling |
+| `content-pane-gestures.ts` | Native shelf interaction, desktop dragging, chapter jumps, section-local reorder |
 | `details-pane.ts` | On-demand phrase analysis, candidate stars, modal focus and expansion |
 | `action-pane.ts` | Lifecycle for creation, suggestion confirmation, Review, settings, editor, JSON |
 
@@ -222,6 +221,29 @@ receive data and return markup.
 `phrasebook-illustration.ts` manages independent cover work; `phrase-breakdown.ts` validates and
 caches disposable analysis. `ability.ts` and `lang.ts` define the client enums reused by storage
 validation. Preferences remain separate from durable library content.
+
+### Textbook design
+
+The web uses a personal-textbook design: warm paper,
+fixed foreground speech-bubble titles, contextual stamp-pattern backdrops, two-row vocabulary
+and phrase shelves, and continuous dialogue. `styles/textbook.css` owns shared tokens;
+`textbook-navigation.css`, `textbook-content.css`, and `textbook-creation.css` own their surfaces.
+Local neutral artwork lives in `public/textbook/`. Ready saved PNGs repeat as phrasebook backdrops;
+existing artwork is reused without paid regeneration. Missing/failed/pending artwork uses frog paper.
+
+Creation retains its real language → situation → questions → checklist → generation lifecycle.
+Example situations seed the form, not a generated preview. Chapters replace topic tabs;
+the contents disclosure and Starred shortcut provide direct navigation without paging gestures.
+Physical-phone reach, VoiceOver, iOS Safari gestures, and generated seamless pattern quality
+are separate acceptance checks, not established by desktop Chromium.
+
+Adoption verification (2026-10-27): production build/strict TypeScript passed, 240 web unit tests
+and 129 API tests passed; all 12 browser cases passed across the final targeted runs after fixes.
+Desktop Chromium exercised a live Spanish creation and save, stars/Review, live phrase breakdown,
+Japanese suggested preview/Save, preserved seeded and retry inputs, cancellation, reduced motion,
+and narrow rendering. A controlled offline request exercised the error surface. A resized neutral
+image fixture verified late-artwork persistence without remounting cards or losing focus, scrolling,
+or edit state; it is not evidence of generated art quality.
 
 ### Storage and exchange
 

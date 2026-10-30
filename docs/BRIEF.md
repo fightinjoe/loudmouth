@@ -9,13 +9,13 @@ description: >
 
 > Prepare language for real conversations.
 
-Catchphrase creates bespoke, situation-specific phrasebooks through a short guided conversation. A
-learner describes an upcoming situation, answers a few context questions, chooses which conversations
-to prepare, and receives independent essential phrases, useful words, and a short two-sided dialogue
-for each topic. Web opens a **Phrasebook** contents page with topic previews and an optional contextual
-watercolor cover. Each topic has its own swipeable page; saved standalone translations, words, and
-Chunks follow when present. A pinned Starred tab browses unique starred memberships; Review uses
-the same phrasebook-scoped set.
+Catchphrase creates a **personalized language textbook** for an upcoming situation through a short
+guided conversation. The learner answers context questions, chooses conversations to prepare, and
+receives independent essential phrases, useful words, and a two-sided dialogue for each topic.
+Its value is learning language on the learner's terms, not speaking on their behalf or imposing a
+fixed curriculum. Web presents continuous illustrated chapters with two-row vocabulary/phrase
+shelves, sequential dialogue, supplemental saved material, and a deduplicated Starred collection.
+Review uses the same phrasebook-scoped starred set.
 
 ## User and problem
 
@@ -47,10 +47,9 @@ The web app and API support Chinese, Japanese, Spanish, Czech, and Ukrainian.
    Word placements. All initial memberships are unstarred; cover completion never delays text saving.
 4. **Prioritize:** stars belong to the current phrasebook. Starring an analysis candidate saves its
    learning target and historical evidence; unstarring retains both.
-5. **Review:** use the contents page to open a topic's essential phrases, two-column words, and complete
-   conversation, or open the pinned **Starred** collection. Review the current phrasebook's starred
-   set with reveal, direction switching, pronunciation, and swiping. Words use dictionary forms;
-   Chunks retain their original source context.
+5. **Review:** browse continuous topic chapters, horizontal vocabulary/phrase shelves, and two-sided
+   conversations, or jump to **Starred**. Review the phrasebook's starred set with reveal, direction
+   switching, pronunciation, and swiping. Words use dictionary forms; Chunks retain source context.
 
 Web Phrase cards support on-demand semantic breakdowns in the details layer. Opening analysis
 does not save cards. Explicit target stars save Words or Chunks; Regenerate refreshes disposable
@@ -80,8 +79,8 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 - Guided phrasebook creation through `/context` → `/phrasebook`.
 - Dynamic context questions and a checklist of the conversations to prepare.
 - Topic-first generation: independent essential phrases, useful words, and complete two-sided dialogue.
-- Web contents-first browsing with topic pages and optional supplemental collections; phrasebook-scoped
-  review with reveal, direction toggle, swipe navigation, and audio. This does not change iOS.
+- Web continuous textbook chapters with two-row learning shelves, optional supplemental collections,
+  and phrasebook-scoped review with reveal, direction toggle, swipe navigation, and audio. This does not change iOS.
 - Web phrase breakdowns: source-aligned semantic parts, contextual explanations, and nested
   dictionary Words. Every distinct target can be starred into the active phrasebook's review set.
 
@@ -107,7 +106,7 @@ analysis without overwriting saved teaching. Character and Grammar card types re
   The client speculates while topics are selected, validates the whole draft, then commits original
   selected indexes without pooling or globally capping words.
   Independent `/phrasebook-title` work freezes the available name or seed fallback at commit.
-  `/phrasebook-image` generates PNGs through OpenRouter FLUX.2 Klein 4B without blocking text;
+  `/phrasebook-image` generates PNGs through OpenRouter Gemini 3.1 Flash Lite Image without blocking text;
   ready PNG bytes persist with the phrasebook. Missing or failed art leaves text usable.
 - **Phrase analysis:** `/phrase-breakdown` receives the exact active occurrence snapshot and
   phrasebook context. The web client validates and caches the v2 analysis for the browser tab.

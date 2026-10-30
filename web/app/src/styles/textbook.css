@@ -1,0 +1,38 @@
+/* Shared textbook theme tokens. Surface-specific layout lives in
+   textbook-navigation, textbook-content, and textbook-creation. */
+:root {
+  --textbook-paper: #f5f1e6;
+  --textbook-green: #3c7740;
+  --textbook-green-soft: #d3e1cb;
+  --textbook-blue: #0875c9;
+  --textbook-blue-soft: #dbefff;
+  --textbook-heading: "Hepta Slab", Georgia, serif;
+  --accent: var(--textbook-blue);
+  --bg-blue: var(--textbook-blue);
+  --bg-blue-tint: var(--textbook-blue-soft);
+  --bg-primary: var(--textbook-paper);
+  --border-default: #d9dfd4;
+}
+
+body {
+  background: var(--textbook-paper);
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 3px solid var(--textbook-blue);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-examples, .textbook-scroll, .textbook-shelf {
+    scroll-behavior: auto;
+  }
+}

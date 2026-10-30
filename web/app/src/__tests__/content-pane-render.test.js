@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from "vitest";
 import {
-  getDeckPages,
+  getDeckChapters,
   renderDeckBody,
 } from "../panes/content-pane-render";
 
@@ -89,8 +89,8 @@ const groups = [
   { id: "group-first", deckId: deck.id, title: "Ordering", position: 0 },
 ];
 
-describe("phrasebook joined-entry pages", () => {
-  it("keeps duplicate-title topics ordered and imported content in supplemental pages", () => {
+describe("continuous phrasebook chapters", () => {
+  it("keeps duplicate-title topics ordered and imported content in supplemental chapters", () => {
     const entries = [
       phrase("loose-new", "phrase-a", "newest", { position: 0 }),
       phrase("loose-old", "phrase-b", "older", { position: 1 }),
@@ -100,14 +100,14 @@ describe("phrasebook joined-entry pages", () => {
       word,
     ];
 
-    const pages = getDeckPages(entries, groups);
-    expect(pages.map((page) => page.key)).toEqual([
-      "starred", "contents", "group:group-first", "group:group-later", "translations", "words", "chunks",
+    const chapters = getDeckChapters(entries, groups);
+    expect(chapters.map((chapter) => chapter.key)).toEqual([
+      "group:group-first", "group:group-later", "translations", "words", "chunks", "starred",
     ]);
-    expect(pages[1].topics.map((topic) => topic.groupId)).toEqual(["group-first", "group-later"]);
-    expect(pages[4].entries.map((entry) => entry.key)).toEqual(["loose-new", "loose-old"]);
-    expect(pages[2].dialogue.map((entry) => entry.key)).toEqual(["first-row"]);
-    expect(pages[3].dialogue.map((entry) => entry.key)).toEqual(["later-row"]);
+    expect(chapters.slice(0, 2).map((chapter) => chapter.groupId)).toEqual(["group-first", "group-later"]);
+    expect(chapters[2].entries.map((entry) => entry.key)).toEqual(["loose-new", "loose-old"]);
+    expect(chapters[0].dialogue.map((entry) => entry.key)).toEqual(["first-row"]);
+    expect(chapters[1].dialogue.map((entry) => entry.key)).toEqual(["later-row"]);
   });
 
   it("renders each repeated occurrence's interpretation, speaker, alternative, and entry key", () => {
@@ -130,7 +130,7 @@ describe("phrasebook joined-entry pages", () => {
     const root = document.createElement("div");
     root.innerHTML = renderDeckBody(deck, entries, groups, "group:group-first");
 
-    const rows = [...root.querySelectorAll('.deck-page[data-page-key="group:group-first"] .card-row-wrapper')];
+    const rows = [...root.querySelectorAll('.textbook-chapter[data-chapter-key="group:group-first"] .card-row-wrapper')];
     expect(rows.map((row) => row.dataset.entryKey)).toEqual(["occ-you", "occ-alternative", "occ-partner"]);
     expect(rows.map((row) => row.querySelector(".card-term-english").textContent)).toEqual([
       "please go ahead",
@@ -143,7 +143,7 @@ describe("phrasebook joined-entry pages", () => {
     expect(rows[1].querySelector(".card-alternative").textContent).toBe("or");
   });
 
-  it("keeps independent essentials and topic-local words without duplicating interactive cards on contents", () => {
+  it("renders every independent essential and local word in accessible shelves without hiding chapters", () => {
     const essentials = Array.from({ length: 4 }, (_, index) =>
       phrase(`essential-${index}`, "shared", `Essential ${index}`, {
         groupId: "group-first", section: "essentials", position: index,
@@ -156,49 +156,43 @@ describe("phrasebook joined-entry pages", () => {
       phrase("dialogue", "shared", "Dialogue meaning", { groupId: "group-first", speaker: "you" })];
     const root = document.createElement("div");
     root.innerHTML = renderDeckBody(deck, entries, groups, null);
-    expect(root.querySelector('[role="tab"][aria-selected="true"]').dataset.pageKey).toBe("contents");
-    const contents = root.querySelector('.deck-page[data-page-key="contents"]');
-    expect(contents.querySelectorAll(".card-row-wrapper")).toHaveLength(0);
-    const preview = contents.querySelector(".topic-preview");
-    expect([...preview.querySelectorAll(".topic-preview-line")].map(row => row.textContent.trim()))
-      .toEqual(["Essential 0", "Essential 1", "Essential 2", "water (noun)", "water (noun)"]);
-    expect(preview.querySelector(".topic-preview-footer").textContent).toContain("4 phrases · 3 words · 1 conversation");
-    expect([...contents.querySelectorAll(".topic-view")].map(button => button.dataset.pageKey))
-      .toEqual(["group:group-first", "group:group-later"]);
-    const topic = root.querySelector('.deck-page[data-page-key="group:group-first"]');
+    expect(root.querySelector('[role="tab"]')).toBeNull();
+    expect(root.querySelector('[inert]')).toBeNull();
+    expect([...root.querySelectorAll(".textbook-chapter")].map(chapter => chapter.dataset.chapterKey))
+      .toEqual(["group:group-first", "group:group-later", "starred"]);
+    const topic = root.querySelector('.textbook-chapter[data-chapter-key="group:group-first"]');
     expect(topic.querySelectorAll('[data-reorder-region="essentials"] .card-row-wrapper')).toHaveLength(4);
     expect(topic.querySelector('[data-reorder-region="essentials"] [data-speaker]')).toBeNull();
-    expect(topic.querySelectorAll(".topic-word-grid .card-word-tile")).toHaveLength(3);
+    expect(topic.querySelectorAll('[data-reorder-region="vocab"] .card-word-tile')).toHaveLength(3);
     expect(topic.querySelector('[data-reorder-region="dialogue"] .card-term-english').textContent)
       .toBe("Dialogue meaning");
-    expect(root.querySelector('.deck-page[data-page-key="group:group-later"] .topic-word-grid')).toBeNull();
-    expect(root.querySelector('[role="tab"][data-page-key="words"]')).toBeNull();
+    expect(topic.querySelectorAll('.textbook-shelf[tabindex="0"]')).toHaveLength(2);
+    expect(root.querySelector('.textbook-chapter[data-chapter-key="words"]')).toBeNull();
   });
 
-  it("reserves pending art and renders ready art decoratively without a broken failed image", () => {
+  it("uses decorative ready artwork and neutral patterned fallback without adding a flow image", () => {
     const root = document.createElement("div");
-    const illustration = { requestId: "art-1", prompt: "Watercolor", state: "pending" };
+    const illustration = { requestId: "art-1", prompt: "Pattern", state: "pending" };
     root.innerHTML = renderDeckBody({ ...deck, illustration }, [], [], null);
-    expect(root.querySelector(".deck-illustration")).not.toBeNull();
-    expect(root.querySelector(".deck-illustration img")).toBeNull();
+    expect(root.querySelector(".textbook-pattern").style.backgroundImage).toContain("/textbook/frogs.png");
     root.innerHTML = renderDeckBody({ ...deck, illustration: {
       ...illustration, state: "ready",
       image: { dataUrl: "data:image/png;base64,aGVsbG8=", mediaType: "image/png", width: 1600, height: 900 },
     } }, [], [], null);
-    expect(root.querySelector(".deck-illustration img").getAttribute("alt")).toBe("");
+    expect(root.querySelector(".textbook-pattern").style.backgroundImage).toContain("data:image/png;base64,aGVsbG8=");
     root.innerHTML = renderDeckBody({ ...deck, illustration: { ...illustration, state: "failed" } }, [], [], null);
+    expect(root.querySelector(".textbook-pattern").style.backgroundImage).toContain("/textbook/frogs.png");
     expect(root.querySelector("img")).toBeNull();
-    expect(root.querySelector(".deck-illustration-unavailable").textContent).toBe("Illustration unavailable");
   });
 
   it("renders Chunks in full highlighted historical context", () => {
     const root = document.createElement("div");
     root.innerHTML = renderDeckBody(deck, [chunk], [], "chunks");
 
-    expect(root.querySelector('[data-page-key="chunks"] .source-context').textContent)
+    expect(root.querySelector('.textbook-chapter[data-chapter-key="chunks"] .source-context').textContent)
       .toBe("肉も魚も食べません。");
-    expect(root.querySelector('[data-page-key="chunks"] mark').textContent).toBe("肉も");
-    expect(root.querySelector('[data-page-key="chunks"] .card-row-wrapper').dataset.entryKey)
+    expect(root.querySelector('.textbook-chapter[data-chapter-key="chunks"] mark').textContent).toBe("肉も");
+    expect(root.querySelector('.textbook-chapter[data-chapter-key="chunks"] .card-row-wrapper').dataset.entryKey)
       .toBe(chunk.key);
   });
 
@@ -260,7 +254,7 @@ describe("content rendering safety", () => {
 
     expect(root.querySelector("img")).toBeNull();
     expect(root.querySelector(".pane-header-title").textContent).toBe(injected);
-    expect(root.querySelector('[role="tab"][data-page-key="group:hostile-group"]').textContent.trim()).toBe(injected);
+    expect(root.querySelector('.textbook-chapter-links [data-chapter-key="group:hostile-group"]').textContent.trim()).toBe(injected);
     expect(root.querySelector(".card-term-english").textContent).toBe(injected);
     expect(root.querySelector(".card-row-wrapper").dataset.entryKey).toBe(hostileKey);
     expect(root.querySelector(".card-star").dataset.cardId).toBe(hostileCardId);

@@ -37,14 +37,22 @@ pane, not separate pane components.
 
 ## Navigation pane
 
-The landing page shows the product identity, recent phrasebooks, suggested phrasebooks, and a prominent
-new-phrasebook action. Returning users can start the same flow from the navigation FAB. Once the user
-has phrasebooks, navigation groups them by language and offers browse views over every retained card
-type. Language browsing has no inferred star state; starring and Review always require a phrasebook.
+The web navigation uses an illustrated-paper direction: a fixed foreground speech-bubble title,
+slab typography, contextual artwork, and quiet reading surfaces.
+Catchphrase is a personal language textbook for preparation and learning, not live translation.
 
-Selecting an existing phrasebook opens it in the content pane. Selecting a suggested phrasebook opens
-its language-and-ability confirmation and then a read-only preview; **Save** commits that preview to the
-local library.
+First use offers **New phrasebook** and clickable example situations. Examples move slowly,
+pause for focus, hover, touch, or manual scrolling, and stay static under reduced motion.
+Selecting an example seeds the real creation flow; it does not generate or save automatically.
+Returning users see every retained phrasebook in a two-row horizontal shelf, ordered by most
+recent access/creation, plus language-grouped navigation and a separate creation action.
+Counts describe unique saved cards. Ready illustrations belong to their actual phrasebooks;
+missing, failed, and pending artwork uses neutral frog paper. Language browsing has no inferred
+star state; starring and Review always require a phrasebook.
+
+Selecting a phrasebook opens its content pane. Language browsing retains every card type.
+Suggested phrasebooks still support language/ability confirmation, read-only preview, and explicit
+**Save** through their existing entry points.
 
 ## Guided creation
 
@@ -58,6 +66,13 @@ The selected language appears below the textarea. Tapping it opens the same radi
 current language selected. **Next** confirms the choice and returns to the preserved prompt; **Back**
 cancels the pending language change. Confirmed choices are remembered in this browser independently
 of phrasebook saving. Language remains immutable after the phrasebook is saved.
+
+Creation shares the paper/frog background, white speech-bubble heading, slab chapter title,
+white choice/input surfaces, and blue primary actions. Headers and footer controls remain outside
+the independently scrolling body. The situation prompt asks what the learner is getting ready for,
+not for a dictionary lookup. A seeded example survives first-time language selection and later
+language edits. Initialization, questions, checklist, generation, cancellation, and retry use the
+same visual language without changing request, preference, or atomic-save semantics.
 
 The creation mode is a linear flow:
 
@@ -107,99 +122,58 @@ Historical setup preferences are not inferred or migrated to the new scale.
 
 ## Phrasebook view
 
-On web, saved phrasebooks open **Phrasebook**, a contents page with an optional decorative 16:9
-watercolor hero on plain white paper. The composition is a close-up: large objects fill the landscape
-frame, with a narrow 3–5% target safety margin and no clipped objects. Long objects lie horizontally
-or diagonally to use the width. Actual generated margins vary; no automatic crop is applied.
-Transparency is not required. Pending art reserves its space; ready art has empty alt text and white
-surrounding space; failed art shows a subdued unavailable message. Topic previews show up to three
-essential English phrases and two words with POS. The final preview item is vertically clipped to
-suggest more content. The white footer shows section counts and **View** with a right chevron.
-The whole topic preview is clickable: phrases, heading, and footer open Essential phrases; words
-open Useful words. Each destination scrolls to its section and focuses the exact topic tab.
+Web phrasebooks are continuous, situation-specific textbooks. The fixed foreground title contains
+library navigation, settings, editing controls, and the target language; the body scrolls vertically
+under it. There are no topic tabs, paged panels, or edge swipes that compete with horizontal shelves.
+The expandable **In this phrasebook** contents and **Starred** shortcut jump to stable chapter IDs.
+This web adoption does not change native iOS.
 
-Each stored Group has one topic tab and horizontally sliding page, identified by Group ID rather
-than title, including when titles duplicate. Each topic contains **Essential phrases**, **Useful
-words**, and **Conversation** in that order: full-bleed white essential rows with bottom borders;
-two-column Word tiles; gray-100 learner/gray-50 partner dialogue bubbles. Essentials are independently
-generated occurrences, not ranked dialogue excerpts. Equal text can retain different meanings and
-presentation in different sections.
+Each Group is a chapter, ordered by stored Group position and identified by Group ID even when
+titles duplicate. Chapters contain **Essential vocab**, **Key phrases**, and **Conversation**:
+two-row horizontal Word and independent essential-phrase shelves, then sequential dialogue.
+Shelves fill top-to-bottom before advancing a column; native touch scrolling, desktop dragging,
+and focused Arrow/Home/End navigation reveal further items. Long text wraps rather than clipping.
+Dialogue is never reordered into shelves: learner and partner lines retain their side and sequence,
+with “or” between adjacent same-speaker alternatives in the same topic.
 
-Supplemental **Translations**, **Words**, and **Chunks** pages follow topics when unplaced entries
-exist. Topic Word placements are not duplicated into the supplemental Words page.
-A fixed leftmost **Starred** tab is always present, including at zero. It shows a solid blue star
-and the exact unique-membership count, without a visible label; its accessible name is “Starred, N
-cards.” **Review** appears only on Starred and is disabled when the phrasebook study set is empty.
-This web navigation does not change iOS.
+Supplemental **Translations**, **Words**, and **Chunks** follow when unplaced entries exist.
+Topic Word placements are not copied into supplemental Words. A final **Starred** chapter is always
+available, including its empty state. It contains each starred membership once in saved entry order,
+the same order as Review; repeated Phrases use their first saved occurrence and translation.
+The persistent **Review starred cards** action is available throughout the textbook and disabled
+when there are no stars.
 
-The title and tab row remain above the independently scrolling pages. Topic tabs fit their title text
-with 16 px horizontal padding on each side, inside a scroller to the right of Starred. The pinned tab
-uses an intrinsic count width, 12 px side padding, and a 6 px star/count gap. Its divider and trailing
-shadow fade over 180 ms only while the topic strip's actual offset is positive. At rest, the row is one
-white surface. The first topic anchors left beside Starred, the last anchors right, and interior
-selections center within the **full tab-row viewport**, including the pinned width, clamped to the
-available scroll range. A single topic anchors left; oversized titles follow the same boundary rules.
-Clicking or keyboard-selecting with arrows or Home/End, without looping, animates tabs and pages for
-280 ms with cubic ease-out. Starred expands and fades in over 360 ms on initial phrasebook
-presentation; count changes do not replay its entrance. Count/font/viewport changes
-coordinate width and scroll compensation before paint, retaining alignment or a manually scrolled
-offset. Direct pointer, touch, and wheel input interrupt selection motion; selecting Starred stops
-strip motion without moving it. Reduced motion skips transitions and settles in-flight geometry.
-Inward horizontal pointer drags starting in
-the card list's 50 px left/right gutters advance one page beyond 45 px, for both flicks and long
-drags. The left gutter selects the previous page, or reveals navigation on the first page; the right
-gutter selects the next page. Shorter or cancelled drags snap back. Interior drags do not page.
-Vertical scrolling stays native, and each page retains its own position. Offscreen pages are inert.
-Edit mode disables paging drags and retains active-page reorder and card editing.
+The backdrop repeats saved contextual artwork and fades into warm ivory reading paper. The approved
+image prompt requests vintage hand-drawn spot illustrations in a whimsical tossed repeat, imperfect
+rubber-stamp/block-print texture, coordinated greens, and situation-specific motifs. The 16:9 PNG
+contract is unchanged. Seamless edge matching is a generation instruction, not a validated property.
+Existing saved images are reused without automatic regeneration. Missing, pending, and failed
+artwork uses frog paper; ready completion changes only the backdrop and library thumbnail,
+without remounting cards or resetting scroll, focus, or editing.
 
-The visual reference is `explorations/phrasebook-navigation/PHRASEBOOK_EXPLORATION.html`: white
-surfaces, Roboto Condensed headings and tabs, and Manrope card text. Word and conversation bubbles
-have 16 px corners and 8 px gaps; essential and Starred rows have square edges and bottom borders.
-Each Phrase occurrence supplies its own translation, topic, section, and position; repeated
-occurrences may share a durable Phrase without sharing presentation state.
-Only dialogue supplies speaker state. Learner speech is right-aligned gray-100, partner speech
-left-aligned gray-50, with text left-aligned on both. “or” appears only between adjacent same-speaker
-dialogue lines in the same topic.
-Starring changes white/gray-50 cards to blue-50 and gray-100 learner cards to blue-100. Unstarring
-restores the original surface. Membership changes never affect another phrasebook.
+Typography uses Hepta Slab titles, Roboto Condensed section labels, and Manrope language cards.
+White rounded cards sit on paper; pale green edge-attached labels separate learning sections.
+Target language and any reading precede English. Japanese displays script with available furigana
+or romaji according to the phrasebook reading setting; absent romaji retains script.
+Chinese pinyin remains ruby-aligned. Word definitions remain smaller optional teaching text.
+Chunk cards show the full immutable source with its saved span highlighted.
 
-Starred is a white, full-bleed collection in saved entry order (the same order as Review), not
-reconstructed dialogue or a copy of essentials. Each membership appears once; a repeated Phrase
-uses its first saved occurrence and translation. All card types use essential-row styling here,
-without blue backgrounds. Word definitions and full highlighted Chunk source snapshots remain
-available, along with audio, details, editing, and star actions. Starring updates every occurrence
-without changing the active page. Opening Starred leaves the topic strip in place.
-Unstarring removes only the collection row, never the saved card, membership, or evidence. Removing
-a focused row moves focus to the next star, or the preceding star at the end. Removing the last
-star leaves Starred selected, shows its empty state, and focuses the pinned Starred tab.
-Count changes are announced without moving focus; topic tab identity survives membership updates.
-The adopted web reference is `explorations/starred-access/STARRED_ACCESS.html`; iOS remains unchanged.
+Stars are independent 44px targets and update every occurrence of a membership without changing
+another phrasebook. Unstarring keeps the saved card and evidence. Live counts are announced;
+removing a focused Starred row restores focus to a remaining row, its chapter, or the Starred
+shortcut rather than losing it.
 
-Card text places English above the target language without changing either line's typography.
-Japanese displays one target form according to the phrasebook's reading setting: original Japanese
-script with available furigana, or romaji using the same target-text styling. If a card has no romaji,
-it retains Japanese script and available furigana. Chinese ruby pinyin is unchanged. The standalone
-`explorations/card-styling/CARD_EXPLORATION.html` also demonstrates this order and Japanese selection.
-Compact Word cards show their optional definition below the target and any standalone reading,
-using smaller (13 px), muted text with an 8 px separation. Definitions wrap within the card and
-remain literal text. Absent definitions add no empty row; Phrase and Chunk cards do not display
-this compact definition line. This adopts the Word-definition hierarchy from the same exploration
-without changing the existing English/target typography or adding usage notes and examples.
+Tapping a card speaks it. Phrase details open on a 500ms hold, right-click, or Shift+F10/Context Menu;
+movement, scrolling, cancellation, or navigation cancels the hold and never also plays audio.
+Editing changes shelves into vertical lists and keeps reorder within a single topic/section bucket.
+Entry identities, occurrences, Word placements, membership stars, and persistence contracts are
+unchanged. Preview **Save**, settings, card editing/deletion, source details, and language browsing
+remain functional; language-wide browsing has no star/review controls without a phrasebook.
 
-Cards can be starred for review when they have a membership in the active phrasebook. Tapping any
-card speaks it: Phrases use their pronunciation, Words their dictionary headword, and Chunks the
-full preserved source snapshot. Phrase breakdown opens on a 500 ms long press, right-click, or
-Shift+F10/Context Menu key while the card is focused. Movement, scrolling, cancellation, or navigation
-cancels the hold; its release never also plays audio. Stars remain independent tap targets.
-There is no card speaker icon or visible Explore phrase link. Chunk rows render their full source
-with the saved span highlighted rather than presenting an isolated fragment. In edit mode, entry-keyed card taps open
-the editor. Word tiles become one column; reorder stays inside one topic/section bucket and updates
-placements or occurrences, never canonical card identity. Contents and Starred have no reorder
-overlay. Phrasebook settings remain available from the title menu. Language browsing remains
-separate, with no star or review control without a phrasebook.
-
-The phrasebook action bar contains **Review** only while Starred is selected. Phrasebook content is
-not extended from this view; a new situation starts a new guided phrasebook from navigation.
+Browser verification covers the adopted web surface; physical-device thumb reach, VoiceOver,
+and iOS Safari gesture behavior require their own checks. Very long titles with enlarged text
+remain a hierarchy stress case. A new situation starts guided creation from navigation rather
+than extending an existing phrasebook.
 
 ## Phrase breakdown (web)
 

@@ -63,6 +63,17 @@ test('accepts RGB and opaque RGBA images without requiring transparency', async 
   }
 });
 
+test('normalizes provider JPEG to PNG without changing dimensions or decoded pixels', async () => {
+  const jpeg = await sharp(transparent).flatten({ background: '#eeeeee' }).jpeg().toBuffer();
+  const result = validatePhrasebookImageResponse(await performPhrasebookImage(request, transport(jpeg)));
+  const png = Buffer.from(result.image.dataUrl.slice(prefix.length), 'base64');
+  const metadata = await sharp(png).metadata();
+  assert.equal(metadata.format, 'png');
+  assert.equal(result.image.width, 32);
+  assert.equal(result.image.height, 18);
+  assert.deepEqual(await sharp(png).raw().toBuffer(), await sharp(jpeg).raw().toBuffer());
+});
+
 test('preserves valid alpha when present without removing white subjects', async () => {
   const result = await performPhrasebookImage(request, transport(transparent));
   const decoded = await sharp(Buffer.from(result.image.dataUrl.slice(prefix.length), 'base64')).raw().toBuffer();
@@ -79,9 +90,10 @@ test('missing or invalid provider cost stays unknown rather than becoming free',
   }
 });
 
-test('rejects empty-alpha, corrupt, non-PNG, and remote URL results', async () => {
+test('rejects empty-alpha, corrupt, unsupported formats, and remote URL results', async () => {
   const jpeg = await sharp(opaque).jpeg().toBuffer();
-  for (const image of [empty, Buffer.from('not png'), jpeg, opaque.subarray(0, 40),
+  const gif = await sharp(opaque).gif().toBuffer();
+  for (const image of [empty, Buffer.from('not png'), gif, jpeg.subarray(0, 40), opaque.subarray(0, 40),
     'https://attacker.example/image.png', 'data:image/jpeg;base64,' + jpeg.toString('base64')]) {
     const fake = transport(image);
     await assert.rejects(performPhrasebookImage(request, fake), { status: 502 });
@@ -91,8 +103,10 @@ test('rejects empty-alpha, corrupt, non-PNG, and remote URL results', async () =
 
 test('rejects invalid aspect ratio and decoded pixel limit', async () => {
   for (const [width, height] of [[20, 20], [3000, 1688]]) {
-    const image = await sharp({ create: { width, height, channels: 4, background: { r: 1, g: 2, b: 3, alpha: 0.5 } } }).png().toBuffer();
-    await assert.rejects(performPhrasebookImage(request, transport(image)), { status: 502 });
+    const source = sharp({ create: { width, height, channels: 4, background: { r: 1, g: 2, b: 3, alpha: 0.5 } } });
+    for (const image of [await source.clone().png().toBuffer(), await source.clone().jpeg().toBuffer()]) {
+      await assert.rejects(performPhrasebookImage(request, transport(image)), { status: 502 });
+    }
   }
 });
 
