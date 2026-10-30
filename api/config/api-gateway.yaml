@@ -540,7 +540,7 @@ definitions:
         items:
           $ref: '#/definitions/Evidence'
 
-  PhrasebookEssential:
+  PhrasebookPhrase:
     type: object
     required: [id, card]
     additionalProperties: false
@@ -556,7 +556,7 @@ definitions:
                 type: string
                 enum: [phrase]
 
-  PhrasebookDialogueLine:
+  PhrasebookExampleLine:
     type: object
     required: [id, card, speaker]
     additionalProperties: false
@@ -574,9 +574,42 @@ definitions:
       speaker:
         type: string
         enum: [you, partner]
-      alternative:
-        type: boolean
-        enum: [true]
+
+  PhrasebookExchangeTurn:
+    type: object
+    required: [speaker, responses]
+    additionalProperties: false
+    properties:
+      speaker:
+        type: string
+        enum: [you, partner]
+      responses:
+        type: array
+        minItems: 1
+        maxItems: 3
+        description: Explicit alternative responses for this speaker turn.
+        items:
+          $ref: '#/definitions/PhrasebookPhrase'
+
+  PhrasebookExchange:
+    type: object
+    required: [id, title, lines]
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      title:
+        type: string
+        minLength: 1
+        maxLength: 120
+      lines:
+        type: array
+        minItems: 2
+        maxItems: 4
+        description: Speakers alternate; either speaker may start. Continuation semantics are not validated.
+        items:
+          $ref: '#/definitions/PhrasebookExchangeTurn'
 
   PhrasebookWord:
     type: object
@@ -597,9 +630,9 @@ definitions:
         items:
           $ref: '#/definitions/Evidence'
 
-  PhrasebookGroup:
+  PhrasebookWordFamily:
     type: object
-    required: [id, title, essentials, vocab, dialogue]
+    required: [id, title, items]
     additionalProperties: false
     properties:
       id:
@@ -609,30 +642,55 @@ definitions:
         type: string
         minLength: 1
         maxLength: 120
-      essentials:
+      items:
+        type: array
+        minItems: 2
+        maxItems: 10
+        items:
+          $ref: '#/definitions/PhrasebookWord'
+
+  PhrasebookGroup:
+    type: object
+    required: [id, title, thingsToSay, likelyExchanges, words, exampleConversation]
+    additionalProperties: false
+    properties:
+      id:
+        type: string
+        format: uuid
+      title:
+        type: string
+        minLength: 1
+        maxLength: 120
+      thingsToSay:
         type: array
         minItems: 1
         maxItems: 8
         items:
-          $ref: '#/definitions/PhrasebookEssential'
-      vocab:
+          $ref: '#/definitions/PhrasebookPhrase'
+      likelyExchanges:
+        type: array
+        minItems: 1
+        maxItems: 4
+        items:
+          $ref: '#/definitions/PhrasebookExchange'
+      words:
         type: array
         minItems: 0
-        maxItems: 10
-        description: Independent topic Word candidates; optional evidence references either phrase section within this group.
+        maxItems: 5
+        description: Titled families with at most ten Words in total, enforced by the shared validator. Optional evidence references any phrase occurrence within this group.
         items:
-          $ref: '#/definitions/PhrasebookWord'
-      dialogue:
+          $ref: '#/definitions/PhrasebookWordFamily'
+      exampleConversation:
         type: array
         minItems: 2
         maxItems: 10
-        description: Both speakers are required; alternatives follow an adjacent line by the same speaker.
+        description: Linear conversation with alternating speakers; either speaker may start.
         items:
-          $ref: '#/definitions/PhrasebookDialogueLine'
+          $ref: '#/definitions/PhrasebookExampleLine'
 
   PhrasebookFlag:
     type: object
-    required: [code, groupIndex, vocabIndex, reason]
+    required: [code, groupIndex, wordIndex, reason]
     additionalProperties: false
     properties:
       code:
@@ -642,10 +700,11 @@ definitions:
         type: integer
         minimum: 0
         maximum: 7
-      vocabIndex:
+      wordIndex:
         type: integer
         minimum: 0
         maximum: 9
+        description: Index into the group's flattened family/item Word order.
       reason:
         type: string
         enum: [unresolved]
@@ -657,7 +716,7 @@ definitions:
     properties:
       schemaVersion:
         type: integer
-        enum: [3]
+        enum: [4]
       title:
         type: string
         minLength: 1

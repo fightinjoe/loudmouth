@@ -53,14 +53,14 @@ const suggestion = {
   lang: "ja",
   groups: [{
     title: "On the street",
-    essentials: [{
+    thingsToSay: [{
       lang: "ja",
       type: "phrase",
       text: "まっすぐ行ってください",
       translation: "please go straight",
       reading: [["まっすぐ", null], ["行", "い"], ["ってください", null]],
     }],
-    vocab: [{
+    words: [{ title: "Directions", items: [{
       card: {
         lang: "ja",
         type: "word",
@@ -70,8 +70,12 @@ const suggestion = {
         partOfSpeech: "noun",
         senseKey: "right-direction",
       },
-    }],
-    dialogue: [
+    }, {card:{lang:"ja",type:"word",text:"左",translation:"left",partOfSpeech:"noun",senseKey:"left-direction"}}] }],
+    likelyExchanges: [{title:"Ask the way",lines:[
+      {speaker:"you",responses:[{lang:"ja",type:"phrase",text:"駅はどこですか",translation:"Where is the station?"}]},
+      {speaker:"partner",responses:[{lang:"ja",type:"phrase",text:"まっすぐです",translation:"Straight ahead."},{lang:"ja",type:"phrase",text:"右です",translation:"To the right."}]},
+    ]}],
+    exampleConversation: [
       {speaker:"you",card:{lang:"ja",type:"phrase",text:"駅はどこですか",translation:"Where is the station?",reading:[["駅","えき"],["はどこですか",null]]}},
       {speaker:"partner",card:{lang:"ja",type:"phrase",text:"まっすぐ行ってください",translation:"Please go straight.",reading:[["まっすぐ",null],["行","い"],["ってください",null]]}},
     ],
@@ -96,21 +100,21 @@ describe("action pane — suggested phrasebook preview", () => {
 
     const { deck, cards } = ui.get("content");
     expect(new Set(deck.draftGroups.map((group) => group.id)).size).toBe(2);
-    expect(new Set(cards.map((entry) => entry.key)).size).toBe(8);
-    const essential = cards.filter((entry) => entry.occurrence?.section === "essentials");
-    const dialogue = cards.filter((entry) => entry.occurrence?.section === "dialogue");
+    expect(new Set(cards.map((entry) => entry.key)).size).toBe(16);
+    const essential = cards.filter((entry) => entry.occurrence?.section === "thingsToSay");
+    const exampleConversation = cards.filter((entry) => entry.occurrence?.section === "exampleConversation");
     expect(essential).toHaveLength(2);
-    expect(dialogue).toHaveLength(4);
+    expect(exampleConversation).toHaveLength(4);
     expect(essential.every((entry) => !("speaker" in entry.occurrence))).toBe(true);
-    expect(dialogue.map((entry) => entry.occurrence.speaker)).toEqual(["you","partner","you","partner"]);
-    expect(essential[0].cardId).toBe(dialogue[1].cardId);
+    expect(exampleConversation.map((entry) => entry.occurrence.speaker)).toEqual(["you","partner","you","partner"]);
+    expect(essential[0].cardId).toBe(exampleConversation[1].cardId);
     expect(essential[0].occurrence.translation).toBe("please go straight");
-    expect(dialogue[1].occurrence.translation).toBe("Please go straight.");
+    expect(exampleConversation[1].occurrence.translation).toBe("Please go straight.");
     const words = cards.filter((entry) => entry.wordPlacement);
-    expect(words).toHaveLength(2);
-    expect(words[0].cardId).toBe(words[1].cardId);
-    expect(words.map((entry) => entry.wordPlacement.groupId)).toEqual(deck.draftGroups.map((group) => group.id));
-    expect(words.map((entry) => entry.wordPlacement.position)).toEqual([0,0]);
+    expect(words).toHaveLength(4);
+    expect(words[0].cardId).toBe(words[2].cardId);
+    expect(words.map((entry) => entry.wordPlacement.groupId)).toEqual(deck.draftGroups.flatMap((group) => [group.id, group.id]));
+    expect(words.map((entry) => entry.wordPlacement.position)).toEqual([0,1,0,1]);
   });
 });
 

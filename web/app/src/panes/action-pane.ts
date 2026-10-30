@@ -80,48 +80,58 @@ function buildPreview(
   const draftGroups: PhrasebookDraftGroup[] = suggestion.groups.map((group) => ({
     id: uuid(),
     title: group.title,
-    essentials: group.essentials.map((card) => ({ id: uuid(), card })),
-    vocab: group.vocab,
-    dialogue: group.dialogue.map((line) => ({ ...line, id: uuid() })),
+    thingsToSay: group.thingsToSay.map((card) => ({ id: uuid(), card })),
+    likelyExchanges: group.likelyExchanges.map((exchange) => ({
+      id: uuid(), title: exchange.title,
+      lines: exchange.lines.map((line) => ({
+        speaker: line.speaker, responses: line.responses.map((card) => ({ id: uuid(), card })),
+      })),
+    })),
+    words: group.words.map((family) => ({ ...family, id: uuid() })),
+    exampleConversation: group.exampleConversation.map((line) => ({ ...line, id: uuid() })),
   }));
 
   const cards: LibraryEntry[] = [];
   for (const group of draftGroups) {
-    for (const section of ["essentials", "dialogue"] as const) {
-      const phrases = group[section];
-      for (let position = 0; position < phrases.length; position += 1) {
-        const phrase = phrases[position];
-        const cardId = cardIdFor(phrase.card);
+    const addPhrase = (
+      phrase: PhrasebookDraftGroup["thingsToSay"][number],
+      section: NonNullable<LibraryEntry["occurrence"]>["section"],
+      position: number,
+      placement: Pick<NonNullable<LibraryEntry["occurrence"]>, "speaker" | "exchangeId" | "turnIndex"> = {},
+    ): void => {
+      const cardId = cardIdFor(phrase.card);
+      cards.push({
+        key: phrase.id, cardId, card: phrase.card,
+        occurrence: {
+          id: phrase.id, deckId, groupId: group.id, section, cardId, position,
+          translation: phrase.card.translation, ...placement,
+        },
+        sources: [],
+      });
+    };
+    group.thingsToSay.forEach((phrase, position) => addPhrase(phrase, "thingsToSay", position));
+    for (const exchange of group.likelyExchanges) {
+      exchange.lines.forEach((line, turnIndex) =>
+        line.responses.forEach((phrase, position) =>
+          addPhrase(phrase, "likelyExchanges", position, {
+            speaker: line.speaker, exchangeId: exchange.id, turnIndex,
+          })));
+    }
+    group.exampleConversation.forEach((phrase, position) =>
+      addPhrase(phrase, "exampleConversation", position, { speaker: phrase.speaker }));
+
+    for (const family of group.words) {
+      for (const [position, candidate] of family.items.entries()) {
+        const cardId = cardIdFor(candidate.card);
+        const placementId = uuid();
         cards.push({
-          key: phrase.id,
+          key: placementId,
           cardId,
-          card: phrase.card,
-          occurrence: {
-            id: phrase.id,
-            deckId,
-            groupId: group.id,
-            section,
-            cardId,
-            position,
-            translation: phrase.card.translation,
-            ...("speaker" in phrase ? { speaker: phrase.speaker } : {}),
-            ...("alternative" in phrase ? { alternative: phrase.alternative } : {}),
-          },
-          sources: [],
+          card: candidate.card,
+          wordPlacement: { id: placementId, deckId, groupId: group.id, familyId: family.id, cardId, position },
+          sources: [...(candidate.sources ?? [])],
         });
       }
-    }
-
-    for (const [position, candidate] of group.vocab.entries()) {
-      const cardId = cardIdFor(candidate.card);
-      const placementId = uuid();
-      cards.push({
-        key: placementId,
-        cardId,
-        card: candidate.card,
-        wordPlacement: { id: placementId, deckId, groupId: group.id, cardId, position },
-        sources: [...(candidate.sources ?? [])],
-      });
     }
   }
 

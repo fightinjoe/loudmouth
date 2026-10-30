@@ -93,7 +93,7 @@ If blind review is impossible, disclose it. Record the actual version from `eval
 - Distinguish detector output, local routing, repair-model output and local application. No repair
   request or a blocked saved patch is not repair-model refusal. If C is reopened, trace the entire
   process and locate the failure before proposing changes; see the
-  [recorded pause status](../../../evals/calibration/c-recalibration-findings.md#status-deferred-optional-investigation).
+  [current quality strategy](../../../docs/designs/phrasebook-quality-identity-storage-plan.md).
 - In projected review inputs, `text` is target-language content and `translation` is frozen English.
   `origin=translation` does not mean the defective field is named `translation`.
 - Compare observed severity with proposed authored severity, but do not overwrite either.

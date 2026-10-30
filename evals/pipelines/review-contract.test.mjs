@@ -8,7 +8,7 @@ const repairSchema = JSON.parse(readFileSync(new URL('./contracts/localized-repa
 
 function fixture() {
   return { task: { language: 'es', ability: 'basics' }, topic: { title: 'Transport' },
-    items: [{ handle: 'd:0', section: 'dialogue', english: { text: 'Where is the station?', speaker: 'you' }, speaker: 'you', alternative: false,
+    items: [{ handle: 'd:0', section: 'exampleConversation', english: { text: 'Where is the station?', speaker: 'you' }, speaker: 'you',
       card: { type: 'phrase', lang: 'es', text: '¿Dónde está el hospital?', translation: 'Where is the station?' } }],
     focus: { handle: 'd:0', field: 'text', category: 'meaning' } };
 }
@@ -19,7 +19,6 @@ test('localized correction preserves roles, intent and the original snapshot wit
   const result = applyLocalizedRepair(patch(), input);
   assert.equal(result.items[0].card.text, '¿Dónde está la estación?');
   assert.equal(result.items[0].speaker, 'you');
-  assert.equal(result.items[0].alternative, false);
   assert.equal(result.items[0].card.translation, 'Where is the station?');
   assert.equal(result.semanticReview, 'not-assessed');
   assert.deepEqual(input, before);

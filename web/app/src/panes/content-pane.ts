@@ -92,6 +92,12 @@ function previewGroups(deck: PreviewDeck): Group[] {
     deckId: deck.id,
     title: group.title,
     position,
+    exchanges: group.likelyExchanges.map((exchange, position) => ({
+      id: exchange.id, title: exchange.title, position,
+    })),
+    wordFamilies: group.words.map((family, position) => ({
+      id: family.id, title: family.title, position,
+    })),
   }));
 }
 
@@ -238,7 +244,10 @@ const transitions = {
       entry.card.type !== first.card.type
       || entry.occurrence?.groupId !== first.occurrence?.groupId
       || entry.occurrence?.section !== first.occurrence?.section
-      || entry.wordPlacement?.groupId !== first.wordPlacement?.groupId)) return slice;
+      || entry.occurrence?.exchangeId !== first.occurrence?.exchangeId
+      || entry.occurrence?.turnIndex !== first.occurrence?.turnIndex
+      || entry.wordPlacement?.groupId !== first.wordPlacement?.groupId
+      || entry.wordPlacement?.familyId !== first.wordPlacement?.familyId)) return slice;
     const pageSet = new Set(pageKeys);
     const current = slice.editOrder.filter((key) => pageSet.has(key));
     if (current.length !== pageKeys.length

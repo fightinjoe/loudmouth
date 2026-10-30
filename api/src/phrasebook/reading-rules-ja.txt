@@ -3,9 +3,9 @@
   by its hiragana reading in square brackets. Kana and katakana get no
   annotation. Okurigana stay outside the brackets: 抜[ぬ]く, never 抜く[ぬく].
   Example: 出汁[だし]は大丈夫[だいじょうぶ]ですか？
-- Also return "lineRomanizations" and "vocabRomanizations": arrays of strings
-  corresponding exactly by index and count to "lines" and the vocabulary
-  objects. Each vocabulary romanization describes that object's `target`.
+- Also return "phraseRomanizations" and "wordRomanizations": arrays of strings
+  corresponding exactly by index and count to "phrases" and the "words"
+  objects. Each word romanization describes that object's `target`.
   Romanize the Japanese you actually wrote, not the English source or a
   paraphrase.
 - Use modified Hepburn spelling: shi, chi, tsu, fu, ji, sha/shu/sho,

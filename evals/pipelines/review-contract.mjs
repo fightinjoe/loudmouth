@@ -26,7 +26,12 @@ export function modelInput(input, localized = false) {
     handle: item.handle, section: item.section, english: item.english,
     ...structuredClone(item.card),
     ...(item.speaker ? { speaker: item.speaker } : {}),
-    ...(item.alternative !== undefined ? { alternative: item.alternative } : {}),
+    ...(item.section === 'likelyExchanges' ? {
+      exchangeTitle: input.topic.likelyExchanges[item.location.exchangeIndex].title,
+      turnIndex: item.location.turnIndex, responseIndex: item.index,
+      speaker: input.topic.likelyExchanges[item.location.exchangeIndex].lines[item.location.turnIndex].speaker,
+    } : {}),
+    ...(item.section === 'words' && item.location ? { familyTitle: input.topic.words[item.location.familyIndex].title } : {}),
     ...(item.sources ? { sources: item.sources.map((source, index) => ({ index, snapshot: source.snapshot, span: source.span })) } : {}),
   }));
   const payload = { context: structuredClone(input.task), title: input.topic.title, items };

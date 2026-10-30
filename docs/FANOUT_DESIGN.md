@@ -85,10 +85,9 @@ extra sequential round-trip, so it has **no latency upside** over v0 and likely 
 makes sense if a v0 quality problem is diagnosed as structural-vs-creative task interference within the
 single prompt specifically, not as a latency problem.
 
-No evidence has pointed at that failure mode yet — every quality gap found via the sample-review loop
-(`api/evals/lookup-sample.js` + `api/.claude/skills/prompt-review`) so far has been fixable with prompt
-wording alone in the v0 single call. Treat this alternative as a fallback if that stops being true, not
-as a default next step.
+This alternative is not a default next step. It requires current evidence that structural/creative
+interference is the actual quality problem; prior prompt-tuning observations do not establish that
+diagnosis or justify another serial call.
 
 ## Modules if built
 

@@ -11,8 +11,9 @@ description: >
 
 Catchphrase creates bespoke, situation-specific phrasebooks through a short guided conversation. A
 learner describes an upcoming situation, answers a few context questions, chooses which conversations
-to prepare, and receives independent essential phrases, useful words, and a short two-sided dialogue
-for each topic. Web opens a **Phrasebook** contents page with topic previews and an optional contextual
+to prepare, and receives **Things to say**, **Likely exchanges** with explicit alternative responses,
+**Words** in titled families, and a linear **Example conversation**, in that order for each topic.
+Web opens a **Phrasebook** contents page with topic previews and an optional contextual
 watercolor cover. Each topic has its own swipeable page; saved standalone translations, words, and
 Chunks follow when present. A pinned Starred tab browses unique starred memberships; Review uses
 the same phrasebook-scoped set.
@@ -43,13 +44,13 @@ The web app and API support Chinese, Japanese, Spanish, Czech, and Ukrainian.
 
 1. **Create:** enter a topic or situation.
 2. **Clarify:** answer dynamic, topic-specific questions and check which conversations to prepare.
-3. **Generate:** atomically commit selected topics, keeping exact repeated essentials and vocabulary
-   in the earliest retained topic. Related words and all dialogue remain. Initial memberships are
-   unstarred; cover completion never delays text saving.
+3. **Generate:** atomically commit selected topics, keeping exact repeated Things to say in the
+   earliest retained topic. Every exchange response, Word-family placement and example line remains;
+   canonical cards and stars are shared. Initial memberships are unstarred; cover completion never delays text saving.
 4. **Prioritize:** stars belong to the current phrasebook. Starring an analysis candidate saves its
    learning target and historical evidence; unstarring retains both.
-5. **Review:** use the contents page to open a topic's essential phrases, two-column words, and complete
-   conversation, or open the pinned **Starred** collection. Review the current phrasebook's starred
+5. **Review:** use the contents page to open a topic's Things to say, Likely exchanges, titled Word
+   families, and Example conversation, or open the pinned **Starred** collection. Review the current phrasebook's starred
    set with reveal, direction switching, pronunciation, and swiping. Words use dictionary forms;
    Chunks retain their original source context.
 
@@ -79,7 +80,7 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 
 - Guided phrasebook creation through `/context` → `/phrasebook`, with dynamic context questions and
   a checklist of conversations to prepare.
-- Topic-first generation: independent essential phrases, useful words, and complete two-sided dialogue.
+- Four-section topic generation: Things to say, Likely exchanges, Words in titled families, Example conversation.
 - Web contents-first browsing, topic pages, optional supplemental collections, and phrasebook-scoped
   review with reveal, direction toggle, swipe navigation, and audio. This does not establish iOS parity.
 - Web phrase breakdowns with source-aligned semantic parts, contextual explanations, and dictionary
@@ -91,17 +92,23 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 - **Clients:** mobile-first PWA and native iOS app in one monorepo.
 - **Web implementation:** strict TypeScript, with runtime validation shared with the JavaScript API
   through `@catchphrase/card-schema`.
-- **Storage:** seven-table client-side IndexedDB library; no accounts, sync, or server-held library.
+- **Storage:** seven-table client-side IndexedDB library in fresh `loudmouth-topic-v4`; no accounts,
+  sync, or server-held library. Old databases/preferences remain untouched, without migration.
 - **API:** Cloud Run service in `api/`. `/context` returns questions, topic choices, and a seed-based
   illustration prompt. `/phrasebook` generates English per topic with at most four concurrent calls,
-  waits for all English, then translates each complete topic in parallel. The v3 response has
-  independent `essentials`, `vocab`, and `dialogue`; no scores or featured selection.
-  The client speculates while topics are selected, validates the whole draft, then commits original
-  selected indexes with exact cross-topic deduplication and no global word cap. Unselected topics
-  never suppress retained content; duplicate dialogue and related vocabulary remain.
+  waits for all English, then translates each complete topic in parallel. The v4 response has
+  `thingsToSay`, nested `likelyExchanges` response options, titled `words` families, and linear
+  `exampleConversation`; no scores, featured selection or inferred alternatives.
+  Translation uses flat phrase/Word arrays and code reconstructs the nesting. The client validates
+  the whole draft before committing original selected indexes. Only exact-English Things to say
+  is deduplicated across retained topics; Word-family placements are never removed across topics,
+  and there is no global word cap. Unselected topics never suppress retained content.
   Independent `/phrasebook-title` work freezes the available name or seed fallback at commit.
   `/phrasebook-image` generates PNGs through OpenRouter FLUX.2 Klein 4B without blocking text;
   ready PNG bytes persist with the phrasebook. Missing or failed art leaves text usable.
+  This promotion does not deploy API or web; their eventual release must be coordinated. Native iOS's
+  retired-route integration remains unchanged. Semantic continuation after alternative responses
+  remains an unvalidated, low-priority quality warning.
 - **Phrase analysis:** `/phrase-breakdown` receives the exact active occurrence snapshot and
   phrasebook context. The web client validates and caches the v2 analysis for the browser tab.
   Analysis is disposable; candidate stars resolve current library identities and memberships,
@@ -124,19 +131,18 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 
 **Phrasebook** is the user-facing term; `decks` remains an internal table name. All memberships in a
 phrasebook share its language. Reusable cards can belong to multiple phrasebooks with independent
-stars. Phrase occurrences retain their own translation, topic, section, and position; only dialogue
-occurrences carry speaker/alternative state. Topic Word placements preserve each topic's ordering
-while sharing canonical cards and phrasebook membership stars.
+stars. Phrase occurrences retain their own translation, topic, section, and position; exchange and
+example occurrences also preserve speaker/turn metadata. Topic Word placements preserve family and
+topic ordering while sharing canonical cards and phrasebook membership stars.
 
 See [`docs/CARD_SCHEMA.md`](./CARD_SCHEMA.md) for normative contracts. Common CardBatch and breakdown
-exchange remain v2; phrasebook responses and library backups are v3. The seven tables are `cards`,
+exchange remain v2; phrasebook responses and library backups are v4. The seven tables are `cards`,
 `decks`, `groups`, `memberships`, `occurrences`, `provenance`, and `topicWords`.
 
-This is a fresh-library cutover to `loudmouth-topic-v3`, with no old phrasebook reader, conversion,
-or restore path. Existing physical databases and old preference keys are left untouched.
-API, gateway, and web must ship together. The 2026-10-01 promotion is production code only:
-no deployment was authorized. Known translation defects remain accepted product risk and separate
-quality work, not a linguistic acceptance claim.
+This is a fresh-library cutover to `loudmouth-topic-v4`, with no v3 phrasebook import, conversion,
+or restore path. Existing physical v3 databases and old preference keys are left untouched.
+API, gateway, and web must ship together; coordinated deployment has not been performed.
+Known content-quality risks remain separate work, not a linguistic acceptance claim.
 
 ## Creation quality strategy
 
@@ -144,27 +150,24 @@ quality work, not a linguistic acceptance claim.
 including retries/failures; **trustworthy** means faithful meaning and learner intent, useful teaching,
 and avoidance of harmful learner-facing errors. Structural validation alone is not linguistic assurance.
 
-R1 evaluates English generation (A), translation (B), and optional detection/repair (C) independently
-using shared canonical learner contexts and qualitative review. **A and B are the primary quality
-priorities; the next checkpoint is a confident, reviewed baseline of their current behavior for future
-model/prompt comparisons.** Useful English essentials have the highest content priority; ordinary
-dialogue awkwardness is lower impact than material meaning/safety errors. A baseline records known
-failures and uncertainty rather than claiming error-free content.
+English generation (A), translation (B), and optional detection/repair (C) have independent offline
+workflows using five shared canonical learner contexts, authored mocks, saved-response evaluation,
+a proposed rubric and a subjective-review skill. Optional A→B checks exercise technical handoff.
+**No accepted linguistic baseline exists.** The current v4 implementation milestone is complete;
+future model/prompt comparisons need representative inputs, independently attributed review and
+explicit decision criteria, not completion of retired experiments.
 
-Independent offline A/B/C and composed A→B workflows exist with five canonical contexts, authored
-mocks, saved-response evaluation, a proposed rubric and a subjective-review skill. Paid diagnostic
-findings are recorded, but do not yet establish representative reliability or linguistic acceptance.
-**C is a nice-to-have investigation and is deferred.** Preserve its current findings and review the
-whole detection→gate→repair→application process if it is revisited; do not reconcile it now or make it
-an A/B prerequisite. Repair is not implemented in production and must not become a required serial
-stage before usable initial content. New baseline collection requires sample/rubric review and exact
-bounded native approval. R2 identity/schema follows quality findings; R3 storage follows R2.
-iOS/web convergence remains an independent contract/catch-up track.
+Useful Things to say, meaningful exchange choices and reusable Word families take priority over
+ordinary example-conversation awkwardness. Meaning/safety errors, pronunciation defects and
+unsupported evidence remain separate findings even when structural validation passes.
+
+**C is optional and deferred**, not an A/B prerequisite. Repair is not implemented in production
+and must not become a required serial stage before usable initial content. Any future identity,
+storage or iOS/web convergence work requires its own contract and release decisions.
 
 See the [current quality, identity, storage, and convergence plan](designs/phrasebook-quality-identity-storage-plan.md)
-for gates, review priorities, schema-grounded terms and historical caveats;
-[`evals/README.md`](../evals/README.md) is the tooling entrypoint. No production prompt changes,
-paid calls, deployment or API/card contract changes are authorized by this strategy.
+for current decisions and limits; [`evals/README.md`](../evals/README.md) is the tooling entrypoint.
+This strategy does not authorize paid calls, prompt/model changes or deployment.
 
 ## Open decisions
 

@@ -13,14 +13,18 @@ function phrasebook(titles = request.checklist) {
   let id = 0;
   const uuid = () => `00000000-0000-4000-8000-${String(++id).padStart(12,'0')}`;
   const phrase = (text,translation) => ({id:uuid(),card:{type:'phrase',lang:'es',text,translation}});
-  return {schemaVersion:3,title:'Dinner',usage,flags:[],groups:titles.map(title=>({
+  return {schemaVersion:4,title:'Dinner',usage,flags:[],groups:titles.map(title=>({
     id:uuid(),title,
-    essentials:[phrase('Soy vegano.','I am vegan.')],
-    dialogue:[
+    thingsToSay:[phrase('Soy vegano.','I am vegan.')],
+    likelyExchanges:[{id:uuid(),title:'Order food',lines:[
+      {speaker:'you',responses:[phrase('¿Tiene verduras?','Do you have vegetables?')]},
+      {speaker:'partner',responses:[phrase('Sí.','Yes.'),phrase('No.','No.')]},
+    ]}],
+    exampleConversation:[
       {...phrase('Hola.','Hello.'),speaker:'you'},
       {...phrase('Buenas.','Hello.'),speaker:'partner'},
     ],
-    vocab:[],
+    words:[],
   }))};
 }
 
@@ -32,9 +36,9 @@ describe('content response trust boundary',()=>{
   it('retains independent essentials and duplicate-title topics in request order',async()=>{
     serve(phrasebook(['Order','Order']));
     const result = await generatePhrasebook({...request,checklist:['Order','Order']});
-    expect(result.groups.map(group=>group.essentials[0].card.translation)).toEqual(['I am vegan.','I am vegan.']);
+    expect(result.groups.map(group=>group.thingsToSay[0].card.translation)).toEqual(['I am vegan.','I am vegan.']);
     expect(result.groups[0].id).not.toBe(result.groups[1].id);
-    expect(result.groups[0].vocab).toEqual([]);
+    expect(result.groups[0].words).toEqual([]);
   });
   it.each([['Order'],['Pay','Order'],['Order','Unrequested']])('rejects a structurally valid but wrong checklist: %j',async(...titles)=>{
     serve(phrasebook(titles));
@@ -42,9 +46,9 @@ describe('content response trust boundary',()=>{
   });
   it('rejects missing sections and retired v2 phrasebooks',async()=>{
     const missing = phrasebook();
-    delete missing.groups[0].essentials;
+    delete missing.groups[0].thingsToSay;
     serve(missing);
-    await expect(generatePhrasebook(request)).rejects.toThrow(/essentials/);
+    await expect(generatePhrasebook(request)).rejects.toThrow(/thingsToSay/);
     serve({...phrasebook(),schemaVersion:2});
     await expect(generatePhrasebook(request)).rejects.toThrow(/schemaVersion/);
   });

@@ -9,6 +9,7 @@ export function renderReport(report) {
       '',
       '**Not approved; not execution-ready. No dispatch, retry, paid judge or paid observations.**',
       'Provider, model/revision, prices, budget, latency, tokens and cost are unbound/null. Comparisons are deferred.',
+      'Phrasebook v4 authored structural fixtures; not historical baseline replay or certified word-family quality.',
       'Detector-gated offline patch reuse is only a counterfactual composition check. Fresh neutral handle-only repair calls are not in this proposal and have not been observed.',
       '',
       ...report.blockers.map(blocker => `- ${blocker}`),
@@ -29,6 +30,7 @@ export function renderReport(report) {
     `Structural result: **${report.structuralPass ? 'PASS' : 'FAIL'}**. Quality: **${report.quality}**.`,
     `Coverage: ${report.coverage.contexts} contexts (${report.coverage.ordinary} ordinary, ${report.coverage.challenge} challenge). Deliberate challenge sampling is not production prevalence.`,
     'This evaluator made no provider calls. Imported provider latency/tokens/cost are unavailable (null); subjective scores = null. Authored fixtures are not linguistic certification.',
+    `Phrasebook schema v${report.schemaVersion}; fixture provenance: ${report.fixtureProvenance.kind}. Not historical replay or certified word-family quality.`,
     `Rubric: \`${report.rubric.path}\` (${report.rubric.version}); all subjective scores remain null.`,
     '',
   ];

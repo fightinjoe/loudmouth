@@ -3,5 +3,5 @@
 **/.DS_Store
 .prompt-romp/
 evals/.runs/
-evals/failures/
+**/evals/failures/
 evals/corpora/

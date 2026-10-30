@@ -33,7 +33,9 @@ and [card lifecycle](CARD_SCHEMA.md#atomic-lifecycle), not endpoint execution.
 ## Shared contract conventions
 
 - Supported languages: `zh`, `ja`, `es`, `cs`, `uk` (native Ukrainian Cyrillic).
-- Phrasebook responses/library backups use v3; common card/breakdown exchange remains v2.
+- Phrasebook responses/library backups use v4; common card/breakdown exchange remains v2.
+  Topics contain Things to say, Likely exchanges with explicit response options, titled Word families,
+  and a linear Example conversation. Translation uses flat phrase/Word arrays; code restores nesting.
   Cards and readings follow [CARD_SCHEMA](CARD_SCHEMA.md) and the executable shared validator
   in `api/src/schema/index.ts`. Server draft UUIDs are remapped at local commit; cards contain no storage metadata.
 - Clients cannot choose a model. English generation uses `PHRASEBOOK_GENERATION_BACKEND`;
@@ -102,12 +104,16 @@ Static preset packs/removal of repair-style topics remain deferred; do not remov
 
 ## Status and reference ownership
 
-The v3 code cutover accepted known translation defects; it was not deployment authorization or a
-linguistic acceptance seal. See [historical cutover/evaluation evidence](../evals/history/api-cutover-and-legacy-evaluations.md).
-Current endpoint limitations belong with their endpoint, not in a second global behavior catalog.
+The v4 four-section promotion updates API and web code only, with no deployment. A future API/gateway/web
+release must be coordinated; native iOS's retired-route integration is intentionally unchanged.
+Prior local integration evidence is recorded with the
+[phrasebook endpoint](api/phrasebook.md#local-promotion-smoke). It establishes neither an accepted
+linguistic baseline nor broad reliability or deployed behavior.
+Current endpoint limitations belong with their endpoint, including the low-priority, unvalidated
+semantic continuation warning, not in a second global behavior catalog.
 
 - [API operations](../api/README.md): configuration, implementation map, local development, tests and deployment.
-- [Evaluation guidance](../evals/README.md) and [rubric](../evals/rubric.json): methods, scoped reporting and quality assessment; dated logs hold observations.
+- [Evaluation guidance](../evals/README.md) and [rubric](../evals/rubric.json): current workflows, scoped reporting and quality assessment.
 - [Product brief](BRIEF.md): goals, scope and deferred product work.
 - [Interaction design](DESIGN.md) and [journeys](journeys.md): client flows and state.
 - [Card schema](CARD_SCHEMA.md): shared card contracts, identity, evidence and persistence.

@@ -66,8 +66,6 @@ storage, the card schema, or the response shape.
 - The response is still `{ title, groups }`, so the web app (which already renders groups) and the
   iOS app both keep working — a prompt change doesn't touch them.
 - Same cards, same `context`, same IndexedDB — no data migration.
-- No fan-out needed: the budget probe (`api/evals/eval-budget.js`) showed google generates ~6
-  conversations in one call in about 10 seconds, cheaply.
 
 ## Decisions (settled)
 

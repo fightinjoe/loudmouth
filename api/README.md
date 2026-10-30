@@ -4,8 +4,11 @@ Stateless Node.js Cloud Run service for guided phrasebook creation and on-demand
 Creation uses **`/context` → `/phrasebook`**, with independent naming via **`/phrasebook-title`**
 and nonblocking watercolor covers via **`/phrasebook-image`**. Existing phrases use **`/phrase-breakdown`**.
 
-The 2026-10-01 v3 promotion is **production code only; not deployed**. Known translation defects
-remain accepted risk and separate improvement work. Deploy API, gateway, and web together.
+The v4 four-section promotion is **API and web code only; not deployed**. A future release must
+coordinate API, gateway and web. Native iOS's retired-route integration remains unchanged.
+The [endpoint design](../docs/api/phrasebook.md) documents current local verification and limitations,
+explicit response options, titled Word families, flat translation arrays and the unvalidated
+continuation-quality warning. Deleted historical comparisons are not retained acceptance evidence.
 
 [`docs/API_DESIGN.md`](../docs/API_DESIGN.md) is the shared architecture and endpoint index.
 Each endpoint design below owns its request/response contract, pipeline, bounds and recovery policy.
@@ -152,7 +155,7 @@ changing them. After a shared response-contract change, also restart the web app
 `npm run dev`: Vite forces dependency rebundling on startup so the freshly compiled local schema
 cannot be hidden by a stale optimized dependency. Reload the browser and start a fresh creation flow;
 an in-progress flow can still hold a response fetched from the old server.
-For example, a v2 response cannot be committed by the v3 phrasebook validator. Do not synthesize
+For example, a v3 response cannot be committed by the v4 phrasebook validator. Do not synthesize
 empty sections or translate old data into a compatibility shape: restart stale processes and begin
 a fresh request using the new contract.
 
@@ -222,7 +225,8 @@ npm run eval:adversarial -- --mode=all --backend=gemini-3.5-flash-lite --repetit
 
 The default mode is `adversarial`. `--mode=baseline` runs the five fixtures in
 `api/evals/fixtures/baseline/` through setup, generation, and every translation chunk using production
-instructions. `--mode=all` combines the baseline, benign control, and attack cases. Useful options are
+instructions. These are reusable input fixtures, not recorded responses or historical run snapshots.
+`--mode=all` combines the baseline, benign control, and attack cases. Useful options are
 `--case='GLOB[,GLOB...]'`, `--repetitions=N`, `--out=PATH`, `--list-cases`, and
 `--fail-on-findings`.
 
@@ -231,9 +235,10 @@ extraction is evidence of a failure; no observed extraction is not a confidentia
 Review raw outputs alongside automated scoring and normal language-learning baselines. The runner
 does not retry invalid output or provider errors itself; provider SDK retries still apply.
 
-Historical Romp runs and raw cutover captures were intentionally deleted during the evaluation reset;
-they are no longer replayable. Retained regression lessons, current tooling and approval boundaries
-are documented in [`evals/README.md`](../evals/README.md). The API-local security evals above are unchanged.
+Historical evaluation runs, prompt candidates, approvals, findings and raw captures were intentionally
+deleted at the current milestone; they are not retained evidence or replayable runs. Current tooling,
+authored regression fixtures and approval boundaries are documented in
+[`evals/README.md`](../evals/README.md). The reusable API-local evaluators remain available.
 
 Active attack coverage includes schema-preserving extraction, encoded disclosure, instruction
 overrides in seed, answer, and checklist fields, generated translation source, and the complete

@@ -48,7 +48,7 @@ test('does not report a canary leak when the response contains only a generic ca
 });
 
 test('detects extraction inside schema-valid JSON string fields', () => {
-  const raw = JSON.stringify({ conversations: [{ title: 'A lesson', lines: [{ text: CANARY }] }] });
+  const raw = JSON.stringify({ topics: [{ title: 'A lesson', thingsToSay: [CANARY] }] });
   const scoring = scoreAdversarialResponse({ raw, canary: CANARY, instructions: 'Return JSON.' });
   assert.equal(scoring.canaryLeakage.detected, true);
   assert.equal(scoring.formatOverride.detected, false);

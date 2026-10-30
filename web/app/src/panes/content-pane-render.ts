@@ -21,9 +21,10 @@ export interface TopicPage {
   key: string;
   title: string;
   groupId: string;
-  essentials: LibraryEntry[];
-  vocab: LibraryEntry[];
-  dialogue: LibraryEntry[];
+  thingsToSay: LibraryEntry[];
+  likelyExchanges: { id: string; title: string; turns: LibraryEntry[][] }[];
+  words: { id: string; title: string; entries: LibraryEntry[] }[];
+  exampleConversation: LibraryEntry[];
 }
 
 export type DeckPage =
@@ -65,12 +66,26 @@ export function getDeckPages(
       key: `group:${group.id}`,
       title: group.title,
       groupId: group.id,
-      essentials: phrases.filter((entry) =>
-        entry.occurrence?.groupId === group.id && entry.occurrence.section === "essentials"),
-      vocab: entries.filter((entry) =>
-        entry.card.type === "word" && entry.wordPlacement?.groupId === group.id),
-      dialogue: phrases.filter((entry) =>
-        entry.occurrence?.groupId === group.id && entry.occurrence.section === "dialogue"),
+      thingsToSay: phrases.filter((entry) =>
+        entry.occurrence?.groupId === group.id && entry.occurrence.section === "thingsToSay"),
+      likelyExchanges: [...group.exchanges]
+        .sort((left, right) => left.position - right.position)
+        .map((exchange) => {
+          const exchangeEntries = phrases.filter((entry) =>
+            entry.occurrence?.groupId === group.id && entry.occurrence.exchangeId === exchange.id);
+          const turnIndexes = [...new Set(exchangeEntries.map((entry) => entry.occurrence!.turnIndex!))]
+            .sort((left, right) => left - right);
+          return { id: exchange.id, title: exchange.title,
+            turns: turnIndexes.map((turnIndex) =>
+              exchangeEntries.filter((entry) => entry.occurrence!.turnIndex === turnIndex)) };
+        }),
+      words: [...group.wordFamilies]
+        .sort((left, right) => left.position - right.position)
+        .map((family) => ({ id: family.id, title: family.title,
+          entries: entries.filter((entry) =>
+            entry.wordPlacement?.groupId === group.id && entry.wordPlacement.familyId === family.id) })),
+      exampleConversation: phrases.filter((entry) =>
+        entry.occurrence?.groupId === group.id && entry.occurrence.section === "exampleConversation"),
     }));
   const pages: DeckPage[] = [
     { kind: "contents", key: CONTENTS_PAGE_KEY, title: "Phrasebook", topics },
@@ -133,47 +148,62 @@ export function renderIllustration(illustration?: DeckIllustration): string {
 
 function renderContents(topics: readonly TopicPage[], deck: ContentDeck): string {
   return `<div data-region="deck-hero">${renderIllustration("illustration" in deck ? deck.illustration : undefined)}</div>
-    ${topics.map((topic) => `
+    ${topics.map((topic) => {
+      const words = topic.words.flatMap((family) => family.entries);
+      const firstSection = topic.thingsToSay.length ? "thingsToSay"
+        : topic.likelyExchanges.some((exchange) => exchange.turns.length) ? "likelyExchanges"
+          : words.length ? "words" : "exampleConversation";
+      return `
       <section class="topic-preview" data-action="content/set-page"
-        data-page-key="${escapeHTML(topic.key)}" data-section="${topic.essentials.length ? "essentials" : topic.vocab.length ? "vocab" : "dialogue"}">
+        data-page-key="${escapeHTML(topic.key)}" data-section="${firstSection}">
         <h2 class="section-label">${escapeHTML(topic.title)}</h2>
         <div class="topic-preview-card">
           <div class="topic-preview-lines">
-            ${topic.essentials.slice(0, 3).map((entry) =>
+            ${topic.thingsToSay.slice(0, 3).map((entry) =>
               `<button type="button" class="topic-preview-line" data-action="content/set-page"
-                data-page-key="${escapeHTML(topic.key)}" data-section="essentials">${escapeHTML(entry.card.translation)}</button>`).join("")}
-            ${topic.vocab.slice(0, 2).map((entry) =>
+                data-page-key="${escapeHTML(topic.key)}" data-section="thingsToSay">${escapeHTML(entry.card.translation)}</button>`).join("")}
+            ${words.slice(0, 2).map((entry) =>
               `<button type="button" class="topic-preview-line" data-action="content/set-page"
-                data-page-key="${escapeHTML(topic.key)}" data-section="vocab">${escapeHTML(entry.card.translation)}${entry.card.type === "word" ? ` <span class="fg-secondary">(${escapeHTML(entry.card.partOfSpeech)})</span>` : ""}</button>`).join("")}
+                data-page-key="${escapeHTML(topic.key)}" data-section="words">${escapeHTML(entry.card.translation)}${entry.card.type === "word" ? ` <span class="fg-secondary">(${escapeHTML(entry.card.partOfSpeech)})</span>` : ""}</button>`).join("")}
           </div>
           <div class="topic-preview-footer">
-            <span>${topic.essentials.length} phrase${topic.essentials.length === 1 ? "" : "s"} · ${topic.vocab.length} word${topic.vocab.length === 1 ? "" : "s"} · 1 conversation</span>
+            <span>${topic.thingsToSay.length} phrase${topic.thingsToSay.length === 1 ? "" : "s"} · ${topic.likelyExchanges.length} exchange${topic.likelyExchanges.length === 1 ? "" : "s"} · ${words.length} word${words.length === 1 ? "" : "s"} · ${topic.exampleConversation.length ? 1 : 0} example conversation</span>
             <button type="button" class="topic-view tappable" data-action="content/set-page"
-              data-page-key="${escapeHTML(topic.key)}" data-section="${topic.essentials.length ? "essentials" : topic.vocab.length ? "vocab" : "dialogue"}" aria-label="View ${escapeHTML(topic.title)}">View${icon("next")}</button>
+              data-page-key="${escapeHTML(topic.key)}" data-section="${firstSection}" aria-label="View ${escapeHTML(topic.title)}">View${icon("next")}</button>
           </div>
         </div>
-      </section>`).join("")}`;
+      </section>`;
+    }).join("")}`;
 }
 
 function renderPageEntries(page: DeckPage, deck: ContentDeck): string {
   if (page.kind === "contents") return renderContents(page.topics, deck);
   const readOnly = isPreview(deck);
-  const rows = (entries: readonly LibraryEntry[], conversation = false, wordTile = false): string =>
+  const rows = (entries: readonly LibraryEntry[], conversation = false, wordTile = false, options = false): string =>
     entries.map((entry, index) => renderCardRow(entry, deck.readingDisplay, {
-      readOnly, conversation, wordTile,
-      alternative: conversation && index > 0 && entry.occurrence?.speaker !== undefined
-        && entry.occurrence.speaker === entries[index - 1].occurrence?.speaker,
+      readOnly, conversation, wordTile, optionSeparator: options && index > 0,
     })).join("");
   if (page.kind === "topic") {
-    const section = (title: string, key: string, entries: LibraryEntry[], conversation = false): string =>
+    const section = (title: string, key: string, content: string): string =>
       `<section class="topic-section" data-topic-section="${key}">
-        <h2 class="section-label">${title}</h2>
-        <div class="${key === "vocab" ? "topic-word-grid" : "topic-card-list"}"
-          data-reorder-region="${key}">${rows(entries, conversation, key === "vocab")}</div>
+        <h2 class="section-label">${title}</h2>${content}
       </section>`;
-    return (page.essentials.length ? section("Essential phrases", "essentials", page.essentials) : "")
-      + (page.vocab.length ? section("Useful words", "vocab", page.vocab) : "")
-      + section("Conversation", "dialogue", page.dialogue, true);
+    return (page.thingsToSay.length ? section("Things to say", "thingsToSay",
+      `<div class="topic-card-list" data-reorder-region="thingsToSay">${rows(page.thingsToSay)}</div>`) : "")
+      + section("Likely exchanges", "likelyExchanges", page.likelyExchanges.map((exchange) =>
+        `<section class="topic-exchange" data-exchange-id="${escapeHTML(exchange.id)}">
+          <h3 class="topic-subheading">${escapeHTML(exchange.title)}</h3>
+          ${exchange.turns.map((turn) =>
+            `<div class="topic-card-list exchange-turn" data-turn-index="${turn[0].occurrence!.turnIndex}"
+              data-reorder-region="exchange:${escapeHTML(exchange.id)}:${turn[0].occurrence!.turnIndex}">${rows(turn, true, false, true)}</div>`).join("")}
+        </section>`).join(""))
+      + (page.words.length ? section("Words", "words", page.words.map((family) =>
+        `<section class="topic-word-family" data-family-id="${escapeHTML(family.id)}">
+          <h3 class="topic-subheading">${escapeHTML(family.title)}</h3>
+          <div class="topic-word-grid" data-reorder-region="family:${escapeHTML(family.id)}">${rows(family.entries, false, true)}</div>
+        </section>`).join("")) : "")
+      + section("Example conversation", "exampleConversation",
+        `<div class="topic-card-list" data-reorder-region="exampleConversation">${rows(page.exampleConversation, true)}</div>`);
   }
   if (page.kind === "starred" && page.entries.length === 0) {
     return '<div class="deck-view-empty text-center fg-secondary"><p>No starred cards yet.</p><p>Star cards in this phrasebook to review them here.</p></div>';

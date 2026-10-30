@@ -14,8 +14,12 @@ test('hostile historical source stays inert through the real card lifecycle', as
     const phrase = {type:'phrase',lang:'ja',text:`猫${payload}`,translation:payload,reading:[['猫','ねこ'],[payload,null]],notes:payload}
     const deck = await db.commitPhrasebook({name:payload,lang:'ja',selectedIndexes:[0],groups:[{
       id:crypto.randomUUID(),title:payload,
-      essentials:[{id:crypto.randomUUID(),card:phrase}],vocab:[],
-      dialogue:[
+      thingsToSay:[{id:crypto.randomUUID(),card:phrase}],words:[],
+      likelyExchanges:[{id:crypto.randomUUID(),title:payload,lines:[
+        {speaker:'you',responses:[{id:crypto.randomUUID(),card:phrase}]},
+        {speaker:'partner',responses:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'はい',translation:'Yes'}}]},
+      ]}],
+      exampleConversation:[
         {id:crypto.randomUUID(),card:phrase,speaker:'you'},
         {id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'はい',translation:'Yes'},speaker:'partner'},
       ],

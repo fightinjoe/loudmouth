@@ -22,7 +22,6 @@ From the repository root:
 
 Options:
   --prompt=PATH           Compare a candidate against production (otherwise production only)
-  --baseline-prompt=PATH  Use a frozen experimental baseline; requires --prompt
   --fixtures=PATH         Fixture array (default: evals/fixtures/phrase-breakdown.json)
   --case=ID               Run one fixture
   --backend=NAME          Provider registry key (default: server configuration)
@@ -59,11 +58,7 @@ async function callModel(handler, prompt, options) {
 
 function printRecord(record, verbose = false) {
   const usage = record.usage;
-  const snapshot = record.request.source?.snapshot ?? {
-    lang: record.request.language,
-    text: record.request.text,
-    translation: record.request.translation,
-  };
+  const snapshot = record.request.source.snapshot;
   console.log(`\n${snapshot.lang} | ${usage?.model ?? 'no model response'} | ${record.variant} #${record.repetition} | ${record.findings.length ? 'FAIL' : 'PASS'} mechanical${usage ? ` | ${(usage.durationMs / 1000).toFixed(2)}s | ${usage.outputTokens} output tokens` : ''}`);
   console.log(`${snapshot.text} → ${snapshot.translation}`);
   if (record.request.context) {
@@ -97,19 +92,11 @@ function printRecord(record, verbose = false) {
             : chunk.target?.kind ?? (rawTarget === null
               ? 'chunk' : Number.isSafeInteger(rawTarget) ? `word[${rawTarget}]` : 'missing');
           console.log(`     Target: ${target}`);
-        } else {
-          const items = chunk.learningItems;
-          if (!Array.isArray(items)) console.log('     ! Missing or invalid historical learningItems');
-          else if (items.length) console.log(`     Historical learn: ${items.map(item => `${item?.text} — ${item?.meaning}`).join(' | ')}`);
         }
         if (verbose) {
           console.log(`     Role: ${chunk.role}`);
           console.log(`     Explanation: ${chunk.explanation}`);
         }
-      }
-      if (data.pattern) {
-        console.log(`  Historical pattern: ${data.pattern.formula}`);
-        if (verbose) console.log(JSON.stringify(data.pattern, null, 2));
       }
     } catch {
       console.log(record.raw);
@@ -123,7 +110,7 @@ function printRecord(record, verbose = false) {
 
 async function main() {
   const { values } = parseArgs({ options: {
-    prompt: { type: 'string' }, 'baseline-prompt': { type: 'string' },
+    prompt: { type: 'string' },
     fixtures: { type: 'string' }, case: { type: 'string' }, backend: { type: 'string' },
     repetitions: { type: 'string', default: '1' }, out: { type: 'string' },
     replay: { type: 'string' }, verbose: { type: 'boolean', default: false }, help: { type: 'boolean' },
@@ -134,18 +121,14 @@ async function main() {
     for (const record of saved.records) printRecord(record, values.verbose);
     return;
   }
-  if (values['baseline-prompt'] && !values.prompt) throw new Error('--baseline-prompt requires --prompt');
   const repetitions = Number(values.repetitions);
   if (!Number.isSafeInteger(repetitions) || repetitions < 1) throw new Error('--repetitions must be a positive integer');
   const backend = values.backend ?? getBackendName();
   if (!Object.hasOwn(LLM_REGISTRY, backend)) throw new Error(`Unknown backend: ${backend}`);
   const handler = LLM_REGISTRY[backend];
   const promptPath = values.prompt ? path.resolve(values.prompt) : null;
-  const baselinePromptPath = values['baseline-prompt'] ? path.resolve(values['baseline-prompt']) : null;
   const candidate = promptPath ? fs.readFileSync(promptPath, 'utf8') : null;
-  const baseline = baselinePromptPath ? fs.readFileSync(baselinePromptPath, 'utf8') : null;
   if (candidate !== null && !candidate.trim()) throw new Error('Candidate prompt must not be blank');
-  if (baseline !== null && !baseline.trim()) throw new Error('Baseline prompt must not be blank');
   const fixturesPath = path.resolve(values.fixtures ?? path.join(EVALS, 'fixtures/phrase-breakdown.json'));
   const fixtures = JSON.parse(fs.readFileSync(fixturesPath, 'utf8'));
   if (!Array.isArray(fixtures)) throw new Error('Fixtures must be an array');
@@ -164,7 +147,7 @@ async function main() {
     maxOutputTokens: Math.min(PHRASE_BREAKDOWN_MAX_TOKENS, handler.maxOutputTokens ?? Infinity),
     timeoutMs: handler.timeoutMs || PHRASE_BREAKDOWN_TIMEOUT_MS,
   };
-  const artifact = { startedAt: new Date().toISOString(), backend, promptPath, baselinePromptPath, fixturesPath, options, records: [] };
+  const artifact = { startedAt: new Date().toISOString(), backend, promptPath, fixturesPath, options, records: [] };
   const outputPath = path.resolve(values.out ?? path.join(EVALS, 'artifacts', `phrase-breakdown-${artifact.startedAt.replace(/[:.]/gu, '-')}.json`));
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, JSON.stringify(artifact, null, 2) + '\n', { flag: 'wx' });
@@ -172,11 +155,10 @@ async function main() {
   for (const fixture of selected) {
     for (let repetition = 1; repetition <= repetitions; repetition++) {
       const variants = candidate === null ? ['production']
-        : repetition % 2 ? ['baseline', 'candidate'] : ['candidate', 'baseline'];
+        : repetition % 2 ? ['production', 'candidate'] : ['candidate', 'production'];
       for (const variant of variants) {
         const prompt = buildPhraseBreakdownPrompt(fixture.request);
         if (variant === 'candidate') prompt.instructions = candidate;
-        else if (baseline !== null) prompt.instructions = baseline;
         const record = {
           caseId: fixture.id, provenance: fixture.provenance, request: fixture.request,
           itemFormat: 'v2-candidates', variant, repetition, prompt, review: fixture.review,

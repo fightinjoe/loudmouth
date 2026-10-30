@@ -39,9 +39,9 @@ const phrase = (key, cardId, translation, occurrence = {}) => ({
     cardId,
     position: occurrence.position ?? 0,
     translation,
-    ...(occurrence.groupId ? { groupId: occurrence.groupId, section: occurrence.section ?? "dialogue" } : {}),
+    ...(occurrence.groupId ? { groupId: occurrence.groupId, section: occurrence.section ?? "exampleConversation" } : {}),
     ...(occurrence.speaker ? { speaker: occurrence.speaker } : {}),
-    ...(occurrence.alternative ? { alternative: true } : {}),
+    ...(occurrence.exchangeId ? { exchangeId: occurrence.exchangeId, turnIndex: occurrence.turnIndex } : {}),
   },
   sources: [],
 });
@@ -85,8 +85,10 @@ const chunk = {
 };
 
 const groups = [
-  { id: "group-later", deckId: deck.id, title: "Ordering", position: 1 },
-  { id: "group-first", deckId: deck.id, title: "Ordering", position: 0 },
+  { id: "group-later", deckId: deck.id, title: "Ordering", position: 1, exchanges: [], wordFamilies: [] },
+  { id: "group-first", deckId: deck.id, title: "Ordering", position: 0,
+    exchanges: [{ id: "exchange-first", title: "An invitation", position: 0 }],
+    wordFamilies: [{ id: "family-first", title: "Drinks", position: 0 }] },
 ];
 
 describe("phrasebook joined-entry pages", () => {
@@ -106,14 +108,15 @@ describe("phrasebook joined-entry pages", () => {
     ]);
     expect(pages[1].topics.map((topic) => topic.groupId)).toEqual(["group-first", "group-later"]);
     expect(pages[4].entries.map((entry) => entry.key)).toEqual(["loose-new", "loose-old"]);
-    expect(pages[2].dialogue.map((entry) => entry.key)).toEqual(["first-row"]);
-    expect(pages[3].dialogue.map((entry) => entry.key)).toEqual(["later-row"]);
+    expect(pages[2].exampleConversation.map((entry) => entry.key)).toEqual(["first-row"]);
+    expect(pages[3].exampleConversation.map((entry) => entry.key)).toEqual(["later-row"]);
   });
 
-  it("renders each repeated occurrence's interpretation, speaker, alternative, and entry key", () => {
+  it("renders repeated interpretations as explicit options within their exchange turn", () => {
     const entries = [
       phrase("occ-you", "shared", "please go ahead", {
         groupId: "group-first",
+        section: "likelyExchanges", exchangeId: "exchange-first", turnIndex: 0,
         position: 0,
         speaker: "you",
       }),
@@ -121,10 +124,11 @@ describe("phrasebook joined-entry pages", () => {
         groupId: "group-first",
         position: 1,
         speaker: "you",
-        alternative: true,
+        section: "likelyExchanges", exchangeId: "exchange-first", turnIndex: 0,
       }),
       phrase("occ-partner", "reply", "Thank you", {
         groupId: "group-first", position: 2, speaker: "partner",
+        section: "likelyExchanges", exchangeId: "exchange-first", turnIndex: 1,
       }),
     ];
     const root = document.createElement("div");
@@ -140,20 +144,21 @@ describe("phrasebook joined-entry pages", () => {
     expect(rows[0].dataset.speaker).toBe("you");
     expect(rows[1].dataset.speaker).toBe("you");
     expect(rows[2].dataset.speaker).toBe("partner");
-    expect(rows[1].querySelector(".card-alternative").textContent).toBe("or");
+    expect(rows[1].querySelector(".card-option-separator")).not.toBeNull();
+    expect(rows[2].querySelector(".card-option-separator")).toBeNull();
   });
 
   it("keeps independent essentials and topic-local words without duplicating interactive cards on contents", () => {
-    const essentials = Array.from({ length: 4 }, (_, index) =>
+    const thingsToSay = Array.from({ length: 4 }, (_, index) =>
       phrase(`essential-${index}`, "shared", `Essential ${index}`, {
-        groupId: "group-first", section: "essentials", position: index,
+        groupId: "group-first", section: "thingsToSay", position: index,
       }));
     const words = Array.from({ length: 3 }, (_, index) => ({
       ...word, key: `placement-${index}`,
-      wordPlacement: { id: `placement-${index}`, deckId: deck.id, groupId: "group-first", cardId: word.cardId, position: index },
+      wordPlacement: { id: `placement-${index}`, deckId: deck.id, groupId: "group-first", familyId: "family-first", cardId: word.cardId, position: index },
     }));
-    const entries = [...essentials, ...words,
-      phrase("dialogue", "shared", "Dialogue meaning", { groupId: "group-first", speaker: "you" })];
+    const entries = [...thingsToSay, ...words,
+      phrase("exampleConversation", "shared", "Dialogue meaning", { groupId: "group-first", speaker: "you" })];
     const root = document.createElement("div");
     root.innerHTML = renderDeckBody(deck, entries, groups, null);
     expect(root.querySelector('[role="tab"][aria-selected="true"]').dataset.pageKey).toBe("contents");
@@ -162,14 +167,13 @@ describe("phrasebook joined-entry pages", () => {
     const preview = contents.querySelector(".topic-preview");
     expect([...preview.querySelectorAll(".topic-preview-line")].map(row => row.textContent.trim()))
       .toEqual(["Essential 0", "Essential 1", "Essential 2", "water (noun)", "water (noun)"]);
-    expect(preview.querySelector(".topic-preview-footer").textContent).toContain("4 phrases · 3 words · 1 conversation");
     expect([...contents.querySelectorAll(".topic-view")].map(button => button.dataset.pageKey))
       .toEqual(["group:group-first", "group:group-later"]);
     const topic = root.querySelector('.deck-page[data-page-key="group:group-first"]');
-    expect(topic.querySelectorAll('[data-reorder-region="essentials"] .card-row-wrapper')).toHaveLength(4);
-    expect(topic.querySelector('[data-reorder-region="essentials"] [data-speaker]')).toBeNull();
+    expect(topic.querySelectorAll('[data-reorder-region="thingsToSay"] .card-row-wrapper')).toHaveLength(4);
+    expect(topic.querySelector('[data-reorder-region="thingsToSay"] [data-speaker]')).toBeNull();
     expect(topic.querySelectorAll(".topic-word-grid .card-word-tile")).toHaveLength(3);
-    expect(topic.querySelector('[data-reorder-region="dialogue"] .card-term-english').textContent)
+    expect(topic.querySelector('[data-reorder-region="exampleConversation"] .card-term-english').textContent)
       .toBe("Dialogue meaning");
     expect(root.querySelector('.deck-page[data-page-key="group:group-later"] .topic-word-grid')).toBeNull();
     expect(root.querySelector('[role="tab"][data-page-key="words"]')).toBeNull();
@@ -254,7 +258,7 @@ describe("content rendering safety", () => {
     root.innerHTML = renderDeckBody(
       { ...deck, name: injected },
       [entry],
-      [{ id: "hostile-group", deckId: deck.id, title: injected, position: 0 }],
+      [{ id: "hostile-group", deckId: deck.id, title: injected, position: 0, exchanges: [], wordFamilies: [] }],
       "group:hostile-group",
     );
 

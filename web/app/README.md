@@ -162,12 +162,14 @@ instead of Node's unrelated native Web Storage implementation.
   Node startup bypasses `predev` and requires this compiled output; production
   startup deliberately does not require the TypeScript compiler.
 
-**Breaking v3 rollout:** API, gateway, and web must deploy together. Phrasebook responses and library
-backups are v3; common CardBatch imports and breakdown exchange remain v2.
-The new web library is `loudmouth-topic-v3`, with independent section occurrences and topic Word
-placements. Old databases/preferences remain physically untouched, with no old phrasebook reader,
-conversion, or restore. Reload marks interrupted pending cover work failed without paid retries.
-The 2026-10-01 promotion changes production code only; it does not authorize or perform deployment.
+**Breaking v4 rollout:** a future API/gateway/web release must be coordinated. Phrasebook responses
+and library backups are v4; common CardBatch imports and breakdown exchange remain v2.
+The fresh web library is `loudmouth-topic-v4`, with durable exchange/family titles and order,
+explicit per-turn response occurrences, linear example occurrences, and family-local Word placements.
+Old databases/preferences remain physically untouched, with no old phrasebook reader, conversion,
+or restore. Reload marks interrupted pending cover work failed without paid retries.
+This promotion changes API and web code only; it does not authorize or perform deployment.
+Native iOS's retired-route integration remains unchanged.
 
 ## Preview production build
 
@@ -227,12 +229,17 @@ validation. Preferences remain separate from durable library content.
 
 `src/js/db.ts` owns the seven-table Dexie library, atomic phrasebook commits, canonical card identity,
 phrasebook-specific membership stars, occurrences, topic Word placements, and historical evidence.
-After final topic selection, commit removes exact essentials/Word placements already present in an
-earlier retained topic. It preserves related vocabulary, every dialogue line, and historical evidence;
-unchecked topics never suppress selected content. No API round trip or model stage is added.
+Each topic displays **Things to say**, **Likely exchanges**, **Words** with family titles, and
+**Example conversation**, in that order. Alternatives are explicit options within one exchange turn;
+the example is linear. After final topic selection, commit removes only exact-English Things to say
+already present in an earlier retained topic. Every exchange option, example line and family-local
+Word placement survives; shared Words reuse canonical cards and membership without removing
+placements across topics. Unchecked topics never suppress selected content. No API round trip or
+model stage is added. Reorder is local to Things to say/example sections, one exchange turn's
+options, or one Word family; durable titles, IDs and ordering survive reload and backup.
 Phrasebook and language-wide reads share provenance retrieval while retaining different source
 ordering: the active phrasebook's evidence first versus chronological ordering.
 
-Library backup/restore uses v3; `components/json-panel.ts` exports v2 CardBatch content through the
+Library backup/restore uses v4; `components/json-panel.ts` exports v2 CardBatch content through the
 shared schema. The library exposes validated import and backup/restore APIs; there is no
 `#deck?cards=` URL-import handler. `#deck?id=` selects a stored phrasebook.

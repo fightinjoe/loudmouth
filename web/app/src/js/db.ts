@@ -10,12 +10,14 @@ import {
   validateCard,
   validateEvidence,
   validatePhrasebookImage,
+  validatePhrasebookGroup,
   type Candidate,
   type Card,
   type Evidence,
   type Lang,
   type Phrase,
-  type Word,
+  type PhrasebookPhrase,
+  type PhrasebookConversationLine,
 } from "@catchphrase/card-schema";
 import type {
   CardRecord,
@@ -31,8 +33,6 @@ import type {
   Membership,
   Occurrence,
   PhrasebookDraftGroup,
-  PhrasebookDraftEssential,
-  PhrasebookDraftDialogueLine,
   Provenance,
   ReadingDisplay,
   TopicWordPlacement,
@@ -43,10 +43,13 @@ import { uuid } from "./utils";
 import { ABILITIES } from "./ability";
 import { CONTENT_LANGUAGES } from "./lang";
 
-const DATABASE_NAME = "loudmouth-topic-v3";
+const DATABASE_NAME = "loudmouth-topic-v4";
 const MODES: readonly DeckMode[] = ["study", "review", "reverse"];
 const ORDERS: readonly DeckOrder[] = ["default", "random", "reverse"];
 const READING_DISPLAYS: readonly ReadingDisplay[] = ["reading", "romanization"];
+const SECTION_ORDER: Record<NonNullable<Occurrence["section"]>, number> = {
+  thingsToSay: 0, likelyExchanges: 1, exampleConversation: 2,
+};
 const MAX_CONTENT_LENGTH = 2_000;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -146,10 +149,6 @@ function isoTimestamp(value: unknown, path: string): string {
   return value;
 }
 
-function optionalTrue(value: unknown, path: string): true {
-  if (value !== true) throw new Error(`${path} must be true when present`);
-  return true;
-}
 
 function assertAbort(signal?: AbortSignal): void {
   if (signal?.aborted) throw new DOMException("The operation was aborted", "AbortError");
@@ -213,81 +212,18 @@ function validateGeneration(value: unknown, path: string): Generation {
   return { seed, ability, answers };
 }
 
-function validateDraftEssential(
-  value: unknown,
-  path: string,
-  lang: Lang,
-  dialogue = false,
-): PhrasebookDraftEssential | PhrasebookDraftDialogueLine {
-  const phrase = objectValue(value, path);
-  assertExactFields(phrase, dialogue ? ["id", "card", "speaker", "alternative"] : ["id", "card"], path);
-  const id = requiredString(phrase.id, `${path}.id`);
-  const card = validateCard(phrase.card, `${path}.card`);
-  if (card.type !== "phrase") throw new Error(`${path}.card.type must be phrase`);
-  if (card.lang !== lang) throw new Error(`${path}.card.lang must equal phrasebook lang`);
-  if (!dialogue) return { id, card };
-  return {
-    id,
-    card,
-    speaker: enumValue(phrase.speaker, ["you", "partner"], `${path}.speaker`),
-    ...(Object.hasOwn(phrase, "alternative")
-      ? { alternative: optionalTrue(phrase.alternative, `${path}.alternative`) } : {}),
-  };
-}
-
 function validateDraftGroup(value: unknown, path: string, lang: Lang): PhrasebookDraftGroup {
-  const group = objectValue(value, path);
-  assertExactFields(group, ["id", "title", "essentials", "vocab", "dialogue"], path);
-  const id = requiredString(group.id, `${path}.id`);
-  const title = requiredString(group.title, `${path}.title`, 500);
-  if (!Array.isArray(group.essentials) || group.essentials.length < 1 || group.essentials.length > 8) {
-    throw new Error(`${path}.essentials must contain 1–8 phrases`);
+  const group = validatePhrasebookGroup(value, path);
+  const phrases = [
+    ...group.thingsToSay,
+    ...group.likelyExchanges.flatMap((exchange) => exchange.lines.flatMap((line) => line.responses)),
+    ...group.exampleConversation,
+  ];
+  if (phrases.some((phrase) => phrase.card.lang !== lang)
+    || group.words.some((family) => family.items.some((word) => word.card.lang !== lang))) {
+    throw new Error(`${path} card languages must equal phrasebook lang`);
   }
-  if (!Array.isArray(group.dialogue) || group.dialogue.length < 2 || group.dialogue.length > 10) {
-    throw new Error(`${path}.dialogue must contain 2–10 phrases`);
-  }
-  if (!Array.isArray(group.vocab) || group.vocab.length > 10) {
-    throw new Error(`${path}.vocab must contain 0–10 Words`);
-  }
-  const essentials = group.essentials.map((phrase, index) =>
-    validateDraftEssential(phrase, `${path}.essentials[${index}]`, lang));
-  const dialogue = group.dialogue.map((phrase, index) =>
-    validateDraftEssential(phrase, `${path}.dialogue[${index}]`, lang, true) as PhrasebookDraftDialogueLine);
-  if (new Set(dialogue.map((phrase) => phrase.speaker)).size !== 2) {
-    throw new Error(`${path}.dialogue must contain both speakers`);
-  }
-  for (const [index, line] of dialogue.entries()) {
-    if ((line.alternative === true) !== (index > 0 && dialogue[index - 1].speaker === line.speaker)) {
-      throw new Error(`${path}.dialogue[${index}].alternative must match adjacent same-speaker lines`);
-    }
-  }
-  const phraseById = new Map<string, PhrasebookDraftEssential>();
-  for (const phrase of [...essentials, ...dialogue]) {
-    if (phraseById.has(phrase.id)) throw new Error(`${path} contains duplicate phrase id ${phrase.id}`);
-    phraseById.set(phrase.id, phrase);
-  }
-  const vocab = group.vocab.map((candidate, index) => {
-    const validated = validateCandidate(candidate, `${path}.vocab[${index}]`);
-    if (validated.card.type !== "word") throw new Error(`${path}.vocab[${index}].card.type must be word`);
-    if (validated.card.lang !== lang) throw new Error(`${path}.vocab[${index}].card.lang must equal phrasebook lang`);
-    for (const [sourceIndex, source] of (validated.sources ?? []).entries()) {
-      const draftPhrase = source.ref?.occurrenceId ? phraseById.get(source.ref.occurrenceId) : undefined;
-      if (source.ref && (!draftPhrase || Object.hasOwn(source.ref, "cardId"))) {
-        throw new Error(`${path}.vocab[${index}].sources[${sourceIndex}].ref must contain only the occurrenceId of a phrase in its group`);
-      }
-      if (draftPhrase) {
-        const snapshot = source.snapshot;
-        const card = draftPhrase.card;
-        if (snapshot.lang !== card.lang || snapshot.text !== card.text
-          || snapshot.translation !== card.translation || snapshot.romanization !== card.romanization
-          || JSON.stringify(snapshot.reading) !== JSON.stringify(card.reading)) {
-          throw new Error(`${path}.vocab[${index}].sources[${sourceIndex}].snapshot must exactly match its draft phrase`);
-        }
-      }
-    }
-    return validated;
-  });
-  return { id, title, essentials, vocab, dialogue };
+  return group;
 }
 
 function validateCommitInput(value: unknown): CommitPhrasebookInput {
@@ -315,18 +251,16 @@ function validateCommitInput(value: unknown): CommitPhrasebookInput {
   }
   const groups = input.groups.map((group, index) =>
     validateDraftGroup(group, `input.groups[${index}]`, lang));
-  const groupIds = new Set<string>();
-  const phraseIds = new Set<string>();
-  for (const group of groups) {
-    if (groupIds.has(group.id)) throw new Error(`input.groups contains duplicate id ${group.id}`);
-    groupIds.add(group.id);
-    for (const phrase of [...group.essentials, ...group.dialogue]) {
-      if (phraseIds.has(phrase.id)) {
-        throw new Error(`input.groups contains duplicate phrase id ${phrase.id}`);
-      }
-      phraseIds.add(phrase.id);
-    }
-  }
+  const ids = groups.flatMap((group) => [
+    group.id,
+    ...group.thingsToSay.map((phrase) => phrase.id),
+    ...group.likelyExchanges.flatMap((exchange) => [
+      exchange.id, ...exchange.lines.flatMap((line) => line.responses.map((phrase) => phrase.id)),
+    ]),
+    ...group.words.map((family) => family.id),
+    ...group.exampleConversation.map((phrase) => phrase.id),
+  ]);
+  assertUnique(ids, "input.groups ids");
   if (!Array.isArray(input.selectedIndexes) || input.selectedIndexes.length === 0) {
     throw new Error("input.selectedIndexes must be a nonempty array");
   }
@@ -418,15 +352,20 @@ async function addProvenance(
 }
 
 interface PreparedDraftPhrase {
-  draft: PhrasebookDraftEssential | PhrasebookDraftDialogueLine;
+  draft: PhrasebookPhrase | PhrasebookConversationLine;
   occurrenceId: string;
-  section: "essentials" | "dialogue";
+  section: NonNullable<Occurrence["section"]>;
   position: number;
+  speaker?: "you" | "partner";
+  exchangeId?: string;
+  turnIndex?: number;
 }
 
 interface PreparedDraftGroup {
   draft: PhrasebookDraftGroup;
   groupId: string;
+  exchanges: Group["exchanges"];
+  wordFamilies: Group["wordFamilies"];
   phrases: PreparedDraftPhrase[];
 }
 
@@ -442,7 +381,7 @@ function remapDraftEvidence(
   const draftOccurrenceId = source.ref?.occurrenceId;
   if (!draftOccurrenceId) return source;
   const resolved = refs.get(draftOccurrenceId);
-  // A removed essential keeps its historical snapshot, not a misleading live reference.
+  // A removed thing to say keeps its historical snapshot, not a misleading live reference.
   if (resolved === null) return { snapshot: source.snapshot, span: source.span };
   if (!resolved) throw new Error(`Source refers to unselected draft occurrence ${draftOccurrenceId}.`);
   return {
@@ -464,23 +403,34 @@ export async function commitPhrasebook(
   assertAbort(signal);
   const selected = input.selectedIndexes.map((index) => input.groups[index]);
   const draftRefs = new Map<string, ResolvedDraftRef | null>();
-  const earlierEssentials = new Set<string>();
+  const earlierThings = new Set<string>();
   const prepared: PreparedDraftGroup[] = selected.map((draft) => {
-    const essentials = draft.essentials.filter((phrase) => {
-      if (!earlierEssentials.has(phrase.card.translation)) return true;
+    const things = draft.thingsToSay.filter((phrase) => {
+      if (!earlierThings.has(phrase.card.translation)) return true;
       draftRefs.set(phrase.id, null);
       return false;
     });
     // Only earlier retained topics suppress placement; keep within-topic repetition.
-    for (const phrase of essentials) earlierEssentials.add(phrase.card.translation);
+    for (const phrase of things) earlierThings.add(phrase.card.translation);
+    const exchanges = draft.likelyExchanges.map((exchange, position) =>
+      ({ id: uuid(), title: exchange.title, position }));
     return {
       draft,
       groupId: uuid(),
+      exchanges,
+      wordFamilies: draft.words.map((family, position) =>
+        ({ id: uuid(), title: family.title, position })),
       phrases: [
-        ...essentials.map((phrase, position): PreparedDraftPhrase =>
-          ({ draft: phrase, occurrenceId: uuid(), section: "essentials", position })),
-        ...draft.dialogue.map((phrase, position): PreparedDraftPhrase =>
-          ({ draft: phrase, occurrenceId: uuid(), section: "dialogue", position })),
+        ...things.map((phrase, position): PreparedDraftPhrase =>
+          ({ draft: phrase, occurrenceId: uuid(), section: "thingsToSay", position })),
+        ...draft.likelyExchanges.flatMap((exchange, exchangeIndex) =>
+          exchange.lines.flatMap((line, turnIndex) =>
+            line.responses.map((phrase, position): PreparedDraftPhrase => ({
+              draft: phrase, occurrenceId: uuid(), section: "likelyExchanges", position,
+              speaker: line.speaker, exchangeId: exchanges[exchangeIndex].id, turnIndex,
+            })))),
+        ...draft.exampleConversation.map((phrase, position): PreparedDraftPhrase =>
+          ({ draft: phrase, occurrenceId: uuid(), section: "exampleConversation", position, speaker: phrase.speaker })),
       ],
     };
   });
@@ -528,6 +478,8 @@ export async function commitPhrasebook(
             deckId: deck.id,
             title: group.draft.title,
             position: groupPosition++,
+            exchanges: group.exchanges,
+            wordFamilies: group.wordFamilies,
           });
           for (const phrase of group.phrases) {
             const card = await resolveCard(phrase.draft.card, store, now);
@@ -550,8 +502,8 @@ export async function commitPhrasebook(
               cardId: card.id,
               position: phrase.position,
               translation: phrase.draft.card.translation,
-              ...("speaker" in phrase.draft ? { speaker: phrase.draft.speaker } : {}),
-              ...("alternative" in phrase.draft && phrase.draft.alternative ? { alternative: true } : {}),
+              ...(phrase.speaker ? { speaker: phrase.speaker } : {}),
+              ...(phrase.exchangeId ? { exchangeId: phrase.exchangeId, turnIndex: phrase.turnIndex } : {}),
             });
             draftRefs.set(phrase.draft.id, {
               occurrenceId: phrase.occurrenceId,
@@ -562,35 +514,23 @@ export async function commitPhrasebook(
 
         let wordPosition = 0;
         const wordMemberships = new Set<string>();
-        const earlierWords = new Map<string, CardRecord>();
         for (const group of prepared) {
-          const groupWords = new Map<string, CardRecord>();
-          let position = 0;
-          for (const word of group.draft.vocab) {
-            const content = word.card as Word; // Validated before any selection or writes.
-            // Placement is stricter than canonical card sharing: no text normalization,
-            // and both English meaning and target form must agree with POS and sense.
-            const identity = JSON.stringify([
-              content.lang, content.text, content.translation,
-              content.partOfSpeech, content.senseKey,
-            ]);
-            const earlier = earlierWords.get(identity);
-            const card = earlier ?? await resolveCard(word.card, store, now);
-            groupWords.set(identity, card);
-            if (!wordMemberships.has(card.id)) {
-              await ensureMembership(deck.id, card.id, wordPosition++, now, store);
-              wordMemberships.add(card.id);
-            }
-            if (!earlier) {
+          for (const [familyIndex, family] of group.draft.words.entries()) {
+            for (const [position, word] of family.items.entries()) {
+              const card = await resolveCard(word.card, store, now);
+              if (!wordMemberships.has(card.id)) {
+                await ensureMembership(deck.id, card.id, wordPosition++, now, store);
+                wordMemberships.add(card.id);
+              }
               await store.topicWords.add({
-                id: uuid(), deckId: deck.id, groupId: group.groupId, cardId: card.id, position: position++,
+                id: uuid(), deckId: deck.id, groupId: group.groupId,
+                familyId: group.wordFamilies[familyIndex].id, cardId: card.id, position,
               });
-            }
-            for (const source of word.sources ?? []) {
-              await addProvenance(card.id, deck.id, remapDraftEvidence(source, draftRefs), now, store);
+              for (const source of word.sources ?? []) {
+                await addProvenance(card.id, deck.id, remapDraftEvidence(source, draftRefs), now, store);
+              }
             }
           }
-          for (const [identity, card] of groupWords) earlierWords.set(identity, card);
         }
         assertAbort(signal);
       },
@@ -750,8 +690,10 @@ export async function getCards(deckId: string, store: LibraryDb = db): Promise<L
     const rightGroup = groupById.get(rightOccurrence.groupId ?? "");
     return (leftGroup?.position ?? Number.MAX_SAFE_INTEGER)
       - (rightGroup?.position ?? Number.MAX_SAFE_INTEGER)
-      || (leftOccurrence.section === rightOccurrence.section ? 0
-        : leftOccurrence.section === "essentials" ? -1 : 1)
+      || SECTION_ORDER[leftOccurrence.section!] - SECTION_ORDER[rightOccurrence.section!]
+      || (leftGroup?.exchanges.find((exchange) => exchange.id === leftOccurrence.exchangeId)?.position ?? 0)
+        - (rightGroup?.exchanges.find((exchange) => exchange.id === rightOccurrence.exchangeId)?.position ?? 0)
+      || (leftOccurrence.turnIndex ?? 0) - (rightOccurrence.turnIndex ?? 0)
       || leftOccurrence.position - rightOccurrence.position
       || leftOccurrence.id.localeCompare(rightOccurrence.id);
   });
@@ -772,6 +714,10 @@ export async function getCards(deckId: string, store: LibraryDb = db): Promise<L
   }).sort((left, right) =>
     (groupById.get(left.wordPlacement!.groupId)?.position ?? 0)
       - (groupById.get(right.wordPlacement!.groupId)?.position ?? 0)
+      || (groupById.get(left.wordPlacement!.groupId)?.wordFamilies
+        .find((family) => family.id === left.wordPlacement!.familyId)?.position ?? 0)
+        - (groupById.get(right.wordPlacement!.groupId)?.wordFamilies
+          .find((family) => family.id === right.wordPlacement!.familyId)?.position ?? 0)
       || left.wordPlacement!.position - right.wordPlacement!.position);
 
   const nonPhraseEntries = memberships.flatMap((membership): LibraryEntry[] => {
@@ -1016,8 +962,11 @@ export async function toggleCardStar(
 }
 
 function entryBucket(entry: LibraryEntry): string {
-  if (entry.occurrence) return `phrase:${entry.occurrence.groupId ?? ""}:${entry.occurrence.section ?? ""}`;
-  if (entry.wordPlacement) return `word:${entry.wordPlacement.groupId}`;
+  if (entry.occurrence) {
+    const row = entry.occurrence;
+    return `phrase:${JSON.stringify([row.groupId, row.section, row.exchangeId, row.turnIndex])}`;
+  }
+  if (entry.wordPlacement) return `word:${entry.wordPlacement.familyId}`;
   return entry.card.type;
 }
 
@@ -1025,7 +974,7 @@ async function normalizeDeckPositions(deckId: string, store: LibraryDb): Promise
   const occurrences = await store.occurrences.where("deckId").equals(deckId).sortBy("position");
   const occurrenceBuckets = new Map<string, Occurrence[]>();
   for (const row of occurrences) {
-    const bucket = `${row.groupId ?? ""}:${row.section ?? ""}`;
+    const bucket = JSON.stringify([row.groupId, row.section, row.exchangeId, row.turnIndex]);
     const rows = occurrenceBuckets.get(bucket) ?? [];
     rows.push(row);
     occurrenceBuckets.set(bucket, rows);
@@ -1033,20 +982,15 @@ async function normalizeDeckPositions(deckId: string, store: LibraryDb): Promise
   for (const rows of occurrenceBuckets.values()) {
     for (const [position, row] of rows.entries()) {
       row.position = position;
-      if (row.section === "dialogue" && position > 0 && rows[position - 1].speaker === row.speaker) {
-        row.alternative = true;
-      } else {
-        delete row.alternative;
-      }
       await store.occurrences.put(row);
     }
   }
   const words = await store.topicWords.where("deckId").equals(deckId).sortBy("position");
   const wordPositions = new Map<string, number>();
   for (const row of words) {
-    const position = wordPositions.get(row.groupId) ?? 0;
+    const position = wordPositions.get(row.familyId) ?? 0;
     await store.topicWords.update(row.id, { position });
-    wordPositions.set(row.groupId, position + 1);
+    wordPositions.set(row.familyId, position + 1);
   }
   const memberships = await store.memberships.where("deckId").equals(deckId).sortBy("position");
   const records = await store.cards.bulkGet(memberships.map((row) => row.cardId));
@@ -1198,12 +1142,29 @@ function validateCardRecord(value: unknown, path: string): CardRecord {
 
 function validateGroup(value: unknown, path: string): Group {
   const row = objectValue(value, path);
-  assertExactFields(row, ["id", "deckId", "title", "position"], path);
+  assertExactFields(row, ["id", "deckId", "title", "position", "exchanges", "wordFamilies"], path);
+  const metadata = (value: unknown, name: string): Group["exchanges"] => {
+    if (!Array.isArray(value)) throw new Error(`${path}.${name} must be an array`);
+    const rows = value.map((value, index) => {
+      const itemPath = `${path}.${name}[${index}]`;
+      const item = objectValue(value, itemPath);
+      assertExactFields(item, ["id", "title", "position"], itemPath);
+      return {
+        id: uuidString(item.id, `${itemPath}.id`),
+        title: requiredString(item.title, `${itemPath}.title`, 500),
+        position: nonnegativeInteger(item.position, `${itemPath}.position`),
+      };
+    });
+    assertContiguousPositions(rows, `${path}.${name}`);
+    return rows;
+  };
   return {
     id: uuidString(row.id, `${path}.id`),
     deckId: uuidString(row.deckId, `${path}.deckId`),
     title: requiredString(row.title, `${path}.title`, 500),
     position: nonnegativeInteger(row.position, `${path}.position`),
+    exchanges: metadata(row.exchanges, "exchanges"),
+    wordFamilies: metadata(row.wordFamilies, "wordFamilies"),
   };
 }
 
@@ -1226,7 +1187,7 @@ function validateOccurrence(value: unknown, path: string): Occurrence {
   const row = objectValue(value, path);
   assertExactFields(
     row,
-    ["id", "deckId", "groupId", "section", "cardId", "position", "translation", "speaker", "alternative"],
+    ["id", "deckId", "groupId", "section", "cardId", "position", "translation", "speaker", "exchangeId", "turnIndex"],
     path,
   );
   const occurrence: Occurrence = {
@@ -1238,32 +1199,37 @@ function validateOccurrence(value: unknown, path: string): Occurrence {
   };
   if (Object.hasOwn(row, "groupId")) {
     occurrence.groupId = uuidString(row.groupId, `${path}.groupId`);
-    occurrence.section = enumValue(row.section, ["essentials", "dialogue"], `${path}.section`);
+    occurrence.section = enumValue(row.section, ["thingsToSay", "likelyExchanges", "exampleConversation"], `${path}.section`);
   }
   if (Object.hasOwn(row, "speaker")) {
     occurrence.speaker = enumValue(row.speaker, ["you", "partner"], `${path}.speaker`);
   }
-  if (Object.hasOwn(row, "alternative")) {
-    occurrence.alternative = optionalTrue(row.alternative, `${path}.alternative`);
-  }
   if (!occurrence.groupId && Object.hasOwn(row, "section")) {
     throw new Error(`${path}.section requires a group`);
   }
-  if (occurrence.section === "dialogue") {
-    if (!occurrence.speaker) throw new Error(`${path}.speaker is required for dialogue`);
-  } else if (occurrence.speaker || occurrence.alternative) {
-    throw new Error(`${path} may have speaker/alternative only in dialogue`);
+  if (occurrence.section === "likelyExchanges" || occurrence.section === "exampleConversation") {
+    if (!occurrence.speaker) throw new Error(`${path}.speaker is required for conversation`);
+  } else if (occurrence.speaker) {
+    throw new Error(`${path} may have speaker only in conversation`);
+  }
+  if (occurrence.section === "likelyExchanges") {
+    occurrence.exchangeId = uuidString(row.exchangeId, `${path}.exchangeId`);
+    occurrence.turnIndex = nonnegativeInteger(row.turnIndex, `${path}.turnIndex`);
+    if (occurrence.turnIndex > 3) throw new Error(`${path}.turnIndex must be at most 3`);
+  } else if (Object.hasOwn(row, "exchangeId") || Object.hasOwn(row, "turnIndex")) {
+    throw new Error(`${path} may have exchangeId/turnIndex only in likelyExchanges`);
   }
   return occurrence;
 }
 
 function validateTopicWord(value: unknown, path: string): TopicWordPlacement {
   const row = objectValue(value, path);
-  assertExactFields(row, ["id", "deckId", "groupId", "cardId", "position"], path);
+  assertExactFields(row, ["id", "deckId", "groupId", "familyId", "cardId", "position"], path);
   return {
     id: uuidString(row.id, `${path}.id`),
     deckId: uuidString(row.deckId, `${path}.deckId`),
     groupId: uuidString(row.groupId, `${path}.groupId`),
+    familyId: uuidString(row.familyId, `${path}.familyId`),
     cardId: uuidString(row.cardId, `${path}.cardId`),
     position: nonnegativeInteger(row.position, `${path}.position`),
   };
@@ -1329,6 +1295,12 @@ function validateBackupGraph(backup: LibraryBackup): void {
   for (const group of backup.groups) {
     if (!decks.has(group.deckId)) throw new Error(`Group ${group.id} refers to a missing deck.`);
   }
+  assertUnique([
+    ...backup.groups.map((group) => group.id),
+    ...backup.groups.flatMap((group) => [...group.exchanges, ...group.wordFamilies].map((row) => row.id)),
+    ...backup.occurrences.map((row) => row.id),
+    ...backup.topicWords.map((row) => row.id),
+  ], "backup presentation ids");
   for (const deck of backup.decks) {
     assertContiguousPositions(
       backup.groups.filter((group) => group.deckId === deck.id),
@@ -1356,12 +1328,16 @@ function validateBackupGraph(backup: LibraryBackup): void {
       if (!group || group.deckId !== occurrence.deckId) {
         throw new Error(`Occurrence ${occurrence.id} has an invalid group.`);
       }
+      if (occurrence.exchangeId && !group.exchanges.some((exchange) => exchange.id === occurrence.exchangeId)) {
+        throw new Error(`Occurrence ${occurrence.id} has an invalid exchange.`);
+      }
     }
   }
   for (const placement of backup.topicWords) {
     const card = cards.get(placement.cardId);
     const group = groups.get(placement.groupId);
     if (card?.type !== "word" || !group || group.deckId !== placement.deckId
+      || !group.wordFamilies.some((family) => family.id === placement.familyId)
       || !memberships.has(JSON.stringify([placement.deckId, placement.cardId]))) {
       throw new Error(`Topic Word ${placement.id} requires a Word membership and an owned group.`);
     }
@@ -1381,22 +1357,33 @@ function validateBackupGraph(backup: LibraryBackup): void {
       `Group-less occurrences in deck ${deck.id}`,
     );
     for (const group of backup.groups.filter((row) => row.deckId === deck.id)) {
-      for (const section of ["essentials", "dialogue"] as const) {
-        const rows = deckOccurrences.filter((row) => row.groupId === group.id && row.section === section)
-          .sort((left, right) => left.position - right.position);
-        assertContiguousPositions(rows, `${section} in group ${group.id}`);
-        if (section === "dialogue") {
-          for (const [index, row] of rows.entries()) {
-            if ((row.alternative === true) !== (index > 0 && rows[index - 1].speaker === row.speaker)) {
-              throw new Error(`Dialogue alternatives in group ${group.id} must match adjacency.`);
-            }
+      for (const section of ["thingsToSay", "exampleConversation"] as const) {
+        assertContiguousPositions(
+          deckOccurrences.filter((row) => row.groupId === group.id && row.section === section),
+          `${section} in group ${group.id}`,
+        );
+      }
+      for (const exchange of group.exchanges) {
+        const rows = deckOccurrences.filter((row) => row.groupId === group.id && row.exchangeId === exchange.id);
+        for (const turnIndex of new Set(rows.map((row) => row.turnIndex))) {
+          const turn = rows.filter((row) => row.turnIndex === turnIndex);
+          assertContiguousPositions(turn, `Turn ${turnIndex} in exchange ${exchange.id}`);
+          if (new Set(turn.map((row) => row.speaker)).size !== 1) {
+            throw new Error(`Turn ${turnIndex} in exchange ${exchange.id} must have one speaker.`);
           }
         }
+        const first = rows[0];
+        if (first && rows.some((row) =>
+          (row.speaker === first.speaker) !== ((row.turnIndex! - first.turnIndex!) % 2 === 0))) {
+          throw new Error(`Exchange ${exchange.id} speakers must alternate between original turns.`);
+        }
       }
-      assertContiguousPositions(
-        backup.topicWords.filter((row) => row.groupId === group.id),
-        `Words in group ${group.id}`,
-      );
+      for (const family of group.wordFamilies) {
+        assertContiguousPositions(
+          backup.topicWords.filter((row) => row.groupId === group.id && row.familyId === family.id),
+          `Words in family ${family.id}`,
+        );
+      }
     }
     for (const type of ["phrase", "word", "chunk"] as const) {
       assertContiguousPositions(
@@ -1452,7 +1439,7 @@ function validateLibraryBackup(value: unknown): LibraryBackup {
     "backup",
   );
   if (data.schemaVersion !== LIBRARY_SCHEMA_VERSION) {
-    throw new Error("Unsupported library schema version; expected 3.");
+    throw new Error("Unsupported library schema version; expected 4.");
   }
   const collection = <T>(
     raw: unknown,

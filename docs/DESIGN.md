@@ -91,11 +91,11 @@ retries reuse it. A different seed replaces the naming request; dismissal aborts
 save retains the frozen title on retry.
 
 No phrasebook data is persisted while answering questions or selecting topics, even if generation has
-finished; the confirmed language preference is independent. Final Continue validates the whole v3
+finished; the confirmed language preference is independent. Final Continue validates the whole v4
 draft, retains selected topics by original index, and atomically saves their sections and Word
-placements. Exact repeated essentials and words belong to the earliest retained topic; unchecked
-topics cannot suppress them. Related vocabulary and every dialogue line remain. There is no global
-word cap or duplicate text request. Final Continue reuses pending or ready work; finishing speculative
+placements. Exact-English repeated Things to say belongs to the earliest retained topic; unchecked
+topics cannot suppress it. Every exchange response, example line and Word-family placement remains,
+including repeated Words across topics. There is no global word cap or duplicate text request. Final Continue reuses pending or ready work; finishing speculative
 generation alone never saves or navigates. Back without changes reuses work; answer or seed changes
 invalidate and abort text work. Changing the confirmed language preserves the prompt but clears
 context, answers, and checklist, aborts speculative work, and resolves remembered ability for the
@@ -119,7 +119,8 @@ succeed on final Continue. Failed saves and abandoned speculative results do not
 creation skips this question and sends the remembered value to both endpoints. Updating it is deferred.
 Historical setup preferences are not inferred or migrated to the new scale.
 
-API and web must deploy together for this response contract. Speculation hides generation behind
+API and web require a coordinated future release; this promotion does not deploy them, and native
+iOS's retired-route integration remains unchanged. Speculation hides generation behind
 checklist interaction but does not guarantee lower latency: English generation uses bounded
 per-topic concurrency, and the response waits for every translation, including topics later discarded.
 Usage includes all generated topics. Evaluate final Continue-to-usable-phrasebook time and cost per
@@ -134,17 +135,21 @@ frame, with a narrow 3–5% target safety margin and no clipped objects. Long ob
 or diagonally to use the width. Actual generated margins vary; no automatic crop is applied.
 Transparency is not required. Pending art reserves its space; ready art has empty alt text and white
 surrounding space; failed art shows a subdued unavailable message. Topic previews show up to three
-essential English phrases and two words with POS. The final preview item is vertically clipped to
-suggest more content. The white footer shows section counts and **View** with a right chevron.
-The whole topic preview is clickable: phrases, heading, and footer open the first nonempty section;
-words open Useful words. Each destination scrolls to its section and focuses the exact topic tab.
+Things to say phrases in English and two words with POS. The final preview item is vertically clipped to
+suggest more content. The white footer shows counts for phrases, exchanges, words and example
+conversation, plus **View** with a right chevron. The whole topic preview is clickable: phrases,
+heading and footer open the first nonempty section; words open Words. Each destination scrolls to
+its section and focuses the exact topic tab.
 
 Each stored Group has one topic tab and horizontally sliding page, identified by Group ID rather
-than title, including when titles duplicate. Each topic contains **Essential phrases**, **Useful
-words**, and **Conversation** in that order: full-bleed white essential rows with bottom borders;
-two-column Word tiles; gray-100 learner/gray-50 partner dialogue bubbles. Essentials are independently
-generated occurrences, not ranked dialogue excerpts. Exact cross-topic duplicates are removed at
-commit; empty essentials/words sections are omitted. Dialogue repetition remains intact.
+than title, including when titles duplicate. Each topic contains **Things to say**, **Likely
+exchanges**, **Words**, and **Example conversation**, in that order. Things to say uses full-bleed
+white rows with bottom borders. Each likely exchange has its own title and alternating-speaker
+turns, with explicit alternative responses inside a turn. Words uses titled families of two-column
+tiles. Example conversation is linear, with one phrase per speaker turn. The phrase material is
+independently authored, not ranked excerpts. Exact-English cross-topic Things to say duplicates
+are removed at commit; empty sections are omitted. Every Word-family placement remains even when
+the canonical Word is shared across topics. Exchange and family titles, IDs and order are durable.
 
 Supplemental **Translations**, **Words**, and **Chunks** pages follow topics when unplaced entries
 exist. Topic Word placements are not duplicated into the supplemental Words page.
@@ -171,22 +176,23 @@ the card list's 50 px left/right gutters advance one page beyond 45 px, for both
 drags. The left gutter selects the previous page, or reveals navigation on the first page; the right
 gutter selects the next page. Shorter or cancelled drags snap back. Interior drags do not page.
 Vertical scrolling stays native, and each page retains its own position. Offscreen pages are inert.
-Edit mode disables paging drags and retains active-page reorder and card editing.
+Edit mode disables paging drags and retains active-page reordering without card-content editing.
 
 The visual reference is `explorations/phrasebook-navigation/PHRASEBOOK_EXPLORATION.html`: white
 surfaces, Roboto Condensed headings and tabs, and Manrope card text. Word and conversation bubbles
-have 16 px corners and 8 px gaps; essential and Starred rows have square edges and bottom borders.
-Each Phrase occurrence supplies its own translation, topic, section, and position; repeated
-occurrences may share a durable Phrase without sharing presentation state.
-Only dialogue supplies speaker state. Learner speech is right-aligned gray-100, partner speech
-left-aligned gray-50, with text left-aligned on both. “or” appears only between adjacent same-speaker
-dialogue lines in the same topic.
+have 16 px corners and 8 px gaps; Things to say and Starred rows have square edges and bottom borders.
+Each Phrase occurrence supplies its own translation, topic, section, and local position; repeated
+occurrences may share a durable Phrase without sharing presentation state. Exchanges also retain
+exchange ID and turn index. Exchanges and Example conversation supply speaker state: learner
+speech is right-aligned gray-100, partner speech left-aligned gray-50, with text left-aligned on both.
+“or” appears only between explicit response options within one exchange turn, never between
+adjacent example lines or inferred from matching speakers.
 Starring changes white/gray-50 cards to blue-50 and gray-100 learner cards to blue-100. Unstarring
 restores the original surface. Membership changes never affect another phrasebook.
 
 Starred is a white, full-bleed collection in saved entry order (the same order as Review), not
-reconstructed dialogue or a copy of essentials. Each membership appears once; a repeated Phrase
-uses its first saved occurrence and translation. All card types use essential-row styling here,
+reconstructed dialogue or a copy of Things to say. Each membership appears once; a repeated Phrase
+uses its first saved occurrence and translation. All card types use the full-width row styling here,
 without blue backgrounds. Word definitions and full highlighted Chunk source snapshots remain
 available, along with audio, details, and star actions. Starring updates every occurrence
 without changing the active page. Opening Starred leaves the topic strip in place.
@@ -214,8 +220,9 @@ Shift+F10/Context Menu key while the card is focused. Movement, scrolling, cance
 cancels the hold; its release never also plays audio. Stars remain independent tap targets.
 There is no card speaker icon or visible Explore phrase link. Chunk rows render their full source
 with the saved span highlighted rather than presenting an isolated fragment. **Reorder cards** keeps
-reordering inside one topic/section bucket and updates placements or occurrences, never canonical
-card identity. Word tiles become one column; card taps do not open an editor. Contents and Starred
+reordering within Things to say or Example conversation, within a single exchange turn's options,
+or within a single Word family. It updates placements or occurrences, never canonical card identity,
+exchange/turn ownership or family ownership. Word tiles become one column; card taps do not open an editor. Contents and Starred
 have no reorder overlay. Card-content editing and its swipe edit/delete actions are removed from
 the web app. Phrasebook settings, including naming, remain available from the title menu. Language
 browsing remains separate, with no star or review control without a phrasebook.
@@ -248,7 +255,7 @@ Opening calls `/phrase-breakdown` with the exact occurrence snapshot, source ref
 active phrasebook context. The source remains visible during loading and errors; **Retry** makes a new
 request after failure. **Regenerate** bypasses the cache while retaining the current analysis if the
 new request fails. Valid teaching and candidates are cached in tab-scoped sessionStorage under
-`loudmouth-topic-v3.phrase-breakdown.v1:` plus the serialized exact versioned request, including
+`loudmouth-topic-v4.phrase-breakdown.v1:` plus the serialized exact versioned request, including
 refs, context, and readings. Invalid entries, including older responses without `flags`, are removed.
 Editing the request source or context therefore cannot reuse stale analysis. Opening, closing,
 retrying, regenerating, and cache clearing make no durable library writes; only an explicit successful

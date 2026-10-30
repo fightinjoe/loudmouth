@@ -25,32 +25,29 @@ export function normalizeEnglish(parsed, input, context = {}) {
   const task = validatedTask(input);
   const value = validateGenerationResponse(context.raw ?? JSON.stringify(parsed), task.checklist);
   const changes = [];
-  const original = parsed?.conversations?.[0];
+  const original = parsed?.topics?.[0];
   if (original) {
-    for (const section of ['essentials', 'vocab']) {
-      if (original[section].length !== value.conversations[0][section].length) changes.push({
-        path: `/conversations/0/${section}`, reason: `Production parser retained ${value.conversations[0][section].length} of ${original[section].length} entries; raw response retention is controlled by the caller, not this normalizer.`,
+    for (const section of ['thingsToSay', 'likelyExchanges', 'words', 'exampleConversation']) {
+      if (JSON.stringify(original[section]) !== JSON.stringify(value.topics[0][section])) changes.push({
+        path: `/topics/0/${section}`, reason: 'Production parser normalized or bounded this section; raw response retention is controlled by the caller, not this normalizer.',
       });
     }
-    value.conversations[0].lines.forEach((line, index) => {
-      if (line.alternative) changes.push({ path: `/conversations/0/lines/${index}/alternative`, reason: 'Production parser marks consecutive same-speaker entries as local alternatives.' });
-    });
   } else changes.push({ path: '', reason: 'Production parser accepted raw content not parsed by the generic reader; raw findings and original text are distinct from normalized output. This normalizer does not persist them.' });
   return { value, changes };
 }
 
 export function buildTranslationPrompt(input, variant) {
   const task = validatedTask(input.task);
-  assert.equal(input.conversation.title, task.checklist[0], 'Translation English does not match the frozen task');
+  assert.equal(input.topic.title, task.checklist[0], 'Translation English does not match the frozen task');
   assert.equal(variant.instructions, translationTemplate, 'Use the unchanged production translation prompt');
   return {
-    ...buildPhrasebookTranslationPrompt({ ...task, conversation: input.conversation }),
-    schema: buildTranslationResponseJsonSchema(input.conversation, task.language),
+    ...buildPhrasebookTranslationPrompt({ ...task, topic: input.topic }),
+    schema: buildTranslationResponseJsonSchema(input.topic, task.language),
   };
 }
 
 export function normalizeTranslation(parsed, input, context = {}) {
   const task = validatedTask(input.task);
-  const value = validateTranslationResponse(context.raw ?? JSON.stringify(parsed), input.conversation, task.language);
+  const value = validateTranslationResponse(context.raw ?? JSON.stringify(parsed), input.topic, task.language);
   return { value, changes: [{ path: '', reason: `Production translation parser applied unchanged; failureLevel=${value.failureLevel}. Optional-source flags and Japanese romanization fallback are normalization diagnostics, not reviewer repairs. Raw response retention is controlled by the caller; this normalizer does not persist it.` }] };
 }

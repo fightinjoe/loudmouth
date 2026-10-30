@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadFixtures, validateFixtures, prepareRequests, evaluateResponses, runMock, createReviewInput, evaluateReview } from './runner.mjs';
+import { toReviewInput, fromReviewInput } from './topic-conversion.mjs';
+import { modelInput, applyLocalizedRepair } from './review-contract.mjs';
 
 function fixture() { return loadFixtures(); }
 function savedEnglish(fixtures, contextId = 'tea-cs') {
@@ -25,13 +27,16 @@ test('prepared review requests never disclose private answers or fixture judgmen
 test('composed B consumes changed A, rather than the fixed standalone English', () => {
   const fixtures = fixture();
   const saved = savedEnglish(fixtures);
-  saved.responses[0].english.conversations[0].essentials.push('Please bring a glass of water too.');
+  saved.responses[0].english.topics[0].thingsToSay.push('Please bring a glass of water too.');
   const composed = evaluateResponses(fixtures, 'ab', saved, { contextId: 'tea-cs' });
   assert.equal(composed.results[0].stages[0].status, 'passed');
   assert.equal(composed.results[0].stages[1].status, 'failed');
   const standalone = evaluateResponses(fixtures, 'b', saved, { contextId: 'tea-cs' });
   assert.equal(standalone.results[0].stages[0].status, 'passed');
-  saved.responses[0].translation.essentials.push('Přineste prosím také sklenici vody.');
+  saved.responses[0].translation.phrases.splice(5, 0, 'Přineste prosím také sklenici vody.');
+  for (const word of saved.responses[0].translation.words) {
+    if (word.source?.phraseIndex >= 5) word.source.phraseIndex++;
+  }
   const corrected = evaluateResponses(fixtures, 'ab', saved, { contextId: 'tea-cs' });
   assert.equal(corrected.structuralPass, true);
 });
@@ -39,7 +44,7 @@ test('composed B consumes changed A, rather than the fixed standalone English', 
 test('malformed translation fails as a whole, never reports assembled partial success', () => {
   const fixtures = fixture();
   const saved = savedEnglish(fixtures);
-  saved.responses[0].translation.lines.pop();
+  saved.responses[0].translation.phrases.pop();
   const result = evaluateResponses(fixtures, 'b', saved, { contextId: 'tea-cs' });
   const stage = result.results[0].stages[0];
   assert.equal(result.structuralPass, false);
@@ -166,4 +171,44 @@ test('a finding on another handle is not paired with an authored defect', () => 
   assert.deepEqual(result.detection.unmatchedExpectations, []);
   assert.deepEqual(result.detection.unmatchedPredictions.map(finding => finding.handle), ['d:0']);
   assert.deepEqual(result.detection.attributionCandidates.map(candidate => candidate.predicted.handle), ['e:0']);
+});
+
+test('review conversion preserves exchange alternatives, family boundaries and source evidence', () => {
+  const fixtures = fixture();
+  const original = createReviewInput(fixtures, 'tea-cs', 'tea-cs-correct');
+  const group = fromReviewInput(original);
+  const english = structuredClone(fixtures.cases.cases.find(item => item.id === 'tea-cs').english.topics[0]);
+  const option = structuredClone(group.thingsToSay[0]);
+  option.id = 'review-alternative';
+  group.likelyExchanges[0].lines[0].responses.push(option);
+  english.likelyExchanges[0].lines[0].text.push(english.thingsToSay[0]);
+  const family = group.words[0];
+  group.words = [
+    { ...family, title: 'First family', items: family.items.slice(0, 2) },
+    { ...family, id: 'review-family-two', title: 'Second family', items: family.items.slice(2) },
+  ];
+  const words = english.words[0].items;
+  english.words = [{ title: 'First family', items: words.slice(0, 2) }, { title: 'Second family', items: words.slice(2) }];
+  const input = toReviewInput({ task: original.task, topic: english, group });
+  assert.deepEqual(fromReviewInput(input), group);
+  const projected = modelInput(input);
+  const alternatives = projected.items.filter(item => item.handle.startsWith('x:0:0:'));
+  assert.deepEqual(alternatives.map(item => [item.speaker, item.turnIndex, item.responseIndex]), [['you', 0, 0], ['you', 0, 1]]);
+  assert.equal(projected.items.find(item => item.handle === 'v:2').familyTitle, 'Second family');
+  assert.deepEqual(input.items.find(item => item.handle === 'v:2').sources, original.items.find(item => item.handle === 'v:2').sources);
+  const repaired = applyLocalizedRepair({
+    handle: 'x:0:0:1', status: 'repaired', reason: 'Replace only this authored alternative.',
+    changes: [{ field: 'text', value: 'Prosím.' }], dropSourceIndexes: [],
+  }, { ...input, focus: { handle: 'x:0:0:1', field: 'text', category: 'meaning' } });
+  const rebuilt = fromReviewInput({ ...input, items: repaired.items });
+  assert.equal(rebuilt.likelyExchanges[0].lines[0].responses[1].card.text, 'Prosím.');
+  assert.deepEqual(rebuilt.likelyExchanges[0].lines[0].responses[0], group.likelyExchanges[0].lines[0].responses[0]);
+  assert.deepEqual(rebuilt.words, group.words);
+  assert.deepEqual(rebuilt.exampleConversation, group.exampleConversation);
+});
+
+test('review conversion rejects relocated responses rather than silently losing them', () => {
+  const input = createReviewInput(fixture(), 'tea-cs', 'tea-cs-correct');
+  input.items.find(item => item.handle === 'x:0:0:0').location.turnIndex = 99;
+  assert.throws(() => fromReviewInput(input), /Unknown topic section or location/);
 });

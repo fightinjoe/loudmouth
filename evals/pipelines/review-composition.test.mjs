@@ -5,13 +5,13 @@ import { repairCaseInput, routeDetection, applyTopicRepairs, composeTopic } from
 
 function fixture() {
   return { task: { language: 'ja', ability: 'basics', answers: {} }, topic: { title: 'Taking the train' }, items: [
-    { handle: 'd:0', section: 'dialogue', index: 0, english: { text: 'Where is the station?', speaker: 'you' }, speaker: 'you', alternative: false,
+    { handle: 'd:0', section: 'exampleConversation', index: 0, english: { text: 'Where is the station?', speaker: 'you' }, speaker: 'you',
       card: { type: 'phrase', lang: 'ja', text: '図書館はどこですか。', translation: 'Where is the station?' } },
-    { handle: 'v:0', section: 'vocab', index: 0, english: 'train',
+    { handle: 'v:0', section: 'words', index: 0, english: 'train',
       card: { type: 'word', lang: 'ja', text: '車', translation: 'train', partOfSpeech: 'noun', senseKey: 'train', reading: [['車', 'くるま']] } },
-    { handle: 'e:0', section: 'essentials', index: 0, english: 'Thank you.',
+    { handle: 'e:0', section: 'thingsToSay', index: 0, english: 'Thank you.',
       card: { type: 'phrase', lang: 'ja', text: 'ありがとうございます。', translation: 'Thank you.' } },
-    { handle: 'v:1', section: 'vocab', index: 1, english: 'station',
+    { handle: 'v:1', section: 'words', index: 1, english: 'station',
       card: { type: 'word', lang: 'ja', text: '駅', translation: 'station', partOfSpeech: 'noun', senseKey: 'station', reading: [['駅', 'えき']] },
       sources: [
         { snapshot: { lang: 'ja', text: '駅です。', translation: 'It is the station.' }, span: { start: 0, end: 1 } },
@@ -145,7 +145,6 @@ test('coupled repairs assemble in original order and preserve readonly context, 
   assert.deepEqual(result.items[1].card, { ...input.items[1].card, text: '電車', reading: [['電車', 'でんしゃ']] });
   assert.deepEqual(result.items[0].english, input.items[0].english);
   assert.equal(result.items[0].speaker, 'you');
-  assert.equal(result.items[0].alternative, false);
   assert.equal(result.items[0].index, 0);
   assert.equal(result.items[0].card.translation, input.items[0].card.translation);
   assert.deepEqual(result.items.slice(2), input.items.slice(2));

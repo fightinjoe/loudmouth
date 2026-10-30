@@ -15,6 +15,9 @@ const help = `Offline phrasebook evaluation (no provider execution)
 Prepare always emits complete JSON requests; --json is optional there.
 Saved responses: {version:1,responses:[{contextId,english?,translation?,reviews?}]}.
 C reviews: [{id,detection,repairs:[{focus:{handle,field,category},response}]}].
+English uses {topics:[{title,thingsToSay,likelyExchanges,words,exampleConversation}]};
+translation uses flat {phrases,words,phraseRomanizations?,wordRomanizations?}.
+Live fixtures are authored v4 structural migrations, not historical replay or gold.
 Responses are raw JSON values or JSON strings. No raw files are written.`;
 
 function parse(argv) {

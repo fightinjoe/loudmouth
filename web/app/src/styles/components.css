@@ -438,21 +438,21 @@
   gap: 8px;
 }
 
-.topic-section[data-topic-section="essentials"],
+.topic-section[data-topic-section="thingsToSay"],
 .deck-page[data-page-kind="starred"] .topic-card-list {
   margin-inline: -20px;
 }
 
-.topic-section[data-topic-section="essentials"] > h2 {
+.topic-section[data-topic-section="thingsToSay"] > h2 {
   padding-inline: 20px;
 }
 
-.topic-section[data-topic-section="essentials"] .topic-card-list,
+.topic-section[data-topic-section="thingsToSay"] .topic-card-list,
 .deck-page[data-page-kind="starred"] .topic-card-list {
   gap: 0;
 }
 
-.topic-section[data-topic-section="essentials"] .card-row,
+.topic-section[data-topic-section="thingsToSay"] .card-row,
 .deck-page[data-page-kind="starred"] .card-row {
   padding: 16px 20px;
   border-radius: 0;
@@ -460,9 +460,25 @@
   background: var(--bg-surface);
 }
 
-.topic-section[data-topic-section="essentials"] .card-star,
+.topic-section[data-topic-section="thingsToSay"] .card-star,
 .deck-page[data-page-kind="starred"] .card-star {
   right: 4px;
+}
+
+.topic-subheading {
+  margin: 16px 0 8px;
+  font-family: var(--font-family-manrope);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.exchange-turn + .exchange-turn {
+  margin-top: 8px;
+}
+
+.topic-exchange + .topic-exchange,
+.topic-word-family + .topic-word-family {
+  margin-top: 20px;
 }
 
 .topic-word-grid {
@@ -531,7 +547,7 @@ ruby {
   position: relative;
 }
 
-.card-row-wrapper[data-alternative] {
+.card-row-wrapper[data-option-separator] {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -606,7 +622,7 @@ ruby {
   overflow-wrap: anywhere;
 }
 
-.card-alternative {
+.card-option-separator {
   color: var(--fg-caption);
   font-family: var(--font-family-manrope);
   font-size: 14px;

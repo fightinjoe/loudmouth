@@ -29,12 +29,12 @@ function rawInfo(value) {
   return { text, parsed, summary: { bytes: Buffer.byteLength(text), sha256: sha256(text), jsonParsed: parsed !== undefined } };
 }
 function normalizeA(value, task) { const raw = rawInfo(value); return { ...normalizeEnglish(raw.parsed, task, { raw: raw.text }), raw: raw.summary }; }
-function normalizeB(value, task, conversation) { const raw = rawInfo(value); return { ...normalizeTranslation(raw.parsed, { task, conversation }, { raw: raw.text }), raw: raw.summary }; }
+function normalizeB(value, task, topic) { const raw = rawInfo(value); return { ...normalizeTranslation(raw.parsed, { task, topic }, { raw: raw.text }), raw: raw.summary }; }
 function baseInput(context, fixture) {
-  const english = normalizeA(fixture.english, context.task).value.conversations[0];
+  const english = normalizeA(fixture.english, context.task).value.topics[0];
   const translated = normalizeB(fixture.translation, context.task, english).value;
-  const group = assemblePhrasebook({ seed: context.task.seed, language: context.task.language, conversations: [english], translations: [translated] }).groups[0];
-  return toReviewInput({ task: context.task, conversation: english, group });
+  const group = assemblePhrasebook({ seed: context.task.seed, language: context.task.language, topics: [english], translations: [translated] }).groups[0];
+  return toReviewInput({ task: context.task, topic: english, group });
 }
 function reviewInput(context, fixture, review) {
   const input = baseInput(context, fixture);
@@ -86,9 +86,13 @@ export function loadFixtures({ contextsPath = new URL('../fixtures/contexts.json
 
 export function validateFixtures(fixtures) {
   exact(fixtures.contexts, ['version', 'status', 'contexts'], 'Contexts');
-  exact(fixtures.cases, ['version', 'status', 'cases'], 'Cases');
+  exact(fixtures.cases, ['version', 'status', 'provenance', 'cases'], 'Cases');
   assert.equal(fixtures.contexts.version, 1, 'Unsupported contexts version');
-  assert.equal(fixtures.cases.version, 1, 'Unsupported cases version');
+  assert.equal(fixtures.cases.version, 4, 'Unsupported cases version');
+  exact(fixtures.cases.provenance, ['kind', 'historicalReplay', 'modelGenerated', 'linguisticCertification', 'method'], 'Fixture provenance');
+  assert.equal(fixtures.cases.provenance.kind, 'authored-structural-v4-migration');
+  for (const key of ['historicalReplay', 'modelGenerated', 'linguisticCertification']) assert.equal(fixtures.cases.provenance[key], false);
+  nonempty(fixtures.cases.provenance.method, 'Fixture migration method');
   assert.equal(fixtures.contexts.status, 'proposed');
   assert.equal(fixtures.cases.status, 'proposed-not-linguistically-certified');
   assert(Array.isArray(fixtures.contexts.contexts) && Array.isArray(fixtures.cases.cases), 'Fixture arrays required');
@@ -158,7 +162,7 @@ export function validateFixtures(fixtures) {
     }
   }
   assert(unresolved > 0, 'An unresolved ambiguity fixture is required');
-  return { valid: true, contexts: contexts.length, reviews: cases.reduce((sum, fixture) => sum + fixture.reviews.length, 0), provenance: 'authored-proposed-fixtures', linguisticCertification: false };
+  return { valid: true, schemaVersion: 4, contexts: contexts.length, reviews: cases.reduce((sum, fixture) => sum + fixture.reviews.length, 0), provenance: structuredClone(fixtures.cases.provenance), linguisticCertification: false };
 }
 
 function select(fixtures, contextId) {
@@ -167,7 +171,7 @@ function select(fixtures, contextId) {
   return contexts.map(context => ({ context, fixture: fixtures.cases.cases.find(fixture => fixture.id === context.id) }));
 }
 function englishRequest(context) { return buildEnglishPrompt(context.task, { instructions: generationTemplate }); }
-function translationRequest(context, conversation) { return buildTranslationPrompt({ task: context.task, conversation }, { instructions: translationTemplate }); }
+function translationRequest(context, topic) { return buildTranslationPrompt({ task: context.task, topic }, { instructions: translationTemplate }); }
 function detectionRequest(input) { return { ...buildDetectionPrompt(input, { instructions: detectionInstructions }), schema: structuredClone(detectionSchema) }; }
 function repairRequest(input, focus) { return buildRepairPrompt({ ...input, focus }, { instructions: repairInstructions, schema: repairSchema }); }
 function requestEntry(stage, contextId, request, extras = {}) {
@@ -180,13 +184,13 @@ export function prepareRequests(fixtures, pipeline, { contextId } = {}) {
   const [{ context, fixture }] = select(fixtures, contextId);
   const requests = [];
   if (pipeline === 'a') requests.push(requestEntry('a', context.id, englishRequest(context)));
-  if (pipeline === 'b') requests.push(requestEntry('b', context.id, translationRequest(context, normalizeA(fixture.english, context.task).value.conversations[0]), { englishSource: 'fixed-authored-fixture' }));
+  if (pipeline === 'b') requests.push(requestEntry('b', context.id, translationRequest(context, normalizeA(fixture.english, context.task).value.topics[0]), { englishSource: 'fixed-authored-fixture' }));
   if (pipeline === 'c') for (const review of fixture.reviews) {
     const input = reviewInput(context, fixture, review);
     requests.push(requestEntry('c-detection', context.id, detectionRequest(input), { reviewId: review.id }));
     for (const repair of review.repairs) requests.push(requestEntry('c-known-location-repair', context.id, repairRequest(input, repair.focus), { reviewId: review.id, oracleAssisted: true }));
   }
-  return { version: 1, mode: 'prepare-only', destination: 'native Romp', dispatch: false, approved: false, executionReady: false, model: null, provider: null, fixtureHashes: fixtureHashes(fixtures), contextSha256: sha256(context.task), dependencyHashes: dependencyHashes(), requests, note: 'No requests executed. C localized requests are a separate known-location experiment, not detector-gated observations. For actual detector-selected handles use prepareDetectedRepairs.' };
+  return { version: 1, schemaVersion: 4, fixtureProvenance: structuredClone(fixtures.cases.provenance), mode: 'prepare-only', destination: 'native Romp', dispatch: false, approved: false, executionReady: false, model: null, provider: null, fixtureHashes: fixtureHashes(fixtures), contextSha256: sha256(context.task), dependencyHashes: dependencyHashes(), requests, note: 'No requests executed. C localized requests are a separate known-location experiment, not detector-gated observations. For actual detector-selected handles use prepareDetectedRepairs.' };
 }
 
 export function prepareDetectedRepairs(input, detection) {
@@ -197,8 +201,8 @@ export function prepareDetectedRepairs(input, detection) {
 export function prepareComposedTranslation(fixtures, contextId, englishResponse) {
   const [{ context }] = select(fixtures, contextId);
   const normalized = normalizeA(englishResponse, context.task);
-  return requestEntry('b', context.id, translationRequest(context, normalized.value.conversations[0]), {
-    englishSource: 'actual-a-output', englishSha256: sha256(normalized.value.conversations[0]),
+  return requestEntry('b', context.id, translationRequest(context, normalized.value.topics[0]), {
+    englishSource: 'actual-a-output', englishSha256: sha256(normalized.value.topics[0]),
   });
 }
 
@@ -341,18 +345,18 @@ export function evaluateResponses(fixtures, pipeline, saved, { contextId, proven
     const row = rows.get(context.id); assert(row, `Missing saved responses for ${context.id}`);
     const stages = []; let english;
     if (pipeline === 'a' || pipeline === 'ab') stages.push(stageResult('a', () => {
-      const normalized = normalizeA(row.english, context.task); english = normalized.value.conversations[0];
-      return { ...normalizeSummary(normalized), counts: { essentials: english.essentials.length, vocab: english.vocab.length, dialogue: english.lines.length }, example: { path: '/conversations/0/essentials/0', english: quote(english.essentials[0]) } };
+      const normalized = normalizeA(row.english, context.task); english = normalized.value.topics[0];
+      return { ...normalizeSummary(normalized), counts: { thingsToSay: english.thingsToSay.length, likelyExchanges: english.likelyExchanges.length, words: english.words.reduce((sum, family) => sum + family.items.length, 0), exampleConversation: english.exampleConversation.length }, example: { path: '/topics/0/thingsToSay/0', english: quote(english.thingsToSay[0]) } };
     }));
     if (pipeline === 'b' || pipeline === 'ab') {
-      if (pipeline === 'b') english = normalizeA(fixture.english, context.task).value.conversations[0];
+      if (pipeline === 'b') english = normalizeA(fixture.english, context.task).value.topics[0];
       stages.push(stageResult('b', () => {
         assert(english, 'A failed; B is blocked, not evaluated against a replacement fixture');
         const request = translationRequest(context, english);
         const normalized = normalizeB(row.translation, context.task, english);
-        const assembled = assemblePhrasebook({ seed: context.task.seed, language: context.task.language, conversations: [english], translations: [normalized.value] });
-        toReviewInput({ task: context.task, conversation: english, group: assembled.groups[0] });
-        return { ...normalizeSummary(normalized), englishSource: pipeline === 'ab' ? 'actual-a-output' : 'fixed-authored-fixture', englishSha256: sha256(english), requestInputSha256: sha256(request.input), assembledCards: assembled.groups[0].essentials.length + assembled.groups[0].dialogue.length + assembled.groups[0].vocab.length, example: { path: '/groups/0/essentials/0/card', english: quote(assembled.groups[0].essentials[0].card.translation), target: quote(assembled.groups[0].essentials[0].card.text) } };
+        const assembled = assemblePhrasebook({ seed: context.task.seed, language: context.task.language, topics: [english], translations: [normalized.value] });
+        const reviewInput = toReviewInput({ task: context.task, topic: english, group: assembled.groups[0] });
+        return { ...normalizeSummary(normalized), englishSource: pipeline === 'ab' ? 'actual-a-output' : 'fixed-authored-fixture', englishSha256: sha256(english), requestInputSha256: sha256(request.input), assembledCards: reviewInput.items.length, example: { path: '/groups/0/thingsToSay/0/card', english: quote(assembled.groups[0].thingsToSay[0].card.translation), target: quote(assembled.groups[0].thingsToSay[0].card.text) } };
       }));
     }
     if (pipeline === 'c') stages.push(stageResult('c', () => {
@@ -370,7 +374,7 @@ export function evaluateResponses(fixtures, pipeline, saved, { contextId, proven
   }
   return {
     version: 1, pipeline, provenance, quality: 'pending subjective review', rubric: rubricReference(),
-    fixtureStatus: fixtures.cases.status, fixtureHashes: fixtureHashes(fixtures),
+    schemaVersion: 4, fixtureStatus: fixtures.cases.status, fixtureProvenance: structuredClone(fixtures.cases.provenance), fixtureHashes: fixtureHashes(fixtures),
     observations: { providerExecuted: false, linguisticCertification: false, subjectiveScores: null, providerMeasurements: measurements() },
     coverage: { contexts: results.length, ordinary: results.filter(result => result.kind === 'ordinary').length, challenge: results.filter(result => result.kind === 'challenge').length, interpretation: 'Deliberately authored challenge sampling is not production defect prevalence.' },
     structuralPass: results.every(result => result.stages.every(stage => stage.structural)),
@@ -388,7 +392,7 @@ export function calibrationPlan(fixtures) {
   const requests = [];
   for (const { context, fixture } of select(fixtures)) {
     requests.push(requestEntry('a', context.id, englishRequest(context)));
-    requests.push(requestEntry('b', context.id, translationRequest(context, normalizeA(fixture.english, context.task).value.conversations[0])));
+    requests.push(requestEntry('b', context.id, translationRequest(context, normalizeA(fixture.english, context.task).value.topics[0])));
     for (const review of fixture.reviews) {
       const input = reviewInput(context, fixture, review);
       requests.push(requestEntry('c-detection', context.id, detectionRequest(input), { reviewId: review.id }));
@@ -408,6 +412,7 @@ export function calibrationPlan(fixtures) {
   const dependencies = dependencyHashes();
   return {
     version: 1, mode: 'proposed-single-baseline-freeze', approved: false, executionReady: false, dispatch: false,
+    schemaVersion: 4, fixtureProvenance: structuredClone(fixtures.cases.provenance),
     destination: 'native Romp', model: null, provider: null,
     schemaBinding: 'Per-request schema hashes; A uses production prompt-only JSON (schema=null).',
     promptHashes: { a: sha256(generationTemplate), bTemplate: sha256(translationTemplate), readingRulesJa: sha256(productionFile('reading-rules-ja.txt')), readingRulesZh: sha256(productionFile('reading-rules-zh.txt')), cDetection: sha256(detectionInstructions), cRepair: sha256(repairInstructions) },

@@ -4,10 +4,10 @@ import { applyRepairResponses as apply } from './repair-application.mjs';
 
 function fixture() {
   return { task: { language: 'es', ability: 'basics' }, topic: { title: 'Transport' }, items: [
-    { handle: 'd:0', section: 'dialogue', index: 0, speaker: 'you', alternative: false,
+    { handle: 'd:0', section: 'exampleConversation', index: 0, speaker: 'you',
       english: { text: 'Where is the station?', speaker: 'you' },
       card: { type: 'phrase', lang: 'es', text: '¿Dónde está el hospital?', translation: 'Where is the station?' } },
-    { handle: 'v:0', section: 'vocab', index: 0, english: 'station',
+    { handle: 'v:0', section: 'words', index: 0, english: 'station',
       card: { type: 'word', lang: 'es', text: 'estación', translation: 'station', partOfSpeech: 'noun', senseKey: 'station' },
       sources: [
         { snapshot: { lang: 'es', text: 'La estación.', translation: 'The station.' }, span: { start: 3, end: 11 } },

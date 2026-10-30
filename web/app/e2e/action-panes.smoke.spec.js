@@ -27,12 +27,16 @@ const KINDS = [
       id: 'seed-greetings-ja', emoji: '', title: 'Greetings', lang: 'ja',
       groups: [{
         title: 'Greeting someone',
-        essentials: [{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}],
-        dialogue: [
+        thingsToSay: [{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}],
+        likelyExchanges: [{title:'Say hello',lines:[
+          {speaker:'you',responses:[{type:'phrase',lang:'ja',text:'こんにちは',translation:'Hello.'}]},
+          {speaker:'partner',responses:[{type:'phrase',lang:'ja',text:'どうも',translation:'Hi.'}]},
+        ]}],
+        exampleConversation: [
           {card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'},speaker:'you'},
           {card:{type:'phrase',lang:'ja',text:'どうも',translation:'hi'},speaker:'partner'},
         ],
-        vocab: [],
+        words: [],
       }],
     } },
     label: 'new-phrasebook (confirm suggestion)',
@@ -71,12 +75,16 @@ test.describe('action panes open without runtime errors', () => {
             name:'Smoke Deck',lang:'ja',selectedIndexes:[0],
             groups:[{
               id:crypto.randomUUID(), title:'Greeting someone',
-              essentials:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}}],
-              dialogue:[
+              thingsToSay:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}}],
+              likelyExchanges:[{id:crypto.randomUUID(),title:'Say hello',lines:[
+                {speaker:'you',responses:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'Hello.'}}]},
+                {speaker:'partner',responses:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'どうも',translation:'Hi.'}}]},
+              ]}],
+              exampleConversation:[
                 {id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'},speaker:'you'},
                 {id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'どうも',translation:'hi'},speaker:'partner'},
               ],
-              vocab:[],
+              words:[],
             }],
           })
           cards = await db.getCards(deck.id)

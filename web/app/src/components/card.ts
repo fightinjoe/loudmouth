@@ -8,7 +8,7 @@ export interface RenderCardRowOptions {
   readOnly?: boolean;
   conversation?: boolean;
   wordTile?: boolean;
-  alternative?: boolean;
+  optionSeparator?: boolean;
 }
 
 /**
@@ -19,25 +19,24 @@ export interface RenderCardRowOptions {
 export function renderCardRow(
   entry: LibraryEntry,
   readingDisplay: ReadingDisplay = "reading",
-  { readOnly = false, conversation = true, wordTile = false, alternative }: RenderCardRowOptions = {},
+  { readOnly = false, conversation = true, wordTile = false, optionSeparator = false }: RenderCardRowOptions = {},
 ): string {
   const { card, occurrence } = entry;
   const entryKey = escapeHTML(entry.key);
   const cardId = escapeHTML(entry.cardId);
   const isStarred = entry.membership?.starredAt != null;
   const speaker = conversation ? occurrence?.speaker : undefined;
-  const showAlternative = conversation && (alternative ?? occurrence?.alternative === true);
   const canStar = !readOnly && entry.membership !== undefined;
   return `
     <div
       class="card-row-wrapper shrink-0 overflow-hidden${wordTile ? " card-word-tile" : ""}"
       ${speaker ? `data-speaker="${speaker}"` : ""}
-      ${showAlternative ? "data-alternative" : ""}
+      ${optionSeparator ? "data-option-separator" : ""}
       data-entry-key="${entryKey}"
       data-card-id="${cardId}"
     >
-      ${showAlternative
-        ? `<div class="card-alternative" ${speaker ? `data-speaker="${speaker}"` : ""}>or</div>`
+      ${optionSeparator
+        ? `<div class="card-option-separator" ${speaker ? `data-speaker="${speaker}"` : ""}>or</div>`
         : ""}
       <div class="card-row flex-row items-start tappable"
         data-action="content/open-card"

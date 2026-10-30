@@ -3,10 +3,10 @@ import type { Ability } from "./library-types";
 import { isAbility } from "./ability";
 import { isContentLanguage } from "./lang";
 
-export const LAST_DECK_KEY = "loudmouth-topic-v3.lastDeckId";
-export const CREATION_LANGUAGE_KEY = "loudmouth-topic-v3.creationLanguage";
-export const LANGUAGE_ABILITY_PREFIX = "loudmouth-topic-v3.languageAbility.";
-export const PHRASE_BREAKDOWN_CACHE_PREFIX = "loudmouth-topic-v3.phrase-breakdown.v1:";
+export const LAST_DECK_KEY = "loudmouth-topic-v4.lastDeckId";
+export const CREATION_LANGUAGE_KEY = "loudmouth-topic-v4.creationLanguage";
+export const LANGUAGE_ABILITY_PREFIX = "loudmouth-topic-v4.languageAbility.";
+export const PHRASE_BREAKDOWN_CACHE_PREFIX = "loudmouth-topic-v4.phrase-breakdown.v1:";
 
 
 export function getLastDeckId(): string | null {

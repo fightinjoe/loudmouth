@@ -90,10 +90,11 @@ reading, JSON/base64 decoding, and PNG inspection. Disconnect aborts work. There
 retry, redirect, provider/model fallback, or background-removal stage. Client retry/binding and
 stale-response behavior remains separate from this operation's outcome.
 
-Historical authenticated smoke, background-instruction comparisons, and tight-framing measurements
-are retained in [image prompt evaluation history](../../evals/history/image-prompt-evaluations.md).
-They are recorded observations migrated from API design, not new executions, performance guarantees,
-or a broad visual-quality acceptance seal.
+PNG validation establishes decodability, dimensions and visibility, not relevance, watercolor style
+or composition. The prompt's close-up framing and 3–5% margin target are guidance, not enforced
+guarantees: small visually inspected samples still had uneven margins. Pale painted washes also
+make pixel-based margin estimates approximate. No broad visual-quality or latency guarantee is
+established; saved images are not regenerated when prompt guidance changes.
 
 ## Implementation references
 
