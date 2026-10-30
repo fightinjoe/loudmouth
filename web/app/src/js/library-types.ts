@@ -1,14 +1,13 @@
 import type {
   BreakdownGenerationContext,
-  Candidate,
   Card,
   Evidence,
   Lang,
-  Phrase,
+  PhrasebookGroup,
   PhrasebookImage,
 } from "@catchphrase/card-schema";
 
-export const LIBRARY_SCHEMA_VERSION = 3 as const;
+export const LIBRARY_SCHEMA_VERSION = 4 as const;
 
 export type DeckIllustration = {
   requestId: string;
@@ -53,6 +52,8 @@ export interface Group {
   deckId: string;
   title: string;
   position: number;
+  exchanges: { id: string; title: string; position: number }[];
+  wordFamilies: { id: string; title: string; position: number }[];
 }
 
 export interface Membership {
@@ -67,18 +68,20 @@ export interface Occurrence {
   id: string;
   deckId: string;
   groupId?: string;
-  section?: "essentials" | "dialogue";
+  section?: "thingsToSay" | "likelyExchanges" | "exampleConversation";
   cardId: string;
   position: number;
   translation: string;
   speaker?: "you" | "partner";
-  alternative?: true;
+  exchangeId?: string;
+  turnIndex?: number;
 }
 
 export interface TopicWordPlacement {
   id: string;
   deckId: string;
   groupId: string;
+  familyId: string;
   cardId: string;
   position: number;
 }
@@ -102,23 +105,7 @@ export interface LibraryEntry {
   sources: Evidence[];
 }
 
-export interface PhrasebookDraftEssential {
-  id: string;
-  card: Phrase;
-}
-
-export interface PhrasebookDraftDialogueLine extends PhrasebookDraftEssential {
-  speaker: "you" | "partner";
-  alternative?: true;
-}
-
-export interface PhrasebookDraftGroup {
-  id: string;
-  title: string;
-  essentials: PhrasebookDraftEssential[];
-  vocab: Candidate[];
-  dialogue: PhrasebookDraftDialogueLine[];
-}
+export type PhrasebookDraftGroup = PhrasebookGroup;
 
 export interface CommitPhrasebookInput {
   name: string;

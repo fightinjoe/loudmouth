@@ -15,8 +15,12 @@ describe('v2 content exchange',()=>{
     const store = createDb({indexedDB:new IDBFactory(),IDBKeyRange});
     const card = {type:'phrase',...snapshot};
     const deck = await commitPhrasebook({name:'Dinner',lang:'ja',groups:[{
-      id:'draft',title:'Dietary needs',essentials:[{id:'essential',card}],vocab:[],
-      dialogue:[{id:'you',card,speaker:'you'},{id:'partner',card,speaker:'partner'}],
+      id:'00000000-0000-4000-8000-000000000001',title:'Dietary needs',thingsToSay:[{id:'00000000-0000-4000-8000-000000000002',card}],words:[],
+      likelyExchanges:[{id:'00000000-0000-4000-8000-000000000003',title:'Options',lines:[
+        {speaker:'you',responses:[{id:'00000000-0000-4000-8000-000000000004',card}]},
+        {speaker:'partner',responses:[{id:'00000000-0000-4000-8000-000000000005',card}]},
+      ]}],
+      exampleConversation:[{id:'00000000-0000-4000-8000-000000000006',card,speaker:'you'},{id:'00000000-0000-4000-8000-000000000007',card,speaker:'partner'}],
     }],selectedIndexes:[0]},{store});
     await toggleCardStar(deck.id,word,store);
     await toggleCardStar(deck.id,chunk,store);

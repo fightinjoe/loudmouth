@@ -3,7 +3,7 @@ name: journeys
 description: >
   Current Catchphrase user journeys. Documents the retained guided-creation, phrasebook-browsing,
   suggested-phrasebook, and starred-card review flows. Defer to DESIGN.md and the Pane Protocol for
-  pane vocabulary, API_DESIGN.md for endpoint contracts, and CARD_SCHEMA.md for persisted data.
+  pane vocabulary, docs/api/ for endpoint contracts (indexed by API_DESIGN.md), and CARD_SCHEMA.md for persisted data.
 ---
 
 # User journeys
@@ -80,8 +80,10 @@ Content *(phrasebook)*.
 
 7. **Commit and open.**
    - Only explicit Continue plus a successful response creates the local phrasebook and imports cards.
-   - Selected topics retain checklist order, independent essential/dialogue occurrences, and
-     topic-local vocabulary placements without pooling or a global word cap.
+   - Selected topics retain checklist order and all four sections: **Things to say**, **Likely
+     exchanges**, **Words** in titled families, **Example conversation**. Only exact-English Things
+     to say is deduplicated across retained topics; all exchange options, example lines and Word
+     placements remain, without pooling or a global word cap.
    - The action pane closes and the new phrasebook opens in the content pane.
 
 ### State and failure rules
@@ -97,6 +99,9 @@ Content *(phrasebook)*.
 - The client never exposes a partly generated or partly imported phrasebook.
 - The selected or remembered ability is sent to generation and stored with the phrasebook. Ability
   is remembered for the language only after a successful commit.
+- The v4 web library starts in a fresh namespace; older databases/preferences are untouched, not
+  migrated. This promotion does not deploy API or web, and native iOS's retired-route integration
+  remains unchanged.
 
 ## Journey 2 — Browsing and prioritizing a phrasebook
 
@@ -111,12 +116,14 @@ they want in the review set.
    **Phrasebook**, as does completing creation.
 2. **Browse tabs.**
    - **Phrasebook** previews each topic with a clipped final item and a white **View** footer.
-     Tapping a phrase opens its topic's Essential phrases; tapping a word opens Useful words.
-   - Each topic contains full-width essentials, vocabulary tiles, and the complete conversation.
-     Unplaced entries occupy supplemental **Translations**, **Words**, or **Chunks** tabs.
+     Tapping a phrase opens its topic's Things to say; tapping a word opens Words.
+   - Each topic shows **Things to say**, **Likely exchanges**, **Words** with family titles, and
+     **Example conversation**, in that order. Unplaced entries occupy supplemental **Translations**,
+     **Words**, or **Chunks** tabs.
    - Stars mark the review set; the pinned **Starred** tab remains visible even at zero.
-3. **Read a conversation.** Speaker metadata renders learner and partner lines on opposite sides.
-   Alternatives remain in the same conversation group.
+3. **Read an exchange or example.** Speaker metadata renders learner and partner turns on opposite
+   sides. Each titled exchange has explicit response options within a turn, separated by “or”;
+   Example conversation is a separate linear sequence without alternative separators.
 4. **Use a card.** On web, tapping a card speaks it. Long-press a phrase for 500 ms to open its
    breakdown; right-click or Shift+F10 provides the same action. Select a phrase part or use
    **SHOW ALL** to inspect every explanation; optional patterns include notes and another example.
@@ -124,14 +131,17 @@ they want in the review set.
 5. **Prioritize.** The star affordance changes the review set without opening details or speaking.
    Starred cards turn blue in topic pages; the Starred collection uses white, full-width rows.
 6. **Return or maintain content.** Close, Escape, or the scrim returns to the original card and scroll
-   position. Editing and deletion remain in edit mode; the phrasebook title menu exposes settings
-   and reorder. Opening another pane dismisses the breakdown rather than stacking task interfaces.
+   position. The phrasebook title menu exposes settings and reorder, not card-content editing.
+   Reorder stays within a section, one exchange turn's response options, or one Word family.
+   Opening another pane dismisses the breakdown rather than stacking task interfaces.
 
 ### Key rules
 
-- Occurrences retain their group, section, speaker when applicable, and translation through persistence.
-- Conversation order and vocabulary separation come from the generated groups; the learner is not
-  asked to file generated cards.
+- Occurrences retain group, section, speaker when applicable, and translation through persistence.
+  Exchange options retain exchange ID and turn index; Word placements retain family ownership.
+  Exchange/family titles and ordering survive reload and backup.
+- Conversation order and titled Word families come from generated groups; the learner is not
+  asked to file generated cards. Shared Words keep their placements in every topic/family.
 - Starring is bounded binary emphasis, not a score or progress state.
 - The phrasebook's only bottom action is **Review**, shown only on **Starred**. Extending an existing
   phrasebook is not part of the current flow.

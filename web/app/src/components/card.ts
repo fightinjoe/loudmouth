@@ -8,7 +8,7 @@ export interface RenderCardRowOptions {
   readOnly?: boolean;
   conversation?: boolean;
   wordTile?: boolean;
-  alternative?: boolean;
+  optionSeparator?: boolean;
 }
 
 /**
@@ -19,47 +19,25 @@ export interface RenderCardRowOptions {
 export function renderCardRow(
   entry: LibraryEntry,
   readingDisplay: ReadingDisplay = "reading",
-  { readOnly = false, conversation = true, wordTile = false, alternative }: RenderCardRowOptions = {},
+  { readOnly = false, conversation = true, wordTile = false, optionSeparator = false }: RenderCardRowOptions = {},
 ): string {
   const { card, occurrence } = entry;
   const entryKey = escapeHTML(entry.key);
   const cardId = escapeHTML(entry.cardId);
   const isStarred = entry.membership?.starredAt != null;
   const speaker = conversation ? occurrence?.speaker : undefined;
-  const showAlternative = conversation && (alternative ?? occurrence?.alternative === true);
   const canStar = !readOnly && entry.membership !== undefined;
-  const editActions = readOnly
-    ? ""
-    : `
-      <div class="inset flex-row reverse items-center gap-md">
-        <button
-          class="icon-button bg-blue fg-white tappable"
-          data-action="content/edit-card"
-          data-entry-key="${entryKey}"
-          aria-label="Edit"
-        >${icon("edit")}</button>
-
-        <button
-          class="icon-button bg-danger fg-white tappable"
-          data-action="content/delete-card"
-          data-entry-key="${entryKey}"
-          aria-label="Delete"
-        >${icon("delete")}</button>
-      </div>`;
-
   return `
     <div
       class="card-row-wrapper shrink-0 overflow-hidden${wordTile ? " card-word-tile" : ""}"
       ${speaker ? `data-speaker="${speaker}"` : ""}
-      ${showAlternative ? "data-alternative" : ""}
+      ${optionSeparator ? "data-option-separator" : ""}
       data-entry-key="${entryKey}"
       data-card-id="${cardId}"
     >
-      ${showAlternative
-        ? `<div class="card-alternative" ${speaker ? `data-speaker="${speaker}"` : ""}>or</div>`
+      ${optionSeparator
+        ? `<div class="card-option-separator" ${speaker ? `data-speaker="${speaker}"` : ""}>or</div>`
         : ""}
-      ${editActions}
-
       <div class="card-row flex-row items-start tappable"
         data-action="content/open-card"
         data-entry-key="${entryKey}"

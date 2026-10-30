@@ -11,6 +11,7 @@ const {
   validateGenerationResponse,
   validateTranslationResponse,
   assemblePhrasebook,
+  flattenTopic,
 } = require('./parse');
 const {
   buildPhrasebookGenerationPrompt,
@@ -252,14 +253,14 @@ async function generateTopic({
   }
 }
 
-async function generateConversations(args) {
+async function generateTopics(args) {
   const controller = new AbortController();
   const unlink = linkAbortSignal(args.signal, controller);
-  const conversations = new Array(args.parsedRequest.checklist.length);
+  const topics = new Array(args.parsedRequest.checklist.length);
   let nextIndex = 0;
   const worker = async () => {
     try {
-      while (nextIndex < conversations.length) {
+      while (nextIndex < topics.length) {
         if (controller.signal.aborted) throw reasonForAbort(controller.signal, 'Generation cancelled');
         const index = nextIndex++;
         const generated = await generateTopic({
@@ -267,7 +268,7 @@ async function generateConversations(args) {
           parsedRequest: { ...args.parsedRequest, checklist: [args.parsedRequest.checklist[index]] },
           signal: controller.signal,
         });
-        conversations[index] = generated.conversations[0];
+        topics[index] = generated.topics[0];
       }
     } catch (error) {
       if (!controller.signal.aborted) controller.abort(error);
@@ -275,10 +276,10 @@ async function generateConversations(args) {
     }
   };
   try {
-    const settled = await Promise.allSettled(Array.from({ length: Math.min(4, conversations.length) }, worker));
+    const settled = await Promise.allSettled(Array.from({ length: Math.min(4, topics.length) }, worker));
     const failure = settled.find(result => result.status === 'rejected');
     if (failure) throw failure.reason;
-    return { conversations };
+    return { topics };
   } finally {
     unlink();
   }
@@ -288,14 +289,13 @@ async function generateConversations(args) {
  * Native JSON schema for one translation call. Array counts are pinned to the
  * generated English source so providers cannot omit or add translated items.
  */
-function buildTranslationResponseJsonSchema(conversation, language) {
+function buildTranslationResponseJsonSchema(topic, language) {
+  const source = flattenTopic(topic);
   const text = { type: 'string', minLength: 1, maxLength: 2000 };
   const exactArray = (count, items) => ({ type: 'array', minItems: count, maxItems: count, items });
-  // Property insertion order is part of the approved native translation request.
   const properties = {
-    lines: exactArray(conversation.lines.length, text),
-    essentials: exactArray(conversation.essentials.length, text),
-    vocab: exactArray(conversation.vocab.length, {
+    phrases: exactArray(source.phrases.length, text),
+    words: exactArray(source.words.length, {
       type: 'object',
       additionalProperties: false,
       required: ['target', 'partOfSpeech', 'senseKey'],
@@ -306,10 +306,9 @@ function buildTranslationResponseJsonSchema(conversation, language) {
         source: {
           type: 'object',
           additionalProperties: false,
-          required: ['section', 'index', 'surface', 'occurrence'],
+          required: ['phraseIndex', 'surface', 'occurrence'],
           properties: {
-            section: { type: 'string', enum: ['essentials', 'dialogue'] },
-            index: { type: 'integer', minimum: 0, maximum: Math.max(conversation.essentials.length, conversation.lines.length) - 1 },
+            phraseIndex: { type: 'integer', minimum: 0, maximum: source.phrases.length - 1 },
             surface: text,
             occurrence: { type: 'integer', minimum: 0 },
           },
@@ -319,18 +318,17 @@ function buildTranslationResponseJsonSchema(conversation, language) {
   };
   if (language === 'ja') {
     for (const [field, count] of [
-      ['essentialsRomanizations', conversation.essentials.length],
-      ['lineRomanizations', conversation.lines.length],
-      ['vocabRomanizations', conversation.vocab.length],
+      ['phraseRomanizations', source.phrases.length],
+      ['wordRomanizations', source.words.length],
     ]) properties[field] = exactArray(count, text);
   }
   return { type: 'object', additionalProperties: false, required: Object.keys(properties), properties };
 }
 
-async function translateConversation({
+async function translateTopic({
   parsedRequest,
-  conversation,
-  conversationIndex,
+  topic,
+  topicIndex,
   handler,
   backendName,
   callTimeoutMs,
@@ -344,10 +342,10 @@ async function translateConversation({
     language: parsedRequest.language,
     ability: parsedRequest.ability,
     answers: parsedRequest.answers,
-    conversation,
+    topic,
   });
   const responseJsonSchema = buildTranslationResponseJsonSchema(
-    conversation,
+    topic,
     parsedRequest.language,
   );
 
@@ -360,20 +358,20 @@ async function translateConversation({
       timeoutMs: callTimeoutMs,
       signal,
       usageAccumulator,
-      route: `phrasebook:translate:${conversationIndex}`,
+      route: `phrasebook:translate:${topicIndex}`,
       backendName,
       retryDelaysMs,
       diagnostics,
     });
     try {
-      const translated = validateTranslationResponse(reply.text, conversation, parsedRequest.language);
+      const translated = validateTranslationResponse(reply.text, topic, parsedRequest.language);
       diagnostics.failureLevel = Math.max(diagnostics.failureLevel, translated.failureLevel);
       return translated;
     } catch (error) {
       console.error({
         event: 'validation_error',
         failureLevel: attempt >= TRANSLATION_VALIDATION_RETRIES ? 2 : 1,
-        route: `phrasebook:translate:${conversationIndex}`,
+        route: `phrasebook:translate:${topicIndex}`,
         llm: backendName,
         attempt: attempt + 1,
         error: error.message,
@@ -387,7 +385,7 @@ async function translateConversation({
         event: 'phrasebook_translation_retry',
         failureLevel: 1,
         llm: backendName,
-        conversationIndex,
+        topicIndex,
         attempt: attempt + 1,
         error: error.message,
       });
@@ -395,14 +393,14 @@ async function translateConversation({
   }
 }
 
-async function translateConversations(args) {
+async function translateTopics(args) {
   const fanoutController = new AbortController();
   const unlink = linkAbortSignal(args.signal, fanoutController);
-  const jobs = args.conversations.map((conversation, conversationIndex) => (
-    translateConversation({
+  const jobs = args.topics.map((topic, topicIndex) => (
+    translateTopic({
       ...args,
-      conversation,
-      conversationIndex,
+      topic,
+      topicIndex,
       signal: fanoutController.signal,
     }).catch((error) => {
       if (!fanoutController.signal.aborted) fanoutController.abort(error);
@@ -421,7 +419,7 @@ async function translateConversations(args) {
 }
 
 /**
- * Pure pipeline core: generate English conversations, fan out translations,
+ * Pure pipeline core: generate English topics, fan out translations,
  * and assemble CARD_SCHEMA cards by index.
  */
 async function performPhrasebook(
@@ -457,7 +455,7 @@ async function performPhrasebook(
   const diagnostics = { failureLevel: 0 };
 
   try {
-    const generated = await generateConversations({
+    const generated = await generateTopics({
       parsedRequest,
       handler: generationHandler,
       backendName: generationBackendName,
@@ -467,9 +465,9 @@ async function performPhrasebook(
       retryDelaysMs,
       diagnostics,
     });
-    const translations = await translateConversations({
+    const translations = await translateTopics({
       parsedRequest,
-      conversations: generated.conversations,
+      topics: generated.topics,
       handler,
       backendName,
       callTimeoutMs,
@@ -481,7 +479,7 @@ async function performPhrasebook(
     const response = assemblePhrasebook({
       seed: parsedRequest.seed,
       language: parsedRequest.language,
-      conversations: generated.conversations,
+      topics: generated.topics,
       translations,
     });
 
@@ -490,7 +488,9 @@ async function performPhrasebook(
     const validatedResponse = validatePhrasebookResponse({ ...response, usage });
     if (validatedResponse.flags.length > 0) diagnostics.failureLevel = 1;
     const cardCount = validatedResponse.groups.reduce(
-      (count, group) => count + group.essentials.length + group.dialogue.length + group.vocab.length,
+      (count, group) => count + group.thingsToSay.length + group.exampleConversation.length
+        + group.likelyExchanges.reduce((sum, exchange) => sum + exchange.lines.reduce((turns, line) => turns + line.responses.length, 0), 0)
+        + group.words.reduce((sum, family) => sum + family.items.length, 0),
       0,
     );
     console.log({

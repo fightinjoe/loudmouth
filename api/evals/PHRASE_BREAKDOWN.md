@@ -3,9 +3,9 @@
 ## Current decision and scope
 
 The runtime source of truth is `api/src/phrase-breakdown/prompt.txt`. It implements the v2 request,
-dictionary-Word, explicit-equivalence, and Chunk-target contract. Numbered files in `prompts/` are
-immutable pre-v2 experiment snapshots, not alternate deployment sources; they can explain historical
-artifacts but are not valid candidate prompts for a current production comparison.
+dictionary-Word, explicit-equivalence, and Chunk-target contract. Historical numbered prompt
+candidates, comparison notes and run captures have been deleted. The retained fixtures and CLI
+exercise the current contract; they are not evidence of current linguistic quality.
 
 The CLI uses the production provider adapters, v2 request validation, model-output alignment and
 assembly, and punctuation normalization. It does not require an HTTP server, change runtime
@@ -26,32 +26,28 @@ node --env-file=api/.env api/evals/scripts/eval-phrase-breakdown.js
 node --env-file=api/.env api/evals/scripts/eval-phrase-breakdown.js \
   --prompt=/tmp/phrase-breakdown-v2-candidate.txt --repetitions=3
 
-# Historical v07/v08 artifacts remain replayable, but their prompts must not be sent
-# through today's validator because they produce the retired learningItems contract.
-
 # One fixture; Luna uses the existing chatgpt registry key
 node --env-file=api/.env api/evals/scripts/eval-phrase-breakdown.js \
   --case=ja-meat-fish --backend=chatgpt
 
-# Replay saved results with no model calls and no revalidation
-node api/evals/scripts/eval-phrase-breakdown.js \
-  --replay=api/evals/artifacts/phrase-breakdown-2026-09-20T21-26-46-564Z.json
+# Replay a newly saved current-contract result without model calls or revalidation
+node api/evals/scripts/eval-phrase-breakdown.js --replay=/path/to/current-run.json
 ```
 
 Use `--verbose` for roles, explanations, provenance, and review questions. `--fixtures=PATH` selects
 another JSON fixture array; `--out=PATH` chooses a new artifact path and refuses overwrites.
-`--baseline-prompt` requires `--prompt`. Without `--prompt`, only production is run. Comparisons
-alternate baseline/candidate order by repetition; this reduces fixed ordering bias, not all temporal
-or provider variation. No temperature/seed control is currently supplied by this runner.
+Without `--prompt`, only production is run. Candidate comparisons always use the production prompt
+as their reference and alternate production/candidate order by repetition; this reduces fixed
+ordering bias, not all temporal or provider variation. No temperature/seed control is currently
+supplied by this runner.
 
-The promoted contract has nested `chunks[].words`, explicit `equivalentWordIndex`, dictionary-aligned
-structured readings, and production source-span assembly. Old experimental `--item-format` and
-`--normalize-punctuation` switches are not accepted. Earlier prompt shapes belong to historical
-replay, not a reason to loosen current production validation.
+The current contract has nested `chunks[].words`, explicit `equivalentWordIndex`,
+dictionary-aligned structured readings, and production source-span assembly. Retired output
+formats and frozen experimental baseline overrides are not supported.
 
 ## How the user and assistant collaborate in the CLI
 
-1. **State the hypothesis before editing.** Name the frozen baseline, proposed candidate, and the
+1. **State the hypothesis before editing.** Name the current production reference, proposed candidate, and the
    specific behavior to improve. Keep unrelated prompt rules, fixtures, model, and normalization
    stable when possible. Show exact added/removed instructions or a small before/after schema.
 2. **Run it.** Do not substitute predicted outputs for provider responses. One sample is a quick
@@ -77,9 +73,10 @@ replay, not a reason to loosen current production validation.
 8. **Invite informed evaluation.** Discuss the actual observed tradeoffs and user priorities, not just
    aggregate scores. Users can edit `fixtures/phrase-breakdown.json`; their preference for coherent
    larger chunks supersedes earlier assumptions that smaller segmentation is always better.
-9. **Record the decision.** Retain candidate prompts, exact inputs, run artifacts, and a short note
-   describing adoption/rejection, known limitations, and next steps. Do not promote merely because
-   tests pass. On approval, update the API contract, consumers/cache, docs, and relevant tests together.
+9. **Record the decision.** Report adoption/rejection, known limitations and supporting observations.
+   Keep future authorized run inputs and outputs together while reviewing them; past milestone
+   artifacts are not retained here. Do not promote merely because tests pass. On approval, update
+   the API contract, consumers/cache, docs and relevant tests together.
 
 ## Evaluation priorities
 
@@ -117,7 +114,7 @@ Artifacts are written incrementally under ignored `api/evals/artifacts/`. They i
 instructions and serialized input, model/backend, usage and estimated cost, model-call latency,
 raw responses, validation findings, normalized output, and normalization timing/removal information.
 Failures remain in the run, and any final finding yields a nonzero exit code. Replay prints recorded
-findings without revalidating, so historical PASS is not a claim about today's contract.
+findings without revalidating; a recorded PASS is not a fresh check of today's contract.
 
 Keep raw model output even when invalid. Production punctuation cleanup verifies every raw span and
 removes only punctuation/whitespace-only chunks with empty `words` and a null
@@ -129,7 +126,7 @@ only verified equivalence produces a Word target. It does not merge clauses, rem
 symbols, invent lexical items, or trust model-generated snapshots or IDs. The validated request
 snapshot remains untouched.
 
-As requested when locking v07, pre-v07 phrase-breakdown run artifacts were removed; original API
-captures, prompt snapshots, the v07 run, and the v07/v08 comparison were retained. Do not delete other
-endpoint experiments or future runs without explicit scope. The ignored artifacts are local evidence;
-checked-in decision notes must preserve conclusions needed by another session or checkout.
+The milestone cleanup deliberately removed past prompt snapshots, evaluation diaries and raw
+captures without archiving them. Reconstructed regression inputs remain self-contained and are
+identified honestly in fixture provenance; they do not depend on deleted files. Fresh paid runs
+require explicit authorization and must not reuse a historical approval.

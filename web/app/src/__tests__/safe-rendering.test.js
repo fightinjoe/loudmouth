@@ -1,6 +1,5 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { openCardEditPanel } from "../components/card-edit-panel";
 import { openDeckSettings } from "../components/deck-settings";
 import { openJsonPanel } from "../components/json-panel";
 import { renderSourceContext } from "../components/source-context";
@@ -36,33 +35,6 @@ describe("safe rendering boundaries", () => {
 
     expect(appEl.querySelector("img")).toBeNull();
     expect(appEl.querySelector("#ds-name-value").textContent).toBe(injectedElement);
-  });
-
-  it("keeps hostile persisted card fields inside their form controls", () => {
-    openCardEditPanel(appEl, {
-      key: "occurrence-id",
-      cardId: "card-id",
-      card: {
-        lang: "ja",
-        type: "phrase",
-        text: injectedElement,
-        translation: injectedElement,
-        reading: [[injectedElement, null]],
-        romanization: injectedElement,
-        notes: injectedElement,
-        example: { text: injectedElement },
-      },
-      sources: [],
-    }, {
-      updateCard: vi.fn(),
-      deleteCard: vi.fn(),
-    }, () => {}, () => {}, () => {});
-
-    expect(appEl.querySelector("img")).toBeNull();
-    for (const id of ["edit-text", "edit-translation", "edit-romanization", "edit-notes", "edit-example"]) {
-      expect(appEl.querySelector(`#${id}`).value).toBe(injectedElement);
-    }
-    expect(appEl.querySelector("#edit-reading").value).toBe(JSON.stringify([[injectedElement, null]]));
   });
 
   it("renders an untrusted JSON panel title literally and assigns JSON as textarea data", () => {

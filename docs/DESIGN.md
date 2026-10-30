@@ -67,8 +67,10 @@ language (first time or change) → topic → questions → conversation checkli
 
 Topic submission calls `/context` with `{ seed, language, ability? }` (using the remembered ability
 for this language when available) and independently starts `/phrasebook-title` with `{ seed }`. 
-Otherwise the client prepends "What is your language ability?" to the returned questions, with
-options None, Basics, Conversational. On web, each question occupies its own action-pane page.
+If ability is unknown, the client prepends "What is your language ability?" to the returned questions,
+with options None, Basics, Conversational. This client-owned question is outside the model's
+five-question cap; the model is instructed not to ask proficiency questions.
+On web, each question occupies its own action-pane page.
 Language and context questions share the same grouped-row radio component with circular indicators.
 Clicking a radio only selects it; **Next** advances. Context questions start unselected. Generated
 questions end with an Other radio and a text box whose placeholder is "other"; typing selects it,
@@ -76,21 +78,33 @@ and Next or Enter submits nonblank, trimmed text.
 Ability retains only its three supported choices. Previous and Next preserve answers, with Next
 disabled until the current question has an answer. Completing the last question
 starts `/phrasebook` with `{ seed, language, ability, answers, checklist }`, using the selected or
-remembered enum value and excluding the ability question from `answers`. `checklist` contains all 
-suggested topics. The learner selects 1–8 topics locally while generation runs; model selection 
-remains server-owned.
+remembered enum value and copied flat `answers` excluding the ability question. `checklist` contains
+all suggested labels in order; local topic selection starts from the model's checked defaults.
+The learner selects 1–8 topics locally while generation runs; toggling topics never sends another
+request and model selection remains server-owned.
+
+The parallel naming request never blocks advancing or saving. Immediately before creating the local
+phrasebook, the client freezes the available generated title or falls back to the original seed.
+Pending title work is aborted and late responses are ignored; naming errors remain silent. The title
+becomes the local phrasebook name and is not sent to `/phrasebook`. Answer changes and card-generation
+retries reuse it. A different seed replaces the naming request; dismissal aborts it. A failed local
+save retains the frozen title on retry.
 
 No phrasebook data is persisted while answering questions or selecting topics, even if generation has
-finished; the confirmed language preference is independent. Final Continue validates the whole v3
-draft, retains selected topics by original index, and atomically saves their independent sections and
-Word placements. There is no word pooling or global cap, and no duplicate text request. Back without
-changes reuses work; answer or seed changes invalidate text work. Changing the confirmed language
-preserves the prompt but clears context, answers, and checklist, aborts speculative work, and resolves
-the remembered ability for the new language before requesting fresh context.
+finished; the confirmed language preference is independent. Final Continue validates the whole v4
+draft, retains selected topics by original index, and atomically saves their sections and Word
+placements. Exact-English repeated Things to say belongs to the earliest retained topic; unchecked
+topics cannot suppress it. Every exchange response, example line and Word-family placement remains,
+including repeated Words across topics. There is no global word cap or duplicate text request. Final Continue reuses pending or ready work; finishing speculative
+generation alone never saves or navigates. Back without changes reuses work; answer or seed changes
+invalidate and abort text work. Changing the confirmed language preserves the prompt but clears
+context, answers, and checklist, aborts speculative work, and resolves remembered ability for the
+new language. Request-identity guards ignore stale responses.
 Confirmation shows the loading state for at least 1000 ms before saving and displaying the phrasebook,
 configured by `PHRASEBOOK_MIN_LOADING_MS` in `web/app/src/components/creation-panel.ts`.
 This minimum overlaps any remaining generation time rather than adding a delay after generation.
-Background failure leaves the checklist usable until Continue surfaces it; retry preserves choices.
+Background failure leaves the checklist usable until Continue surfaces it; retry preserves choices
+and starts fresh text work.
 Dismissal aborts text requests and discards uncommitted results. Incomplete saves are rolled back.
 
 Context completion starts independent seed-based cover work. Answer/checklist changes reuse it;
@@ -105,6 +119,14 @@ succeed on final Continue. Failed saves and abandoned speculative results do not
 creation skips this question and sends the remembered value to both endpoints. Updating it is deferred.
 Historical setup preferences are not inferred or migrated to the new scale.
 
+API and web require a coordinated future release; this promotion does not deploy them, and native
+iOS's retired-route integration remains unchanged. Speculation hides generation behind
+checklist interaction but does not guarantee lower latency: English generation uses bounded
+per-topic concurrency, and the response waits for every translation, including topics later discarded.
+Usage includes all generated topics. Evaluate final Continue-to-usable-phrasebook time and cost per
+saved phrasebook. Durable transaction and cancellation boundaries remain authoritative in
+[the shared card schema](CARD_SCHEMA.md#atomic-lifecycle).
+
 ## Phrasebook view
 
 On web, saved phrasebooks open **Phrasebook**, a contents page with an optional decorative 16:9
@@ -113,17 +135,21 @@ frame, with a narrow 3–5% target safety margin and no clipped objects. Long ob
 or diagonally to use the width. Actual generated margins vary; no automatic crop is applied.
 Transparency is not required. Pending art reserves its space; ready art has empty alt text and white
 surrounding space; failed art shows a subdued unavailable message. Topic previews show up to three
-essential English phrases and two words with POS. The final preview item is vertically clipped to
-suggest more content. The white footer shows section counts and **View** with a right chevron.
-The whole topic preview is clickable: phrases, heading, and footer open Essential phrases; words
-open Useful words. Each destination scrolls to its section and focuses the exact topic tab.
+Things to say phrases in English and two words with POS. The final preview item is vertically clipped to
+suggest more content. The white footer shows counts for phrases, exchanges, words and example
+conversation, plus **View** with a right chevron. The whole topic preview is clickable: phrases,
+heading and footer open the first nonempty section; words open Words. Each destination scrolls to
+its section and focuses the exact topic tab.
 
 Each stored Group has one topic tab and horizontally sliding page, identified by Group ID rather
-than title, including when titles duplicate. Each topic contains **Essential phrases**, **Useful
-words**, and **Conversation** in that order: full-bleed white essential rows with bottom borders;
-two-column Word tiles; gray-100 learner/gray-50 partner dialogue bubbles. Essentials are independently
-generated occurrences, not ranked dialogue excerpts. Equal text can retain different meanings and
-presentation in different sections.
+than title, including when titles duplicate. Each topic contains **Things to say**, **Likely
+exchanges**, **Words**, and **Example conversation**, in that order. Things to say uses full-bleed
+white rows with bottom borders. Each likely exchange has its own title and alternating-speaker
+turns, with explicit alternative responses inside a turn. Words uses titled families of two-column
+tiles. Example conversation is linear, with one phrase per speaker turn. The phrase material is
+independently authored, not ranked excerpts. Exact-English cross-topic Things to say duplicates
+are removed at commit; empty sections are omitted. Every Word-family placement remains even when
+the canonical Word is shared across topics. Exchange and family titles, IDs and order are durable.
 
 Supplemental **Translations**, **Words**, and **Chunks** pages follow topics when unplaced entries
 exist. Topic Word placements are not duplicated into the supplemental Words page.
@@ -150,24 +176,25 @@ the card list's 50 px left/right gutters advance one page beyond 45 px, for both
 drags. The left gutter selects the previous page, or reveals navigation on the first page; the right
 gutter selects the next page. Shorter or cancelled drags snap back. Interior drags do not page.
 Vertical scrolling stays native, and each page retains its own position. Offscreen pages are inert.
-Edit mode disables paging drags and retains active-page reorder and card editing.
+Edit mode disables paging drags and retains active-page reordering without card-content editing.
 
 The visual reference is `explorations/phrasebook-navigation/PHRASEBOOK_EXPLORATION.html`: white
 surfaces, Roboto Condensed headings and tabs, and Manrope card text. Word and conversation bubbles
-have 16 px corners and 8 px gaps; essential and Starred rows have square edges and bottom borders.
-Each Phrase occurrence supplies its own translation, topic, section, and position; repeated
-occurrences may share a durable Phrase without sharing presentation state.
-Only dialogue supplies speaker state. Learner speech is right-aligned gray-100, partner speech
-left-aligned gray-50, with text left-aligned on both. “or” appears only between adjacent same-speaker
-dialogue lines in the same topic.
+have 16 px corners and 8 px gaps; Things to say and Starred rows have square edges and bottom borders.
+Each Phrase occurrence supplies its own translation, topic, section, and local position; repeated
+occurrences may share a durable Phrase without sharing presentation state. Exchanges also retain
+exchange ID and turn index. Exchanges and Example conversation supply speaker state: learner
+speech is right-aligned gray-100, partner speech left-aligned gray-50, with text left-aligned on both.
+“or” appears only between explicit response options within one exchange turn, never between
+adjacent example lines or inferred from matching speakers.
 Starring changes white/gray-50 cards to blue-50 and gray-100 learner cards to blue-100. Unstarring
 restores the original surface. Membership changes never affect another phrasebook.
 
 Starred is a white, full-bleed collection in saved entry order (the same order as Review), not
-reconstructed dialogue or a copy of essentials. Each membership appears once; a repeated Phrase
-uses its first saved occurrence and translation. All card types use essential-row styling here,
+reconstructed dialogue or a copy of Things to say. Each membership appears once; a repeated Phrase
+uses its first saved occurrence and translation. All card types use the full-width row styling here,
 without blue backgrounds. Word definitions and full highlighted Chunk source snapshots remain
-available, along with audio, details, editing, and star actions. Starring updates every occurrence
+available, along with audio, details, and star actions. Starring updates every occurrence
 without changing the active page. Opening Starred leaves the topic strip in place.
 Unstarring removes only the collection row, never the saved card, membership, or evidence. Removing
 a focused row moves focus to the next star, or the preceding star at the end. Removing the last
@@ -192,11 +219,13 @@ full preserved source snapshot. Phrase breakdown opens on a 500 ms long press, r
 Shift+F10/Context Menu key while the card is focused. Movement, scrolling, cancellation, or navigation
 cancels the hold; its release never also plays audio. Stars remain independent tap targets.
 There is no card speaker icon or visible Explore phrase link. Chunk rows render their full source
-with the saved span highlighted rather than presenting an isolated fragment. In edit mode, entry-keyed card taps open
-the editor. Word tiles become one column; reorder stays inside one topic/section bucket and updates
-placements or occurrences, never canonical card identity. Contents and Starred have no reorder
-overlay. Phrasebook settings remain available from the title menu. Language browsing remains
-separate, with no star or review control without a phrasebook.
+with the saved span highlighted rather than presenting an isolated fragment. **Reorder cards** keeps
+reordering within Things to say or Example conversation, within a single exchange turn's options,
+or within a single Word family. It updates placements or occurrences, never canonical card identity,
+exchange/turn ownership or family ownership. Word tiles become one column; card taps do not open an editor. Contents and Starred
+have no reorder overlay. Card-content editing and its swipe edit/delete actions are removed from
+the web app. Phrasebook settings, including naming, remain available from the title menu. Language
+browsing remains separate, with no star or review control without a phrasebook.
 
 The phrasebook action bar contains **Review** only while Starred is selected. Phrasebook content is
 not extended from this view; a new situation starts a new guided phrasebook from navigation.
@@ -225,11 +254,16 @@ available but save controls are unavailable.
 Opening calls `/phrase-breakdown` with the exact occurrence snapshot, source references, and only the
 active phrasebook context. The source remains visible during loading and errors; **Retry** makes a new
 request after failure. **Regenerate** bypasses the cache while retaining the current analysis if the
-new request fails. Valid teaching and candidates are cached in tab-scoped sessionStorage under the
-serialized versioned request. Editing the request source or context therefore cannot reuse stale
-analysis. Opening, closing, retrying, regenerating, and cache clearing make no durable library writes;
-only an explicit successful star action saves or reuses a card and membership. Closing aborts the
-client request and late results are ignored.
+new request fails. Valid teaching and candidates are cached in tab-scoped sessionStorage under
+`loudmouth-topic-v4.phrase-breakdown.v1:` plus the serialized exact versioned request, including
+refs, context, and readings. Invalid entries, including older responses without `flags`, are removed.
+Editing the request source or context therefore cannot reuse stale analysis. Opening, closing,
+retrying, regenerating, and cache clearing make no durable library writes; only an explicit successful
+star action saves or reuses a card and membership. Ready/reopened targets resolve stars from IndexedDB,
+not cached analysis. Regenerate never overwrites saved teaching. Closing aborts the client request
+and suppresses stale UI updates, not an already committed star. Atomic starring and Word-evidence
+persistence follow [the shared card schema](CARD_SCHEMA.md#atomic-lifecycle). API and web must deploy
+together.
 
 The conversation is inert while details is open. Focus enters Close; Tab stays within the modal.
 Close, Escape, or the scrim dismiss and restore focus to the original card without scrolling.

@@ -1,0 +1,1642 @@
+{
+  "version": 4,
+  "status": "proposed-not-linguistically-certified",
+  "provenance": {
+    "kind": "authored-structural-v4-migration",
+    "historicalReplay": false,
+    "modelGenerated": false,
+    "linguisticCertification": false,
+    "method": "Existing authored phrases and translations retained. The first two example turns are reused as one likely exchange; existing vocabulary is grouped without claiming certified word-family quality. Review e/d/v handles and authored defects are preserved."
+  },
+  "cases": [
+    {
+      "id": "shoes-zh",
+      "english": {
+        "topics": [
+          {
+            "title": "Trying on walking shoes",
+            "thingsToSay": [
+              "I usually wear European size 39.",
+              "Could I try on both shoes?",
+              "Do you have one size larger?",
+              "How much is this pair?",
+              "Can you keep these for me?"
+            ],
+            "likelyExchanges": [
+              {
+                "title": "Trying on walking shoes",
+                "lines": [
+                  {
+                    "speaker": "you",
+                    "text": [
+                      "Hello, I need comfortable shoes for walking."
+                    ]
+                  },
+                  {
+                    "speaker": "partner",
+                    "text": [
+                      "What size do you usually wear?"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "words": [
+              {
+                "title": "Topic vocabulary",
+                "items": [
+                  "shoes",
+                  "size",
+                  "comfortable",
+                  "try on",
+                  "price"
+                ]
+              }
+            ],
+            "exampleConversation": [
+              {
+                "speaker": "you",
+                "text": "Hello, I need comfortable shoes for walking."
+              },
+              {
+                "speaker": "partner",
+                "text": "What size do you usually wear?"
+              },
+              {
+                "speaker": "you",
+                "text": "European size 39. Could I try on both shoes?"
+              },
+              {
+                "speaker": "partner",
+                "text": "Of course. How do they feel?"
+              },
+              {
+                "speaker": "you",
+                "text": "They are a little tight. Do you have one size larger?"
+              },
+              {
+                "speaker": "partner",
+                "text": "Yes, here is size 40."
+              },
+              {
+                "speaker": "you",
+                "text": "These are comfortable. How much is this pair?"
+              },
+              {
+                "speaker": "partner",
+                "text": "This pair costs 399 yuan."
+              },
+              {
+                "speaker": "you",
+                "text": "Thank you. I would like to think about it."
+              },
+              {
+                "speaker": "partner",
+                "text": "Of course. Take your time."
+              }
+            ]
+          }
+        ]
+      },
+      "translation": {
+        "phrases": [
+          "我平时穿欧码三十九号[wǒ píngshí chuān ōumǎ sānshíjiǔ hào]。",
+          "我可以两只都试穿吗[wǒ kěyǐ liǎng zhī dōu shìchuān ma]？",
+          "有大一码的吗[yǒu dà yī mǎ de ma]？",
+          "这双多少钱[zhè shuāng duōshao qián]？",
+          "可以帮我留着这双鞋吗[kěyǐ bāng wǒ liúzhe zhè shuāng xié ma]？",
+          "你好[nǐ hǎo]，我想买走路穿的舒服的鞋[wǒ xiǎng mǎi zǒulù chuān de shūfu de xié]。",
+          "您平时穿什么尺码[nín píngshí chuān shénme chǐmǎ]？",
+          "你好[nǐ hǎo]，我想买走路穿的舒服的鞋[wǒ xiǎng mǎi zǒulù chuān de shūfu de xié]。",
+          "您平时穿什么尺码[nín píngshí chuān shénme chǐmǎ]？",
+          "欧码三十九号[ōumǎ sānshíjiǔ hào]。我可以两只都试穿吗[wǒ kěyǐ liǎng zhī dōu shìchuān ma]？",
+          "当然可以[dāngrán kěyǐ]。穿着感觉怎么样[chuānzhe gǎnjué zěnmeyàng]？",
+          "有点紧[yǒudiǎn jǐn]。有大一码的吗[yǒu dà yī mǎ de ma]？",
+          "有[yǒu]，这是四十号[zhè shì sìshí hào]。",
+          "这双很舒服[zhè shuāng hěn shūfu]。这双多少钱[zhè shuāng duōshao qián]？",
+          "这双三百九十九元[zhè shuāng sānbǎi jiǔshíjiǔ yuán]。",
+          "谢谢[xièxie]。我想再考虑一下[wǒ xiǎng zài kǎolǜ yīxià]。",
+          "当然[dāngrán]。您慢慢考虑[nín mànmàn kǎolǜ]。"
+        ],
+        "words": [
+          {
+            "target": "鞋[xié]",
+            "partOfSpeech": "noun",
+            "senseKey": "shoes",
+            "source": {
+              "phraseIndex": 4,
+              "surface": "鞋",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "尺码[chǐmǎ]",
+            "partOfSpeech": "noun",
+            "senseKey": "shoe-size",
+            "source": {
+              "phraseIndex": 8,
+              "surface": "尺码",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "舒服[shūfu]",
+            "partOfSpeech": "adjective",
+            "senseKey": "comfortable",
+            "source": {
+              "phraseIndex": 7,
+              "surface": "舒服",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "试穿[shìchuān]",
+            "partOfSpeech": "verb",
+            "senseKey": "try-on-clothing",
+            "source": {
+              "phraseIndex": 1,
+              "surface": "试穿",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "价格[jiàgé]",
+            "partOfSpeech": "noun",
+            "senseKey": "price"
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "id": "shoes-zh-correct",
+          "kind": "correct-control",
+          "mutations": [],
+          "expectedFindings": [],
+          "mockDetection": {
+            "complete": true,
+            "findings": [],
+            "unresolved": []
+          },
+          "repairs": [],
+          "expected": {
+            "outcome": "clean",
+            "checks": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "value": "我平时穿欧码三十九号。"
+              },
+              {
+                "handle": "e:2",
+                "field": "text",
+                "value": "有大一码的吗？"
+              },
+              {
+                "handle": "v:3",
+                "field": "partOfSpeech",
+                "value": "verb"
+              }
+            ]
+          },
+          "note": "Assistant-proposed correct control for material translation defects, not linguistic certification. Generic keeping/holding language intentionally preserves the unspecified duration and purchase commitment; clean does not certify those missing intentions. Pinyin is authored, not native-reviewed; annotation uses lexical tones rather than encoding every spoken tone-sandhi change."
+        },
+        {
+          "id": "shoes-zh-size-defect",
+          "kind": "defect",
+          "mutations": [
+            {
+              "handle": "e:0",
+              "field": "text",
+              "value": "我平时穿欧码三十八号。"
+            },
+            {
+              "handle": "e:0",
+              "field": "reading",
+              "value": [
+                [
+                  "我平时穿欧码三十八号",
+                  "wǒ píngshí chuān ōumǎ sānshíbā hào"
+                ],
+                [
+                  "。",
+                  null
+                ]
+              ]
+            }
+          ],
+          "expectedFindings": [
+            {
+              "handle": "e:0",
+              "field": "text",
+              "category": "meaning"
+            }
+          ],
+          "mockDetection": {
+            "complete": true,
+            "findings": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "category": "meaning",
+                "severity": "material",
+                "origin": "translation",
+                "reason": "The English specifies European size 39, but 三十八号 says size 38; the wrong size changes the purchase request."
+              }
+            ],
+            "unresolved": []
+          },
+          "repairs": [
+            {
+              "focus": {
+                "handle": "e:0",
+                "field": "text",
+                "category": "meaning"
+              },
+              "response": {
+                "handle": "e:0",
+                "status": "repaired",
+                "reason": "Restore size 39 and its aligned pinyin without changing the frozen English or other cards.",
+                "changes": [
+                  {
+                    "field": "text",
+                    "value": "我平时穿欧码三十九号。"
+                  },
+                  {
+                    "field": "reading",
+                    "value": [
+                      [
+                        "我平时穿欧码三十九号",
+                        "wǒ píngshí chuān ōumǎ sānshíjiǔ hào"
+                      ],
+                      [
+                        "。",
+                        null
+                      ]
+                    ]
+                  }
+                ],
+                "dropSourceIndexes": []
+              }
+            }
+          ],
+          "expected": {
+            "outcome": "repaired",
+            "checks": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "value": "我平时穿欧码三十九号。"
+              },
+              {
+                "handle": "e:0",
+                "field": "reading",
+                "value": [
+                  [
+                    "我平时穿欧码三十九号",
+                    "wǒ píngshí chuān ōumǎ sānshíjiǔ hào"
+                  ],
+                  [
+                    "。",
+                    null
+                  ]
+                ]
+              },
+              {
+                "handle": "d:5",
+                "field": "text",
+                "value": "有，这是四十号。"
+              }
+            ]
+          },
+          "note": "Assistant-authored mutation and localized proposed correction, not a collected model failure or certified linguistic judgment. The independent dialogue offer of size 40 must remain unchanged."
+        },
+        {
+          "id": "shoes-zh-reading-defect",
+          "kind": "defect",
+          "mutations": [
+            {
+              "handle": "e:2",
+              "field": "reading",
+              "value": [
+                [
+                  "有大一码的吗",
+                  "yǒu xiǎo yī mǎ de ma"
+                ],
+                [
+                  "？",
+                  null
+                ]
+              ]
+            }
+          ],
+          "expectedFindings": [
+            {
+              "handle": "e:2",
+              "field": "reading",
+              "category": "reading-romanization"
+            }
+          ],
+          "mockDetection": {
+            "complete": true,
+            "findings": [
+              {
+                "handle": "e:2",
+                "field": "reading",
+                "category": "reading-romanization",
+                "severity": "material",
+                "origin": "translation",
+                "reason": "The written 大 asks for a larger size, but its supplied reading xiǎo says smaller. This changes the spoken request even though the written translation is correct."
+              }
+            ],
+            "unresolved": []
+          },
+          "repairs": [
+            {
+              "focus": {
+                "handle": "e:2",
+                "field": "reading",
+                "category": "reading-romanization"
+              },
+              "response": {
+                "handle": "e:2",
+                "status": "repaired",
+                "reason": "Read written 大 as dà, not xiǎo, so pronunciation matches the request for a larger size. Change only the reading.",
+                "changes": [
+                  {
+                    "field": "reading",
+                    "value": [
+                      [
+                        "有大一码的吗",
+                        "yǒu dà yī mǎ de ma"
+                      ],
+                      [
+                        "？",
+                        null
+                      ]
+                    ]
+                  }
+                ],
+                "dropSourceIndexes": []
+              }
+            }
+          ],
+          "expected": {
+            "outcome": "repaired",
+            "checks": [
+              {
+                "handle": "e:2",
+                "field": "text",
+                "value": "有大一码的吗？"
+              },
+              {
+                "handle": "e:2",
+                "field": "translation",
+                "value": "Do you have one size larger?"
+              },
+              {
+                "handle": "e:2",
+                "field": "reading",
+                "value": [
+                  [
+                    "有大一码的吗",
+                    "yǒu dà yī mǎ de ma"
+                  ],
+                  [
+                    "？",
+                    null
+                  ]
+                ]
+              }
+            ]
+          },
+          "note": "Pipeline C reading-only negative, also informative for B pronunciation review. The written phrase is unchanged and structurally valid; the authored reading says smaller instead of larger. Proposed severity is material because the spoken request changes, not because every ruby error fails a topic. Independent review remains required."
+        },
+        {
+          "id": "shoes-zh-hold-intent-unresolved",
+          "kind": "unresolved",
+          "mutations": [
+            {
+              "handle": "e:4",
+              "field": "text",
+              "value": "可以帮我保管这双鞋吗？"
+            },
+            {
+              "handle": "e:4",
+              "field": "reading",
+              "value": [
+                [
+                  "可以帮我保管这双鞋吗",
+                  "kěyǐ bāng wǒ bǎoguǎn zhè shuāng xié ma"
+                ],
+                [
+                  "？",
+                  null
+                ]
+              ]
+            }
+          ],
+          "expectedFindings": [
+            {
+              "handle": "e:4",
+              "field": "text",
+              "category": "source-ambiguity"
+            }
+          ],
+          "mockDetection": {
+            "complete": true,
+            "findings": [
+              {
+                "handle": "e:4",
+                "field": "text",
+                "category": "source-ambiguity",
+                "severity": "minor",
+                "origin": "translation",
+                "reason": "Pipeline C language-review question: does 保管 ask staff to look after shoes rather than hold a pair for possible purchase? The English is Can you keep these for me. This possible difference needs independent language review; it is not an established translation error."
+              }
+            ],
+            "unresolved": [
+              {
+                "handle": "e:4",
+                "reason": "Leave the text unchanged. Check whether 保管 is suitable when asking a shop to hold a pair before buying; do not assume it is wrong or rewrite it without enough evidence."
+              }
+            ]
+          },
+          "repairs": [
+            {
+              "focus": {
+                "handle": "e:4",
+                "field": "text",
+                "category": "source-ambiguity"
+              },
+              "response": {
+                "handle": "e:4",
+                "status": "unresolved",
+                "reason": "Pipeline C cannot confidently decide whether this wording needs correction. Leave it unchanged and record the question about looking after shoes versus holding a pair before purchase; do not choose the learner's intended meaning.",
+                "changes": [],
+                "dropSourceIndexes": []
+              }
+            }
+          ],
+          "expected": {
+            "outcome": "unresolved",
+            "checks": [
+              {
+                "handle": "e:4",
+                "field": "text",
+                "value": "可以帮我保管这双鞋吗？"
+              },
+              {
+                "handle": "e:4",
+                "field": "reading",
+                "value": [
+                  [
+                    "可以帮我保管这双鞋吗",
+                    "kěyǐ bāng wǒ bǎoguǎn zhè shuāng xié ma"
+                  ],
+                  [
+                    "？",
+                    null
+                  ]
+                ]
+              },
+              {
+                "handle": "e:4",
+                "field": "translation",
+                "value": "Can you keep these for me?"
+              }
+            ]
+          },
+          "note": "Pipeline C example, not a confirmed error: the authored phrase uses 保管 instead of 留着. The review question is whether a shop would understand this as looking after shoes rather than holding a pair for possible purchase. Independent language review is still needed. Expected action: leave the text unchanged, record that question, and do not count it as a repaired defect or a failed phrasebook."
+        }
+      ]
+    },
+    {
+      "id": "allergy-ja",
+      "english": {
+        "topics": [
+          {
+            "title": "Checking peanut allergy safety before ordering",
+            "thingsToSay": [
+              "I have a severe peanut allergy.",
+              "I cannot eat even a small amount.",
+              "Does this dish contain peanuts?",
+              "Do you use cooking utensils that have touched peanuts?",
+              "If you cannot confirm, I will not eat this dish."
+            ],
+            "likelyExchanges": [
+              {
+                "title": "Checking peanut allergy safety before ordering",
+                "lines": [
+                  {
+                    "speaker": "you",
+                    "text": [
+                      "Excuse me, I have a severe peanut allergy."
+                    ]
+                  },
+                  {
+                    "speaker": "partner",
+                    "text": [
+                      "Which dish would you like?"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "words": [
+              {
+                "title": "Topic vocabulary",
+                "items": [
+                  "peanut",
+                  "allergy",
+                  "ingredients",
+                  "cooking utensils",
+                  "check"
+                ]
+              }
+            ],
+            "exampleConversation": [
+              {
+                "speaker": "you",
+                "text": "Excuse me, I have a severe peanut allergy."
+              },
+              {
+                "speaker": "partner",
+                "text": "Which dish would you like?"
+              },
+              {
+                "speaker": "you",
+                "text": "This dish. Could you check the ingredients?"
+              },
+              {
+                "speaker": "partner",
+                "text": "I will check with the kitchen."
+              },
+              {
+                "speaker": "you",
+                "text": "I cannot eat even a small amount. Do you use cooking utensils that have touched peanuts?"
+              },
+              {
+                "speaker": "partner",
+                "text": "We use shared cooking utensils, so I cannot confirm that there is no contact with peanuts."
+              },
+              {
+                "speaker": "you",
+                "text": "Then I will not eat this dish. Thank you for checking."
+              },
+              {
+                "speaker": "partner",
+                "text": "Understood. I will not place the order."
+              }
+            ]
+          }
+        ]
+      },
+      "translation": {
+        "phrases": [
+          "重度[じゅうど]のピーナッツアレルギーがあります。",
+          "少量[しょうりょう]でも食[た]べられません。",
+          "この料理[りょうり]にピーナッツは入[はい]っていますか。",
+          "ピーナッツに触[ふ]れた調理器具[ちょうりきぐ]を使[つか]いますか。",
+          "確認[かくにん]できない場合[ばあい]は、この料理[りょうり]は食[た]べません。",
+          "すみません、重度[じゅうど]のピーナッツアレルギーがあります。",
+          "どの料理[りょうり]をご希望[きぼう]ですか。",
+          "すみません、重度[じゅうど]のピーナッツアレルギーがあります。",
+          "どの料理[りょうり]をご希望[きぼう]ですか。",
+          "この料理[りょうり]です。原材料[げんざいりょう]を確認[かくにん]していただけますか。",
+          "厨房[ちゅうぼう]に確認[かくにん]します。",
+          "少量[しょうりょう]でも食[た]べられません。ピーナッツに触[ふ]れた調理器具[ちょうりきぐ]を使[つか]いますか。",
+          "調理器具[ちょうりきぐ]は共用[きょうよう]なので、ピーナッツに触[ふ]れていないとは確認[かくにん]できません。",
+          "では、この料理[りょうり]は食[た]べません。確認[かくにん]してくださってありがとうございます。",
+          "承知[しょうち]しました。ご注文[ちゅうもん]はお受[う]けしません。"
+        ],
+        "words": [
+          {
+            "target": "ピーナッツ",
+            "partOfSpeech": "noun",
+            "senseKey": "peanut",
+            "source": {
+              "phraseIndex": 0,
+              "surface": "ピーナッツ",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "アレルギー",
+            "partOfSpeech": "noun",
+            "senseKey": "allergy",
+            "source": {
+              "phraseIndex": 0,
+              "surface": "アレルギー",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "原材料[げんざいりょう]",
+            "partOfSpeech": "noun",
+            "senseKey": "food-ingredients",
+            "source": {
+              "phraseIndex": 9,
+              "surface": "原材料",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "調理器具[ちょうりきぐ]",
+            "partOfSpeech": "noun",
+            "senseKey": "cooking-utensils",
+            "source": {
+              "phraseIndex": 3,
+              "surface": "調理器具",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "確認[かくにん]する",
+            "partOfSpeech": "verb",
+            "senseKey": "check-confirm",
+            "source": {
+              "phraseIndex": 9,
+              "surface": "確認",
+              "occurrence": 0
+            }
+          }
+        ],
+        "phraseRomanizations": [
+          "Jūdo no pīnattsu arerugī ga arimasu.",
+          "Shōryō demo taberaremasen.",
+          "Kono ryōri ni pīnattsu wa haitte imasu ka.",
+          "Pīnattsu ni fureta chōri kigu o tsukaimasu ka.",
+          "Kakunin dekinai baai wa, kono ryōri wa tabemasen.",
+          "Sumimasen, jūdo no pīnattsu arerugī ga arimasu.",
+          "Dono ryōri o go-kibō desu ka.",
+          "Sumimasen, jūdo no pīnattsu arerugī ga arimasu.",
+          "Dono ryōri o go-kibō desu ka.",
+          "Kono ryōri desu. Genzairyō o kakunin shite itadakemasu ka.",
+          "Chūbō ni kakunin shimasu.",
+          "Shōryō demo taberaremasen. Pīnattsu ni fureta chōri kigu o tsukaimasu ka.",
+          "Chōri kigu wa kyōyō na node, pīnattsu ni furete inai to wa kakunin dekimasen.",
+          "Dewa, kono ryōri wa tabemasen. Kakunin shite kudasatte arigatō gozaimasu.",
+          "Shōchi shimashita. Go-chūmon wa o-uke shimasen."
+        ],
+        "wordRomanizations": [
+          "pīnattsu",
+          "arerugī",
+          "genzairyō",
+          "chōri kigu",
+          "kakunin suru"
+        ]
+      },
+      "reviews": [
+        {
+          "id": "allergy-ja-correct",
+          "kind": "correct-control",
+          "mutations": [],
+          "expectedFindings": [],
+          "mockDetection": {
+            "complete": true,
+            "findings": [],
+            "unresolved": []
+          },
+          "repairs": [],
+          "expected": {
+            "outcome": "clean",
+            "checks": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "value": "重度のピーナッツアレルギーがあります。"
+              },
+              {
+                "handle": "e:1",
+                "field": "text",
+                "value": "少量でも食べられません。"
+              },
+              {
+                "handle": "d:6",
+                "field": "text",
+                "value": "では、この料理は食べません。確認してくださってありがとうございます。"
+              }
+            ]
+          },
+          "note": "Assistant-proposed safety challenge and control, not native-speaker review, medical certification or observed production prevalence. The dialogue deliberately declines food when staff cannot confirm; correct-control means no authored material defect, not an assurance of meal safety."
+        },
+        {
+          "id": "allergy-ja-negation-defect",
+          "kind": "defect",
+          "mutations": [
+            {
+              "handle": "e:0",
+              "field": "text",
+              "value": "ピーナッツアレルギーはありません。"
+            },
+            {
+              "handle": "e:0",
+              "field": "reading",
+              "value": [
+                [
+                  "ピーナッツアレルギーはありません。",
+                  null
+                ]
+              ]
+            },
+            {
+              "handle": "e:0",
+              "field": "romanization",
+              "value": "Pīnattsu arerugī wa arimasen."
+            }
+          ],
+          "expectedFindings": [
+            {
+              "handle": "e:0",
+              "field": "text",
+              "category": "medical-safety"
+            }
+          ],
+          "mockDetection": {
+            "complete": true,
+            "findings": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "category": "medical-safety",
+                "severity": "critical",
+                "origin": "translation",
+                "reason": "The target says there is no peanut allergy, reversing the explicit severe-allergy warning and creating a material food-safety risk."
+              }
+            ],
+            "unresolved": []
+          },
+          "repairs": [
+            {
+              "focus": {
+                "handle": "e:0",
+                "field": "text",
+                "category": "medical-safety"
+              },
+              "response": {
+                "handle": "e:0",
+                "status": "repaired",
+                "reason": "Restore the severe peanut-allergy statement with aligned kanji reading and romanization; do not weaken the small-amount warning or invent safety assurances.",
+                "changes": [
+                  {
+                    "field": "text",
+                    "value": "重度のピーナッツアレルギーがあります。"
+                  },
+                  {
+                    "field": "reading",
+                    "value": [
+                      [
+                        "重度",
+                        "じゅうど"
+                      ],
+                      [
+                        "のピーナッツアレルギーがあります。",
+                        null
+                      ]
+                    ]
+                  },
+                  {
+                    "field": "romanization",
+                    "value": "Jūdo no pīnattsu arerugī ga arimasu."
+                  }
+                ],
+                "dropSourceIndexes": []
+              }
+            }
+          ],
+          "expected": {
+            "outcome": "repaired",
+            "checks": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "value": "重度のピーナッツアレルギーがあります。"
+              },
+              {
+                "handle": "e:0",
+                "field": "reading",
+                "value": [
+                  [
+                    "重度",
+                    "じゅうど"
+                  ],
+                  [
+                    "のピーナッツアレルギーがあります。",
+                    null
+                  ]
+                ]
+              },
+              {
+                "handle": "e:0",
+                "field": "romanization",
+                "value": "Jūdo no pīnattsu arerugī ga arimasu."
+              },
+              {
+                "handle": "e:1",
+                "field": "translation",
+                "value": "I cannot eat even a small amount."
+              }
+            ]
+          },
+          "note": "Assistant-authored allergy-negation defect and proposed localized repair, not a historical failure or certified Japanese/medical judgment. Existing vocabulary source snapshots remain historical evidence; they must not be rewritten to mirror the temporary mutated phrase."
+        }
+      ]
+    },
+    {
+      "id": "tea-cs",
+      "english": {
+        "topics": [
+          {
+            "title": "Ordering black tea without sugar",
+            "thingsToSay": [
+              "A black tea without sugar, please.",
+              "Could I have lemon with it?",
+              "I will drink it here.",
+              "How much does it cost?",
+              "Can I pay by card?"
+            ],
+            "likelyExchanges": [
+              {
+                "title": "Ordering black tea without sugar",
+                "lines": [
+                  {
+                    "speaker": "you",
+                    "text": [
+                      "Hello, a black tea without sugar, please."
+                    ]
+                  },
+                  {
+                    "speaker": "partner",
+                    "text": [
+                      "Would you like lemon with it?"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "words": [
+              {
+                "title": "Topic vocabulary",
+                "items": [
+                  "tea",
+                  "sugar",
+                  "lemon",
+                  "card",
+                  "black"
+                ]
+              }
+            ],
+            "exampleConversation": [
+              {
+                "speaker": "you",
+                "text": "Hello, a black tea without sugar, please."
+              },
+              {
+                "speaker": "partner",
+                "text": "Would you like lemon with it?"
+              },
+              {
+                "speaker": "you",
+                "text": "Yes, please. How much does it cost?"
+              },
+              {
+                "speaker": "partner",
+                "text": "Forty-five crowns. Will you drink it here or take it away?"
+              },
+              {
+                "speaker": "you",
+                "text": "I will drink it here. Can I pay by card?"
+              },
+              {
+                "speaker": "partner",
+                "text": "Yes. Please tap your card here."
+              },
+              {
+                "speaker": "you",
+                "text": "Thank you."
+              },
+              {
+                "speaker": "partner",
+                "text": "Here is your tea with lemon, without sugar."
+              }
+            ]
+          }
+        ]
+      },
+      "translation": {
+        "phrases": [
+          "Černý čaj bez cukru, prosím.",
+          "Můžu k němu dostat citron?",
+          "Dám si ho tady.",
+          "Kolik to stojí?",
+          "Můžu platit kartou?",
+          "Dobrý den, černý čaj bez cukru, prosím.",
+          "Dáte si k němu citron?",
+          "Dobrý den, černý čaj bez cukru, prosím.",
+          "Dáte si k němu citron?",
+          "Ano, prosím. Kolik to stojí?",
+          "Čtyřicet pět korun. Dáte si ho tady, nebo s sebou?",
+          "Dám si ho tady. Můžu platit kartou?",
+          "Ano. Přiložte prosím kartu sem.",
+          "Děkuji.",
+          "Tady je váš čaj s citronem, bez cukru."
+        ],
+        "words": [
+          {
+            "target": "čaj",
+            "partOfSpeech": "noun",
+            "senseKey": "tea",
+            "source": {
+              "phraseIndex": 0,
+              "surface": "čaj",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "cukr",
+            "partOfSpeech": "noun",
+            "senseKey": "sugar",
+            "source": {
+              "phraseIndex": 0,
+              "surface": "cukru",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "citron",
+            "partOfSpeech": "noun",
+            "senseKey": "lemon",
+            "source": {
+              "phraseIndex": 1,
+              "surface": "citron",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "karta",
+            "partOfSpeech": "noun",
+            "senseKey": "payment-card",
+            "source": {
+              "phraseIndex": 4,
+              "surface": "kartou",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "černý",
+            "partOfSpeech": "adjective",
+            "senseKey": "black-color",
+            "source": {
+              "phraseIndex": 0,
+              "surface": "Černý",
+              "occurrence": 0
+            }
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "id": "tea-cs-correct",
+          "kind": "correct-control",
+          "mutations": [],
+          "expectedFindings": [],
+          "mockDetection": {
+            "complete": true,
+            "findings": [],
+            "unresolved": []
+          },
+          "repairs": [],
+          "expected": {
+            "outcome": "clean",
+            "checks": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "value": "Černý čaj bez cukru, prosím."
+              },
+              {
+                "handle": "v:1",
+                "field": "text",
+                "value": "cukr"
+              },
+              {
+                "handle": "d:3",
+                "field": "text",
+                "value": "Čtyřicet pět korun. Dáte si ho tady, nebo s sebou?"
+              }
+            ]
+          },
+          "note": "Assistant-proposed control, not native-speaker certification. Dictionary-form cukr and karta intentionally differ from inflected source surfaces cukru and kartou. Style alternatives alone are not material defects."
+        },
+        {
+          "id": "tea-cs-sugar-defect",
+          "kind": "defect",
+          "mutations": [
+            {
+              "handle": "e:0",
+              "field": "text",
+              "value": "Černý čaj s cukrem, prosím."
+            }
+          ],
+          "expectedFindings": [
+            {
+              "handle": "e:0",
+              "field": "text",
+              "category": "meaning"
+            }
+          ],
+          "mockDetection": {
+            "complete": true,
+            "findings": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "category": "meaning",
+                "severity": "material",
+                "origin": "translation",
+                "reason": "S cukrem means with sugar, reversing the learner's explicit without-sugar order."
+              }
+            ],
+            "unresolved": []
+          },
+          "repairs": [
+            {
+              "focus": {
+                "handle": "e:0",
+                "field": "text",
+                "category": "meaning"
+              },
+              "response": {
+                "handle": "e:0",
+                "status": "repaired",
+                "reason": "Restore bez cukru to preserve the no-sugar constraint while leaving the black-tea order and polite register intact.",
+                "changes": [
+                  {
+                    "field": "text",
+                    "value": "Černý čaj bez cukru, prosím."
+                  }
+                ],
+                "dropSourceIndexes": []
+              }
+            }
+          ],
+          "expected": {
+            "outcome": "repaired",
+            "checks": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "value": "Černý čaj bez cukru, prosím."
+              },
+              {
+                "handle": "e:0",
+                "field": "translation",
+                "value": "A black tea without sugar, please."
+              },
+              {
+                "handle": "v:1",
+                "field": "text",
+                "value": "cukr"
+              }
+            ]
+          },
+          "note": "Assistant-authored meaning reversal and proposed correction, not a collected model failure. Historical vocabulary evidence remains untouched; the changed phrase does not authorize rewriting the English or dictionary headword."
+        }
+      ]
+    },
+    {
+      "id": "lost-bag-uk",
+      "english": {
+        "topics": [
+          {
+            "title": "Reporting a blue bag left on a train",
+            "thingsToSay": [
+              "I left a small blue bag on the train.",
+              "The train from Lviv to Kyiv arrived today at 14:30.",
+              "My passport is inside.",
+              "Where is the lost property office?",
+              "Where can I leave my phone number?"
+            ],
+            "likelyExchanges": [
+              {
+                "title": "Reporting a blue bag left on a train",
+                "lines": [
+                  {
+                    "speaker": "you",
+                    "text": [
+                      "Excuse me, I left a bag on the train."
+                    ]
+                  },
+                  {
+                    "speaker": "partner",
+                    "text": [
+                      "Which train?"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "words": [
+              {
+                "title": "Topic vocabulary",
+                "items": [
+                  "bag",
+                  "blue",
+                  "train",
+                  "passport",
+                  "phone number"
+                ]
+              }
+            ],
+            "exampleConversation": [
+              {
+                "speaker": "you",
+                "text": "Excuse me, I left a bag on the train."
+              },
+              {
+                "speaker": "partner",
+                "text": "Which train?"
+              },
+              {
+                "speaker": "you",
+                "text": "The train from Lviv to Kyiv. It arrived today at 14:30."
+              },
+              {
+                "speaker": "partner",
+                "text": "What does the bag look like?"
+              },
+              {
+                "speaker": "you",
+                "text": "It is small and blue. My passport is inside."
+              },
+              {
+                "speaker": "partner",
+                "text": "Please go to the lost property office. They will check whether the bag has been found."
+              },
+              {
+                "speaker": "you",
+                "text": "Where is it, and where can I leave my phone number?"
+              },
+              {
+                "speaker": "partner",
+                "text": "The office is next to the ticket office. You can leave your number there."
+              }
+            ]
+          }
+        ]
+      },
+      "translation": {
+        "phrases": [
+          "У поїзді залишилася моя маленька синя сумка.",
+          "Поїзд зі Львова до Києва прибув сьогодні о 14:30.",
+          "Усередині мій паспорт.",
+          "Де бюро знахідок?",
+          "Де можна залишити мій номер телефону?",
+          "Перепрошую, у поїзді залишилася моя сумка.",
+          "У якому поїзді?",
+          "Перепрошую, у поїзді залишилася моя сумка.",
+          "У якому поїзді?",
+          "У поїзді зі Львова до Києва. Він прибув сьогодні о 14:30.",
+          "Як виглядає сумка?",
+          "Вона маленька й синя. Усередині мій паспорт.",
+          "Будь ласка, зверніться до бюро знахідок. Там перевірять, чи знайшли сумку.",
+          "Де воно і де можна залишити мій номер телефону?",
+          "Бюро поруч із квитковою касою. Там можна залишити свій номер."
+        ],
+        "words": [
+          {
+            "target": "сумка",
+            "partOfSpeech": "noun",
+            "senseKey": "bag",
+            "source": {
+              "phraseIndex": 0,
+              "surface": "сумка",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "синій",
+            "partOfSpeech": "adjective",
+            "senseKey": "blue-color",
+            "source": {
+              "phraseIndex": 0,
+              "surface": "синя",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "поїзд",
+            "partOfSpeech": "noun",
+            "senseKey": "railway-train",
+            "source": {
+              "phraseIndex": 0,
+              "surface": "поїзді",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "паспорт",
+            "partOfSpeech": "noun",
+            "senseKey": "passport",
+            "source": {
+              "phraseIndex": 2,
+              "surface": "паспорт",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "номер телефону",
+            "partOfSpeech": "noun",
+            "senseKey": "phone-number",
+            "source": {
+              "phraseIndex": 4,
+              "surface": "номер телефону",
+              "occurrence": 0
+            }
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "id": "lost-bag-uk-correct",
+          "kind": "correct-control",
+          "mutations": [],
+          "expectedFindings": [],
+          "mockDetection": {
+            "complete": true,
+            "findings": [],
+            "unresolved": []
+          },
+          "repairs": [],
+          "expected": {
+            "outcome": "clean",
+            "checks": [
+              {
+                "handle": "e:0",
+                "field": "text",
+                "value": "У поїзді залишилася моя маленька синя сумка."
+              },
+              {
+                "handle": "e:1",
+                "field": "text",
+                "value": "Поїзд зі Львова до Києва прибув сьогодні о 14:30."
+              },
+              {
+                "handle": "v:1",
+                "field": "text",
+                "value": "синій"
+              }
+            ]
+          },
+          "note": "Assistant-proposed route-and-loss challenge, not native-speaker certification or evidence of failure frequency. The Ukrainian uses a bag-centered construction to avoid inventing the learner's gender, and reports an item left behind rather than a theft. The staff response offers checking, not recovery certainty."
+        },
+        {
+          "id": "lost-bag-uk-route-defect",
+          "kind": "defect",
+          "mutations": [
+            {
+              "handle": "e:1",
+              "field": "text",
+              "value": "Поїзд із Києва до Львова прибув сьогодні о 14:30."
+            }
+          ],
+          "expectedFindings": [
+            {
+              "handle": "e:1",
+              "field": "text",
+              "category": "meaning"
+            }
+          ],
+          "mockDetection": {
+            "complete": true,
+            "findings": [
+              {
+                "handle": "e:1",
+                "field": "text",
+                "category": "meaning",
+                "severity": "material",
+                "origin": "translation",
+                "reason": "The target reverses the route to Kyiv-to-Lviv, but the frozen English and learner context specify Lviv-to-Kyiv. Staff may search the wrong train."
+              }
+            ],
+            "unresolved": []
+          },
+          "repairs": [
+            {
+              "focus": {
+                "handle": "e:1",
+                "field": "text",
+                "category": "meaning"
+              },
+              "response": {
+                "handle": "e:1",
+                "status": "repaired",
+                "reason": "Restore зі Львова до Києва while preserving today's 14:30 arrival and all other bag details.",
+                "changes": [
+                  {
+                    "field": "text",
+                    "value": "Поїзд зі Львова до Києва прибув сьогодні о 14:30."
+                  }
+                ],
+                "dropSourceIndexes": []
+              }
+            }
+          ],
+          "expected": {
+            "outcome": "repaired",
+            "checks": [
+              {
+                "handle": "e:1",
+                "field": "text",
+                "value": "Поїзд зі Львова до Києва прибув сьогодні о 14:30."
+              },
+              {
+                "handle": "e:2",
+                "field": "text",
+                "value": "Усередині мій паспорт."
+              },
+              {
+                "handle": "e:1",
+                "field": "translation",
+                "value": "The train from Lviv to Kyiv arrived today at 14:30."
+              }
+            ]
+          },
+          "note": "Assistant-authored direction reversal and proposed localized correction, not archived output. Route names use Ukrainian case forms; exact naturalness remains pending independent linguistic review."
+        }
+      ]
+    },
+    {
+      "id": "pottery-es",
+      "english": {
+        "topics": [
+          {
+            "title": "Booking a beginner hand-building pottery class",
+            "thingsToSay": [
+              "I would like to book one place in Saturday's pottery class.",
+              "I have never done pottery before.",
+              "I would like to make a small bowl by hand, without a wheel.",
+              "Are clay and firing included in the price?",
+              "When can I collect the finished bowl?"
+            ],
+            "likelyExchanges": [
+              {
+                "title": "Booking a beginner hand-building pottery class",
+                "lines": [
+                  {
+                    "speaker": "you",
+                    "text": [
+                      "Hello, I would like to book one place in Saturday's pottery class. I have never done pottery before."
+                    ]
+                  },
+                  {
+                    "speaker": "partner",
+                    "text": [
+                      "The beginner class is from ten to twelve and costs 40 euros."
+                    ]
+                  }
+                ]
+              }
+            ],
+            "words": [
+              {
+                "title": "Topic vocabulary",
+                "items": [
+                  "clay",
+                  "firing",
+                  "bowl",
+                  "pottery wheel",
+                  "book"
+                ]
+              }
+            ],
+            "exampleConversation": [
+              {
+                "speaker": "you",
+                "text": "Hello, I would like to book one place in Saturday's pottery class. I have never done pottery before."
+              },
+              {
+                "speaker": "partner",
+                "text": "The beginner class is from ten to twelve and costs 40 euros."
+              },
+              {
+                "speaker": "you",
+                "text": "I have two hours available. I would like to make a small bowl by hand, without a wheel."
+              },
+              {
+                "speaker": "partner",
+                "text": "That is fine. In this class we work by hand."
+              },
+              {
+                "speaker": "you",
+                "text": "Are clay and firing included in the price?"
+              },
+              {
+                "speaker": "partner",
+                "text": "Yes, both are included."
+              },
+              {
+                "speaker": "you",
+                "text": "When can I collect the finished bowl?"
+              },
+              {
+                "speaker": "partner",
+                "text": "In two weeks. It cannot be collected on the same day."
+              },
+              {
+                "speaker": "you",
+                "text": "That works for me. Please book one place for Saturday at ten."
+              },
+              {
+                "speaker": "partner",
+                "text": "Of course. What is your name?"
+              }
+            ]
+          }
+        ]
+      },
+      "translation": {
+        "phrases": [
+          "Quisiera reservar una plaza en la clase de cerámica del sábado.",
+          "Nunca he hecho cerámica.",
+          "Quisiera hacer un cuenco pequeño a mano, sin torno.",
+          "¿La arcilla y la cocción están incluidas en el precio?",
+          "¿Cuándo puedo recoger el cuenco terminado?",
+          "Hola, quisiera reservar una plaza en la clase de cerámica del sábado. Nunca he hecho cerámica.",
+          "La clase para principiantes es de diez a doce y cuesta 40 euros.",
+          "Hola, quisiera reservar una plaza en la clase de cerámica del sábado. Nunca he hecho cerámica.",
+          "La clase para principiantes es de diez a doce y cuesta 40 euros.",
+          "Tengo dos horas disponibles. Quisiera hacer un cuenco pequeño a mano, sin torno.",
+          "Perfecto. En esta clase trabajamos a mano.",
+          "¿La arcilla y la cocción están incluidas en el precio?",
+          "Sí, ambas están incluidas.",
+          "¿Cuándo puedo recoger el cuenco terminado?",
+          "Dentro de dos semanas. No se puede recoger el mismo día.",
+          "Me viene bien. Reserve una plaza para el sábado a las diez, por favor.",
+          "Por supuesto. ¿Cómo se llama?"
+        ],
+        "words": [
+          {
+            "target": "arcilla",
+            "partOfSpeech": "noun",
+            "senseKey": "clay",
+            "source": {
+              "phraseIndex": 3,
+              "surface": "arcilla",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "cocción",
+            "partOfSpeech": "noun",
+            "senseKey": "pottery-firing",
+            "source": {
+              "phraseIndex": 3,
+              "surface": "cocción",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "cuenco",
+            "partOfSpeech": "noun",
+            "senseKey": "bowl-vessel",
+            "source": {
+              "phraseIndex": 2,
+              "surface": "cuenco",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "torno",
+            "partOfSpeech": "noun",
+            "senseKey": "pottery-wheel",
+            "source": {
+              "phraseIndex": 2,
+              "surface": "torno",
+              "occurrence": 0
+            }
+          },
+          {
+            "target": "reservar",
+            "partOfSpeech": "verb",
+            "senseKey": "book-reserve",
+            "source": {
+              "phraseIndex": 0,
+              "surface": "reservar",
+              "occurrence": 0
+            }
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "id": "pottery-es-correct",
+          "kind": "correct-control",
+          "mutations": [],
+          "expectedFindings": [],
+          "mockDetection": {
+            "complete": true,
+            "findings": [],
+            "unresolved": []
+          },
+          "repairs": [],
+          "expected": {
+            "outcome": "clean",
+            "checks": [
+              {
+                "handle": "e:2",
+                "field": "text",
+                "value": "Quisiera hacer un cuenco pequeño a mano, sin torno."
+              },
+              {
+                "handle": "v:1",
+                "field": "senseKey",
+                "value": "pottery-firing"
+              },
+              {
+                "handle": "d:7",
+                "field": "text",
+                "value": "Dentro de dos semanas. No se puede recoger el mismo día."
+              }
+            ]
+          },
+          "note": "Assistant-proposed control, not native-speaker certification. Cuenco and recoger are authored broadly understandable choices, not claims about every regional preference. The dialogue agrees on a two-hour hand-building class and explicitly defers collection."
+        },
+        {
+          "id": "pottery-es-wheel-defect",
+          "kind": "defect",
+          "mutations": [
+            {
+              "handle": "e:2",
+              "field": "text",
+              "value": "Quisiera hacer un cuenco pequeño con torno."
+            }
+          ],
+          "expectedFindings": [
+            {
+              "handle": "e:2",
+              "field": "text",
+              "category": "meaning"
+            }
+          ],
+          "mockDetection": {
+            "complete": true,
+            "findings": [
+              {
+                "handle": "e:2",
+                "field": "text",
+                "category": "meaning",
+                "severity": "material",
+                "origin": "translation",
+                "reason": "Con torno requests using a pottery wheel, reversing the explicit by-hand, without-a-wheel requirement and potentially selecting the wrong class."
+              }
+            ],
+            "unresolved": []
+          },
+          "repairs": [
+            {
+              "focus": {
+                "handle": "e:2",
+                "field": "text",
+                "category": "meaning"
+              },
+              "response": {
+                "handle": "e:2",
+                "status": "repaired",
+                "reason": "Restore a mano, sin torno without altering the small bowl, polite request, class price or collection date.",
+                "changes": [
+                  {
+                    "field": "text",
+                    "value": "Quisiera hacer un cuenco pequeño a mano, sin torno."
+                  }
+                ],
+                "dropSourceIndexes": []
+              }
+            }
+          ],
+          "expected": {
+            "outcome": "repaired",
+            "checks": [
+              {
+                "handle": "e:2",
+                "field": "text",
+                "value": "Quisiera hacer un cuenco pequeño a mano, sin torno."
+              },
+              {
+                "handle": "e:2",
+                "field": "translation",
+                "value": "I would like to make a small bowl by hand, without a wheel."
+              },
+              {
+                "handle": "v:3",
+                "field": "text",
+                "value": "torno"
+              }
+            ]
+          },
+          "note": "Assistant-authored class-modality reversal and localized proposed correction, not observed model output. Material task fulfillment takes priority over optional dialogue polishing; no independent linguistic certification is asserted."
+        }
+      ]
+    }
+  ]
+}

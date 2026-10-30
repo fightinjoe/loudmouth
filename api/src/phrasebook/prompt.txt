@@ -4,37 +4,50 @@ The task arrives separately as JSON with seed, language, ability, answers, and c
 
 Use seed as the situation and answers as known facts. Language codes are zh (Mandarin Chinese), ja (Japanese), es (Spanish), cs (Czech), and uk (Ukrainian). The learner will eventually use that language, but this stage writes English only: no translations, target-language readings, or romanization.
 
-Return JSON only, with exactly one conversation object for every checklist entry, in the same order, preserving each title exactly, including duplicate titles. Use exactly this structure and no other keys:
+Return JSON only, with exactly one topic object for every checklist entry, in the same order, preserving each title exactly, including duplicate titles. Use exactly this structure and no other keys:
 {
-  "conversations": [{
+  "topics": [{
     "title": "exact checklist title",
-    "essentials": ["learner's English phrase"],
-    "vocab": ["English dictionary word"],
-    "lines": [
-      {"speaker": "you", "text": "English phrase"},
-      {"speaker": "partner", "text": "English reply"},
-      {"speaker": "partner", "text": "alternative English reply"}
+    "thingsToSay": ["learner's English phrase"],
+    "likelyExchanges": [{
+      "title": "short description of this local interaction",
+      "lines": [
+        {"speaker": "you", "text": ["English utterance"]},
+        {"speaker": "partner", "text": ["first possible reply", "another possible reply"]},
+        {"speaker": "you", "text": ["optional continuation responding ONLY to the first reply"]}
+      ]
+    }],
+    "words": [{
+      "title": "short label for a useful choice or contrast",
+      "items": ["English dictionary word", "meaningfully related English dictionary word"]
+    }],
+    "exampleConversation": [
+      {"speaker": "you", "text": "English utterance"},
+      {"speaker": "partner", "text": "English reply"}
     ]
   }]
 }
 
 AUTHOR EACH TOPIC IN THIS ORDER:
-1. Essential phrases: choose what the learner needs to say to accomplish this topic, independently of any example story. Give 1 to 8 short, complete, reusable phrases spoken by "you", never by the partner. Lead with an immediately usable way to initiate this topic or state the learner's purpose. Cover distinct likely intents, options, and useful follow-ups, not near-synonyms or one story's transitions. Not every essential must be an opener. Let real complexity determine the count; do not fill a quota.
-2. Useful words: choose 0 to 10 English dictionary words or short fixed compounds directly from this situation's needs, not by extracting the example dialogue. Use singular nouns and base verbs; include useful verbs, adjectives, and adverbs where appropriate, not only nouns. No full sentences, padding, or encyclopedic lists. A word may recur under different topics when useful for each. Use an empty array if there are genuinely no useful standalone words; never omit vocab.
-3. Example conversation: illustrate a useful subset in a short worked exchange, including likely partner replies. Do not make the essentials or word list depend on what happens to occur here. Sharing wording naturally is fine; do not force every item into the dialogue or invent a quota of items outside it.
+1. Things to say: choose 1 to 8 short, independently reusable utterances spoken by the learner. Lead with an immediately usable way to initiate the topic or state the purpose. Cover distinct intents and needs, not near-synonyms or one story's transitions. Mostly statements and requests, but useful questions are welcome. Each entry is one string with one recommended phrasing: no alternatives, slash-separated choices, or nested lists. Do not author English wording variants for downstream translation.
+2. Likely exchanges: choose 1 to 4 small interaction patterns that add likely things to hear, meaningful choices, or useful responses beyond the standalone toolkit. Each has 2 to 4 alternating-speaker turns with both speakers. Either person can initiate; include partner-initiated exchanges when useful. Each turn's text is an array of 1 to 3 possible utterances; choose ONE, never say the whole array in sequence.
+   ALTERNATIVES ARE DIFFERENT RESPONSES, NEVER PARAPHRASES. An additional option must change the information, decision, constraint, or next action. A change in politeness, wording, or sentence length is not a different response. "Yes, it's available" versus "No, it's sold out" is a useful contrast; "Yes, certainly" versus "Of course" is not. Do not create alternatives by swapping arbitrary example numbers or names. This rule applies to openers, replies, and follow-ups, for both speakers. Use a singleton array unless another genuinely differentiated response is useful and consistent with supplied facts.
+   CONTINUATIONS FOLLOW ONLY OPTION ONE. For each turn after the opener, every option must make sense after the first option of the preceding turn, in the context of the first-option path so far. Options two and three end locally; no later turn continues them. A continuation may itself have differentiated alternatives under this same rule. Before returning, read the first option of every turn in order and ensure it forms a coherent exchange; remove or correct any continuation that instead answers another option. No branch IDs, nested trees, or alternative fields. Stop at a coherent local boundary; do not force a follow-up just to demonstrate the structure.
+3. Words: provide small, useful word families that help the learner adapt the prepared material and recognize nearby possibilities. The learner can already open a breakdown of any phrase to understand its component words; this section is not an extracted vocabulary summary. Choose families by the practical question: which related words let this learner handle another plausible choice or distinction in this situation?
+   Each family has a short title and an items array of at least two related dictionary words or fixed compounds. Members must offer meaningful choices or contrasts, not paraphrases. Include an already-used word when it anchors a useful family; there is no encountered-versus-new classification. Do not make a family for every noun or expand into a broad topic glossary. Semantic relatedness alone is not enough: the family must serve the selected task and supplied constraints.
+   Use 0 to 10 word entries TOTAL across all families, not ten per family. Do not repeat a word in multiple families. No required number of families or quota of members; use only what earns its place. Return words: [] when no useful family exists. Use singular nouns, base verbs, and complete lexical items when an isolated modifier would be misleading. Useful adjectives and adverbs are welcome; related items need not fit the same grammatical slot.
+   A known preference may make an offered alternative useful to recognize, but never present it as the learner's preference. Include only title and items for each family: no scores, ranks, per-word explanations, or extraction metadata.
+4. Example conversation: write one plausible linear back-and-forth of 2 to 10 turns, both speakers, with alternating speakers and exactly one string per turn. No alternatives. Naturally combine a useful subset of the earlier pieces to show sequencing. Do not force coverage of every item. You may introduce new utterances when they are more appropriate or needed for natural replies and transitions; this is not restricted to copying earlier cards. Reach a natural ending. A small obstacle or clarification is useful when appropriate, not mandatory.
+
+Treat the four sections as one compact chapter, not four quotas to fill. Let the real complexity determine counts. Prefer a few valuable pieces to exhaustive coverage. Repeating a key phrase across sections is fine when the new placement teaches something additional; do not duplicate every exchange opener into Things to say. The example is a worked path, not a second inventory.
 
 STYLE AND ABILITY:
-- "you" is the learner; "partner" is the other person. Every learner utterance must respect the supplied facts. Do not invent personal details, dietary exceptions, symptoms, allergies, or skill levels as known facts. Useful questions and reusable ways to communicate needs are preferable to unsupported assertions.
-- Use natural, short, memorable English and everyday contractions. Each essential and each dialogue line is one phrase, not multiple sentences packed together. Prefer a reusable pattern with a replaceable word. Cut filler and unnecessary lead-ins without removing useful meaning or natural politeness.
+- "you" is the learner; "partner" is the other person. Every learner utterance, including every alternative, must respect supplied facts. Do not invent personal details, dietary exceptions, symptoms, allergies, or skill levels as known facts. Useful questions and reusable ways to communicate needs are preferable to unsupported assertions. Hypothetical partner replies are examples, not promises about actual availability or safety.
+- Use natural, short, memorable English and everyday contractions. Each utterance is one usable contribution; keep a continuous turn in one entry. Prefer reusable language. Cut filler and unnecessary lead-ins without removing useful meaning or natural politeness.
 - none: the learner cannot yet say or catch anything. Common greetings, thanks, and introductions are worth teaching within the situation.
 - basics: the learner already knows first-week material such as greetings, introductions, thanks, and numbers. Do not spend teaching space re-teaching it.
 - conversational: the learner handles everyday small talk. Focus on this situation's phrases and unexpected but likely partner replies.
 - At every level, retain simple phrases specific to this situation. A phrase is already known only if it would appear in a phrasebook for a completely different situation too.
 - Follow the requested topic. Generic conversation repair should not displace situational needs, but clarification, repetition, or asking for help belongs when the checklist actually requests it.
-
-DIALOGUE:
-- Use 2 to 10 lines and include both speakers. Use only as many lines as a complete exchange needs, without padding; let it reach a natural ending rather than stopping mid-task. A brief closing may be necessary for coherence without becoming a generic essential at higher abilities.
-- Local alternatives are optional. Consecutive entries from the same speaker are alternative utterances, never successive parts of one turn. Put a continuous turn in one entry. When useful, place an alternative immediately after that speaker's entry. Each entry has only speaker and text; do not label alternatives. No nested branches or multi-turn trees.
-- Where a question admits useful different answers, alternatives may teach them, unless the known learner facts already decide the answer. Never offer an alternative that contradicts those facts. Local alternatives need not form one continuous story.
 
 All strings must be nonblank. Output only the JSON object, without prose or code fences.

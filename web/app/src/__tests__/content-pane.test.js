@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => {
         id: "occ-1",
         deckId: "d1",
         groupId: "group-1",
-        section: "dialogue",
+        section: "exampleConversation",
         cardId: "shared-card",
         position: 0,
         translation: "go ahead",
@@ -61,7 +61,7 @@ const mocks = vi.hoisted(() => {
         id: "occ-2",
         deckId: "d1",
         groupId: "group-1",
-        section: "dialogue",
+        section: "exampleConversation",
         cardId: "shared-card",
         position: 1,
         translation: "after you",
@@ -70,7 +70,7 @@ const mocks = vi.hoisted(() => {
       sources: [],
     },
   ];
-  const groups = [{ id: "group-1", deckId: "d1", title: "Ordering", position: 0 }];
+  const groups = [{ id: "group-1", deckId: "d1", title: "Ordering", position: 0, exchanges: [], wordFamilies: [] }];
   return {
     deckStore,
     repeatedEntries,
@@ -336,6 +336,8 @@ describe("entry-key reordering", () => {
     view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
     view.ui.transition("content/enter-edit");
+    view.rootEl.querySelector('.card-row[data-entry-key="occ-1"]').click();
+    expect(view.ui.get("action")).toBeNull();
     view.ui.transition("content/reorder", { pageOrder: ["occ-2", "occ-1"] });
 
     view.rootEl.querySelector('[data-action="content/done"]').click();
@@ -368,12 +370,16 @@ describe("preview commit", () => {
   const draftGroups = [{
     id: "draft-group",
     title: "Greetings",
-    essentials: [{
+    thingsToSay: [{
       id: "draft-occurrence",
       card: { type: "phrase", lang: "ja", text: "こんにちは", translation: "hello" },
     }],
-    vocab: [],
-    dialogue: [
+    words: [],
+    likelyExchanges: [{id:"draft-exchange",title:"Welcome",lines:[
+      {speaker:"you",responses:[{id:"exchange-you",card:{type:"phrase",lang:"ja",text:"こんにちは",translation:"Hello."}}]},
+      {speaker:"partner",responses:[{id:"exchange-partner",card:{type:"phrase",lang:"ja",text:"どうぞ",translation:"Come in."}}]},
+    ]}],
+    exampleConversation: [
       { id: "draft-you", card: { type: "phrase", lang: "ja", text: "こんにちは", translation: "hello" }, speaker: "you" },
       { id: "draft-partner", card: { type: "phrase", lang: "ja", text: "どうぞ", translation: "come in" }, speaker: "partner" },
     ],
@@ -465,7 +471,7 @@ describe("topic navigation and independent sections", () => {
     await flush();
     const entry = mocks.repeatedEntries()[0];
     delete entry.occurrence.speaker;
-    entry.occurrence.section = "essentials";
+    entry.occurrence.section = "thingsToSay";
     view.ui.transition("content/cards-changed", { cards: [entry] });
     view.rootEl.querySelector(".topic-view").click();
     view.rootEl.querySelector(".card-term").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
@@ -479,7 +485,7 @@ describe("topic navigation and independent sections", () => {
     view.ui.transition("content/select-deck", { id: "d1" });
     await flush();
     const cards = mocks.repeatedEntries();
-    cards[0].occurrence.section = "essentials";
+    cards[0].occurrence.section = "thingsToSay";
     delete cards[0].occurrence.speaker;
     view.ui.transition("content/cards-changed", { cards });
     view.ui.transition("content/enter-edit");

@@ -68,7 +68,7 @@ function phraseEntry(snapshot, {
       id: occurrenceId,
       deckId,
       groupId,
-      section: "dialogue",
+      section: "exampleConversation",
       cardId,
       position: 0,
       translation: snapshot.translation,
@@ -199,11 +199,15 @@ async function mountSavedPhrase(snapshot) {
   const deck = await commitPhrasebook({
     name:"Source context",lang:snapshot.lang,selectedIndexes:[0],
     groups:[{id:crypto.randomUUID(),title:"Conversation",
-      essentials:[{id:crypto.randomUUID(),card:{type:"phrase",...snapshot}}],
-      dialogue:[
+      thingsToSay:[{id:crypto.randomUUID(),card:{type:"phrase",...snapshot}}],
+      likelyExchanges:[{id:crypto.randomUUID(),title:"Options",lines:[
+        {speaker:"you",responses:[{id:crypto.randomUUID(),card:{type:"phrase",...snapshot}}]},
+        {speaker:"partner",responses:[{id:crypto.randomUUID(),card:{type:"phrase",...snapshot}}]},
+      ]}],
+      exampleConversation:[
         {id:crypto.randomUUID(),card:{type:"phrase",...snapshot},speaker:"you"},
         {id:crypto.randomUUID(),card:{type:"phrase",...snapshot},speaker:"partner"},
-      ],vocab:[]}],
+      ],words:[]}],
   },{store:db});
   const [entry] = await getCards(deck.id);
   document.body.innerHTML = `<main id="app"><div id="app-shell"><button id="source">Source</button></div>${detailsPane.render()}</main>`;
@@ -266,10 +270,10 @@ describe("phrase breakdown request and cache", () => {
   it("analyzes an essential's exact meaning and topic without inventing a speaker", () => {
     const snapshot = {lang:"es",text:"Sin leche.",translation:"No milk."};
     const entry = phraseEntry(snapshot);
-    entry.occurrence.section = "essentials";
+    entry.occurrence.section = "thingsToSay";
     delete entry.occurrence.speaker;
     const deck = {id:"deck-a",lang:"es",name:"Dinner",generation:{seed:"dinner",ability:"basics",answers:{}}};
-    const group = {id:"group-a",deckId:deck.id,title:"Dietary needs",position:0};
+    const group = {id:"group-a",deckId:deck.id,title:"Dietary needs",position:0,exchanges:[],wordFamilies:[]};
     const request = cardRequest(entry,deck,group);
     expect(request.source).toEqual({snapshot,ref:{cardId:entry.cardId,occurrenceId:entry.key}});
     expect(request.context).toEqual({generation:deck.generation,groupTitle:"Dietary needs"});

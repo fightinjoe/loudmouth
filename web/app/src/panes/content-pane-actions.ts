@@ -8,7 +8,6 @@ export interface RegisterCardActionsOptions {
   host: AppHost;
   rootEl: HTMLElement;
   isEdit: () => boolean;
-  resetReveal: () => void;
 }
 
 function messageFrom(error: unknown): string {
@@ -45,7 +44,7 @@ function setStarPending(element: HTMLElement, cardId: string, pending: boolean):
 }
 
 export function registerCardActions(
-  { host, rootEl, isEdit, resetReveal }: RegisterCardActionsOptions,
+  { host, rootEl, isEdit }: RegisterCardActionsOptions,
 ): () => void {
   const { ui, delegate } = host;
   if (!delegate) throw new Error("Content card actions require an event delegate");
@@ -55,19 +54,10 @@ export function registerCardActions(
     return ui.get("content").cards.find((entry) => entry.key === entryKey);
   }
 
-  function openEditor(element: HTMLElement): void {
-    resetReveal();
-    const entry = entryFor(element);
-    if (entry) {
-      ui.transition("action/open", { kind: "card-edit", payload: { entry } });
-    }
-  }
-
   function openDetails(element: HTMLElement): void {
     if (isEdit() || ui.get("action") || ui.get("details")) return;
     const entry = entryFor(element);
-    if (entry?.card.type !== "phrase"
-      || element.closest(".card-row-wrapper--swiped")) return;
+    if (entry?.card.type !== "phrase") return;
     const content = ui.get("content");
     const group = entry.occurrence?.groupId
       ? content.groups.find((candidate) => candidate.id === entry.occurrence?.groupId)
@@ -84,7 +74,7 @@ export function registerCardActions(
   }
 
   // Observe the pointer without capturing it or preventing movement: the pager,
-  // scroll surface, swipe reveal, and reorder gestures retain ownership.
+  // scroll surface and reorder gestures retain ownership.
   let hold: {
     element: HTMLElement;
     pointerId: number;
@@ -123,8 +113,7 @@ export function registerCardActions(
     suppressedClick = null;
     const element = phraseRow(event.target);
     if (!element || isEdit() || ui.get("action") || ui.get("details")
-      || !event.isPrimary || event.button !== 0
-      || element.closest(".card-row-wrapper--swiped")) return;
+      || !event.isPrimary || event.button !== 0) return;
     hold = {
       element,
       pointerId: event.pointerId,
@@ -182,7 +171,6 @@ export function registerCardActions(
 
   const starCard = async (_event: MouseEvent, element: HTMLElement): Promise<void> => {
     if (isEdit() || element.getAttribute("aria-busy") === "true") return;
-    resetReveal();
     const slice = ui.get("content");
     const deck = slice.deck;
     const entry = entryFor(element);
@@ -221,26 +209,8 @@ export function registerCardActions(
   const actions: Array<readonly [string, (event: MouseEvent, element: HTMLElement) => void]> = [
     ["content/star-card", (event, element) => { void starCard(event, element); }],
 
-    ["content/edit-card", (_event, element) => {
-      if (!isEdit()) openEditor(element);
-    }],
-
-    // Deletion is confirmed by the editor. Resolving by entry key preserves
-    // the active occurrence translation when a Phrase appears more than once.
-    ["content/delete-card", (_event, element) => {
-      if (!isEdit()) openEditor(element);
-    }],
-
     ["content/open-card", (_event, element) => {
-      if (isEdit()) {
-        openEditor(element);
-        return;
-      }
-      const wrapper = element.closest(".card-row-wrapper");
-      if (wrapper?.classList.contains("card-row-wrapper--swiped")) {
-        resetReveal();
-        return;
-      }
+      if (isEdit()) return;
       const entry = entryFor(element);
       if (!entry) return;
       if (ui.get("action") || ui.get("details")) return;

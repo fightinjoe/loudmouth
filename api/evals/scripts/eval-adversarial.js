@@ -92,6 +92,7 @@ function parseFlags(argv) {
 function loadFixtures() {
   const fixtures = JSON.parse(fs.readFileSync(FIXTURES_FILE, 'utf8'));
   if (fixtures.schemaVersion !== 1
+    || fixtures.phrasebookSchemaVersion !== 4
     || !Array.isArray(fixtures.standardTags) || fixtures.standardTags.length !== 5
     || !Array.isArray(fixtures.controls) || !Array.isArray(fixtures.attacks)
     || !fixtures.payloads || typeof fixtures.payloads !== 'object') {
@@ -166,6 +167,7 @@ function summarize(artifact) {
 function createState({ outputPath, backend, flags, selected }) {
   const artifact = {
     schemaVersion: 1,
+    phrasebookSchemaVersion: 4,
     runner: 'eval-adversarial',
     startedAt: new Date().toISOString(),
     completedAt: null,
@@ -452,7 +454,7 @@ async function evaluateContext(state, handler, meta, body, formatMarker) {
 async function evaluateGeneration(state, handler, meta, body, formatMarker) {
   const request = parseOrRecord(state, meta, 'phrasebook-request', body, parsePhrasebookRequest);
   if (!request) return { value: null };
-  const conversations = [];
+  const topics = [];
   let failureLevel = 0;
   // Exercise the production singleton contract, preserving duplicate-title indexes.
   for (const title of request.checklist) {
@@ -463,18 +465,18 @@ async function evaluateGeneration(state, handler, meta, body, formatMarker) {
       formatMarker,
     });
     if (!result.value) return { value: null };
-    conversations.push(result.value.conversations[0]);
+    topics.push(result.value.topics[0]);
     failureLevel = Math.max(failureLevel, result.value.failureLevel);
   }
-  return { value: { conversations, failureLevel } };
+  return { value: { topics, failureLevel } };
 }
 
-async function evaluateTranslation(state, handler, meta, { seed, language, ability, answers, conversation }, formatMarker) {
+async function evaluateTranslation(state, handler, meta, { seed, language, ability, answers, topic }, formatMarker) {
   return evaluateCall(state, handler, meta, {
     stage: 'phrasebook-translation',
-    prompt: buildPhrasebookTranslationPrompt({ seed, language, ability, answers, conversation }),
-    validator: (raw) => validateTranslationResponse(raw, conversation, language),
-    responseJsonSchema: buildTranslationResponseJsonSchema(conversation, language),
+    prompt: buildPhrasebookTranslationPrompt({ seed, language, ability, answers, topic }),
+    validator: (raw) => validateTranslationResponse(raw, topic, language),
+    responseJsonSchema: buildTranslationResponseJsonSchema(topic, language),
     formatMarker,
   });
 }
@@ -521,9 +523,9 @@ function derivePhrasebookRequest(seed, language, context) {
   return { seed, language, ability: 'basics', answers, checklist };
 }
 
-function recordPipelineOutput(state, meta, { seed, language, conversations, translations }) {
+function recordPipelineOutput(state, meta, { seed, language, topics, translations }) {
   try {
-    const output = assemblePhrasebook({ seed, language, conversations, translations });
+    const output = assemblePhrasebook({ seed, language, topics, translations });
     state.artifact.pipelineOutputs.push({
       caseId: meta.caseId,
       repetition: meta.repetition,
@@ -548,23 +550,23 @@ async function runBaselineLike(state, handler, selected, repetition, formatMarke
   };
   await evaluateContext(state, handler, meta, { seed: fixture.seed, language: fixture.language }, formatMarker);
   const generation = await evaluateGeneration(state, handler, meta, fixtureRequest(fixture), formatMarker);
-  const conversations = generation.value?.conversations;
-  if (!conversations) {
-    state.add(skippedRecord(meta, 'phrasebook-translation', 'Phrasebook generation did not produce validated conversations'));
+  const topics = generation.value?.topics;
+  if (!topics) {
+    state.add(skippedRecord(meta, 'phrasebook-translation', 'Phrasebook generation did not produce validated topics'));
     return;
   }
-  const translations = await Promise.all(conversations.map((conversation) => evaluateTranslation(state, handler, meta, {
+  const translations = await Promise.all(topics.map((topic) => evaluateTranslation(state, handler, meta, {
     seed: fixture.seed,
     language: fixture.language,
     ability: fixture.ability,
     answers: fixture.answers,
-    conversation,
+    topic,
   }, formatMarker)));
   if (translations.some(({ value }) => !value)) return;
   recordPipelineOutput(state, meta, {
     seed: fixture.seed,
     language: fixture.language,
-    conversations,
+    topics,
     translations: translations.map(({ value }) => value),
   });
 }
@@ -578,24 +580,24 @@ async function runFullPipeline(state, handler, meta, fixture, payload, formatMar
   }
   const request = derivePhrasebookRequest(seed, fixture.language, context.value);
   const generation = await evaluateGeneration(state, handler, meta, request, formatMarker);
-  const conversations = generation.value?.conversations;
-  if (!conversations) {
+  const topics = generation.value?.topics;
+  if (!topics) {
     state.add(skippedRecord(meta, 'phrasebook-translation', 'Phrasebook generation stage did not validate'));
     return;
   }
 
-  const translations = await Promise.all(conversations.map((conversation) => evaluateTranslation(state, handler, meta, {
+  const translations = await Promise.all(topics.map((topic) => evaluateTranslation(state, handler, meta, {
     seed,
     language: fixture.language,
     ability: request.ability,
     answers: request.answers,
-    conversation,
+    topic,
   }, formatMarker)));
   if (translations.some(({ value }) => !value)) return;
   recordPipelineOutput(state, meta, {
     seed,
     language: fixture.language,
-    conversations,
+    topics,
     translations: translations.map(({ value }) => value),
   });
 }
@@ -613,14 +615,14 @@ async function runAttack(state, handler, selected, repetition, fixtures) {
   switch (attack.endpoint) {
     case 'phrasebook':
       if (attack.target === 'translation-source') {
-        const conversation = structuredClone(attack.conversation);
-        conversation.lines[0].text = `${conversation.lines[0].text} ${payload}`;
+        const topic = structuredClone(attack.topic);
+        topic.exampleConversation[0].text = `${topic.exampleConversation[0].text} ${payload}`;
         await evaluateTranslation(state, handler, meta, {
           seed: fixture.seed,
           language: fixture.language,
           ability: fixture.ability,
           answers: fixture.answers,
-          conversation,
+          topic,
         }, fixtures.formatMarker);
       } else {
         await evaluateGeneration(state, handler, meta, addPayloadToRequest(fixture, attack, payload), fixtures.formatMarker);

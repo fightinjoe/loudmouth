@@ -53,8 +53,16 @@ const sampleQuestionsResponse = {
   ],
 };
 
+const fixtureIds = new Map();
+function fixtureUuid(label) {
+  if (!fixtureIds.has(label)) {
+    fixtureIds.set(label, `00000000-0000-4000-8000-${String(fixtureIds.size + 1).padStart(12, "0")}`);
+  }
+  return fixtureIds.get(label);
+}
+
 function phrase(id, text, translation, speaker = "you") {
-  return { id, card: { type: "phrase", lang: "es", text, translation }, speaker };
+  return { id: fixtureUuid(id), card: { type: "phrase", lang: "es", text, translation }, speaker };
 }
 
 function source(phraseDraft, start, end) {
@@ -83,25 +91,34 @@ function word(text, translation, senseKey, evidence) {
   };
 }
 
+function exchange(id, question, answer) {
+  return { id: fixtureUuid(id), title: "A likely reply", lines: [
+    { speaker: "you", responses: [{ id: fixtureUuid(`${id}-you`), card: question.card }] },
+    { speaker: "partner", responses: [{ id: fixtureUuid(`${id}-partner`), card: answer.card }] },
+  ] };
+}
+
 const firstPhrase = phrase("draft-phrase-1", "¿Bailas?", "Would you like to dance?");
 const secondPhrase = phrase("draft-phrase-2", "Paso básico", "Basic step", "partner");
 const sampleGenerateResponse = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   title: "Provider title is not used for naming",
   groups: [
     {
-      id: "draft-group-1",
+      id: fixtureUuid("draft-group-1"),
       title: "Ask someone to dance",
-      essentials: [{ id: "essential-1", card: { ...firstPhrase.card, text: "¿Quieres bailar?", translation: "Do you want to dance?" } }],
-      dialogue: [firstPhrase, phrase("reply-1", "Sí, gracias.", "Yes, thank you.", "partner")],
-      vocab: [word("bailar", "dance", "dance", source(firstPhrase, 1, 7))],
+      thingsToSay: [{ id: fixtureUuid("essential-1"), card: { ...firstPhrase.card, text: "¿Quieres bailar?", translation: "Do you want to dance?" } }],
+      likelyExchanges: [exchange("exchange-1", firstPhrase, phrase("unused", "Sí, gracias.", "Yes, thank you."))],
+      exampleConversation: [firstPhrase, phrase("reply-1", "Sí, gracias.", "Yes, thank you.", "partner")],
+      words: [{ id: fixtureUuid("family-1"), title: "Dancing", items: [word("bailar", "dance", "dance", source(firstPhrase, 1, 7)), word("baile", "a dance", "dance-event")] }],
     },
     {
-      id: "draft-group-2",
+      id: fixtureUuid("draft-group-2"),
       title: "Dance/step vocabulary",
-      essentials: [{ id: "essential-2", card: { ...secondPhrase.card } }],
-      dialogue: [phrase("question-2", "¿Cuál es el paso?", "What is the step?"), secondPhrase],
-      vocab: [word("paso", "step", "step", source(secondPhrase, 0, 4))],
+      thingsToSay: [{ id: fixtureUuid("essential-2"), card: { ...secondPhrase.card } }],
+      likelyExchanges: [exchange("exchange-2", phrase("unused", "¿Cuál es el paso?", "What is the step?"), secondPhrase)],
+      exampleConversation: [phrase("question-2", "¿Cuál es el paso?", "What is the step?"), secondPhrase],
+      words: [{ id: fixtureUuid("family-2"), title: "Steps", items: [word("paso", "step", "step", source(secondPhrase, 0, 4)), word("pasito", "little step", "little-step")] }],
     },
   ],
   usage,
@@ -313,7 +330,7 @@ describe("openCreationPanel — language selection", () => {
     const oldGeneration = deferred();
     const newResponse = {
       ...sampleGenerateResponse,
-      groups: [{ ...sampleGenerateResponse.groups[0], id: "new-language-group" }],
+      groups: [{ ...sampleGenerateResponse.groups[0], id: fixtureUuid("new-language-group") }],
     };
     generatePhrasebook.mockReturnValueOnce(oldGeneration.promise).mockResolvedValueOnce(newResponse);
     await openQuestions({ params: { lang: "ja" } });
@@ -688,29 +705,32 @@ describe("openCreationPanel — atomic commit lifetime", () => {
     const discarded = phrase("discarded", "Adiós", "Goodbye");
     const selectedThird = phrase("selected-third", "Hola", "Hi there", "partner");
     const response = {
-      schemaVersion: 3,
+      schemaVersion: 4,
       title: "Ignored provider title",
       groups: [
         {
-          id: "same-a",
+          id: fixtureUuid("same-a"),
           title: "Same title",
-          essentials: [{ id: "essential-first", card: selectedFirst.card }],
-          dialogue: [selectedFirst, phrase("reply-first", "Buenas.", "Hi.", "partner")],
-          vocab: [word("hola", "hello", "greeting", source(selectedFirst, 0, 4))],
+          thingsToSay: [{ id: fixtureUuid("essential-first"), card: selectedFirst.card }],
+          likelyExchanges: [exchange("exchange-first", selectedFirst, phrase("unused", "Buenas.", "Hi."))],
+          exampleConversation: [selectedFirst, phrase("reply-first", "Buenas.", "Hi.", "partner")],
+          words: [{ id: fixtureUuid("family-first"), title: "Greetings", items: [word("hola", "hello", "greeting", source(selectedFirst, 0, 4)), word("saludo", "greeting", "salutation")] }],
         },
         {
-          id: "discarded-group",
+          id: fixtureUuid("discarded-group"),
           title: "Discarded",
-          essentials: [{ id: "essential-discarded", card: discarded.card }],
-          dialogue: [discarded, phrase("reply-discarded", "Hasta luego.", "See you.", "partner")],
-          vocab: [word("adiós", "goodbye", "farewell", source(discarded, 0, 5))],
+          thingsToSay: [{ id: fixtureUuid("essential-discarded"), card: discarded.card }],
+          likelyExchanges: [exchange("exchange-discarded", discarded, phrase("unused", "Hasta luego.", "See you."))],
+          exampleConversation: [discarded, phrase("reply-discarded", "Hasta luego.", "See you.", "partner")],
+          words: [{ id: fixtureUuid("family-discarded"), title: "Farewells", items: [word("adiós", "goodbye", "farewell", source(discarded, 0, 5)), word("despedida", "farewell", "parting")] }],
         },
         {
-          id: "same-c",
+          id: fixtureUuid("same-c"),
           title: "Same title",
-          essentials: [{ id: "essential-third", card: selectedThird.card }],
-          dialogue: [phrase("question-third", "Buenas.", "Hi."), selectedThird],
-          vocab: [word("hola", "hi", "greeting", source(selectedThird, 0, 4))],
+          thingsToSay: [{ id: fixtureUuid("essential-third"), card: selectedThird.card }],
+          likelyExchanges: [exchange("exchange-third", phrase("unused", "Buenas.", "Hi."), selectedThird)],
+          exampleConversation: [phrase("question-third", "Buenas.", "Hi."), selectedThird],
+          words: [{ id: fixtureUuid("family-third"), title: "Greetings", items: [word("hola", "hi", "greeting", source(selectedThird, 0, 4)), word("saludo", "greeting", "salutation")] }],
         },
       ],
       usage,
@@ -744,11 +764,11 @@ describe("openCreationPanel — atomic commit lifetime", () => {
     expect((await store.groups.where("deckId").equals(createdDeck.id).sortBy("position"))
       .map((group) => group.title)).toEqual(["Same title", "Same title"]);
     const occurrences = await store.occurrences.where("deckId").equals(createdDeck.id).toArray();
-    expect(occurrences.filter((occurrence) => occurrence.section === "essentials")
+    expect(occurrences.filter((occurrence) => occurrence.section === "thingsToSay")
       .map((occurrence) => occurrence.translation).sort()).toEqual(["Hello", "Hi there"]);
-    expect(occurrences.filter((occurrence) => occurrence.section === "dialogue")).toHaveLength(4);
-    expect(await store.topicWords.where("deckId").equals(createdDeck.id).count()).toBe(2);
-    expect(await store.cards.where("type").equals("word").count()).toBe(1);
+    expect(occurrences.filter((occurrence) => occurrence.section === "exampleConversation")).toHaveLength(4);
+    expect(await store.topicWords.where("deckId").equals(createdDeck.id).count()).toBe(4);
+    expect(await store.cards.where("type").equals("word").count()).toBe(2);
     expect(await store.provenance.where("deckId").equals(createdDeck.id).count()).toBe(2);
     expect(getLastAbility("es")).toBe("none");
     store.close();

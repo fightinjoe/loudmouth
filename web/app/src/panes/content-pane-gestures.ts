@@ -1,7 +1,7 @@
 import type { AppUI } from "../js/app-types";
 import { wireTabMotion } from "./content-pane-tab-motion";
 
-/** Options shared by the content pane's shell, pager, reveal, and reorder gestures. */
+/** Options shared by the content pane's shell, pager, and reorder gestures. */
 export interface WireContentGesturesOptions {
   rootEl: HTMLElement;
   handleEl: HTMLElement;
@@ -18,10 +18,8 @@ export interface SyncPagerOptions {
 
 /** Imperative gesture state retained by the content pane between renders. */
 export interface ContentGesturesHandle {
-  resetReveal: () => void;
   captureTabGeometry: () => void;
   syncPager: (pageKey: string | null, options?: SyncPagerOptions) => void;
-  isAnyRevealed: () => boolean;
   dispose: () => void;
 }
 
@@ -56,15 +54,11 @@ type ReorderState = {
 };
 
 const OPEN_THRESHOLD = 100;
-const REVEAL_WIDTH = 104;
-const REVEAL_THRESHOLD = 80;
 const PAGE_THRESHOLD = 45;
 const PAGE_AXIS_LOCK = 8;
 const PAGE_GUTTER = 50;
 const PAGE_DURATION = 280;
 const CARD_WRAPPER_SEL = ".card-row-wrapper";
-const ROW_SEL = ".card-row";
-const SWIPED_CLASS = "card-row-wrapper--swiped";
 const REORDER_THRESHOLD_PX = 4;
 const REORDER_PLACEHOLDER_CLASS = "card-row-reorder-placeholder";
 const REORDER_REORDERING_CLASS = "deck-page-list--reordering";
@@ -80,14 +74,9 @@ function firstTouch(touches: TouchList): Touch | null {
   return touches.item(0);
 }
 
-function cardRow(wrapper: HTMLElement): HTMLElement | null {
-  return wrapper.querySelector<HTMLElement>(ROW_SEL);
-}
-
 /**
  * Wires the content pane's gesture surfaces without taking ownership of its
- * rendered DOM. Callers keep the returned handle for render-time pager sync
- * and reveal reset.
+ * rendered DOM. Callers keep the returned handle for render-time pager sync.
  */
 export function wireContentGestures({
   rootEl,
@@ -397,105 +386,6 @@ export function wireContentGestures({
     suppressPageClick = false;
   }, true);
 
-  // ── Legacy row reveal ───────────────────────────────────────────────────
-  let revealStart: Point | null = null;
-  let revealAxis: Axis | null = null;
-  let revealTarget: HTMLElement | null = null;
-  let activeSwiped: HTMLElement | null = null;
-
-  function resetReveal(): void {
-    if (!activeSwiped) return;
-    activeSwiped.classList.remove(SWIPED_CLASS);
-    const row = cardRow(activeSwiped);
-    if (row) row.style.transform = "";
-    activeSwiped = null;
-  }
-
-  rootEl.addEventListener("touchstart", (event) => {
-    if (isEdit()) return;
-    const touch = firstTouch(event.touches);
-    const wrapper = closestHTMLElement(event.target, CARD_WRAPPER_SEL);
-    // Horizontal list-interior movement belongs to the phrasebook pager.
-    if (!touch || !wrapper || wrapper.closest(".deck-pages")) return;
-    const row = cardRow(wrapper);
-    if (!row) return;
-    revealStart = { x: touch.clientX, y: touch.clientY };
-    revealTarget = wrapper;
-    revealAxis = null;
-    row.dataset.dragging = "";
-  }, { passive: false });
-
-  rootEl.addEventListener("touchmove", (event) => {
-    const touch = firstTouch(event.touches);
-    if (!revealTarget || !revealStart || !touch) return;
-    const dx = touch.clientX - revealStart.x;
-    const dy = touch.clientY - revealStart.y;
-    const row = cardRow(revealTarget);
-    if (!row) {
-      revealTarget = null;
-      revealStart = null;
-      revealAxis = null;
-      return;
-    }
-    if (!revealAxis) {
-      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
-      revealAxis = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-      if (revealAxis !== "h") {
-        delete row.dataset.dragging;
-        revealTarget = null;
-        revealStart = null;
-        revealAxis = null;
-        return;
-      }
-    }
-    event.preventDefault();
-    const base = revealTarget.classList.contains(SWIPED_CLASS) ? -REVEAL_WIDTH : 0;
-    const clamped = Math.max(-REVEAL_WIDTH, Math.min(0, base + dx));
-    row.style.transform = `translateX(${clamped}px)`;
-  }, { passive: false });
-
-  rootEl.addEventListener("touchend", (event) => {
-    const touch = firstTouch(event.changedTouches);
-    if (!revealTarget || !revealStart || !touch) return;
-    const target = revealTarget;
-    const row = cardRow(target);
-    if (row) {
-      delete row.dataset.dragging;
-      if (revealAxis === "h") {
-        const dx = touch.clientX - revealStart.x;
-        const base = target.classList.contains(SWIPED_CLASS) ? -REVEAL_WIDTH : 0;
-        if (base + dx < -REVEAL_THRESHOLD) {
-          if (activeSwiped && activeSwiped !== target) {
-            activeSwiped.classList.remove(SWIPED_CLASS);
-            const previousRow = cardRow(activeSwiped);
-            if (previousRow) previousRow.style.transform = "";
-          }
-          target.classList.add(SWIPED_CLASS);
-          activeSwiped = target;
-        } else {
-          target.classList.remove(SWIPED_CLASS);
-          if (activeSwiped === target) activeSwiped = null;
-        }
-        row.style.transform = "";
-      }
-    }
-    revealTarget = null;
-    revealStart = null;
-    revealAxis = null;
-  });
-
-  rootEl.addEventListener("touchcancel", () => {
-    if (!revealTarget) return;
-    const row = cardRow(revealTarget);
-    if (row) {
-      delete row.dataset.dragging;
-      row.style.transform = "";
-    }
-    revealTarget = null;
-    revealStart = null;
-    revealAxis = null;
-  });
-
   // ── Edit-mode reorder ──────────────────────────────────────────────────
   let reorderState: ReorderState | null = null;
 
@@ -627,7 +517,6 @@ export function wireContentGestures({
   syncPager(ui.get("content").pageKey, { animate: false });
 
   return {
-    resetReveal,
     captureTabGeometry: tabMotion.captureTabGeometry,
     syncPager,
     dispose: () => {
@@ -635,6 +524,5 @@ export function wireContentGestures({
       resizeObserver?.disconnect();
       if (observedPages) stopScrollAnimation(observedPages);
     },
-    isAnyRevealed: () => activeSwiped !== null,
   };
 }

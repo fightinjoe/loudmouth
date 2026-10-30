@@ -1,0 +1,101 @@
+{
+  "version": "1.2-proposed",
+  "status": "recalibration-complete-coverage-blocker-remains",
+  "authority": "Assistant-proposed review guidance; not linguistic certification or a production acceptance gate.",
+  "canonicalAnchors": "README.md#learning-quality-assessment",
+  "stepOutcomeCriteria": "README.md#step-outcomes-and-criteria",
+  "stepCatalog": "../docs/API_DESIGN.md#endpoints",
+  "priorities": [
+    "Material meaning errors, harmful assurances and violations of supplied learner facts are explicit risk findings; never average them away.",
+    "A: independently useful essentials first, relevant reusable vocabulary second; ordinary dialogue awkwardness is lower impact than missing communicative essentials.",
+    "B: preserve frozen English intent, negation, quantities, referents and register; check target-language naturalness, dictionary forms, readings and exact lexical evidence separately.",
+    "Pronunciation is important: explicitly assess ruby readings and romanization. Incorrect ruby is a quality finding, not an automatic whole-topic failure; severity follows learner impact. Keep malformed, unrenderable reading data separate as technical validation.",
+    "C: detect without changing correct content; measure detection, known-location repair and detector-gated whole-topic results separately. A rejected proposal is not a credited fix.",
+    "Speed, reliability, quality and cost remain separate. A runtime reviewer is optional, not a required serial stage before initial content is useful."
+  ],
+  "scale": [
+    { "score": 4, "label": "high quality", "anchor": "Accurate, relevant, clear and well arranged; ready to use with negligible improvements." },
+    { "score": 3, "label": "usable", "anchor": "Core task is achievable without correction despite repetition, awkward flow or minor omissions." },
+    { "score": 2, "label": "partially usable", "anchor": "Important intent is missing or misleading; correction or supplementation is needed to accomplish the task." },
+    { "score": 1, "label": "poor", "anchor": "Little dependable help; extensive rewriting is needed." },
+    { "score": 0, "label": "no usable value", "anchor": "Empty, irrelevant or effectively unusable content." }
+  ],
+  "missingAssessment": null,
+  "dimensions": [
+    { "id": "coverage", "question": "Can the learner initiate and accomplish this contextual task?", "lanes": ["a", "b", "ab", "c"] },
+    { "id": "correctnessAndFit", "question": "Are meaning, supplied facts, register, learner level and teaching correct and contextually appropriate?", "lanes": ["a", "b", "ab", "c"] },
+    { "id": "vocabularyUsefulness", "question": "Are the dictionary words relevant, reusable and unpadded, with truthful forms, meanings and evidence? An empty list can be appropriate.", "lanes": ["a", "b", "ab", "c"] },
+    { "id": "conversationFlow", "question": "Are roles, alternatives and progression usable? Repetition alone is not a material failure.", "lanes": ["a", "b", "ab", "c"] }
+  ],
+  "separateChecks": [
+    "Raw response contract versus normalized application validity and failureLevel.",
+    "Translation fidelity versus English-origin content defects; do not blame faithful translation for its source's clinical advice.",
+    "Written target text, reading and romanization agreement; structural reading validity does not establish pronunciation accuracy.",
+    "Word lemma, target-language partOfSpeech and senseKey; a correct English display equivalent does not establish target grammar.",
+    "Source snapshot and UTF-16 span identify the intended lexical occurrence; inflected evidence can validly support a dictionary lemma.",
+    "Material risk disposition, reviewer confidence and unresolved linguistic disagreement.",
+    "C: localized detection, missed defects, false alarms, known-location repairs, applied repairs, new harm, unchanged controls and evidence retained."
+  ],
+  "examples": [
+    {
+      "id": "allergy-essential-missing",
+      "path": "english.conversations[0].essentials",
+      "observation": "The learner explicitly needs to explain a peanut allergy, but all essentials only ask about ingredients.",
+      "proposedAssessment": { "coverage": 2 },
+      "why": "Useful questions exist, but the learner still needs an allergy statement to accomplish the requested task."
+    },
+    {
+      "id": "allergy-negation-reversed",
+      "paths": ["items[e:0].english.text", "items[e:0].card.text"],
+      "observation": "English says 'I cannot eat peanuts.'; Spanish says 'Puedo comer cacahuetes.' ('I can eat peanuts.').",
+      "proposedAssessment": { "risk": "material meaning/safety error", "category": "negation", "origin": "translation" },
+      "why": "Valid JSON does not mitigate the reversed meaning. Review the actual phrase and its context, not just syntax."
+    },
+    {
+      "id": "ordinary-dialogue-repetition",
+      "path": "english.conversations[0].lines",
+      "observation": "Two dance invitations repeat the request, followed by usable acceptance and refusal alternatives.",
+      "proposedAssessment": { "conversationFlow": 3 },
+      "why": "Editing would improve polish, but no correction is needed to use the exchange."
+    },
+    {
+      "id": "inflection-is-not-false-evidence",
+      "paths": ["items[v:0].card.text", "items[v:0].sources[0].snapshot.text", "items[v:0].sources[0].span"],
+      "observation": "The Chinese lemma 买 ('buy') is supported by 我买了茶。 with UTF-16 span [1,3), selecting 买了 ('bought').",
+      "proposedAssessment": { "sourceRemoval": "not justified solely by differing surface form" },
+      "why": "A meaningful inflected occurrence can support a lemma; exact lemma substring equality is not the semantic criterion."
+    },
+    {
+      "id": "ambiguous-word-intent",
+      "paths": ["items[v:0].english.text", "items[v:0].card.senseKey"],
+      "observation": "'Light' alone could mean low weight or illumination; unrelated shopping context does not decide the intended meaning.",
+      "proposedAssessment": { "disposition": "unresolved", "score": null },
+      "why": "Do not manufacture a definitive correction or score a materially ambiguous item as correct."
+    },
+    {
+      "id": "repair-rejected-not-fixed",
+      "paths": ["repairs[0].response", "appliedTopic"],
+      "observation": "A proposed correction fixes one word but has an invalid envelope; atomic validation leaves the original topic unchanged.",
+      "proposedAssessment": { "creditedFixes": 0 },
+      "why": "Count the actual delivered result, while preserving the proposal failure separately."
+    }
+  ],
+  "citationConvention": "Use a concrete array index in the actual artifact and include the stable handle where available. items[e:0] in these conceptual examples means the item whose handle equals e:0, not JSON array syntax.",
+  "reviewRecord": {
+    "required": ["contextId", "lane", "artifactHash", "rubricVersion", "reviewer", "dimensions", "findings", "uncertainties", "disposition"],
+    "findingRequired": ["path", "quote", "impact", "severity", "origin", "confidence", "disposition"],
+    "rules": [
+      "Citations must resolve and quote the actual artifact, not an expectation or normalized reconstruction presented as raw output.",
+      "Name the documented pipeline step and outcome scope; A/B lane labels are not individual checkpoints or final endpoint outcomes.",
+      "Separate current implementation from intended policy, failed attempts from recovered endpoints, and technical outcomes from quality severity. Safe ignored metadata is a normalization warning, not automatically endpoint failure.",
+      "Mark dependent unavailable work blocked/not run/not assessed rather than another independent failure; no final endpoint outcome is inferred from a saved parser replay.",
+      "Missing/invalid assessment is null, never score 0. Scores are ordinal; report distributions and exact weaknesses, not a weighted mean.",
+      "Record assistant, independent model and qualified human judgments separately; generating candidates cannot certify their own output.",
+      "C strict location mismatches are not semantic miss/false-alarm judgments. Same-handle candidates require independent review; never relabel recorded findings or infer recognition automatically.",
+      "C coverage is independent of correctness. Incomplete review blocks whole-topic correction even when a known-location patch is valid.",
+      "Severity follows concrete learner impact: minor leaves the task usable, material changes important meaning or blocks the task, critical requires a serious safety consequence. Compare with proposed authored severity without automatically overriding the observed label.",
+      "User approves priorities, rubric and representative sample before paid calibration; material linguistic disagreement remains unresolved pending qualified review.",
+      "Promotion thresholds, representative sampling, repetitions and stop rules require a separate comparative experiment decision."
+    ]
+  }
+}

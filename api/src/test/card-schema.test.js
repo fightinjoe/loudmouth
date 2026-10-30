@@ -104,61 +104,66 @@ test('wire breakdown permits flagged Words without evidence but never unvalidate
   }
 });
 
-test('v3 phrasebook evidence stays inside its topic and preserves section ownership', () => {
+test('v4 phrasebook evidence stays in its topic across options and examples, with strict structural bounds', () => {
   const uuid = index => `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
   const snapshot = source.snapshot;
-  const response = { schemaVersion:3, title:'Dinner', usage, flags:[], groups:[{
-    id:uuid(1), title:'Dinner',
-    essentials:[{id:uuid(2),card:{type:'phrase',...snapshot}}],
-    dialogue:[
-      {id:uuid(3),card:{type:'phrase',...snapshot},speaker:'you'},
-      {id:uuid(4),card:{type:'phrase',lang:'ja',text:'はい。',translation:'Yes.'},speaker:'partner'},
-      {id:uuid(5),card:{type:'phrase',lang:'ja',text:'いいえ。',translation:'No.'},speaker:'partner',alternative:true},
-    ],
-    vocab:[
+  const phrase = index => ({ id: uuid(index), card: { type: 'phrase', ...snapshot } });
+  const response = { schemaVersion:4, title:'Dinner', usage, flags:[], groups:[{
+    id:uuid(1), title:'Dinner', thingsToSay:[phrase(2)],
+    likelyExchanges:[{id:uuid(3),title:'Ordering',lines:[
+      {speaker:'partner',responses:[phrase(4),phrase(5)]},
+      {speaker:'you',responses:[phrase(6)]},
+    ]}],
+    exampleConversation:[{...phrase(7),speaker:'you'},{...phrase(8),speaker:'partner'}],
+    words:[{id:uuid(9),title:'Actions',items:[
       {card:word,sources:[{snapshot,ref:{occurrenceId:uuid(2)},span:{start:4,end:9}}]},
       {card:{...word,text:'肉',reading:[['肉','にく']],translation:'meat',partOfSpeech:'noun',senseKey:'meat'}},
-    ],
+    ]}],
   }] };
-  assert.equal(validatePhrasebookResponse(response).schemaVersion,3);
-  const dialogueEvidence = structuredClone(response);
-  dialogueEvidence.groups[0].vocab[0].sources[0].ref.occurrenceId = uuid(3);
-  assert.equal(validatePhrasebookResponse(dialogueEvidence).groups[0].vocab[0].sources[0].ref.occurrenceId,uuid(3));
+  assert.equal(validatePhrasebookResponse(response).schemaVersion,4);
+  for (const occurrence of [4,5,7,8]) {
+    const evidence = structuredClone(response);
+    evidence.groups[0].words[0].items[0].sources[0].ref.occurrenceId = uuid(occurrence);
+    assert.equal(validatePhrasebookResponse(evidence).groups[0].words[0].items[0].sources[0].ref.occurrenceId,uuid(occurrence));
+  }
   for (const mutate of [
-    value => { value.schemaVersion = 2; },
-    value => { value.groups[0].phrases = []; },
-    value => { value.groups[0].featuredPhraseIds = []; },
-    value => { delete value.groups[0].essentials; },
-    value => { delete value.groups[0].vocab; },
-    value => { delete value.groups[0].dialogue; },
+    value => { value.schemaVersion = 3; },
     value => { value.groups[0].essentials = []; },
-    value => { value.groups[0].essentials[0].speaker = 'you'; },
-    value => { value.groups[0].dialogue[0].alternative = true; },
-    value => { delete value.groups[0].dialogue[2].alternative; },
-    value => { value.groups[0].dialogue[1].speaker = 'you'; },
-    value => { value.groups[0].dialogue[0].id = uuid(2); },
-    value => { value.groups[0].vocab[0].sources[0].snapshot.translation = 'Changed'; },
-    value => { value.groups[0].vocab[0].sources[0].ref.occurrenceId = uuid(8); },
-    value => { value.groups[0].vocab[1].card.reading = [['肉',null]]; },
-    value => { value.groups[0].dialogue[1].card.lang = 'es'; },
-    value => { value.flags = [{code:'vocab-source-missing',groupIndex:0,vocabIndex:1,reason:'omitted'}]; },
-    value => { value.flags = [{code:'vocab-source-missing',groupIndex:0,vocabIndex:0,reason:'unresolved'}]; },
+    value => { delete value.groups[0].words; },
+    value => { value.groups[0].thingsToSay = []; },
+    value => { value.groups[0].thingsToSay[0].speaker = 'you'; },
+    value => { value.groups[0].exampleConversation[0].alternative = true; },
+    value => { value.groups[0].exampleConversation[1].speaker = 'you'; },
+    value => { value.groups[0].likelyExchanges[0].lines[1].speaker = 'partner'; },
+    value => { value.groups[0].likelyExchanges[0].lines[0].responses = []; },
+    value => { value.groups[0].likelyExchanges[0].lines[0].responses.push(phrase(10),phrase(11)); },
+    value => { value.groups[0].words[0].items.pop(); },
+    value => { value.groups[0].words[0].items = Array(11).fill(value.groups[0].words[0].items[1]); },
+    value => { value.groups[0].likelyExchanges[0].id = uuid(2); },
+    value => { value.groups[0].words[0].id = uuid(3); },
+    value => { value.groups[0].exampleConversation[0].id = uuid(4); },
+    value => { value.groups[0].words[0].items[0].sources[0].snapshot.translation = 'Changed'; },
+    value => { value.groups[0].words[0].items[0].sources[0].ref.occurrenceId = uuid(99); },
+    value => { value.groups[0].words[0].items[1].card.reading = [['肉',null]]; },
+    value => { value.groups[0].exampleConversation[1].card.lang = 'es'; },
+    value => { value.flags = [{code:'vocab-source-missing',groupIndex:0,wordIndex:1,reason:'omitted'}]; },
+    value => { value.flags = [{code:'vocab-source-missing',groupIndex:0,wordIndex:0,reason:'unresolved'}]; },
   ]) {
     const invalid = structuredClone(response);
     mutate(invalid);
     assert.throws(() => validatePhrasebookResponse(invalid));
   }
   const flagged = structuredClone(response);
-  flagged.flags = [{code:'vocab-source-missing',groupIndex:0,vocabIndex:1,reason:'unresolved'}];
+  flagged.flags = [{code:'vocab-source-missing',groupIndex:0,wordIndex:1,reason:'unresolved'}];
   assert.equal(validatePhrasebookResponse(flagged).flags[0].reason,'unresolved');
   const foreign = structuredClone(response);
-  const other = structuredClone(response.groups[0]);
-  other.id = uuid(6);
-  other.essentials[0].id = uuid(7);
-  other.dialogue.forEach((entry,index) => { entry.id = uuid(8+index); });
-  other.vocab = [];
+  const other = {
+    id:uuid(20),title:'Other',thingsToSay:[phrase(21)],
+    likelyExchanges:[{id:uuid(22),title:'Other exchange',lines:[{speaker:'you',responses:[phrase(23)]},{speaker:'partner',responses:[phrase(24)]}]}],
+    words:[], exampleConversation:[{...phrase(25),speaker:'you'},{...phrase(26),speaker:'partner'}],
+  };
   foreign.groups.push(other);
-  foreign.groups[0].vocab[0].sources[0].ref.occurrenceId = uuid(7);
+  foreign.groups[0].words[0].items[0].sources[0].ref.occurrenceId = uuid(21);
   assert.throws(() => validatePhrasebookResponse(foreign), /owning group/);
 });
 
@@ -167,9 +172,17 @@ test('both producers resolve the same dictionary sense despite contextual gloss 
   const { validatePhraseBreakdownResponse } = require('../phrase-breakdown');
   const produced = assemblePhrasebook({
     seed:'Dinner',language:'ja',
-    conversations:[{title:'Dinner',essentials:['I do not eat.'],lines:[{speaker:'you',text:'I do not eat.'},{speaker:'partner',text:'Understood.'}],vocab:['eat']}],
-    translations:[{essentials:['食[た]べません。'],lines:['食[た]べません。','はい。'],vocab:[{target:'食[た]べる',partOfSpeech:'verb',senseKey:'consume-food',source:{section:'essentials',index:0,surface:'食べません',occurrence:0}}]}],
-  }).groups[0].vocab[0].card;
+    topics:[{
+      title:'Dinner',thingsToSay:['I do not eat.'],
+      likelyExchanges:[{title:'Ordering',lines:[{speaker:'you',text:['I do not eat.']},{speaker:'partner',text:['Understood.']}]}],
+      words:[{title:'Actions',items:['eat','drink']}],
+      exampleConversation:[{speaker:'you',text:'I do not eat.'},{speaker:'partner',text:'Understood.'}],
+    }],
+    translations:[{
+      phrases:['食[た]べません。','食[た]べません。','はい。','食[た]べません。','はい。'],
+      words:[{target:'食[た]べる',partOfSpeech:'verb',senseKey:'consume-food',source:{phraseIndex:0,surface:'食べません',occurrence:0}},{target:'飲[の]む',partOfSpeech:'verb',senseKey:'drink'}],
+    }],
+  }).groups[0].words[0].items[0].card;
   const request = {schemaVersion:2,source:{snapshot:{lang:'ja',text:'食べません。',translation:'I do not eat.'}}};
   const analysis = validatePhraseBreakdownResponse(JSON.stringify({chunks:[{
     text:'食べません。',gloss:'do not eat',role:'negative verb',explanation:'Polite negative form.',equivalentWordIndex:null,

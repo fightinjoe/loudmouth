@@ -15,10 +15,9 @@ import { test, expect } from '@playwright/test'
  */
 
 // Every kind the action pane can open, with the payload shape each expects.
-// `needsDeck`/`needsCard` mark kinds that require seeded data in the payload.
+// `needsDeck`/`needsCards` mark kinds that require seeded data in the payload.
 const KINDS = [
   { kind: 'settings', needsDeck: true, needsCards: true, label: 'settings' },
-  { kind: 'card-edit', needsCard: true, label: 'card-edit' },
   { kind: 'review', needsDeck: true, needsCards: true, label: 'review' },
   { kind: 'creation', payload: { lang: 'ja' }, label: 'creation (topic entry)' },
   { kind: 'creation', payload: {}, label: 'creation (first-time language selection)' },
@@ -28,12 +27,16 @@ const KINDS = [
       id: 'seed-greetings-ja', emoji: '', title: 'Greetings', lang: 'ja',
       groups: [{
         title: 'Greeting someone',
-        essentials: [{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}],
-        dialogue: [
+        thingsToSay: [{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}],
+        likelyExchanges: [{title:'Say hello',lines:[
+          {speaker:'you',responses:[{type:'phrase',lang:'ja',text:'こんにちは',translation:'Hello.'}]},
+          {speaker:'partner',responses:[{type:'phrase',lang:'ja',text:'どうも',translation:'Hi.'}]},
+        ]}],
+        exampleConversation: [
           {card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'},speaker:'you'},
           {card:{type:'phrase',lang:'ja',text:'どうも',translation:'hi'},speaker:'partner'},
         ],
-        vocab: [],
+        words: [],
       }],
     } },
     label: 'new-phrasebook (confirm suggestion)',
@@ -67,17 +70,21 @@ test.describe('action panes open without runtime errors', () => {
         const { db } = window.__loudmouth
         let deck = null
         let cards = null
-        if (spec.needsDeck || spec.needsCards || spec.needsCard) {
+        if (spec.needsDeck || spec.needsCards) {
           deck = await db.commitPhrasebook({
             name:'Smoke Deck',lang:'ja',selectedIndexes:[0],
             groups:[{
               id:crypto.randomUUID(), title:'Greeting someone',
-              essentials:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}}],
-              dialogue:[
+              thingsToSay:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}}],
+              likelyExchanges:[{id:crypto.randomUUID(),title:'Say hello',lines:[
+                {speaker:'you',responses:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'Hello.'}}]},
+                {speaker:'partner',responses:[{id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'どうも',translation:'Hi.'}}]},
+              ]}],
+              exampleConversation:[
                 {id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'},speaker:'you'},
                 {id:crypto.randomUUID(),card:{type:'phrase',lang:'ja',text:'どうも',translation:'hi'},speaker:'partner'},
               ],
-              vocab:[],
+              words:[],
             }],
           })
           cards = await db.getCards(deck.id)
@@ -89,7 +96,6 @@ test.describe('action panes open without runtime errors', () => {
         const p = { ...(spec.payload || {}) }
         if (spec.needsDeck) p.deck = deck
         if (spec.needsCards) p.cards = cards
-        if (spec.needsCard) p.entry = cards[0]
         return p
       }, spec)
 
@@ -102,7 +108,7 @@ test.describe('action panes open without runtime errors', () => {
       )
 
       // A pane actually mounted into the action layer. Both bottom-sheet
-      // kinds and full-screen kinds (card-edit, json) append here.
+      // kinds and full-screen kinds (json) append here.
       const paneRoot = page.locator('#action-layer > *')
       await expect(paneRoot.first()).toBeVisible()
       if (spec.kind === 'creation' && !spec.payload.lang) {

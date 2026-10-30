@@ -1,7 +1,7 @@
 [
   {
     "id": "ja-meat-fish",
-    "provenance": "Request fields recovered from api/tmp/2026-09-17T21-51-02.086Z-phrasebook.json; breakdown reference: 2026-09-17T21-57-53.948Z-phrase-breakdown.json. HTTP request itself was not captured.",
+    "provenance": "Reusable regression input reconstructed from a prior phrasebook response, not a captured HTTP request. Original response captures were deleted; the current request and review criteria are self-contained.",
     "request": {
       "schemaVersion": 2,
       "source": {
@@ -24,7 +24,7 @@
   },
   {
     "id": "es-weather",
-    "provenance": "Source reconstructed from chunks in api/tmp/2026-09-17T21-59-41.900Z-phrase-breakdown.json. Translation supplied for this experiment; original translation and context unavailable in that response capture. Context omitted.",
+    "provenance": "Reusable regression input reconstructed from prior breakdown chunks with an authored translation. Original translation and context were unavailable; context is omitted. Original response captures were deleted.",
     "request": {
       "schemaVersion": 2,
       "source": {

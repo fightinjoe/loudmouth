@@ -92,6 +92,12 @@ function previewGroups(deck: PreviewDeck): Group[] {
     deckId: deck.id,
     title: group.title,
     position,
+    exchanges: group.likelyExchanges.map((exchange, position) => ({
+      id: exchange.id, title: exchange.title, position,
+    })),
+    wordFamilies: group.words.map((family, position) => ({
+      id: family.id, title: family.title, position,
+    })),
   }));
 }
 
@@ -238,7 +244,10 @@ const transitions = {
       entry.card.type !== first.card.type
       || entry.occurrence?.groupId !== first.occurrence?.groupId
       || entry.occurrence?.section !== first.occurrence?.section
-      || entry.wordPlacement?.groupId !== first.wordPlacement?.groupId)) return slice;
+      || entry.occurrence?.exchangeId !== first.occurrence?.exchangeId
+      || entry.occurrence?.turnIndex !== first.occurrence?.turnIndex
+      || entry.wordPlacement?.groupId !== first.wordPlacement?.groupId
+      || entry.wordPlacement?.familyId !== first.wordPlacement?.familyId)) return slice;
     const pageSet = new Set(pageKeys);
     const current = slice.editOrder.filter((key) => pageSet.has(key));
     if (current.length !== pageKeys.length
@@ -298,7 +307,7 @@ const contentPane = {
         <div id="deck-title-menu-scrim" data-action="content/close-menu"></div>
         <div id="deck-title-menu" class="deck-title-menu bg-surface overflow-hidden">
           <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-action="content/menu-settings">Settings</button>
-          <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-action="content/menu-edit">Edit cards</button>
+          <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-action="content/menu-edit">Reorder cards</button>
         </div>
       </div>
     `;
@@ -585,7 +594,6 @@ const contentPane = {
       ui,
       isEdit,
     });
-    const { resetReveal } = gestures;
     syncPager = gestures.syncPager;
 
     captureTabGeometry = gestures.captureTabGeometry;
@@ -730,7 +738,7 @@ const contentPane = {
       }
     });
 
-    const unregisterCardActions = registerCardActions({ host, rootEl, isEdit, resetReveal });
+    const unregisterCardActions = registerCardActions({ host, rootEl, isEdit });
     const registeredActions = [
       "content/menu",
       "content/deck-title",

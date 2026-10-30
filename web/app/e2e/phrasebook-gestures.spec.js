@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
     const groups = titles.map((title, groupIndex) => ({
       id: crypto.randomUUID(),
       title,
-      phrases: Array.from({ length: 12 }, (_, index) => {
+      thingsToSay: Array.from({ length: 8 }, (_, index) => {
         const repeated = groupIndex === 0 && index < 2
         return {
           id: crypto.randomUUID(),
@@ -22,22 +22,23 @@ test.beforeEach(async ({ page }) => {
               ? (index === 0 ? 'Hello again' : 'Hi again')
               : `Hello ${groupIndex}-${index}`,
           },
-          speaker: index % 2 === 0 ? 'you' : 'partner',
-          ...(index === 1 ? { alternative: true } : {}),
         }
       }),
-      vocab: groupIndex === 0
-        ? [{
-            card: {
-              type: 'word',
-              lang: 'es',
-              text: 'hola',
-              translation: 'hello',
-              partOfSpeech: 'interjection',
-              senseKey: 'greeting',
-            },
-          }]
-        : [],
+      likelyExchanges: [{ id: crypto.randomUUID(), title: 'Greet someone', lines: [
+        { speaker: 'you', responses: [{ id: crypto.randomUUID(), card: { type: 'phrase', lang: 'es', text: '¿Qué tal?', translation: 'How are you?' } }] },
+        { speaker: 'partner', responses: [
+          { id: crypto.randomUUID(), card: { type: 'phrase', lang: 'es', text: 'Bien.', translation: 'Well.' } },
+          { id: crypto.randomUUID(), card: { type: 'phrase', lang: 'es', text: 'Muy bien.', translation: 'Very well.' } },
+        ] },
+      ] }],
+      words: [{ id: crypto.randomUUID(), title: 'Greetings', items: [
+        { card: { type: 'word', lang: 'es', text: 'hola', translation: 'hello', partOfSpeech: 'interjection', senseKey: 'greeting' } },
+        { card: { type: 'word', lang: 'es', text: 'adiós', translation: 'goodbye', partOfSpeech: 'interjection', senseKey: 'farewell' } },
+      ] }],
+      exampleConversation: [
+        { id: crypto.randomUUID(), speaker: 'you', card: { type: 'phrase', lang: 'es', text: 'Hola.', translation: 'Hello.' } },
+        { id: crypto.randomUUID(), speaker: 'partner', card: { type: 'phrase', lang: 'es', text: 'Buenos días.', translation: 'Good morning.' } },
+      ],
     }))
     const deck = await db.commitPhrasebook({
       name: 'Gesture check',
@@ -49,7 +50,7 @@ test.beforeEach(async ({ page }) => {
     ui.transition('content/select-deck', { id: deck.id })
     if (ui.get('shell').exposed === 'background') ui.transition('shell/toggle')
   }, titles)
-  await expect(page.getByRole('tab', { name: 'Phrases', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Phrasebook', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('tab', { name: 'Hello', exact: true }).click()
   await expect(page.getByRole('tab', { name: 'Hello', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.waitForFunction(() => document.querySelector('#content-pane').getBoundingClientRect().left === 0)
@@ -87,8 +88,8 @@ async function expectPage(page, title, shell = 'foreground') {
 
 
 test('repeated phrase occurrences keep distinct row keys through gesture reorder and reload', async ({ page }) => {
-  const activeRows = page.locator('.deck-page:not([inert]) .card-row-wrapper')
-  await expect(activeRows).toHaveCount(12)
+  const activeRows = page.locator('.deck-page:not([inert]) [data-topic-section="thingsToSay"] .card-row-wrapper')
+  await expect(activeRows).toHaveCount(8)
   const repeated = await activeRows.evaluateAll(rows => rows.slice(0, 2).map(row => ({
     cardId: row.dataset.cardId,
     entryKey: row.dataset.entryKey,
@@ -114,9 +115,9 @@ test('repeated phrase occurrences keep distinct row keys through gesture reorder
   )
 
   const reorderedKeys = await activeRows.evaluateAll(rows => rows.map(row => row.dataset.entryKey))
-  expect(reorderedKeys).toHaveLength(12)
+  expect(reorderedKeys).toHaveLength(8)
   expect(reorderedKeys.indexOf(repeated[0].entryKey)).toBeGreaterThan(0)
-  expect(new Set(reorderedKeys).size).toBe(12)
+  expect(new Set(reorderedKeys).size).toBe(8)
 
   const deckId = await page.evaluate(() => document.body.dataset.gestureDeckId)
   await page.getByRole('button', { name: 'Done', exact: true }).click()
@@ -125,7 +126,7 @@ test('repeated phrase occurrences keep distinct row keys through gesture reorder
     const [group] = await db.getGroups(deckId)
     const entries = await db.getCards(deckId)
     return entries
-      .filter(entry => entry.occurrence?.groupId === group.id)
+      .filter(entry => entry.occurrence?.groupId === group.id && entry.occurrence.section === 'thingsToSay')
       .map(entry => entry.key)
   }, deckId)).toEqual(reorderedKeys)
 
@@ -137,25 +138,27 @@ test('repeated phrase occurrences keep distinct row keys through gesture reorder
   }, deckId)
   await page.getByRole('tab', { name: 'Hello', exact: true }).click()
   await expect(page.getByRole('tab', { name: 'Hello', exact: true })).toHaveAttribute('aria-selected', 'true')
-  await expect.poll(() => page.locator('.deck-page:not([inert]) .card-row-wrapper').evaluateAll(
+  await expect.poll(() => page.locator('.deck-page:not([inert]) [data-topic-section="thingsToSay"] .card-row-wrapper').evaluateAll(
     rows => rows.map(row => row.dataset.entryKey),
   )).toEqual(reorderedKeys)
 })
 
 test('long drags and flicks navigate one page, then reveal navigation at the first page', async ({ page }) => {
-  await page.getByRole('tab', { name: 'Phrases', exact: true }).click()
+  await page.getByRole('tab', { name: 'Phrasebook', exact: true }).click()
   await settlePage(page)
   const right = page.viewportSize().width - 20
   await swipe(page, [right, 400], [70, 400])
-  await expectPage(page, 'Vocab')
+  await expectPage(page, 'Hello')
   await swipe(page, [20, 400], [right, 400])
-  await expectPage(page, 'Phrases')
+  await expectPage(page, 'Phrasebook')
   await swipe(page, [right, 400], [right - 90, 400], { steps: 1 })
-  await expectPage(page, 'Vocab')
+  await expectPage(page, 'Hello')
   await swipe(page, [20, 400], [110, 400], { steps: 1 })
-  await expectPage(page, 'Phrases')
+  await expectPage(page, 'Phrasebook')
   await swipe(page, [20, 400], [right, 400])
-  await expectPage(page, 'Phrases', 'background')
+  await expectPage(page, 'Starred, 0 cards')
+  await swipe(page, [20, 400], [right, 400])
+  await expectPage(page, 'Starred, 0 cards', 'background')
 })
 
 test('a slow horizontal drag keeps ownership when the finger drifts vertically', async ({ page }) => {
