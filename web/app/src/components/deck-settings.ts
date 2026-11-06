@@ -98,16 +98,19 @@ export function openDeckSettings(
     order: deck.order,
     readingDisplay: deck.readingDisplay,
   };
+  let disposed = false;
 
   const sheet = openBottomSheet(appElement, {
     kind: "settings",
     bodyHTML: renderBody(state),
     onMount: bind,
     onClose: onDismiss,
+    onDispose: () => { disposed = true; },
   });
   return sheet;
 
   function rerender(): void {
+    if (disposed) return;
     const handle = sheet.panel.firstElementChild;
     if (!handle) throw new Error("Missing deck settings sheet handle");
     sheet.panel.innerHTML = "";
@@ -118,48 +121,60 @@ export function openDeckSettings(
 
   function bind(panel: HTMLElement): void {
     panel.querySelector<HTMLElement>("#ds-name-row")?.addEventListener("click", async () => {
+      if (disposed) return;
       const value = prompt("Rename phrasebook", state.name);
       const name = value?.trim();
       if (!name || name === state.name) return;
       await operations.updateDeckName(deck.id, name);
+      if (disposed) return;
       state.name = name;
       onChanged({ name });
       rerender();
     });
 
     panel.querySelector<HTMLElement>("#ds-mode-row")?.addEventListener("click", async () => {
+      if (disposed) return;
       const index = MODES.indexOf(state.mode);
       const mode = MODES[(index + 1) % MODES.length];
       await operations.updateDeckMode(deck.id, mode);
+      if (disposed) return;
       state.mode = mode;
       onChanged({ mode });
       rerender();
     });
 
     panel.querySelector<HTMLElement>("#ds-order-row")?.addEventListener("click", async () => {
+      if (disposed) return;
       const index = ORDERS.indexOf(state.order);
       const order = ORDERS[(index + 1) % ORDERS.length];
       await operations.updateDeckOrder(deck.id, order);
+      if (disposed) return;
       state.order = order;
       onChanged({ order });
       rerender();
     });
 
     panel.querySelector<HTMLElement>("#ds-reading-display-row")?.addEventListener("click", async () => {
+      if (disposed) return;
       const index = READING_DISPLAYS.indexOf(state.readingDisplay);
       const readingDisplay = READING_DISPLAYS[(index + 1) % READING_DISPLAYS.length];
       await operations.updateDeckReadingDisplay(deck.id, readingDisplay);
+      if (disposed) return;
       state.readingDisplay = readingDisplay;
       onChanged({ readingDisplay });
       rerender();
     });
 
-    panel.querySelector<HTMLElement>("#ds-export-row")?.addEventListener("click", operations.exportJson);
+    panel.querySelector<HTMLElement>("#ds-export-row")?.addEventListener("click", () => {
+      if (!disposed) operations.exportJson();
+    });
 
     panel.querySelector<HTMLElement>("#ds-delete-row")?.addEventListener("click", async () => {
+      if (disposed) return;
       const warning = `Delete "${state.name}"? The phrasebook will be removed, but saved cards will remain in your library.`;
       if (!confirm(warning)) return;
       await operations.deleteDeck(deck.id);
+      if (disposed) return;
       onChanged({ deleted: true });
       sheet.close();
     });

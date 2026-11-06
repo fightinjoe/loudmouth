@@ -377,7 +377,7 @@ const detailsPane = {
         callback();
       };
       animation.onfinish = finish;
-      motionFallback = setTimeout(finish, MOTION_MS + 80);
+      motionFallback = window.setTimeout(finish, MOTION_MS + 80);
     }
 
     function restoreOrigin(): void {

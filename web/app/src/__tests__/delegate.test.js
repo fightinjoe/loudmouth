@@ -92,4 +92,21 @@ describe("createDelegate", () => {
     expect(fn).not.toHaveBeenCalled();
     btn.remove();
   });
+  it("removes its click listener on repeated disposal before remounting", () => {
+    const button = document.createElement("button");
+    button.dataset.action = "thing/do";
+    root.appendChild(button);
+    const old = createDelegate(root);
+    const oldHandler = vi.fn();
+    old.register("thing/do", oldHandler);
+    old.dispose();
+    old.dispose();
+    const current = createDelegate(root);
+    const currentHandler = vi.fn();
+    current.register("thing/do", currentHandler);
+    button.click();
+    expect(oldHandler).not.toHaveBeenCalled();
+    expect(currentHandler).toHaveBeenCalledTimes(1);
+    current.dispose();
+  });
 });

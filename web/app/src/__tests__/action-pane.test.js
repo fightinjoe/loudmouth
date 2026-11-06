@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../js/db", () => ({
   updateDeckMode: vi.fn(),
@@ -16,6 +16,11 @@ import { createDelegate } from "../js/delegate";
 import { createHost, createUIState } from "../js/uiState";
 import { openBottomSheet } from "../components/bottom-sheet";
 
+const cleanups = [];
+afterEach(() => {
+  while (cleanups.length) cleanups.pop()();
+  vi.useRealTimers();
+});
 function mountPane() {
   const ui = createUIState({
     action: actionPane.initialState,
@@ -41,9 +46,15 @@ function mountPane() {
   document.body.appendChild(rootEl);
 
   const stageEl = document.createElement("div");
-  const host = createHost({ ui, delegate: createDelegate(rootEl), stageEl });
-  actionPane.bindEvents(rootEl, host);
-  return { ui, rootEl };
+  const delegate = createDelegate(rootEl);
+  const host = createHost({ ui, delegate, stageEl });
+  const dispose = actionPane.bindEvents(rootEl, host);
+  cleanups.push(() => {
+    dispose();
+    delegate.dispose();
+    rootEl.remove();
+  });
+  return { ui, rootEl, dispose, stageEl };
 }
 
 const suggestion = {
@@ -151,5 +162,35 @@ describe("bottom-sheet dismissal", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("action owner disposal", () => {
+  it("disposes active and still-closing sheets without closing a newer action", async () => {
+    vi.useFakeTimers();
+    const { ui, rootEl, dispose, stageEl } = mountPane();
+    ui.transition("action/open", { kind: "new-phrasebook", payload: { suggestion } });
+    rootEl.querySelector(".bottom-sheet").classList.add("bottom-sheet--visible");
+    ui.transition("action/open", { kind: "json", payload: { title: "Export", jsonString: "{}" } });
+    expect(rootEl.querySelector(".bottom-sheet")).not.toBeNull();
+    const action = ui.get("action");
+    dispose();
+    dispose();
+    expect([...rootEl.children]).toEqual([rootEl.querySelector("#action-layer")]);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(ui.get("action")).toBe(action);
+    expect(stageEl.dataset.actionState).toBe("closed");
+  });
+
+  it("lets an old animated dismissal finish without dismissing its replacement", async () => {
+    vi.useFakeTimers();
+    const { ui, rootEl } = mountPane();
+    ui.transition("action/open", { kind: "new-phrasebook", payload: { suggestion } });
+    rootEl.querySelector(".bottom-sheet").classList.add("bottom-sheet--visible");
+    ui.transition("action/open", { kind: "json", payload: { title: "Export", jsonString: "{}" } });
+    const action = ui.get("action");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(ui.get("action")).toBe(action);
+    expect(rootEl.querySelector(".bottom-sheet")).toBeNull();
   });
 });

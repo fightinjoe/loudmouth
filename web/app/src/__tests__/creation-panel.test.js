@@ -442,6 +442,13 @@ describe("openCreationPanel — input and context", () => {
     input.value = "salsa dancing";
     input.dispatchEvent(new Event("input"));
     expect(submit.disabled).toBe(false);
+
+    appElement.querySelector('[data-action="creation/clear"]').click();
+    const clearedInput = appElement.querySelector(".creation-input-field");
+    expect(clearedInput.value).toBe("");
+    expect(appElement.querySelector('[data-action="creation/submit-topic"]').disabled).toBe(true);
+    expect(document.activeElement).toBe(clearedInput);
+    expect(getContext).not.toHaveBeenCalled();
   });
 
   it("renders hostile labels and option values literally", async () => {
@@ -727,6 +734,57 @@ describe("openCreationPanel — speculative generation", () => {
     expect(titleSignal.aborted).toBe(true);
     expect(generatePhrasebook).not.toHaveBeenCalled();
     expect(commitPhrasebook).not.toHaveBeenCalled();
+  });
+
+  it.each(["scrim", "dispose"])("cancels pending preparation synchronously through %s", async (dismissal) => {
+    const context = deferred();
+    getContext.mockReturnValueOnce(context.promise);
+    const onDismiss = vi.fn();
+    const onCreated = vi.fn();
+    const sheet = openCreationPanel(
+      appElement, { lang: "es", ability: "none" }, onCreated, onDismiss,
+    );
+    typeAndSubmitTopic("dinner with family");
+    const contextSignal = getContext.mock.calls[0][0].signal;
+    const titleSignal = getPhrasebookTitle.mock.calls[0][0].signal;
+
+    if (dismissal === "scrim") sheet.scrim.click();
+    else sheet.dispose();
+
+    expect(contextSignal.aborted).toBe(true);
+    expect(titleSignal.aborted).toBe(true);
+    if (dismissal === "dispose") expect(onDismiss).not.toHaveBeenCalled();
+    sheet.dispose();
+    sheet.dispose();
+    expect(sheet.panel.isConnected).toBe(false);
+    expect(sheet.scrim.isConnected).toBe(false);
+
+    const replacement = openCreationPanel(appElement, { lang: "ja", seed: "New scene" }, () => {});
+    context.resolve(sampleQuestionsResponse);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(replacement.panel.querySelector(".creation-input-field").value).toBe("New scene");
+    expect(generatePhrasebookImage).not.toHaveBeenCalled();
+    expect(commitPhrasebook).not.toHaveBeenCalled();
+    expect(onCreated).not.toHaveBeenCalled();
+    if (dismissal === "dispose") expect(onDismiss).not.toHaveBeenCalled();
+    replacement.dispose();
+  });
+
+  it("immediately aborts speculative generation and unbound art on owner disposal", async () => {
+    const generated = deferred();
+    generatePhrasebook.mockReturnValueOnce(generated.promise);
+    const onDismiss = vi.fn();
+    const sheet = await openQuestions({ onDismiss });
+    gotoChecklist();
+    sheet.dispose();
+    expect(generatePhrasebook.mock.calls[0][0].signal.aborted).toBe(true);
+    expect(generatePhrasebookImage.mock.calls[0][0].signal.aborted).toBe(true);
+    generated.resolve(sampleGenerateResponse);
+    await Promise.resolve();
+    expect(commitPhrasebook).not.toHaveBeenCalled();
+    expect(onDismiss).not.toHaveBeenCalled();
+    expect(appElement.children).toHaveLength(0);
   });
 
   it("aborts context, title, and generation work on dismissal", async () => {
@@ -1055,7 +1113,7 @@ describe("openCreationPanel — independent cover work", () => {
     expect(generatePhrasebookImage.mock.calls[1][0].signal.aborted).toBe(false);
   });
 
-  it("finishes text creation before delayed art and saves the art after the sheet closes", async () => {
+  it.each([false, true])("saves delayed bound art after closing, with owner disposal %s", async (disposeOwner) => {
     const store = await createStore();
     commitPhrasebook.mockImplementation((input, options) => actualCommitPhrasebook(input, { ...options, store }));
     setDeckIllustration.mockImplementation((deckId, requestId, next) => actualSetDeckIllustration(deckId, requestId, next, store));
@@ -1064,10 +1122,11 @@ describe("openCreationPanel — independent cover work", () => {
     generatePhrasebook.mockResolvedValueOnce(sampleGenerateResponse);
     const updated = vi.fn();
     let created;
-    await openQuestions({ onCreated: (deck) => { created = deck; }, onIllustrationUpdated: updated });
+    const sheet = await openQuestions({ onCreated: (deck) => { created = deck; }, onIllustrationUpdated: updated });
     gotoChecklist();
     appElement.querySelector('[data-action="creation/submit-context"]').click();
     await vi.waitFor(() => expect(created).toBeTruthy(), { timeout: 2500 });
+    if (disposeOwner) sheet.dispose();
     expect(created.illustration.state).toBe("pending");
     expect(generatePhrasebookImage.mock.calls[0][0].signal.aborted).toBe(false);
     const image = {
@@ -1075,8 +1134,9 @@ describe("openCreationPanel — independent cover work", () => {
       mediaType: "image/png", width: 16, height: 9,
     };
     art.resolve({ image });
-    await vi.waitFor(() => expect(updated).toHaveBeenCalledWith(created.id, expect.objectContaining({ state: "ready", image })));
-    expect((await store.decks.get(created.id)).illustration.image).toEqual(image);
+    await vi.waitFor(async () => expect((await store.decks.get(created.id)).illustration.image).toEqual(image));
+    if (disposeOwner) expect(updated).not.toHaveBeenCalled();
+    else await vi.waitFor(() => expect(updated).toHaveBeenCalledWith(created.id, expect.objectContaining({ state: "ready", image })));
     store.close();
   });
 

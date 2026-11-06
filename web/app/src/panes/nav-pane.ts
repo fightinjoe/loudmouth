@@ -3,6 +3,8 @@ import { LANG_FLAGS, LANG_NAMES, isContentLanguage } from '../js/lang';
 import { setAttrSafe, setListHTMLSafe } from '../js/uiState';
 import { escapeHTML } from '../js/utils';
 import { renderPhrasebookRow } from '../components/phrasebook-row';
+import { renderBook, handleBookImageError } from '../components/book';
+import { renderLanguage } from '../components/language';
 import type { Lang } from '@catchphrase/card-schema';
 import type { Deck } from '../js/library-types';
 import type { AppHost, AppTransitions } from '../js/app-types';
@@ -23,20 +25,10 @@ function renderCreateCell():string {
 }
 function renderBooks(items:NavItem[]):string {
   const books = items.filter(item=>item.kind==='recent');
-  return books.map((item,index)=>{
-    const {deck} = item;
-    const art = deck.illustration?.state==='ready'
-      ? `<img class="nav-book-art" src="${escapeHTML(deck.illustration.image.dataUrl)}" alt="" loading="lazy" decoding="async">` : '';
-    return `<button type="button" class="nav-book" data-action="nav/open-deck" data-deck-id="${escapeHTML(deck.id)}">
-      <span class="nav-book-meta"><strong>${escapeHTML(deck.name)}</strong><small>${escapeHTML(LANG_FLAGS[deck.lang])} ${escapeHTML(LANG_NAMES[deck.lang])}</small><small>${escapeHTML(item.subtitle)}</small></span>
-      <span class="nav-book-thumbnail" aria-hidden="true">${art}</span>
-    </button>${index===0?renderCreateCell():''}`;
-  }).join('') || renderCreateCell();
+  return books.map((item,index)=>`${renderBook(item)}${index===0?renderCreateCell():''}`).join('') || renderCreateCell();
 }
 function renderLanguages(items:NavItem[]):string {
-  return items.filter(item=>item.kind==='lang').map(item=>`<button type="button" class="nav-language" data-action="nav/browse-lang" data-lang="${escapeHTML(item.lang)}">
-    <span>${escapeHTML(item.flag)} ${escapeHTML(item.name)}</span><small>${escapeHTML(item.subtitle)}</small>
-  </button>`).join('');
+  return items.filter(item=>item.kind==='lang').map(item=>renderLanguage(item)).join('');
 }
 async function loadNavItems():Promise<NavItem[]> {
   const decks = (await getDecks(null)).sort((left,right)=>
@@ -168,12 +160,8 @@ const navPane = {
       else if (event.key==='End') shelf.scrollLeft = shelf.scrollWidth;
       else shelf.scrollLeft += (event.key==='ArrowRight'?1:-1)*shelf.clientWidth*0.75;
     };
-    const imageError = (event:Event):void => {
-      const image = event.target;
-      if (image instanceof HTMLImageElement && image.classList.contains('nav-book-art')) image.dataset.failed = 'true';
-    };
     rootEl.addEventListener('keydown',keyboardShelf);
-    rootEl.addEventListener('error',imageError,true);
+    rootEl.addEventListener('error',handleBookImageError,true);
     const unsubItems = ui.subscribe('nav',(next,prev)=>{
       if (next.items===prev.items) return;
       if (books) setListHTMLSafe(books,renderBooks(next.items));
@@ -227,7 +215,7 @@ const navPane = {
       cancelAnimationFrame(frame);
       unsubItems();unsubReload();unsubShell();
       rootEl.removeEventListener('keydown',keyboardShelf);
-      rootEl.removeEventListener('error',imageError,true);
+      rootEl.removeEventListener('error',handleBookImageError,true);
       examples?.removeEventListener('pointerenter',enter);
       examples?.removeEventListener('pointerleave',leave);
       examples?.removeEventListener('scroll',manualScroll);

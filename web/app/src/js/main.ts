@@ -1,13 +1,4 @@
-import "../styles/components.css";
-import "../styles/variables.css";
-import "../styles/utilities.css";
-import "../styles/base.css";
-import "../styles/panes.css";
-import "../styles/phrase-breakdown.css";
-import "../styles/textbook.css";
-import "../styles/textbook-navigation.css";
-import "../styles/textbook-content.css";
-import "../styles/textbook-creation.css";
+import "../styles/app.css";
 import { initRouter } from "./router";
 import { initializeLibrary } from "./db";
 

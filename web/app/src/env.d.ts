@@ -7,7 +7,7 @@ declare global {
     readonly VITE_DEV_PORT?: string;
   }
   interface Window {
-    __loudmouth: {
+    __loudmouth?: {
       ui: AppUI;
       db: typeof library;
     };

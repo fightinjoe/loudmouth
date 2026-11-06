@@ -48,6 +48,12 @@ export function registerCardActions(
 ): () => void {
   const { ui, delegate } = host;
   if (!delegate) throw new Error("Content card actions require an event delegate");
+  let disposed = false;
+  let ownerVersion = 0;
+  const unsubscribeOwner = ui.subscribe("content", (next, previous) => {
+    if (next.deckId !== previous.deckId || next.reload !== previous.reload
+      || (next.deck !== previous.deck && next.cards !== previous.cards)) ownerVersion += 1;
+  });
 
   function entryFor(element: HTMLElement): LibraryEntry | undefined {
     const entryKey = element.dataset.entryKey;
@@ -178,6 +184,7 @@ export function registerCardActions(
       || entry.membership.deckId !== deck.id) return;
 
     const originDeckId = deck.id;
+    const version = ownerVersion;
     const cardId = entry.cardId;
     // A successful unstar can remove the clicked collection row.
     const actionRoot = contentRoot(element) ?? element;
@@ -186,7 +193,7 @@ export function registerCardActions(
     try {
       const result = await toggleCardStar(originDeckId, { cardId });
       const current = ui.get("content");
-      if (isStoredDeck(current.deck) && current.deck.id === originDeckId) {
+      if (!disposed && version === ownerVersion && isStoredDeck(current.deck) && current.deck.id === originDeckId) {
         ui.transition("content/card-star-changed", {
           deckId: originDeckId,
           cardId: result.cardId,
@@ -195,12 +202,12 @@ export function registerCardActions(
       }
     } catch (error) {
       const current = ui.get("content");
-      if (isStoredDeck(current.deck) && current.deck.id === originDeckId) {
+      if (!disposed && version === ownerVersion && isStoredDeck(current.deck) && current.deck.id === originDeckId) {
         showInlineError(element, messageFrom(error));
       }
     } finally {
       const current = ui.get("content");
-      if (isStoredDeck(current.deck) && current.deck.id === originDeckId) {
+      if (!disposed && version === ownerVersion && isStoredDeck(current.deck) && current.deck.id === originDeckId) {
         setStarPending(actionRoot, cardId, false);
       }
     }
@@ -224,6 +231,9 @@ export function registerCardActions(
   for (const [name, handler] of actions) delegate.register(name, handler);
 
   return () => {
+    if (disposed) return;
+    disposed = true;
+    unsubscribeOwner();
     cancelHold();
     suppressedClick = null;
     listeners.abort();

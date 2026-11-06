@@ -125,7 +125,8 @@ function mountPane() {
   stageEl.innerHTML = '<div class="shell-swipe-handle"></div>';
   const delegate = createDelegate(rootEl);
   const host = createHost({ ui, delegate, stageEl });
-  const unbind = contentPane.bindEvents(rootEl, host);
+  const cleanup = contentPane.bindEvents(rootEl, host);
+  const unbind = () => { cleanup(); delegate.dispose(); };
   const result = { ui, stageEl, rootEl, unbind };
   mounted.push(result);
   return result;
@@ -570,4 +571,114 @@ it("browses a focused shelf with keyboard keys without changing the chapter or s
   expect(view.ui.get("content").chapterKey).toBeNull();
   shelf.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
   expect(shelf.scrollLeft).toBe(0);
+});
+
+describe("content owner disposal", () => {
+  it("ignores a deck load that finishes after unbinding", async () => {
+    const pending = deferred();
+    mocks.loadDeckData.mockReturnValueOnce(pending.promise);
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    view.unbind();
+    pending.resolve({ deck: mocks.deckStore.d1, cards: mocks.repeatedEntries(), groups: mocks.groups });
+    await flush();
+    expect(view.ui.get("content").deck).toBeNull();
+  });
+
+  it.each(["resolve", "reject"])("ignores late star %s after unbinding", async (outcome) => {
+    const pending = deferred();
+    mocks.toggleCardStar.mockReturnValueOnce(pending.promise);
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    view.rootEl.querySelector(".card-star").click();
+    const before = view.ui.get("content");
+    view.unbind();
+    if (outcome === "resolve") pending.resolve({ cardId: "shared-card", starredAt: "2026-03-01T00:00:00.000Z" });
+    else pending.reject(new Error("obsolete failure"));
+    await flush();
+    expect(view.ui.get("content")).toBe(before);
+    expect(view.rootEl.textContent).not.toContain("obsolete failure");
+  });
+
+  it("does not open Review after its owner is unbound", async () => {
+    const pending = deferred();
+    mocks.getReviewCards.mockReturnValueOnce(pending.promise);
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    view.ui.transition("content/card-star-changed", {
+      deckId: "d1", cardId: "shared-card", starredAt: "2026-03-01T00:00:00.000Z",
+    });
+    view.rootEl.querySelector('[data-action="content/review"]').click();
+    view.unbind();
+    pending.resolve(mocks.repeatedEntries());
+    await flush();
+    expect(view.ui.get("action")).toBeNull();
+  });
+
+  it("does not confirm a reorder after unbinding", async () => {
+    const pending = deferred();
+    mocks.updateDeckEntryOrder.mockReturnValueOnce(pending.promise);
+    const view = mountPane();
+    view.ui.transition("content/select-deck", { id: "d1" });
+    await flush();
+    view.ui.transition("content/enter-edit");
+    view.rootEl.querySelector('[data-action="content/done"]').click();
+    view.unbind();
+    pending.resolve();
+    await flush();
+    expect(view.ui.get("content").editMode).toBe(true);
+  });
+
+  it("does not select a committed preview after unbinding", async () => {
+    const pending = deferred();
+    mocks.commitPhrasebook.mockReturnValueOnce(pending.promise);
+    const view = mountPane();
+    view.ui.transition("content/loaded", {
+      deck: { ...mocks.deckStore.d1, preview: true, draftGroups: [], ability: "beginner", seedId: "seed" },
+      cards: [], groups: [],
+    });
+    view.rootEl.querySelector('[data-action="content/save-preview"]').click();
+    view.unbind();
+    pending.resolve({ ...mocks.deckStore.d2 });
+    await flush();
+    expect(view.ui.get("content").deckId).toBe("d1");
+  });
+});
+
+it("ignores a Review load belonging to a previous visit to the same book", async () => {
+  const pending = deferred();
+  mocks.getReviewCards.mockReturnValueOnce(pending.promise);
+  const view = mountPane();
+  view.ui.transition("content/select-deck", { id: "d1" });
+  await flush();
+  view.ui.transition("content/card-star-changed", {
+    deckId: "d1", cardId: "shared-card", starredAt: "2026-03-01T00:00:00.000Z",
+  });
+  view.rootEl.querySelector('[data-action="content/review"]').click();
+  view.ui.transition("content/select-deck", { id: "d2" });
+  await flush();
+  view.ui.transition("content/select-deck", { id: "d1" });
+  await flush();
+  pending.resolve(mocks.repeatedEntries());
+  await flush();
+  expect(view.ui.get("action")).toBeNull();
+});
+
+it("cancels a pending phrase hold when the content owner is unbound", async () => {
+  const view = mountPane();
+  view.ui.transition("content/select-deck", { id: "d1" });
+  await flush();
+  vi.useFakeTimers();
+  try {
+    view.rootEl.querySelector(".card-term").dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, pointerId: 4, isPrimary: true, button: 0, clientX: 10, clientY: 10,
+    }));
+    view.unbind();
+    await vi.advanceTimersByTimeAsync(600);
+    expect(view.ui.get("details")).toBeNull();
+  } finally {
+    vi.useRealTimers();
+  }
 });

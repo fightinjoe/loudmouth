@@ -5,6 +5,8 @@ export interface BottomSheetOptions {
   kind: string;
   bodyHTML: string;
   onClose?: BottomSheetClose;
+  /** Stops controller resources at the start of close or immediate disposal. */
+  onDispose?: () => void;
   onMount?: (
     panel: HTMLDivElement,
     scrim: HTMLDivElement,
@@ -17,6 +19,7 @@ export interface BottomSheetHandle {
   panel: HTMLDivElement;
   scrim: HTMLDivElement;
   close: BottomSheetClose;
+  dispose(): void;
 }
 
 const KIND_TO_PANEL_CLASS: Readonly<Record<string, string>> = {
@@ -40,6 +43,7 @@ export function openBottomSheet(
     kind,
     bodyHTML,
     onClose,
+    onDispose,
     onMount,
     size = "hug",
   }: BottomSheetOptions,
@@ -60,38 +64,71 @@ export function openBottomSheet(
   appElement.appendChild(panel);
 
   let closed = false;
+  let disposed = false;
+  let finished = false;
+  let resourcesStopped = false;
+  let openingFrame: number | undefined;
+  let visibleFrame: number | undefined;
+  let fallback: number | undefined;
+
+  function stopResources(): void {
+    if (resourcesStopped) return;
+    resourcesStopped = true;
+    if (openingFrame !== undefined) cancelAnimationFrame(openingFrame);
+    if (visibleFrame !== undefined) cancelAnimationFrame(visibleFrame);
+    scrim.removeEventListener("click", close);
+    disposeSwipe();
+    onDispose?.();
+  }
+
+  function finish(): void {
+    if (finished) return;
+    finished = true;
+    window.clearTimeout(fallback);
+    panel.removeEventListener("transitionend", onTransitionEnd);
+    panel.remove();
+    scrim.remove();
+    if (!disposed) onClose?.();
+  }
+
+  function onTransitionEnd(event: TransitionEvent): void {
+    if (event.target === panel && event.propertyName === "transform") finish();
+  }
+
   function close(): void {
     if (closed) return;
     closed = true;
     const visible = panel.classList.contains("bottom-sheet--visible");
     panel.inert = true;
     scrim.inert = true;
-    let finished = false;
-    const finish = (): void => {
-      if (finished) return;
-      finished = true;
-      window.clearTimeout(fallback);
-      panel.removeEventListener("transitionend", onTransitionEnd);
-      panel.remove();
-      scrim.remove();
-      onClose?.();
-    };
-    const onTransitionEnd = (event: TransitionEvent): void => {
-      if (event.target === panel && event.propertyName === "transform") finish();
-    };
+    stopResources();
+    if (disposed) return;
     // A sheet closed before its opening frame, or with no transition, emits no end event.
-    const fallback = window.setTimeout(finish, 350);
+    fallback = window.setTimeout(finish, 350);
     panel.addEventListener("transitionend", onTransitionEnd);
     panel.classList.remove("bottom-sheet--visible");
     scrim.classList.remove("scrim-visible");
     if (!visible) finish();
   }
 
-  scrim.addEventListener("click", close);
-  wireSwipeDownDismiss(panel, close);
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    closed = true;
+    panel.inert = true;
+    scrim.inert = true;
+    stopResources();
+    finish();
+  }
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
+  scrim.addEventListener("click", close);
+  const disposeSwipe = wireSwipeDownDismiss(panel, close);
+
+  openingFrame = requestAnimationFrame(() => {
+    openingFrame = undefined;
+    if (closed) return;
+    visibleFrame = requestAnimationFrame(() => {
+      visibleFrame = undefined;
       if (closed) return;
       scrim.classList.add("scrim-visible");
       panel.classList.add("bottom-sheet--visible");
@@ -99,7 +136,7 @@ export function openBottomSheet(
   });
 
   onMount?.(panel, scrim, close);
-  return { panel, scrim, close };
+  return { panel, scrim, close, dispose };
 }
 
 /** Wires swipe-down dismissal from the handle or pane header. */
@@ -107,12 +144,12 @@ function wireSwipeDownDismiss(
   panel: HTMLElement,
   onDismiss: BottomSheetClose,
   threshold = 80,
-): void {
+): () => void {
   let startY: number | null = null;
   let startX: number | null = null;
   let axis: "vertical" | "horizontal" | null = null;
 
-  panel.addEventListener("touchstart", (event) => {
+  const onTouchStart = (event: TouchEvent): void => {
     if (!(event.target instanceof Element)) return;
     if (!event.target.closest(".sheet-handle, .pane-header")) return;
     const touch = event.touches.item(0);
@@ -122,9 +159,9 @@ function wireSwipeDownDismiss(
     startX = touch.clientX;
     axis = null;
     panel.dataset.dragging = "";
-  }, { passive: true });
+  };
 
-  panel.addEventListener("touchmove", (event) => {
+  const onTouchMove = (event: TouchEvent): void => {
     if (startY === null || startX === null) return;
     const touch = event.touches.item(0);
     if (!touch) return;
@@ -137,9 +174,9 @@ function wireSwipeDownDismiss(
     }
     if (axis !== "vertical") return;
     panel.style.transform = `translateY(${Math.max(0, deltaY)}px)`;
-  }, { passive: true });
+  };
 
-  panel.addEventListener("touchend", (event) => {
+  const onTouchEnd = (event: TouchEvent): void => {
     if (startY === null) return;
     const touch = event.changedTouches.item(0);
     const deltaY = touch ? touch.clientY - startY : 0;
@@ -149,14 +186,26 @@ function wireSwipeDownDismiss(
     startY = null;
     startX = null;
     axis = null;
-  }, { passive: true });
+  };
 
-  panel.addEventListener("touchcancel", () => {
+  const reset = (): void => {
     if (startY === null) return;
     delete panel.dataset.dragging;
     panel.style.transform = "";
     startY = null;
     startX = null;
     axis = null;
-  }, { passive: true });
+  };
+
+  panel.addEventListener("touchstart", onTouchStart, { passive: true });
+  panel.addEventListener("touchmove", onTouchMove, { passive: true });
+  panel.addEventListener("touchend", onTouchEnd, { passive: true });
+  panel.addEventListener("touchcancel", reset, { passive: true });
+  return () => {
+    panel.removeEventListener("touchstart", onTouchStart);
+    panel.removeEventListener("touchmove", onTouchMove);
+    panel.removeEventListener("touchend", onTouchEnd);
+    panel.removeEventListener("touchcancel", reset);
+    reset();
+  };
 }

@@ -4,7 +4,7 @@ A mobile-first personal language textbook for Chinese, Japanese, Spanish, Czech,
 
 ## Prerequisites
 
-- Node.js 20.12+
+- Node.js 20.19+ (below 22), or 22.12+; Node 22 is used in CI
 - npm 9+
 
 ## Setup
@@ -145,6 +145,70 @@ Unit tests run with `npm test`. On Node 25 and 26, use
 `NODE_OPTIONS=--no-experimental-webstorage npm test` so happy-dom owns the isolated browser storage
 instead of Node's unrelated native Web Storage implementation.
 
+## Component workbench (Storybook)
+
+Run from `web/app/`:
+
+```bash
+npm run storybook          # http://localhost:6006, exact port
+npm run build-storybook    # standalone output: storybook-static/
+npm run test:storybook     # mobile and desktop Chromium; separate static server
+```
+
+The dev server binds to `0.0.0.0:6006` for LAN access. Open
+`http://<this-machine-LAN-IP>:6006` from another device on a trusted network.
+Sandbox and preview IDs use the shared `uuid()` helper backed by `crypto.getRandomValues`,
+which works on HTTP LAN origins where secure-context-only `crypto.randomUUID` is unavailable.
+The Storybook browser suite also runs with `randomUUID` disabled.
+
+The browser suite uses port 6007; set `STORYBOOK_TEST_PORT` to another free port
+when a manual preview already occupies it. Install Chromium with
+`npx playwright install chromium` before running either browser suite.
+`npm run test:e2e` still tests the production app and excludes Storybook specs.
+
+The catalog has four sections:
+
+- **Foundations:** final-cascade colors, typography, spacing, surfaces/motion, and the icon registry.
+  Values come from production CSS, including textbook overrides. Local component spacing is
+  distinguished from shared tokens; this catalog does not invent a second theme.
+- **Components:** real renderers and panel controllers, named states, semantic Controls,
+  source references, constraints, and explicitly documented existing limitations.
+- **Compositions:** library, textbook chapters, language browse, pane stacks and responsive cases.
+- **Interactions:** executable creation, stars/reorder, details, Review, settings/export,
+  suggestion and lifecycle journeys. These remain manually interactive after the scripted play.
+
+Live stories provide a collapsible **Workbench** control outside the app: **Resolve** and **Fail**
+settle pending fixture requests, and **Reset scenario** disposes the UI and reseeds the scene.
+Reset returns to the initial scene; use Storybook's interaction replay to rerun a journey.
+Controls-only remounts preserve sandbox persistence. The event log records requests,
+silent speech and scenario milestones. Accessibility findings remain visible in the addon;
+reduced-motion specimens use the actual browser/system preference, not replacement CSS.
+The current Card playground exposes an axe `label-content-name-mismatch` finding; a green
+interaction run is not an accessibility certification. Browser checks cover desktop and mobile
+Chromium, not physical iOS gestures, Safari speech, or VoiceOver.
+
+Each preview document owns a `catchphrase-storybook.<random-id>` IndexedDB and matching
+preference/cache prefixes. Production persistence, request serialization and schema validation
+remain real. Only storage naming, API transport and speech side effects are isolated:
+no generation credentials, paid requests, real audio or user-library reset. Live Docs canvases
+use separate iframes to avoid shared IDs, state and focus ownership. Fonts still load from
+Google Fonts; offline screenshots may show the same fallback fonts as the app.
+
+Stories live in `src/stories/{foundations,components,compositions,interactions}`. Add a named
+state beside its existing family, import the production renderer/controller, and use
+`support/fixtures.ts` for validated data. `support/scenario.ts:appStory` supplies serialized
+setup, a real `mountApp` and teardown; controller mount callbacks must return `dispose`,
+not animated `close`. Pure specimens can use `support/mounted-story.ts` when they own listeners.
+Use `Meta<Args>` and `StoryObj<Args>` from `@storybook/html-vite` (its generic is the args type,
+not `typeof meta`). Keep compound markup out of stories, and update affected stories with
+production component changes. The zero-question creation route is controller-only:
+the current real `/context` validator requires at least one question.
+
+Storybook uses `.storybook/vite.config.ts`, not the app's PWA build configuration, and does not
+install a service worker. Both entry points import `src/styles/app.css` in the same cascade order.
+The linked CommonJS schema build options are also applied in `main.ts:viteFinal`, because
+Storybook otherwise drops user Vite build options except `target`.
+
 ## Deployment
 
 - **Web:** run `npm ci` and `npm run build` in `web/app/`, then deploy `dist/`
@@ -194,6 +258,13 @@ To test PWA installability ("Add to Home Screen"):
 their namespaced transitions with `src/js/uiState.ts`. Typed slice and transition payload contracts
 live in `src/js/app-types.ts`; pane event handlers receive a shared `Host`, not a mutable app context.
 
+`mountApp(root, params)` returns `{ ui, dispose }`; the router disposes the previous mount before
+replacement. `initApp` owns the production `window.__loudmouth` debug hook. Panel `close()` retains
+its user-facing animation, while `dispose()` synchronously releases owner resources without a
+user-dismiss callback. Bottom-sheet `onDispose` runs once at close/disposal start, so cancellation
+does not wait for a transition. Bound illustration persistence may finish after ordinary sheet
+close; disposed app owners cannot receive stale UI updates.
+
 ### Panes (`src/panes/`)
 
 | File | Responsibility |
@@ -218,6 +289,14 @@ within the pane or panel that starts the work.
 `phrase-breakdown.ts`) and interactive panel controllers (`creation-panel.ts`, `review-panel.ts`,
 `bottom-sheet.ts`). Controllers explicitly own mounting and teardown; renderers receive data and
 return markup. Web card-content editing is removed; phrasebook settings and card reordering remain.
+
+Standalone Storybook entries also expose **Phrasebook**, **Language**, **Textarea**,
+**BreakdownPhrase**, and **BreakdownCard**, rather than requiring a full library or dialog scene.
+`book.ts` and `language.ts` supply the actual navigation tiles; `creation-text-area.ts` owns
+the shared situation-field markup, auto-growth, clear control and disposable input listeners.
+The creation controller retains request invalidation and submission. Breakdown specimens reuse
+`renderSource` and `renderExplanations` directly; their standalone save controls log actions,
+while `PhraseBreakdown` and interaction stories exercise actual persistence.
 
 `src/js/phrasebook-api.ts` validates creation responses against `@catchphrase/card-schema`.
 `phrasebook-illustration.ts` manages independent cover work; `phrase-breakdown.ts` validates and

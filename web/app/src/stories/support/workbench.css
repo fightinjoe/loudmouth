@@ -1,0 +1,114 @@
+/* Workbench chrome never transforms or contains the production app: fixed panes,
+   sheets and JS-positioned menus keep the same viewport coordinate system. */
+catchphrase-workbench-mount {
+  display: block;
+  min-height: 100dvh;
+}
+
+catchphrase-workbench-mount > #app {
+  min-height: 100dvh;
+}
+
+.workbench-tools {
+  position: fixed;
+  z-index: 10000;
+  top: 4px;
+  right: 4px;
+  max-width: min(360px, calc(100vw - 8px));
+  color: var(--fg-body);
+  background: var(--bg-surface);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-float);
+  font: 12px/1.4 var(--font-family-manrope);
+}
+
+.workbench-tools > summary {
+  cursor: pointer;
+  padding: 5px 8px;
+  font-weight: 700;
+}
+
+.workbench-tools-body {
+  padding: 8px;
+  max-height: min(50dvh, 400px);
+  overflow: auto;
+}
+
+.workbench-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.workbench-actions > button {
+  padding: 6px 8px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  background: var(--bg-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.workbench-actions > button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.workbench-tools :focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.workbench-tools h2 {
+  font: inherit;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.workbench-log {
+  margin: 0;
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+}
+
+.workbench-log > li + li {
+  margin-top: 4px;
+}
+
+.workbench-failure {
+  position: fixed;
+  z-index: 10001;
+  inset: 12px;
+  overflow: auto;
+  padding: 20px;
+  border: 3px solid #a31621;
+  color: #66101a;
+  background: #fff5f5;
+  font: 14px/1.5 var(--font-family-manrope);
+}
+
+.workbench-failure pre {
+  margin-top: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Shared padded catalog wrappers, not replacements for compound app markup. */
+.workbench-gallery {
+  padding: 24px;
+  display: grid;
+  gap: 24px;
+}
+
+.workbench-specimen {
+  min-width: 0;
+}
+
+.workbench-caption {
+  margin-block: 8px;
+  font: 12px/1.5 var(--font-family-manrope);
+  overflow-wrap: anywhere;
+}

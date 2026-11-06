@@ -53,6 +53,9 @@
   --accent: hsl(var(--blue-500));
   --danger: hsl(var(--red-500));
 
+  --space-sm: 0.25rem;
+  --space-md: 0.5rem;
+
 
   --radius: 24px;      /* sheets, cards, full-width primary buttons */
   --radius-sm: 12px;   /* selects, small surfaces */

@@ -5,13 +5,14 @@ export type DelegateHandler = (event: MouseEvent, actionElement: HTMLElement) =>
 export interface Delegate {
   register(action: string, handler: DelegateHandler): void;
   unregister(action: string): void;
+  dispose(): void;
 }
 
 /** Creates one delegated click listener for a UI layer. */
 export function createDelegate(rootElement: HTMLElement): Delegate {
   const handlers = new Map<string, DelegateHandler>();
 
-  rootElement.addEventListener("click", (event) => {
+  const onClick = (event: MouseEvent): void => {
     if (!(event.target instanceof Element)) return;
 
     const candidate = event.target.closest("[data-action]");
@@ -22,7 +23,8 @@ export function createDelegate(rootElement: HTMLElement): Delegate {
     const handler = handlers.get(action);
     if (!handler) return;
     handler(event, candidate);
-  });
+  };
+  rootElement.addEventListener("click", onClick);
 
   return {
     register(action, handler) {
@@ -30,6 +32,10 @@ export function createDelegate(rootElement: HTMLElement): Delegate {
     },
     unregister(action) {
       handlers.delete(action);
+    },
+    dispose() {
+      rootElement.removeEventListener("click", onClick);
+      handlers.clear();
     },
   };
 }

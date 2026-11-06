@@ -297,6 +297,9 @@ const contentPane = {
       throw new Error("Content pane is missing required elements");
     }
 
+    let disposed = false;
+    let ownerVersion = 0;
+    const isCurrentOwner = (version: number): boolean => !disposed && version === ownerVersion;
 
     function visibleEntries(slice: ContentSlice): LibraryEntry[] {
       if (!slice.editMode || !slice.editOrder) return slice.cards;
@@ -431,6 +434,8 @@ const contentPane = {
       target?.focus({ preventScroll: true });
     };
     const unsubContent = ui.subscribe("content", (next, previous) => {
+      if (next.deckId !== previous.deckId || next.reload !== previous.reload
+        || (next.deck !== previous.deck && next.cards !== previous.cards)) ownerVersion += 1;
       const deckChanged = next.deck !== previous.deck;
       const samePhrasebook = isStoredDeck(next.deck) && isStoredDeck(previous.deck)
         && next.deck.id === previous.deck.id;
@@ -567,11 +572,13 @@ const contentPane = {
       const slice = ui.get("content");
       if (!slice.editMode || !slice.editOrder || !isStoredDeck(slice.deck)) return;
       const deckId = slice.deck.id;
+      const version = ownerVersion;
       const order = [...slice.editOrder];
       const button = element instanceof HTMLButtonElement ? element : null;
       if (button) button.disabled = true;
       showInlineError(null);
       void updateDeckEntryOrder(deckId, order).then(() => {
+        if (!isCurrentOwner(version)) return;
         const current = ui.get("content");
         if (isStoredDeck(current.deck)
           && current.deck.id === deckId
@@ -579,12 +586,13 @@ const contentPane = {
           ui.transition("content/confirm-edit");
         }
       }).catch((error: unknown) => {
+        if (!isCurrentOwner(version)) return;
         const current = ui.get("content");
         if (isStoredDeck(current.deck) && current.deck.id === deckId) {
           showInlineError(errorMessage(error));
         }
       }).finally(() => {
-        if (button?.isConnected) button.disabled = false;
+        if (isCurrentOwner(version) && button?.isConnected) button.disabled = false;
       });
     });
 
@@ -592,21 +600,24 @@ const contentPane = {
       const slice = ui.get("content");
       if (!isStoredDeck(slice.deck)) return;
       const deck = slice.deck;
+      const version = ownerVersion;
       const button = element instanceof HTMLButtonElement ? element : null;
       if (button) button.disabled = true;
       void getReviewCards(deck.id).then((cards) => {
+        if (!isCurrentOwner(version)) return;
         const current = ui.get("content");
         if (!isStoredDeck(current.deck) || current.deck.id !== deck.id || cards.length === 0) {
           return;
         }
         ui.transition("action/open", { kind: "review", payload: { deck, cards } });
       }).catch((error: unknown) => {
+        if (!isCurrentOwner(version)) return;
         const current = ui.get("content");
         if (isStoredDeck(current.deck) && current.deck.id === deck.id) {
           showInlineError(errorMessage(error));
         }
       }).finally(() => {
-        if (button?.isConnected) {
+        if (isCurrentOwner(version) && button?.isConnected) {
           const current = ui.get("content");
           button.disabled = !isStoredDeck(current.deck)
             || current.deck.id !== deck.id
@@ -619,6 +630,7 @@ const contentPane = {
       const preview = ui.get("content").deck;
       if (!isPreviewDeck(preview)) return;
       const previewId = preview.id;
+      const version = ownerVersion;
       const button = element instanceof HTMLButtonElement ? element : null;
       if (button) button.disabled = true;
       showInlineError(null);
@@ -630,15 +642,15 @@ const contentPane = {
         groups: preview.draftGroups,
         selectedIndexes: preview.draftGroups.map((_group, index) => index),
       }).then((realDeck) => {
-        if (ui.get("content").deck?.id !== previewId) return;
+        if (!isCurrentOwner(version) || ui.get("content").deck?.id !== previewId) return;
         ui.transition("nav/reload");
         ui.transition("content/select-deck", { id: realDeck.id });
       }).catch((error: unknown) => {
-        if (ui.get("content").deck?.id === previewId) {
+        if (isCurrentOwner(version) && ui.get("content").deck?.id === previewId) {
           showInlineError(errorMessage(error));
         }
       }).finally(() => {
-        if (button?.isConnected) button.disabled = false;
+        if (isCurrentOwner(version) && button?.isConnected) button.disabled = false;
       });
     });
 
@@ -647,7 +659,8 @@ const contentPane = {
     delegate.register("content/browse-select", (_event, element) => {
       const id = element.dataset.deckId;
       if (!id) return;
-      void updateDeckAccessTime(id);
+      // Language collections are virtual and have no persisted deck to timestamp.
+      if (!id.startsWith("lang:")) void updateDeckAccessTime(id);
       ui.transition("content/select-deck", { id });
     });
 
@@ -691,6 +704,10 @@ const contentPane = {
     ];
 
     return () => {
+      if (disposed) return;
+      disposed = true;
+      inflight += 1;
+      ownerVersion += 1;
       unsubContent();
       unsubLoad();
       unregisterCardActions();

@@ -1,6 +1,8 @@
 import type { ContextResponse, Lang, PhrasebookResponse } from "@catchphrase/card-schema";
 import { openBottomSheet } from "./bottom-sheet";
 import type { BottomSheetHandle } from "./bottom-sheet";
+import { renderRadioList, renderChecklistItem } from "./creation-choices";
+import { bindCreationTextArea, renderCreationTextArea } from "./creation-text-area";
 import { getContext, generatePhrasebook, getPhrasebookTitle } from "../js/phrasebook-api";
 import type { Ability } from "../js/phrasebook-api";
 import { commitPhrasebook as persistPhrasebook, getDecks } from "../js/db";
@@ -113,43 +115,32 @@ export function openCreationPanel(
   let dismissed = false;
   let completed = false;
   let committingText = false;
-  let closeObserver: MutationObserver | null = null;
+  let ownerDisposed = false;
+  let disposeTextArea: (() => void) | undefined;
 
   const sheet = openBottomSheet(appElement, {
     kind: "creation",
     size: "full",
     bodyHTML: `<div class="creation-panel-inner flex-col flex-1">${renderStep(state, lang)}</div>`,
-    onClose: () => {
-      dispose();
-      onDismiss?.();
-    },
+    onDispose: dispose,
+    onClose: onDismiss,
     onMount: (panel) => {
       bind(panel);
       focusInputIfPresent(panel);
     },
   });
-  const closeSheet = sheet.close;
-  sheet.close = () => {
-    dispose();
-    closeSheet();
-  };
-
-  // Bottom-sheet scrim and swipe dismissal close through private callbacks,
-  // so observe those surfaces rather than waiting for transition cleanup.
-  sheet.scrim.addEventListener("click", dispose);
-  let wasVisible = false;
-  closeObserver = new MutationObserver(() => {
-    if (sheet.panel.classList.contains("bottom-sheet--visible")) {
-      wasVisible = true;
-    } else if (wasVisible) {
-      dispose();
-    }
-  });
-  closeObserver.observe(sheet.panel, { attributes: true, attributeFilter: ["class"] });
 
   if (!lang) void initializeLanguage();
 
-  return sheet;
+  return {
+    panel: sheet.panel,
+    scrim: sheet.scrim,
+    close: sheet.close,
+    dispose: () => {
+      ownerDisposed = true;
+      sheet.dispose();
+    },
+  };
 
   async function initializeLanguage(): Promise<void> {
     state.step = "initializing";
@@ -194,9 +185,10 @@ export function openCreationPanel(
   }
 
   function dispose(): void {
+    disposeTextArea?.();
+    disposeTextArea = undefined;
     if (dismissed || completed) return;
     dismissed = true;
-    closeObserver?.disconnect();
     abortContextRequest();
     abortTitleRequest();
     invalidatePhrasebook();
@@ -263,6 +255,8 @@ export function openCreationPanel(
     if (dismissed) return;
     const inner = sheet.panel.querySelector<HTMLElement>(".creation-panel-inner");
     if (!inner) return;
+    disposeTextArea?.();
+    disposeTextArea = undefined;
     inner.innerHTML = renderStep(state, lang);
     bind(sheet.panel);
     if (focusInput) focusInputIfPresent(sheet.panel);
@@ -277,10 +271,6 @@ export function openCreationPanel(
     panel.querySelector<HTMLTextAreaElement>(".creation-input-field")?.focus();
   }
 
-  function autoGrowInput(element: HTMLTextAreaElement): void {
-    element.style.height = "auto";
-    element.style.height = `${element.scrollHeight}px`;
-  }
 
   async function submitTopic(rawTopic: string): Promise<void> {
     const topic = rawTopic.trim();
@@ -311,7 +301,9 @@ export function openCreationPanel(
         signal: controller.signal,
       });
       if (dismissed || state.contextRequest !== request) return;
-      state.illustrationTask = createIllustrationTask(imagePrompt, onIllustrationUpdated);
+      state.illustrationTask = createIllustrationTask(imagePrompt, (deckId, illustration) => {
+        if (!ownerDisposed) onIllustrationUpdated(deckId, illustration);
+      });
       // This question is client-owned; model-provided options are never used.
       state.questions = questions.filter((question) => question.label !== ABILITY_QUESTION);
       if (!rememberedAbility) {
@@ -457,9 +449,8 @@ export function openCreationPanel(
     // after it never deletes the committed phrasebook.
     setLastAbility(request.language, request.generation.ability);
     completed = true;
-    closeObserver?.disconnect();
-    if (dismissed) return;
-    closeSheet();
+    if (dismissed || ownerDisposed) return;
+    sheet.close();
     onCreated(deck);
   }
 
@@ -545,32 +536,24 @@ export function openCreationPanel(
         rerender();
       });
 
-    const inputElement = panel.querySelector<HTMLTextAreaElement>(".creation-input-field");
-    if (inputElement) {
-      inputElement.value = state.topic;
-      autoGrowInput(inputElement);
-      inputElement.addEventListener("input", () => {
-        const nextTopic = inputElement.value;
+    disposeTextArea = bindCreationTextArea(panel, {
+      value: state.topic,
+      onInput(nextTopic) {
         if (state.contextSeed !== null && nextTopic.trim() !== state.contextSeed) {
           invalidatePhrasebook();
         }
         state.topic = nextTopic;
-        const wrap = panel.querySelector<HTMLElement>(".creation-input-wrap");
-        if (wrap) wrap.dataset.hasValue = state.topic.length > 0 ? "true" : "false";
         const submitButton = panel.querySelector<HTMLButtonElement>(
           '[data-action="creation/submit-topic"]',
         );
         if (submitButton) submitButton.disabled = state.topic.length === 0;
-        autoGrowInput(inputElement);
-      });
-    }
-
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/clear"]')
-      ?.addEventListener("click", () => {
+      },
+      onClear() {
         if (state.contextSeed !== null) invalidatePhrasebook();
         state.topic = "";
         rerender({ focusInput: true });
-      });
+      },
+    });
 
     panel.querySelector<HTMLButtonElement>('[data-action="creation/submit-topic"]')
       ?.addEventListener("click", () => {
@@ -734,33 +717,6 @@ function renderTermLine(topic: string): string {
   return `<div class="creation-term"><p class="creation-term-text">${escapeHTML(topic)}</p></div>`;
 }
 
-function renderRadioList<T extends string>(
-  options: readonly T[],
-  {
-    name,
-    action,
-    selected,
-    label = (value: T) => value,
-    extra = "",
-  }: {
-    name: string;
-    action: string;
-    selected?: string;
-    label?: (value: T) => string;
-    extra?: string;
-  },
-): string {
-  return `<div class="creation-radio-items flex-col">
-    ${options.map((value, index) => `
-      <label class="creation-radio-item flex items-center tappable">
-        <input type="radio" name="${escapeHTML(name)}" data-action="${escapeHTML(action)}" data-option="${index}" value="${escapeHTML(value)}" ${selected === value ? "checked" : ""}>
-        <span>${escapeHTML(label(value))}</span>
-      </label>
-    `).join("")}
-    ${extra}
-  </div>`;
-}
-
 function renderLanguageStep(state: Readonly<CreationState>): string {
   return renderSurface(`
     ${renderHeader(undefined, { chapter: "First, the language", title: "Where shall we begin?" })}
@@ -788,23 +744,7 @@ function renderTopicStep(state: Readonly<CreationState>, lang: Lang): string {
     ${renderHeader()}
     <div class="creation-step-body creation-topic-body flex-col">
       <div class="creation-input-form flex-col">
-        <label class="creation-question-label" for="creation-situation">What are you getting ready for?</label>
-        <p class="creation-supporting-copy" id="creation-situation-help">Tell us about an upcoming situation. We’ll prepare the language you’ll want to say and understand.</p>
-        <div class="creation-input-wrap" data-has-value="${hasValue}">
-          <div class="creation-input-field-row">
-            <textarea
-              id="creation-situation"
-              class="creation-input-field"
-              rows="3"
-              placeholder="Dinner with my partner’s parents, a surf trip, my first dance class…"
-              aria-describedby="creation-situation-help"
-              autocomplete="off"
-              autocapitalize="sentences"
-              spellcheck="true"
-            ></textarea>
-            <button class="icon-button creation-input-clear" data-action="creation/clear" aria-label="Clear situation">${icon("close", { size: "sm" })}</button>
-          </div>
-        </div>
+        ${renderCreationTextArea(state.topic)}
         <button class="creation-language-choice tappable flex items-center" data-action="creation/edit-language" aria-label="Change language: ${escapeHTML(LANG_NAMES[lang])}">
           <span>${escapeHTML(languageLabel(lang))}</span><span class="creation-language-change">Change</span>${icon("next", { size: "sm" })}
         </button>
@@ -869,15 +809,6 @@ function renderChecklistStep(state: Readonly<CreationState>, lang: Lang): string
       <button class="creation-primary creation-submit tappable" data-action="creation/submit-context"><span>Create my phrasebook</span>${icon("next")}</button>
     </div>
   `);
-}
-
-function renderChecklistItem(item: ChecklistItem, index: number): string {
-  return `
-    <button class="creation-checklist-item flex items-center tappable" data-action="creation/toggle-checklist-item" data-index="${index}" data-checked="${item.checked}" aria-pressed="${item.checked}">
-      <span class="creation-checklist-check flex items-center justify-center" aria-hidden="true">${item.checked ? icon("check", { size: "sm" }) : ""}</span>
-      <span>${escapeHTML(item.label)}</span>
-    </button>
-  `;
 }
 
 function renderGeneratingStep(state: Readonly<CreationState>, lang: Lang): string {

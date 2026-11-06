@@ -26,6 +26,7 @@ import type {
 import { DEFAULT_MODE } from "../js/modes";
 import type { SuggestedPhrasebook } from "../js/suggested-phrasebooks";
 import { setAttrSafe } from "../js/uiState";
+import { uuid } from "../js/utils";
 
 export interface PreviewDeck {
   id: string;
@@ -51,15 +52,12 @@ export type ActionSlice = ActionOpen | null;
 
 interface ClosableHandle {
   close(): void;
+  dispose(): void;
 }
 
 interface PreviewContent {
   deck: PreviewDeck;
   cards: LibraryEntry[];
-}
-
-function uuid(): string {
-  return crypto.randomUUID();
 }
 
 function buildPreview(
@@ -157,6 +155,7 @@ function openKind(
   host: AppHost,
   hostElement: HTMLElement,
   onDismiss: () => void,
+  isDisposed: () => boolean,
 ): ClosableHandle {
   const { ui } = host;
 
@@ -172,12 +171,16 @@ function openKind(
           updateDeckOrder,
           updateDeckReadingDisplay,
           deleteDeck,
-          exportJson: () => ui.transition("action/open", {
-            kind: "json",
-            payload: { title: deck.name, jsonString: toImportJson(cards) },
-          }),
+          exportJson: () => {
+            if (isDisposed()) return;
+            ui.transition("action/open", {
+              kind: "json",
+              payload: { title: deck.name, jsonString: toImportJson(cards) },
+            });
+          },
         },
         (change) => {
+          if (isDisposed()) return;
           ui.transition("nav/reload");
           if ("deleted" in change) {
             ui.transition("content/select-deck", { id: null });
@@ -202,12 +205,14 @@ function openKind(
         hostElement,
         open.payload,
         (deck: Deck) => {
+          if (isDisposed()) return;
           ui.transition("shell/close");
           ui.transition("nav/reload");
           ui.transition("content/select-deck", { id: deck.id });
         },
         onDismiss,
         (deckId, illustration) => {
+          if (isDisposed()) return;
           ui.transition("content/illustration-updated", { deckId, illustration });
           ui.transition("nav/reload");
         },
@@ -221,6 +226,7 @@ function openKind(
         onDismiss,
         suggestion,
         ({ ability }) => {
+          if (isDisposed()) return;
           const preview = buildPreview(suggestion, ability);
           ui.transition("shell/close");
           ui.transition("content/loaded", preview);
@@ -264,6 +270,8 @@ const actionPane = {
 
     let currentHandle: ClosableHandle | null = null;
     let currentKey: string | null = null;
+    let disposed = false;
+    const handles = new Set<ClosableHandle>();
 
     const unsubscribe = ui.subscribe("action", (next) => {
       const nextKey = next ? `${next.kind}:${JSON.stringify(next.payload)}` : null;
@@ -282,21 +290,30 @@ const actionPane = {
 
       let handle: ClosableHandle | null = null;
       const onDismiss = (): void => {
+        if (handle) handles.delete(handle);
+        if (disposed) return;
         if (ui.get("action") && currentHandle === handle) {
           currentHandle = null;
           currentKey = null;
           ui.transition("action/close");
         }
       };
-      handle = openKind(next, host, rootElement, onDismiss);
+      handle = openKind(next, host, rootElement, onDismiss, () => disposed);
+      handles.add(handle);
       currentHandle = handle;
       currentKey = nextKey;
     });
 
     return () => {
+      if (disposed) return;
+      disposed = true;
       unsubscribe();
       unsubscribeAttribute();
-      currentHandle?.close();
+      for (const handle of handles) handle.dispose();
+      handles.clear();
+      currentHandle = null;
+      currentKey = null;
+      setAttrSafe(stageEl, "actionState", "closed");
     };
   },
 };

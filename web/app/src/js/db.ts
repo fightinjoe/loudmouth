@@ -43,7 +43,7 @@ import { uuid } from "./utils";
 import { ABILITIES } from "./ability";
 import { CONTENT_LANGUAGES } from "./lang";
 
-const DATABASE_NAME = "loudmouth-topic-v4";
+import { DATABASE_NAME } from "./storage-config";
 const MODES: readonly DeckMode[] = ["study", "review", "reverse"];
 const ORDERS: readonly DeckOrder[] = ["default", "random", "reverse"];
 const READING_DISPLAYS: readonly ReadingDisplay[] = ["reading", "romanization"];

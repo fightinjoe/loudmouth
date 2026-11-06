@@ -21,18 +21,73 @@ export function toImportJson(entries: readonly LibraryEntry[]): string {
   return JSON.stringify(validateCardBatch({schemaVersion:SCHEMA_VERSION,cards:[...unique.values()]}),null,2);
 }
 
-export function openJsonPanel(appEl: HTMLElement, title: string, jsonString: string, onDismiss?: () => void): {close: () => void} {
+export interface JsonPanelHandle {
+  close(): void;
+  dispose(): void;
+}
+
+export function openJsonPanel(appEl: HTMLElement, title: string, jsonString: string, onDismiss?: () => void): JsonPanelHandle {
   const panel = document.createElement('div');
   panel.className = 'json-panel pane-full fixed-inset bg-primary flex-col transition-sheet';
   appEl.appendChild(panel);
-  requestAnimationFrame(() => requestAnimationFrame(() => panel.classList.add('pane-full--visible')));
   let closed = false;
+  let disposed = false;
+  let finished = false;
+  let openingFrame: number | undefined;
+  let visibleFrame: number | undefined;
+  let closeTimer: number | undefined;
+  let copyTimer: number | undefined;
+
+  function stopResources(): void {
+    if (openingFrame !== undefined) cancelAnimationFrame(openingFrame);
+    if (visibleFrame !== undefined) cancelAnimationFrame(visibleFrame);
+    window.clearTimeout(copyTimer);
+    back?.removeEventListener('click',close);
+    copy?.removeEventListener('click',copyJson);
+  }
+
+  function finish(): void {
+    if (finished) return;
+    finished = true;
+    window.clearTimeout(closeTimer);
+    panel.removeEventListener('transitionend',onTransitionEnd);
+    panel.remove();
+    if (!disposed) onDismiss?.();
+  }
+
+  function onTransitionEnd(event: TransitionEvent): void {
+    if (event.target === panel && event.propertyName === 'transform') finish();
+  }
+
   function close(): void {
     if (closed) return;
     closed = true;
+    const visible = panel.classList.contains('pane-full--visible');
+    panel.inert = true;
+    stopResources();
     panel.classList.remove('pane-full--visible');
-    panel.addEventListener('transitionend', () => { panel.remove(); onDismiss?.(); }, {once:true});
+    panel.addEventListener('transitionend',onTransitionEnd);
+    closeTimer = window.setTimeout(finish,300);
+    if (!visible) finish();
   }
+
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    closed = true;
+    panel.inert = true;
+    stopResources();
+    finish();
+  }
+
+  openingFrame = requestAnimationFrame(() => {
+    openingFrame = undefined;
+    if (closed) return;
+    visibleFrame = requestAnimationFrame(() => {
+      visibleFrame = undefined;
+      if (!closed) panel.classList.add('pane-full--visible');
+    });
+  });
   panel.innerHTML = `
     ${renderPaneHeader({
       leading:headerIconButton('back',{label:'Back',className:'fg-accent json-pane-back'}),
@@ -47,8 +102,9 @@ export function openJsonPanel(appEl: HTMLElement, title: string, jsonString: str
   const copy = panel.querySelector<HTMLButtonElement>('#btn-copy-json');
   if (!textarea || !back || !copy) throw new Error('Missing JSON panel controls');
   textarea.value = jsonString;
-  back.addEventListener('click',close);
-  copy.addEventListener('click',async () => {
+  async function copyJson(): Promise<void> {
+    if (closed || !textarea || !copy) return;
+    window.clearTimeout(copyTimer);
     try {
       if (navigator.clipboard) await navigator.clipboard.writeText(jsonString);
       else {
@@ -60,11 +116,16 @@ export function openJsonPanel(appEl: HTMLElement, title: string, jsonString: str
         textarea.setAttribute('readonly','');
         textarea.blur();
       }
+      if (closed) return;
       copy.textContent = 'Copied!';
-      setTimeout(() => {copy.textContent = 'Copy';},1500);
+      copyTimer = window.setTimeout(() => {
+        if (!closed) copy.textContent = 'Copy';
+      },1500);
     } catch {
-      copy.textContent = 'Copy failed';
+      if (!closed) copy.textContent = 'Copy failed';
     }
-  });
-  return {close};
+  }
+  back.addEventListener('click',close);
+  copy.addEventListener('click',copyJson);
+  return {close,dispose};
 }

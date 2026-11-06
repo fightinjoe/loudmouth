@@ -124,6 +124,7 @@ export function wireContentGestures({
 
   let shelfDrag: { shelf: HTMLElement; pointerId: number; x: number; y: number; left: number; active: boolean } | null = null;
   let suppressShelfClick = false;
+  let shelfClickTimer: number | undefined;
 
   rootEl.addEventListener("keydown", (event) => {
     const shelf = closestHTMLElement(event.target, ".textbook-shelf");
@@ -159,7 +160,11 @@ export function wireContentGestures({
     delete shelfDrag.shelf.dataset.dragging;
     shelfDrag = null;
     if (rootEl.hasPointerCapture?.(event.pointerId)) rootEl.releasePointerCapture(event.pointerId);
-    setTimeout(() => { suppressShelfClick = false; }, 0);
+    window.clearTimeout(shelfClickTimer);
+    shelfClickTimer = window.setTimeout(() => {
+      shelfClickTimer = undefined;
+      suppressShelfClick = false;
+    }, 0);
   };
   rootEl.addEventListener("pointerup", endShelfDrag, { signal });
   rootEl.addEventListener("pointercancel", endShelfDrag, { signal });
@@ -281,7 +286,7 @@ export function wireContentGestures({
   }
 
   reorderHandleEl.addEventListener("touchend", endReorder, { signal });
-  reorderHandleEl.addEventListener("touchcancel", () => {
+  function cancelReorder(): void {
     if (!reorderState) return;
     const { ghostEl, placeholderEl, startIndex, region } = reorderState;
     if (region) {
@@ -293,13 +298,27 @@ export function wireContentGestures({
     ghostEl?.remove();
     placeholderEl.classList.remove(REORDER_PLACEHOLDER_CLASS);
     reorderState = null;
-  }, { signal });
+  }
+  reorderHandleEl.addEventListener("touchcancel", cancelReorder, { signal });
 
   return {
     dispose: () => {
       listeners.abort();
-      reorderState?.ghostEl?.remove();
-      if (shelfDrag) delete shelfDrag.shelf.dataset.dragging;
+      cancelReorder();
+      window.clearTimeout(shelfClickTimer);
+      shelfClickTimer = undefined;
+      suppressShelfClick = false;
+      if (shelfDrag) {
+        const { shelf, pointerId } = shelfDrag;
+        shelfDrag = null;
+        delete shelf.dataset.dragging;
+        if (rootEl.hasPointerCapture?.(pointerId)) rootEl.releasePointerCapture(pointerId);
+      }
+      delete rootEl.dataset.dragging;
+      rootEl.style.transform = "";
+      shellStartX = null;
+      shellStartY = null;
+      shellAxis = null;
     },
   };
 }

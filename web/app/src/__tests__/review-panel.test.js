@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { speak } = vi.hoisted(() => ({ speak: vi.fn() }));
 
@@ -300,5 +300,122 @@ describe("openReviewPanel", () => {
     panel.dispatchEvent(new Event("transitionend"));
 
     expect(onDismiss).toHaveBeenCalledOnce();
+  });
+});
+
+describe("Review controller disposal", () => {
+  let handles;
+  let frames;
+
+  beforeEach(() => {
+    handles = [];
+    frames = new Map();
+    let nextFrame = 0;
+    vi.stubGlobal("requestAnimationFrame", vi.fn((callback) => {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    }));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn((id) => frames.delete(id)));
+  });
+
+  afterEach(() => {
+    handles.forEach((handle) => handle.dispose());
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function mount() {
+    const handle = openReviewPanel(appElement, deck, [chunkEntry, dinnerPhrase], vi.fn());
+    handles.push(handle);
+    return handle;
+  }
+
+  function frame() {
+    const pending = [...frames.values()];
+    frames.clear();
+    pending.forEach((callback) => callback(0));
+  }
+
+  it.each(["close", "dispose"])("releases active peek listeners at the start of %s", (method) => {
+    const added = vi.spyOn(document, "addEventListener");
+    const removed = vi.spyOn(document, "removeEventListener");
+    const sheet = mount();
+    frame();
+    frame();
+    const oldWrap = reviewWrap();
+    const oldSkeleton = oldWrap.querySelector(".review-answer-skeleton");
+    const oldPlay = sheet.panel.querySelector('[data-action="review/play"]');
+    oldSkeleton.dispatchEvent(new MouseEvent("mousedown", { cancelable: true }));
+    expect(oldWrap.dataset.revealed).toBe("true");
+    const release = added.mock.calls.find(([type]) => type === "mouseup")[1];
+
+    sheet[method]();
+    for (const type of ["touchend", "touchcancel", "mouseup"]) {
+      expect(removed).toHaveBeenCalledWith(type, release);
+    }
+    expect(oldWrap.dataset.revealed).toBe("false");
+    oldPlay.click();
+    expect(speak).not.toHaveBeenCalled();
+    added.mockClear();
+    oldSkeleton.dispatchEvent(new MouseEvent("mousedown", { cancelable: true }));
+    expect(added.mock.calls.some(([type]) => type === "mouseup")).toBe(false);
+    sheet.dispose();
+
+    const replacement = mount();
+    const newWrap = replacement.panel.querySelector(".review-card-wrap");
+    newWrap.querySelector(".review-answer-skeleton")
+      .dispatchEvent(new MouseEvent("mousedown", { cancelable: true }));
+    expect(newWrap.dataset.revealed).toBe("true");
+    document.dispatchEvent(new MouseEvent("mouseup"));
+    expect(newWrap.dataset.revealed).toBe("false");
+    expect(oldWrap.dataset.revealed).toBe("false");
+  });
+
+  it("releases active peek resources before rerendering direction", () => {
+    const added = vi.spyOn(document, "addEventListener");
+    const removed = vi.spyOn(document, "removeEventListener");
+    const sheet = mount();
+    const oldWrap = reviewWrap();
+    const oldSkeleton = oldWrap.querySelector(".review-answer-skeleton");
+    oldSkeleton.dispatchEvent(new MouseEvent("mousedown", { cancelable: true }));
+    const release = added.mock.calls.find(([type]) => type === "mouseup")[1];
+    sheet.panel.querySelector('[data-action="review/toggle-direction"]').click();
+    for (const type of ["touchend", "touchcancel", "mouseup"]) {
+      expect(removed).toHaveBeenCalledWith(type, release);
+    }
+    expect(reviewWrap()).not.toBe(oldWrap);
+    expect(reviewWrap().dataset.revealed).toBe("false");
+    expect(reviewWrap().querySelector("mark").textContent).toBe("を");
+    added.mockClear();
+    oldSkeleton.dispatchEvent(new MouseEvent("mousedown", { cancelable: true }));
+    document.dispatchEvent(new Event("touchcancel"));
+    expect(added.mock.calls.some(([type]) => type === "mouseup")).toBe(false);
+    expect(reviewWrap().querySelector("mark").textContent).toBe("を");
+  });
+
+  it.each([0, 1])("cancels entrance animation at frame %i on disposal", (entranceFrames) => {
+    const sheet = mount();
+    frame();
+    frame();
+    swipe(reviewWrap(), -120);
+    expect(appElement.querySelector(".review-prompt").textContent)
+      .toBe("dinner for this conversation");
+    for (let index = 0; index < entranceFrames; index++) frame();
+    expect(frames.size).toBe(1);
+    sheet.dispose();
+    expect(frames.size).toBe(0);
+    frame();
+    expect(appElement.children).toHaveLength(0);
+  });
+
+  it("cancels the previous entrance animation before another rerender", () => {
+    mount();
+    frame();
+    frame();
+    swipe(reviewWrap(), -120);
+    expect(frames.size).toBe(1);
+    appElement.querySelector('[data-action="review/toggle-reveal"]').click();
+    expect(frames.size).toBe(0);
+    expect(reviewWrap().dataset.revealed).toBe("true");
   });
 });

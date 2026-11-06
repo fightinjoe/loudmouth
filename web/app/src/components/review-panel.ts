@@ -43,12 +43,28 @@ export function openReviewPanel(
     revealed: false,
     reversed: false,
   };
+  let disposed = false;
+  let disposeBinding = (): void => {};
+  let entranceFrame: number | undefined;
+  let entranceVisibleFrame: number | undefined;
+
+  function stopBinding(): void {
+    disposeBinding();
+    if (entranceFrame !== undefined) cancelAnimationFrame(entranceFrame);
+    if (entranceVisibleFrame !== undefined) cancelAnimationFrame(entranceVisibleFrame);
+    entranceFrame = undefined;
+    entranceVisibleFrame = undefined;
+  }
 
   const sheet = openBottomSheet(appElement, {
     kind: "review",
     size: "full",
     bodyHTML: `<div class="review-panel-inner flex-col flex-1">${renderBody(ordered, state, deck.lang)}</div>`,
     onClose: onDismiss,
+    onDispose: () => {
+      disposed = true;
+      stopBinding();
+    },
     onMount: (panel, _scrim, close) => {
       bind(panel, close);
     },
@@ -57,6 +73,8 @@ export function openReviewPanel(
   return sheet;
 
   function rerender(enterDirection?: SwipeDirection): void {
+    if (disposed) return;
+    stopBinding();
     const inner = sheet.panel.querySelector<HTMLElement>(".review-panel-inner");
     if (!inner) return;
     inner.innerHTML = renderBody(ordered, state, deck.lang);
@@ -70,8 +88,12 @@ export function openReviewPanel(
         ? "review-card-wrap--from-right"
         : "review-card-wrap--from-left",
     );
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+    entranceFrame = requestAnimationFrame(() => {
+      entranceFrame = undefined;
+      if (disposed) return;
+      entranceVisibleFrame = requestAnimationFrame(() => {
+        entranceVisibleFrame = undefined;
+        if (disposed) return;
         wrap.classList.remove(
           "review-card-wrap--from-right",
           "review-card-wrap--from-left",
@@ -81,9 +103,11 @@ export function openReviewPanel(
   }
 
   function bind(panel: HTMLElement, close: BottomSheetClose): void {
+    const listeners = new AbortController();
+    const options = { signal: listeners.signal };
     panel
       .querySelector<HTMLElement>('[data-action="review/close"]')
-      ?.addEventListener("click", close);
+      ?.addEventListener("click", close, options);
 
     panel
       .querySelector<HTMLElement>('[data-action="review/toggle-direction"]')
@@ -91,14 +115,14 @@ export function openReviewPanel(
         state.reversed = !state.reversed;
         state.revealed = false;
         rerender();
-      });
+      }, options);
 
     panel
       .querySelector<HTMLElement>('[data-action="review/toggle-reveal"]')
       ?.addEventListener("click", () => {
         state.revealed = !state.revealed;
         rerender();
-      });
+      }, options);
 
     panel
       .querySelector<HTMLElement>('[data-action="review/play"]')
@@ -110,10 +134,10 @@ export function openReviewPanel(
           return;
         }
         speak(ttsText(entry.card), entry.card.lang);
-      });
+      }, options);
 
-    wirePeekReveal(panel.querySelector<HTMLElement>(".review-card-wrap"));
-    wireSwipeAdvance(
+    const disposePeek = wirePeekReveal(panel.querySelector<HTMLElement>(".review-card-wrap"));
+    const disposeSwipe = wireSwipeAdvance(
       panel.querySelector<HTMLElement>(".review-card-wrap"),
       (direction) => {
         const next = state.index + (direction === "left" ? 1 : -1);
@@ -123,6 +147,11 @@ export function openReviewPanel(
         rerender(direction);
       },
     );
+    disposeBinding = () => {
+      listeners.abort();
+      disposePeek();
+      disposeSwipe();
+    };
   }
 
   function setRevealAppearance(wrap: HTMLElement, revealed: boolean): void {
@@ -140,9 +169,9 @@ export function openReviewPanel(
     );
   }
 
-  function wirePeekReveal(wrap: HTMLElement | null): void {
+  function wirePeekReveal(wrap: HTMLElement | null): () => void {
     const skeleton = wrap?.querySelector<HTMLElement>(".review-answer-skeleton");
-    if (!wrap || !skeleton) return;
+    if (!wrap || !skeleton) return () => {};
 
     let active = false;
     const end = (): void => {
@@ -166,14 +195,19 @@ export function openReviewPanel(
 
     skeleton.addEventListener("touchstart", begin, { passive: false });
     skeleton.addEventListener("mousedown", begin);
+    return () => {
+      end();
+      skeleton.removeEventListener("touchstart", begin);
+      skeleton.removeEventListener("mousedown", begin);
+    };
   }
 }
 
 function wireSwipeAdvance(
   element: HTMLElement | null,
   onCommit: (direction: SwipeDirection) => void,
-): void {
-  if (!element) return;
+): () => void {
+  if (!element) return () => {};
   let startX: number | null = null;
   let startY: number | null = null;
   let axis: SwipeAxis | null = null;
@@ -186,15 +220,15 @@ function wireSwipeAdvance(
     axis = null;
   };
 
-  element.addEventListener("touchstart", (event) => {
+  const onTouchStart = (event: TouchEvent): void => {
     const touch = event.touches[0];
     if (!touch) return;
     startX = touch.clientX;
     startY = touch.clientY;
     axis = null;
-  }, { passive: true });
+  };
 
-  element.addEventListener("touchmove", (event) => {
+  const onTouchMove = (event: TouchEvent): void => {
     if (startX === null || startY === null) return;
     const touch = event.touches[0];
     if (!touch) return;
@@ -207,9 +241,9 @@ function wireSwipeAdvance(
     if (axis !== "h") return;
     element.dataset.dragging = "";
     element.style.transform = `translateX(${deltaX}px)`;
-  }, { passive: true });
+  };
 
-  element.addEventListener("touchend", (event) => {
+  const onTouchEnd = (event: TouchEvent): void => {
     if (startX === null) return;
     const touch = event.changedTouches[0];
     const deltaX = (touch?.clientX ?? startX) - startX;
@@ -218,9 +252,19 @@ function wireSwipeAdvance(
     if (committedAxis === "h" && Math.abs(deltaX) >= SWIPE_THRESHOLD) {
       onCommit(deltaX < 0 ? "left" : "right");
     }
-  }, { passive: true });
+  };
 
+  element.addEventListener("touchstart", onTouchStart, { passive: true });
+  element.addEventListener("touchmove", onTouchMove, { passive: true });
+  element.addEventListener("touchend", onTouchEnd, { passive: true });
   element.addEventListener("touchcancel", reset, { passive: true });
+  return () => {
+    element.removeEventListener("touchstart", onTouchStart);
+    element.removeEventListener("touchmove", onTouchMove);
+    element.removeEventListener("touchend", onTouchEnd);
+    element.removeEventListener("touchcancel", reset);
+    reset();
+  };
 }
 
 function reviewTranslation(entry: LibraryEntry): string {
