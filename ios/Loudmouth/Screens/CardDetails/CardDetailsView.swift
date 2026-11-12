@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The **details pane** — the *details* layer of the Pane Protocol
-/// (see `web/docs/PANE_PROTOCOL.html`).
+/// (see `docs/web/pane-protocol.html`).
 ///
 /// A bottom-anchored surface that slides up over a scrim and shows one card's
 /// full detail view. It is not full-height, so the content pane it dims shows

@@ -144,7 +144,6 @@ function sheetBody(chapter, tab = "words") {
   const root = document.createElement("div");
   root.innerHTML = renderChapterSheetBody(chapter, {
     readingDisplay: "reading",
-    readOnly: false,
     tab,
     contextFor: () => "",
   });
@@ -380,7 +379,7 @@ describe("Starred and collection chapters", () => {
     const starred = chapterFor([placedWord, said], groups, "starred");
     const root = document.createElement("div");
     root.innerHTML = renderChapterSheetBody(starred, {
-      readingDisplay: "reading", readOnly: false, tab: "phrases",
+      readingDisplay: "reading", tab: "phrases",
       contextFor: (entry) => entry.key === "placed-word" ? "Ordering · Drinks" : "Ordering",
     });
 
@@ -473,7 +472,7 @@ describe("content rendering safety", () => {
     const root = document.createElement("div");
     root.innerHTML = renderDeckBody({ ...deck, name: injected }, [entry], hostileGroups)
       + renderChapterMenu(chapters, "category:conversation")
-      + renderChapterSheetBody(chapters.find((chapter) => chapter.key === "category:conversation"), { readingDisplay: "reading", readOnly: false, tab: "words", contextFor: () => injected });
+      + renderChapterSheetBody(chapters.find((chapter) => chapter.key === "category:conversation"), { readingDisplay: "reading", tab: "words", contextFor: () => injected });
 
     expect(root.querySelector("img")).toBeNull();
     expect(root.querySelector(".phrasebook-title").textContent).toBe(injected);

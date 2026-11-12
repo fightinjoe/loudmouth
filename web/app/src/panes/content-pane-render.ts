@@ -10,10 +10,6 @@ import { renderCategoryCard, renderCollectionCard, renderStarredCard } from "../
 import { renderChapterSheet } from "../components/chapter-sheet";
 import type { ContentDeck } from "./content-pane";
 
-function isPreview(deck: ContentDeck): boolean {
-  return "preview" in deck && deck.preview;
-}
-
 function isSystem(deck: ContentDeck): boolean {
   return "system" in deck && deck.system;
 }
@@ -56,7 +52,7 @@ export function renderBrowseCardsHTML(deck: ContentDeck, entries: readonly Libra
   const sections = [{ type: "phrase", title: "Translations" }, { type: "word", title: "Words" }, { type: "chunk", title: "Chunks" }]
     .map((section) => ({ ...section, entries: entries.filter((entry) => entry.card.type === section.type) })).filter((section) => section.entries.length > 0);
   if (!sections.length) return '<div class="deck-view-empty text-center fg-secondary"><p>No cards in this library.</p></div>';
-  return sections.map((section) => `<h2 class="deck-view-section-header section-label">${section.title}</h2><div class="card-group"><div class="card-group-rows">${section.entries.map((entry) => renderCardRow(entry, deck.readingDisplay, { readOnly: isPreview(deck), conversation: false })).join("")}</div></div>`).join("");
+  return sections.map((section) => `<h2 class="deck-view-section-header section-label">${section.title}</h2><div class="card-group"><div class="card-group-rows">${section.entries.map((entry) => renderCardRow(entry, deck.readingDisplay, { conversation: false })).join("")}</div></div>`).join("");
 }
 
 /**
@@ -66,11 +62,11 @@ export function renderBrowseCardsHTML(deck: ContentDeck, entries: readonly Libra
 export function renderDeckBody(deck: ContentDeck | null, entries: readonly LibraryEntry[], groups: readonly Group[]): string {
   const error = '<p class="content-inline-error fg-danger" data-region="content-error" role="alert" hidden></p>';
   if (!deck) return error;
-  const stored = !isPreview(deck) && !isSystem(deck);
+  const stored = !isSystem(deck);
   const chapters = getDeckChapters(entries, groups);
   const trailing = stored
     ? `<button type="button" class="icon-button" data-action="content/menu-settings" aria-label="Phrasebook settings">${icon("settings")}</button>`
-    : isPreview(deck) ? '<button type="button" class="deck-header-save-pill" data-action="content/save-preview" aria-label="Save">Save</button>' : "";
+    : "";
   const surface = isSystem(deck)
     ? `<div class="deck-view-list textbook-language-list flex-col" data-region="card-list">${renderBrowseCardsHTML(deck, entries, groups)}</div>`
     : `<div class="chapter-cards" data-region="chapter-cards">
@@ -88,7 +84,7 @@ export function renderDeckBody(deck: ContentDeck | null, entries: readonly Libra
     </div>
     ${error}
     ${stored ? `<div class="textbook-review-bar"><button type="button" data-action="content/review" aria-label="Review"${entries.some((entry) => entry.membership?.starredAt != null) ? "" : " disabled"}>${icon("review")} Review starred cards</button></div>` : ""}
-    ${isSystem(deck) ? "" : renderChapterSheet({ editable: stored })}`;
+    ${stored ? renderChapterSheet() : ""}`;
 }
 
 export interface ContentBrowse { title: string; groupsHtml: string; }

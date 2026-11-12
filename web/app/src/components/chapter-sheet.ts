@@ -11,16 +11,11 @@ import { escapeHTML } from "../js/utils";
 import { renderCardRow } from "./card";
 import { icon } from "./icon";
 
-export interface ChapterSheetShellOptions {
-  /** Stored phrasebooks can reorder cards from the sheet header. */
-  editable: boolean;
-}
-
 /**
- * Static chapter sheet: scrim, header with Back, chapter switcher and edit
+ * Static chapter sheet: scrim, header with Back, chapter switcher and reorder
  * controls, the chapter menu region, and the body region rebuilt per chapter.
  */
-export function renderChapterSheet({ editable }: ChapterSheetShellOptions): string {
+export function renderChapterSheet(): string {
   return `<div class="chapter-sheet-scrim" data-action="content/close-chapter" aria-hidden="true"></div>
   <section class="chapter-sheet" data-region="chapter-sheet" role="dialog" aria-modal="true" aria-labelledby="chapter-sheet-title">
     <header class="chapter-sheet-header">
@@ -28,10 +23,10 @@ export function renderChapterSheet({ editable }: ChapterSheetShellOptions): stri
       <button type="button" class="chapter-sheet-switch" data-action="content/toggle-chapter-menu" aria-haspopup="menu" aria-expanded="false" aria-controls="chapter-menu">
         <span class="chapter-sheet-title" id="chapter-sheet-title" data-region="chapter-sheet-title"></span>${icon("expand-more", { className: "chapter-sheet-caret" })}
       </button>
-      <div class="chapter-sheet-tools">${editable ? `
+      <div class="chapter-sheet-tools">
         <button type="button" class="icon-button chapter-sheet-edit" data-action="content/menu-edit" aria-label="Reorder cards">${icon("edit")}</button>
         <button type="button" class="chapter-sheet-cancel" data-action="content/cancel-edit">Cancel</button>
-        <button type="button" class="icon-button chapter-sheet-done" data-action="content/done" aria-label="Done">${icon("check")}</button>` : ""}
+        <button type="button" class="icon-button chapter-sheet-done" data-action="content/done" aria-label="Done">${icon("check")}</button>
       </div>
       <div class="chapter-menu" id="chapter-menu" data-region="chapter-menu" role="menu" aria-label="Chapters"></div>
     </header>
@@ -61,7 +56,6 @@ export function renderChapterMenu(chapters: readonly DeckChapter[], currentKey: 
 
 export interface ChapterSheetBodyOptions {
   readingDisplay: ReadingDisplay;
-  readOnly: boolean;
   /** Starred tab; other chapters have one page. */
   tab: StarredTab;
   /** Topic and word-family label for a starred entry, e.g. "Ordering drinks · Drinks". */
@@ -116,7 +110,7 @@ function categoryPage(chapter: CategoryChapter, rows: Rows): string {
 export function renderChapterSheetBody(chapter: DeckChapter, options: ChapterSheetBodyOptions): string {
   const rows: Rows = (entries, conversation = false, alternatives = false) =>
     entries.map((entry, index) => renderCardRow(entry, options.readingDisplay, {
-      readOnly: options.readOnly, conversation, optionSeparator: alternatives && index > 0,
+      conversation, optionSeparator: alternatives && index > 0,
     })).join("");
   const starredList = (entries: readonly LibraryEntry[], message: string, className = ""): string => entries.length
     ? `<div class="chapter-list${className}">${entries.map((entry) => `<div class="starred-item" data-entry-key="${escapeHTML(entry.key)}">

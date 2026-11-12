@@ -5,7 +5,7 @@ import { toImportJson } from '../../components/json-panel';
 import { getReviewCards } from '../../js/db';
 import { entryChapterKey } from '../../js/phrasebook-chapters';
 import { appStory, getScenario } from '../support/scenario';
-import { fixtureSuggestion, type SeededLibrary } from '../support/fixtures';
+import type { SeededLibrary } from '../support/fixtures';
 import { activeChapterPage, openChapter, phrasebookLanding } from '../support/phrasebook';
 
 const meta = {
@@ -37,7 +37,6 @@ export const ContentAndDetails: Story = { ...base(), play: showDetails };
 export const SettingsAction = action(({ deck, entries }) => ({ kind: 'settings', payload: { deck: deck!, cards: entries } }));
 export const ReviewAction = action(async ({ deck }) => ({ kind: 'review', payload: { deck: deck!, cards: await getReviewCards(deck!.id) } }));
 export const CreationAction = action(() => ({ kind: 'creation', payload: { lang: 'ja', seed: 'Ordering at a café' } }));
-export const SuggestionConfirmationAction = action(() => ({ kind: 'new-phrasebook', payload: { suggestion: fixtureSuggestion() } }));
 export const JsonAction = action(({ deck, entries }) => ({ kind: 'json', payload: { title: deck!.name, jsonString: toImportJson(entries) } }));
 export const DetailsToActionExclusivity: Story = {
   ...base(),

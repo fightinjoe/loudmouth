@@ -230,19 +230,13 @@ function validateCommitInput(value: unknown): CommitPhrasebookInput {
   const input = objectValue(value, "input");
   assertExactFields(
     input,
-    ["name", "lang", "generation", "ability", "seedId", "illustration", "groups", "selectedIndexes"],
+    ["name", "lang", "generation", "illustration", "groups", "selectedIndexes"],
     "input",
   );
   const name = requiredString(input.name, "input.name", 500);
   const lang = enumValue(input.lang, CONTENT_LANGUAGES, "input.lang");
   const generation = Object.hasOwn(input, "generation")
     ? validateGeneration(input.generation, "input.generation")
-    : undefined;
-  const ability = Object.hasOwn(input, "ability")
-    ? enumValue(input.ability, ABILITIES, "input.ability")
-    : undefined;
-  const seedId = Object.hasOwn(input, "seedId")
-    ? requiredString(input.seedId, "input.seedId", 500)
     : undefined;
   const illustration = Object.hasOwn(input, "illustration")
     ? validateDeckIllustration(input.illustration, "input.illustration") : undefined;
@@ -278,8 +272,6 @@ function validateCommitInput(value: unknown): CommitPhrasebookInput {
     name,
     lang,
     ...(generation ? { generation } : {}),
-    ...(ability ? { ability } : {}),
-    ...(seedId ? { seedId } : {}),
     ...(illustration ? { illustration } : {}),
     groups,
     selectedIndexes: selectedIndexes.sort((left, right) => left - right),
@@ -444,8 +436,6 @@ export async function commitPhrasebook(
     order: "default",
     readingDisplay: "reading",
     ...(input.generation ? { generation: input.generation } : {}),
-    ...(input.ability ? { ability: input.ability } : {}),
-    ...(input.seedId ? { seedId: input.seedId } : {}),
     ...(input.illustration ? { illustration: input.illustration } : {}),
   };
 
@@ -542,11 +532,6 @@ export async function commitPhrasebook(
   } finally {
     signal?.removeEventListener("abort", abortTransaction);
   }
-}
-
-export async function getSeededDeckIds(store: LibraryDb = db): Promise<Set<string>> {
-  const decks = await store.decks.filter((deck) => deck.seedId !== undefined).toArray();
-  return new Set(decks.flatMap((deck) => deck.seedId ? [deck.seedId] : []));
 }
 
 async function updateExistingDeck(
@@ -1090,7 +1075,7 @@ function validateDeck(value: unknown, path: string): Deck {
   const row = objectValue(value, path);
   assertExactFields(
     row,
-    ["id", "name", "lang", "createdAt", "lastAccessedAt", "mode", "order", "readingDisplay", "generation", "ability", "seedId", "illustration"],
+    ["id", "name", "lang", "createdAt", "lastAccessedAt", "mode", "order", "readingDisplay", "generation", "illustration"],
     path,
   );
   const deck: Deck = {
@@ -1107,12 +1092,6 @@ function validateDeck(value: unknown, path: string): Deck {
   }
   if (Object.hasOwn(row, "generation")) {
     deck.generation = validateGeneration(row.generation, `${path}.generation`);
-  }
-  if (Object.hasOwn(row, "ability")) {
-    deck.ability = enumValue(row.ability, ABILITIES, `${path}.ability`);
-  }
-  if (Object.hasOwn(row, "seedId")) {
-    deck.seedId = requiredString(row.seedId, `${path}.seedId`, 500);
   }
   if (Object.hasOwn(row, "illustration")) {
     deck.illustration = validateDeckIllustration(row.illustration, `${path}.illustration`);

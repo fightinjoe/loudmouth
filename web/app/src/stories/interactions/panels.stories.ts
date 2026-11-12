@@ -3,13 +3,12 @@ import { expect, fireEvent, userEvent, waitFor } from 'storybook/test';
 import { cardIdentity } from '@catchphrase/card-schema';
 import { db, getReviewCards, updateDeckOrder, applyCardOrder } from '../../js/db';
 import type { LibraryEntry } from '../../js/library-types';
-import { fixtureSuggestion } from '../support/fixtures';
 import { appStory, getScenario, logScenarioEvent, replaceScenarioProperty } from '../support/scenario';
 import { speechEvents, ttsText } from '../support/speech';
 
 const meta = {
   title: 'Interactions/Panels', tags: ['autodocs'], argTypes: {},
-  parameters: { docs: { description: { component: 'Executable production-controller journeys using src/panes/action-pane.ts, content-pane.ts, components/review-panel.ts, deck-settings.ts, json-panel.ts and new-phrasebook-panel.ts. Persistence is real sandbox Dexie, speech is recorded, browser dialog/clipboard descriptors are restored at teardown. Touch dispatch exercises controller thresholds; physical touch scrolling is supplemented by browser acceptance. Known limitations remain: suggested language does not translate the static preview, settings failures have no inline UI, and action sheets do not implement details-style Escape/focus trapping.' } } },
+  parameters: { docs: { description: { component: 'Executable production-controller journeys using src/panes/action-pane.ts, content-pane.ts, components/review-panel.ts, deck-settings.ts and json-panel.ts. Persistence is real sandbox Dexie, speech is recorded, browser dialog/clipboard descriptors are restored at teardown. Touch dispatch exercises controller thresholds; physical touch scrolling is supplemented by browser acceptance. Known limitations remain: settings failures have no inline UI, and action sheets do not implement details-style Escape/focus trapping.' } } },
 } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -231,46 +230,5 @@ export const SettingsAndJson: Story = {
     await waitFor(async () => expect(await db.decks.get(id)).toBeUndefined());
     expect(await db.cards.count()).toBeGreaterThan(0);
     logScenarioEvent('Settings and JSON passed', 'Trimmed rename, cancel/blank, persisted cycles, deduplicated export with evidence, copy/reset/rejection/fallback, Back and confirmed delete');
-  },
-};
-
-export const SuggestedPreview: Story = {
-  ...appStory({ library: 'empty', mount(_root, _data, app) {
-    app.ui.transition('action/open', { kind: 'new-phrasebook', payload: { suggestion: fixtureSuggestion() } });
-  } }),
-  play: async () => {
-    const { root } = getScenario();
-    await ready('[data-action="new-phrasebook/create"]');
-    await userEvent.selectOptions(element('[data-action="new-phrasebook/lang"]'), 'es');
-    await userEvent.selectOptions(element('[data-action="new-phrasebook/ability"]'), 'conversational');
-    await userEvent.dblClick(element('[data-action="new-phrasebook/create"]'));
-    await ready('[data-action="content/save-preview"]');
-    await waitFor(() => expect(root.querySelector('.new-phrasebook-panel')).toBeNull());
-    expect(await db.decks.count()).toBe(0);
-    expect(root.querySelector('[data-action="content/review"]')).toBeNull();
-    expect(root.querySelector('[data-action="content/star-card"]')).toBeNull();
-    const preview = getScenario().app.ui.get('content').deck;
-    expect(preview?.lang).toBe('ja');
-    logScenarioEvent('Existing suggestion limitation', 'Spanish confirmation still shows the static Japanese preview');
-    await userEvent.dblClick(element('[data-action="content/save-preview"]'));
-    await waitFor(async () => expect(await db.decks.count()).toBe(1));
-    await waitFor(() => expect(root.querySelector('[data-action="content/save-preview"]')).toBeNull());
-    const memberships = await db.memberships.toArray();
-    expect(memberships.length).toBeGreaterThan(0);
-    expect(memberships.every((membership) => membership.starredAt === null)).toBe(true);
-    await waitFor(() => expect(element('[data-action="content/review"]')).toBeDisabled());
-    logScenarioEvent('Suggested preview passed', 'Read-only before Save; double confirmation/save commits once with unstarred cards');
-  },
-};
-export const SuggestedDismissalSavesNothing: Story = {
-  ...appStory({ library: 'empty', mount(_root, _data, app) {
-    app.ui.transition('action/open', { kind: 'new-phrasebook', payload: { suggestion: fixtureSuggestion() } });
-  } }), play: async () => {
-    const { root } = getScenario();
-    await click('.new-phrasebook-scrim');
-    await waitFor(() => expect(root.querySelector('.new-phrasebook-panel')).toBeNull());
-    expect(await db.decks.count()).toBe(0);
-    expect(await db.cards.count()).toBe(0);
-    logScenarioEvent('Dismissed suggestion without saving');
   },
 };

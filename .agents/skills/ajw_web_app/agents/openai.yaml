@@ -1,0 +1,5 @@
+interface:
+  display_name: "Catchphrase web app rules"
+  short_description: "Coding rules and checks for web/app changes."
+policy:
+  allow_implicit_invocation: true

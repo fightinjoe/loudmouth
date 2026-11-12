@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The **Edit card action pane** — an *action* layer surface of the Pane
-/// Protocol (see `web/docs/PANE_PROTOCOL.html`), presented as a bottom-anchored
+/// Protocol (see `docs/web/pane-protocol.html`), presented as a bottom-anchored
 /// modal `.sheet` from a card row's Edit affordance. Edits one card's fields.
 struct CardEditView: View {
     let card: Card

@@ -95,7 +95,7 @@ paths:
         204:
           description: CORS preflight response
     post:
-      summary: Generate clarifying questions, a topic checklist, and a contextual illustration prompt
+      summary: Generate clarifying questions, a conversation checklist, and a seed-based illustration prompt
       operationId: context
       consumes: [application/json]
       produces: [application/json]
@@ -836,9 +836,30 @@ definitions:
       target:
         $ref: '#/definitions/BreakdownTarget'
 
+  BreakdownFlag:
+    type: object
+    required: [code, chunkIndex, wordIndex, reason]
+    additionalProperties: false
+    properties:
+      code:
+        type: string
+        enum: [word-source-missing]
+      chunkIndex:
+        type: integer
+        minimum: 0
+        maximum: 31
+      wordIndex:
+        type: integer
+        minimum: 0
+        maximum: 31
+        description: Index into the chunk's Word candidates.
+      reason:
+        type: string
+        enum: [omitted, unresolved]
+
   BreakdownResponse:
     type: object
-    required: [schemaVersion, chunks, usage]
+    required: [schemaVersion, chunks, flags, usage]
     additionalProperties: false
     properties:
       schemaVersion:
@@ -850,5 +871,11 @@ definitions:
         maxItems: 32
         items:
           $ref: '#/definitions/BreakdownChunk'
+      flags:
+        type: array
+        uniqueItems: true
+        description: One entry for every Word candidate without source evidence; empty when all Words have evidence.
+        items:
+          $ref: '#/definitions/BreakdownFlag'
       usage:
         $ref: '#/definitions/Usage'

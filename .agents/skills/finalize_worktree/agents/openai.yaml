@@ -1,0 +1,5 @@
+interface:
+  display_name: "Finalize worktree"
+  short_description: "Clean up, document, verify and stop servers before review; no commit."
+policy:
+  allow_implicit_invocation: false

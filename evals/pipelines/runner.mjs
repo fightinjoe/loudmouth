@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { posix } from 'node:path';
 import { isDeepStrictEqual as equal } from 'node:util';
 import { buildEnglishPrompt, buildTranslationPrompt, normalizeEnglish, normalizeTranslation } from './production.mjs';
 import { toReviewInput } from './topic-conversion.mjs';
@@ -314,7 +315,7 @@ function dependencyHashes() {
     './production.mjs', './topic-conversion.mjs',
     './review-contract.mjs', './review-composition.mjs', './repair-application.mjs',
     './contracts/detection.schema.json', './contracts/localized-repair.schema.json',
-    './instructions.mjs', './runner.mjs', '../rubric.json', '../RUBRIC.md',
+    './instructions.mjs', './runner.mjs', '../rubric.json', '../../docs/evals/rubric.md',
   ];
   return Object.fromEntries(paths.map(path => [path, sha256(readFileSync(new URL(path, import.meta.url), 'utf8'))]));
 }
@@ -322,7 +323,7 @@ function rubricReference() {
   const text = readFileSync(new URL('../rubric.json', import.meta.url), 'utf8');
   const source = JSON.parse(text).source;
   const rules = readFileSync(new URL(`../${source}`, import.meta.url), 'utf8');
-  return { path: `evals/${source}`, version: JSON.parse(text).version, sha256: sha256(text + rules), scores: null, status: 'pending subjective review' };
+  return { path: posix.normalize(`evals/${source}`), version: JSON.parse(text).version, sha256: sha256(text + rules), scores: null, status: 'pending subjective review' };
 }
 function stageResult(stage, callback) {
   try { return { stage, status: 'passed', structural: true, ...callback(), providerMeasurements: measurements() }; }

@@ -3,12 +3,6 @@ import { escapeHTML } from "../js/utils";
 
 export type DataAttributes = Readonly<Record<string, unknown>>;
 
-export interface PhrasebookRowPill {
-  label: string;
-  action: string;
-  data?: DataAttributes;
-}
-
 export interface PhrasebookRowOptions {
   title: string;
   subtitle?: string;
@@ -17,10 +11,9 @@ export interface PhrasebookRowOptions {
   leading?: string;
   rowAction?: string;
   rowData?: DataAttributes;
-  pill?: PhrasebookRowPill | null;
 }
 
-/** Renders a navigation or suggestion phrasebook row. */
+/** Renders a navigation phrasebook row. */
 export function renderPhrasebookRow({
   title,
   subtitle = "",
@@ -29,7 +22,6 @@ export function renderPhrasebookRow({
   leading = "",
   rowAction = "",
   rowData = {},
-  pill = null,
 }: PhrasebookRowOptions = { title: "" }): string {
   const actionAttribute = rowAction ? `data-action="${escapeHTML(rowAction)}"` : "";
   const classes = [
@@ -41,9 +33,7 @@ export function renderPhrasebookRow({
   ].filter(Boolean).join(" ");
   const trailing = chevron
     ? icon("next", { className: "deck-picker-chevron fg-accent" })
-    : pill
-      ? `<button class="suggested-row-view-btn tappable" data-action="${escapeHTML(pill.action)}" ${renderDataAttributes(pill.data)}>${escapeHTML(pill.label)}</button>`
-      : "";
+    : "";
 
   return `
     <div class="${classes}"${selected ? " data-selected" : ""} ${actionAttribute} ${renderDataAttributes(rowData)}>

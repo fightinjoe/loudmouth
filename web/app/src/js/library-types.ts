@@ -33,8 +33,6 @@ export interface Deck {
   order: DeckOrder;
   readingDisplay: ReadingDisplay;
   generation?: Generation;
-  ability?: Ability;
-  seedId?: string;
   illustration?: DeckIllustration;
 }
 
@@ -111,8 +109,6 @@ export interface CommitPhrasebookInput {
   name: string;
   lang: Lang;
   generation?: Generation;
-  ability?: Ability;
-  seedId?: string;
   illustration?: DeckIllustration;
   groups: PhrasebookDraftGroup[];
   selectedIndexes: readonly number[];

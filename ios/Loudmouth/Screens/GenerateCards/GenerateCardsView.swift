@@ -13,7 +13,7 @@ private let supportedLangs: [(code: String, flag: String, name: String)] = [
 ]
 
 /// The **Generate cards action pane** — an *action* layer surface of the Pane
-/// Protocol (see `web/docs/PANE_PROTOCOL.html`), presented as a bottom-anchored
+/// Protocol (see `docs/web/pane-protocol.html`), presented as a bottom-anchored
 /// modal `.sheet`.
 ///
 /// Takes a context prompt ("greetings for morning/afternoon/evening") and adds

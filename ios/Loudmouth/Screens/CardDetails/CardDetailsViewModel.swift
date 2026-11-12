@@ -3,7 +3,7 @@ import Foundation
 /// View model backing the **details pane** (`CardDetailsView`).
 ///
 /// The details pane is the *details* layer of the Pane Protocol
-/// (see `web/docs/PANE_PROTOCOL.html`): a bottom-anchored surface that shows
+/// (see `docs/web/pane-protocol.html`): a bottom-anchored surface that shows
 /// one card at a time. Horizontal swipes traverse to the previous/next sibling
 /// card in the underlying content list without dismissing the pane — the pane
 /// stays open, only the card changes. This model owns the current sibling

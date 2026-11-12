@@ -7,17 +7,15 @@ import { escapeHTML } from '../../js/utils';
 import { FIXTURE_TITLE, HOSTILE_TEXT, LONG_TITLE } from '../support/fixtures';
 import { mountedStory } from '../support/mounted-story';
 
-type Controls = 'stored' | 'preview' | 'none';
+type Controls = 'stored' | 'none';
 type Args = { title: string; collapsed: boolean; controls: Controls };
 
-/** The pane-owned controls renderDeckBody passes in: Library left; Settings (stored) or Save (preview) right. */
+/** The pane-owned controls renderDeckBody passes in: Library left; Settings right for stored phrasebooks. */
 function controls(kind: Controls): { leading: string; trailing: string } {
   if (kind === 'none') return { leading: '', trailing: '' };
   return {
     leading: headerIconButton('menu', { action: 'content/menu', label: 'Library' }),
-    trailing: kind === 'stored'
-      ? `<button type="button" class="icon-button" data-action="content/menu-settings" aria-label="Phrasebook settings">${icon('settings')}</button>`
-      : '<button type="button" class="deck-header-save-pill" data-action="content/save-preview" aria-label="Save">Save</button>',
+    trailing: `<button type="button" class="icon-button" data-action="content/menu-settings" aria-label="Phrasebook settings">${icon('settings')}</button>`,
   };
 }
 
@@ -50,7 +48,7 @@ const meta = {
   argTypes: {
     title: { control: 'text', description: 'Phrasebook name; escaped, two lines in the bubble and one in the slim bar.' },
     collapsed: { control: 'boolean', description: 'Ancestor .phrasebook--collapsed on [data-region="content-body"], which the content owner toggles past 150px of landing scroll (and removes below 110px).' },
-    controls: { control: 'radio', options: ['stored', 'preview', 'none'], description: 'Controls supplied by renderDeckBody: Settings for stored phrasebooks, Save for previews, none for language collections.' },
+    controls: { control: 'radio', options: ['stored', 'none'], description: 'Controls supplied by renderDeckBody: Settings for stored phrasebooks, none for language collections.' },
   },
   parameters: { docs: { description: { component: 'src/components/phrasebook-title.ts: renderPhrasebookTitle(name, { leading, trailing }) — the fixed title layer with the speech-bubble title and the slim bar that replaces it when collapsed. Styles in src/styles/textbook-content.css; the bubble gradient follows --phrasebook-accent. Collapse is a CSS class on an ancestor; the scroll thresholds are exercised in Interactions/Phrasebook.' } } },
   render: (args: Args) => mount(frame(args)),
@@ -60,7 +58,6 @@ type Story = StoryObj<Args>;
 
 export const Expanded: Story = {};
 export const Collapsed: Story = { args: { collapsed: true } };
-export const PreviewSave: Story = { args: { controls: 'preview' } };
 export const LongAndHostileTitle: Story = {
   parameters: { docs: { description: { story: 'Long and literal hostile names, expanded and collapsed: escaped, clamped to two lines in the bubble and one in the bar.' } } },
   render: () => mount([

@@ -1,14 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/html-vite';
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
 import type { Lang } from '@catchphrase/card-schema';
 import { loadLangBrowse } from '../../panes/nav-pane';
 import type { ContentBrowse } from '../../panes/content-pane-render';
 import { appStory, getScenario } from '../support/scenario';
-import { fixtureSuggestion } from '../support/fixtures';
 
 const meta = {
   title: 'Compositions/Browse', tags: ['autodocs'], argTypes: {},
-  parameters: { layout: 'fullscreen', docs: { description: { component: 'src/panes/nav-pane.ts: loadLangBrowse; src/panes/content-pane-render.ts: renderBrowseBody/renderBrowseCardsHTML. Actual app controller and sandbox queries. Language collections have no phrasebook membership stars or Review. Suggested preview is the retained confirmation flow, not guided generation.' } } },
+  parameters: { layout: 'fullscreen', docs: { description: { component: 'src/panes/nav-pane.ts: loadLangBrowse; src/panes/content-pane-render.ts: renderBrowseBody/renderBrowseCardsHTML. Actual app controller and sandbox queries. Language collections have no phrasebook membership stars or Review.' } } },
 } satisfies Meta;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -49,18 +48,5 @@ export const ErrorSpecimen: Story = {
     await waitFor(() => expect(root.querySelector('[data-region="card-list"]')).not.toBeNull());
     const error = root.querySelector<HTMLElement>('[data-region="content-error"]')!;
     error.textContent = 'Workbench saved-card load error specimen'; error.hidden = false;
-  },
-};
-export const RetainedSuggestionPreview: Story = {
-  ...appStory({ library: 'empty', mount: (_root, _data, app) => {
-    app.ui.transition('action/open', { kind: 'new-phrasebook', payload: { suggestion: fixtureSuggestion() } });
-  } }),
-  parameters: { docs: { description: { story: 'Actual typed action opens confirmation; play confirms into the unsaved read-only preview. Save remains available and commits the real draft. Existing limitation: changing the confirmation language does not translate the static Japanese suggestion.' } } },
-  play: async () => {
-    const { root } = getScenario();
-    await waitFor(() => expect(root.querySelector('[data-action="new-phrasebook/create"]')).not.toBeNull());
-    await userEvent.click(root.querySelector<HTMLElement>('[data-action="new-phrasebook/create"]')!);
-    await waitFor(() => expect(root.querySelector('[data-action="content/save-preview"]')).not.toBeNull());
-    await expect(root.querySelectorAll('.card-star')).toHaveLength(0);
   },
 };

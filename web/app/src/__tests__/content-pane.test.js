@@ -76,7 +76,6 @@ const mocks = vi.hoisted(() => {
     repeatedEntries,
     groups,
     loadDeckData: vi.fn(),
-    commitPhrasebook: vi.fn(),
     getReviewCards: vi.fn(),
     toggleCardStar: vi.fn(),
     updateDeckAccessTime: vi.fn(),
@@ -89,7 +88,6 @@ vi.mock("../panes/content-pane-load", () => ({
 }));
 
 vi.mock("../js/db", () => ({
-  commitPhrasebook: mocks.commitPhrasebook,
   getReviewCards: mocks.getReviewCards,
   toggleCardStar: mocks.toggleCardStar,
   updateDeckAccessTime: mocks.updateDeckAccessTime,
@@ -194,7 +192,6 @@ beforeEach(() => {
   mocks.deckStore.d1.mode = "study";
   for (const mock of [
     mocks.loadDeckData,
-    mocks.commitPhrasebook,
     mocks.getReviewCards,
     mocks.toggleCardStar,
     mocks.updateDeckAccessTime,
@@ -516,70 +513,6 @@ describe("entry-key reordering", () => {
     expect(mocks.updateDeckEntryOrder).toHaveBeenCalledWith("d1", ["occ-1", "occ-2", "say-b", "say-a", "pay-a"]);
     expect(view.ui.get("content")).toMatchObject({ chapterKey: PHRASES, editMode: false });
     expect(pageKeys(view)).toEqual(["say-b", "say-a", "pay-a"]);
-  });
-});
-
-describe("preview commit", () => {
-  const draftGroups = [{
-    id: "draft-group",
-    title: "Greetings",
-    thingsToSay: [{
-      id: "draft-occurrence",
-      card: { type: "phrase", lang: "ja", text: "こんにちは", translation: "hello" },
-    }],
-    words: [],
-    likelyExchanges: [{id:"draft-exchange",title:"Welcome",lines:[
-      {speaker:"you",responses:[{id:"exchange-you",card:{type:"phrase",lang:"ja",text:"こんにちは",translation:"Hello."}}]},
-      {speaker:"partner",responses:[{id:"exchange-partner",card:{type:"phrase",lang:"ja",text:"どうぞ",translation:"Come in."}}]},
-    ]}],
-    exampleConversation: [
-      { id: "draft-you", card: { type: "phrase", lang: "ja", text: "こんにちは", translation: "hello" }, speaker: "you" },
-      { id: "draft-partner", card: { type: "phrase", lang: "ja", text: "どうぞ", translation: "come in" }, speaker: "partner" },
-    ],
-  }];
-  const previewDeck = {
-    id: "preview-id",
-    name: "Greetings",
-    lang: "ja",
-    ability: "basics",
-    seedId: "seed-greetings-ja",
-    mode: "study",
-    order: "default",
-    readingDisplay: "reading",
-    preview: true,
-    draftGroups,
-  };
-
-  it("commits all draft groups atomically and selects the durable deck", async () => {
-    mocks.commitPhrasebook.mockResolvedValue({ ...mocks.deckStore.d1 });
-    const view = mountPane();
-    view.ui.transition("content/loaded", { deck: previewDeck, cards: [] });
-
-    view.rootEl.querySelector('[data-action="content/save-preview"]').click();
-    await flush();
-
-    expect(mocks.commitPhrasebook).toHaveBeenCalledWith({
-      name: "Greetings",
-      lang: "ja",
-      ability: "basics",
-      seedId: "seed-greetings-ja",
-      groups: draftGroups,
-      selectedIndexes: [0],
-    });
-    expect(view.ui.get("content").deckId).toBe("d1");
-  });
-
-  it("keeps the preview visible and reports a commit failure", async () => {
-    mocks.commitPhrasebook.mockRejectedValue(new Error("commit failed"));
-    const view = mountPane();
-    view.ui.transition("content/loaded", { deck: previewDeck, cards: [] });
-
-    view.rootEl.querySelector('[data-action="content/save-preview"]').click();
-    await flush();
-
-    expect(view.ui.get("content").deck.id).toBe("preview-id");
-    expect(view.rootEl.querySelector('[data-region="content-error"]').textContent)
-      .toBe("commit failed");
   });
 });
 
@@ -1022,21 +955,6 @@ describe("content owner disposal", () => {
     pending.resolve();
     await flush();
     expect(view.ui.get("content").editMode).toBe(true);
-  });
-
-  it("does not select a committed preview after unbinding", async () => {
-    const pending = deferred();
-    mocks.commitPhrasebook.mockReturnValueOnce(pending.promise);
-    const view = mountPane();
-    view.ui.transition("content/loaded", {
-      deck: { ...mocks.deckStore.d1, preview: true, draftGroups: [], ability: "beginner", seedId: "seed" },
-      cards: [], groups: [],
-    });
-    view.rootEl.querySelector('[data-action="content/save-preview"]').click();
-    view.unbind();
-    pending.resolve({ ...mocks.deckStore.d2 });
-    await flush();
-    expect(view.ui.get("content").deckId).toBe("d1");
   });
 });
 

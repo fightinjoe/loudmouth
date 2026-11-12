@@ -1,6 +1,5 @@
 import type { Lang } from "@catchphrase/card-schema";
 import {
-  commitPhrasebook,
   getReviewCards,
   updateDeckAccessTime,
   updateDeckEntryOrder,
@@ -25,7 +24,6 @@ import {
 import { setAttrSafe, setListHTMLSafe } from "../js/uiState";
 import { icon } from "../components/icon";
 import { renderChapterMenu, renderChapterSheetBody } from "../components/chapter-sheet";
-import type { PreviewDeck } from "./action-pane";
 import { registerCardActions } from "./content-pane-actions";
 import { wireContentGestures } from "./content-pane-gestures";
 import { loadDeckData } from "./content-pane-load";
@@ -39,7 +37,6 @@ import {
   renderStarredSlot,
   type ContentBrowse,
 } from "./content-pane-render";
-import { SUGGESTED_PHRASEBOOKS } from "../js/suggested-phrasebooks";
 
 export interface SystemLanguageDeck {
   id: `lang:${Lang}`;
@@ -51,14 +48,10 @@ export interface SystemLanguageDeck {
   system: true;
 }
 
-export type ContentDeck = Deck | PreviewDeck | SystemLanguageDeck;
+export type ContentDeck = Deck | SystemLanguageDeck;
 
 export function isStoredDeck(deck: ContentDeck | null): deck is Deck {
-  return deck !== null && !("preview" in deck) && !("system" in deck);
-}
-
-function isPreviewDeck(deck: ContentDeck | null): deck is PreviewDeck {
-  return deck !== null && "preview" in deck && deck.preview;
+  return deck !== null && !("system" in deck);
 }
 
 function isSystemDeck(deck: ContentDeck | null): deck is SystemLanguageDeck {
@@ -91,26 +84,6 @@ export interface ContentLoadResult {
   deck: ContentDeck | null;
   cards: LibraryEntry[];
   groups: Group[];
-}
-
-function previewGroups(deck: PreviewDeck): Group[] {
-  return deck.draftGroups.map((group, position) => ({
-    id: group.id,
-    deckId: deck.id,
-    title: group.title,
-    position,
-    exchanges: group.likelyExchanges.map((exchange, position) => ({
-      id: exchange.id, title: exchange.title, position,
-    })),
-    wordFamilies: group.words.map((family, position) => ({
-      id: family.id, title: family.title, position,
-    })),
-  }));
-}
-
-function resolvedGroups(deck: ContentDeck | null, groups?: Group[]): Group[] {
-  if (groups) return groups;
-  return isPreviewDeck(deck) ? previewGroups(deck) : [];
 }
 
 /** A tab applies only to Starred, the one chapter with tabs. */
@@ -149,7 +122,7 @@ const transitions = {
   }),
 
   "content/loaded": (slice, { deck, cards, groups }) => {
-    const nextGroups = resolvedGroups(deck, groups);
+    const nextGroups = groups ?? [];
     return {
       ...slice,
       deckId: deck?.id ?? null,
@@ -466,7 +439,6 @@ const contentPane = {
       if (rebuildBody && body && chapter) {
         const html = renderChapterSheetBody(chapter, {
           readingDisplay: slice.deck.readingDisplay,
-          readOnly: isPreviewDeck(slice.deck),
           tab: slice.starredTab,
           contextFor: (entry) => entryContextLabel(entry, chapters),
         });
@@ -618,10 +590,6 @@ const contentPane = {
 
     let inflight = 0;
     const unsubLoad = ui.subscribe("content", (next, previous) => {
-      if (isPreviewDeck(next.deck) && next.deck.id === next.deckId) {
-        inflight += 1;
-        return;
-      }
       if (next.deckId === previous.deckId && next.reload === previous.reload) return;
       const stamp = ++inflight;
       void loadDeckData(next.deckId).then((data) => {
@@ -806,34 +774,6 @@ const contentPane = {
       });
     });
 
-    delegate.register("content/save-preview", (_event, element) => {
-      const preview = ui.get("content").deck;
-      if (!isPreviewDeck(preview)) return;
-      const previewId = preview.id;
-      const version = ownerVersion;
-      const button = element instanceof HTMLButtonElement ? element : null;
-      if (button) button.disabled = true;
-      showInlineError(null);
-      void commitPhrasebook({
-        name: preview.name,
-        lang: preview.lang,
-        ability: preview.ability,
-        seedId: preview.seedId,
-        groups: preview.draftGroups,
-        selectedIndexes: preview.draftGroups.map((_group, index) => index),
-      }).then((realDeck) => {
-        if (!isCurrentOwner(version) || ui.get("content").deck?.id !== previewId) return;
-        ui.transition("nav/reload");
-        ui.transition("content/select-deck", { id: realDeck.id });
-      }).catch((error: unknown) => {
-        if (isCurrentOwner(version) && ui.get("content").deck?.id === previewId) {
-          showInlineError(errorMessage(error));
-        }
-      }).finally(() => {
-        if (isCurrentOwner(version) && button?.isConnected) button.disabled = false;
-      });
-    });
-
     delegate.register("content/browse-back", () => ui.transition("content/browse-back"));
 
     delegate.register("content/browse-select", (_event, element) => {
@@ -842,18 +782,6 @@ const contentPane = {
       // Language collections are virtual and have no persisted deck to timestamp.
       if (!id.startsWith("lang:")) void updateDeckAccessTime(id);
       ui.transition("content/select-deck", { id });
-    });
-
-    delegate.register("content/browse-view-suggested", (_event, element) => {
-      const suggestion = SUGGESTED_PHRASEBOOKS.find(
-        (candidate) => candidate.id === element.dataset.suggestionId,
-      );
-      if (suggestion) {
-        ui.transition("action/open", {
-          kind: "new-phrasebook",
-          payload: { suggestion },
-        });
-      }
     });
 
     delegate.register("content/cancel-edit", () => ui.transition("content/cancel-edit"));
@@ -870,10 +798,8 @@ const contentPane = {
       "content/open-in-context",
       "content/done",
       "content/review",
-      "content/save-preview",
       "content/browse-back",
       "content/browse-select",
-      "content/browse-view-suggested",
       "content/cancel-edit",
     ];
 

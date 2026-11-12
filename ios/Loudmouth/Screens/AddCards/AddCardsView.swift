@@ -3,7 +3,7 @@ import SwiftData
 import UniformTypeIdentifiers
 
 /// The **Import cards action pane** — an *action* layer surface of the Pane
-/// Protocol (see `web/docs/PANE_PROTOCOL.html`), presented as a bottom-anchored
+/// Protocol (see `docs/web/pane-protocol.html`), presented as a bottom-anchored
 /// modal `.sheet`. Pastes/imports a card batch JSON and handles backup export
 /// and restore.
 struct AddCardsView: View {

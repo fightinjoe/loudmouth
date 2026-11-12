@@ -1,5 +1,5 @@
 interface:
-  display_name: "Merge Loudmouth worktree"
-  short_description: "Merge Loudmouth worktree with isolated local development."
+  display_name: "Merge worktree"
+  short_description: "Squash a clean feature worktree into main, verify, then retire it."
 policy:
   allow_implicit_invocation: false

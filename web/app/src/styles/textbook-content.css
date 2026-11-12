@@ -36,7 +36,6 @@
 .phrasebook-controls { position: absolute; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 8px); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .phrasebook-tools { display: flex; align-items: center; gap: 4px; }
 .phrasebook-controls .icon-button { min-width: 44px; min-height: 44px; border-radius: 50%; background: var(--bg-surface); color: var(--phrasebook-accent); pointer-events: auto; }
-.phrasebook-controls .deck-header-save-pill { min-height: 44px; pointer-events: auto; background: var(--phrasebook-accent); }
 
 /* ── Scroller: illustration lead, white reading surface ── */
 .phrasebook-reader { position: relative; z-index: 1; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior-y: contain; overflow-anchor: none; scrollbar-width: none; }

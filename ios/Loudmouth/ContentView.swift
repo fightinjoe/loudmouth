@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-// Root of the Pane Protocol stack (see `web/docs/PANE_PROTOCOL.html`).
+// Root of the Pane Protocol stack (see `docs/web/pane-protocol.html`).
 // There is no NavigationStack: `DeckListView` hosts the navigation pane (shell)
 // and the sliding content pane; the details and action layers are opened from
 // the content pane's body. Layers are composed with ZStacks, offsets, and

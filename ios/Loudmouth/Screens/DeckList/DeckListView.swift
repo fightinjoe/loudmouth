@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 /// Root layout hosting the two persistent lower layers of the Pane Protocol
-/// (see `web/docs/PANE_PROTOCOL.html`): the **navigation pane** (shell layer)
+/// (see `docs/web/pane-protocol.html`): the **navigation pane** (shell layer)
 /// and the **content pane** (content layer).
 ///
 /// The navigation pane (`navigationPane`) is fixed in place and always present;

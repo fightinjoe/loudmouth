@@ -84,7 +84,7 @@ code { font-size:13px; background:#e9ece4; padding:2px 4px; }
 <p>Words to recognize, phrases to reuse, sentences to rehearse. Keep the conversation bubbles; explore how each card type reads on its own and together in a starred collection.</p>
 <p><strong>Exploration, not a production specification.</strong> Standalone, offline, no build step. Open this file directly in a browser.</p>
 </header>
-<nav aria-label="Document"><a href="#lab">A + C / In context</a><a href="#card-types">Card-type gallery</a><a href="#criteria">What to evaluate</a><a href="#method">Exploration method</a><a href="#handoff">iOS reference</a><a href="../../web/docs/PANE_PROTOCOL.html">Pane protocol</a><a href="../methodology.md">Shared methodology</a></nav>
+<nav aria-label="Document"><a href="#lab">A + C / In context</a><a href="#card-types">Card-type gallery</a><a href="#criteria">What to evaluate</a><a href="#method">Exploration method</a><a href="#handoff">iOS reference</a><a href="../../docs/web/pane-protocol.html">Pane protocol</a><a href="../../docs/explorations/methodology.md">Shared methodology</a></nav>
 <section id="lab" aria-label="Live card comparison">
 <form class="controls" id="controls">
 <label>Language & reading<select id="language"><option value="es">Spanish</option><option value="zh">Chinese · pinyin</option><option value="ja-ruby">Japanese · furigana</option><option value="ja-romaji">Japanese · romanization</option></select></label>
@@ -112,10 +112,10 @@ code { font-size:13px; background:#e9ece4; padding:2px 4px; }
 </section>
 <section class="notes" id="method">
 <div class="eyebrow">Reusable format</div><h2>One question. A runnable reference.</h2>
-<p>Follow the <a href="../../web/docs/PANE_PROTOCOL.html">Pane Protocol</a> model: a live example next to the reasoning. Unlike that settled protocol, this study presents alternatives; it does not establish application rules.</p>
+<p>Follow the <a href="../../docs/web/pane-protocol.html">Pane Protocol</a> model: a live example next to the reasoning. Unlike that settled protocol, this study presents alternatives; it does not establish application rules.</p>
 <ol><li><strong>Frame:</strong> name the surface, its grouping semantics, and non-goals.</li><li><strong>Explore:</strong> keep language and typography controls shared; use identical fixtures when comparing alternatives for the same purpose. Do not confuse conversation, vocabulary, and starred collections.</li><li><strong>Stress:</strong> include long and short content, alternatives, empty collections, narrow widths, and larger type.</li><li><strong>Observe:</strong> record device/browser, settings, and the specific failure or advantage.</li><li><strong>Decide:</strong> record accepted, rejected, and unresolved ideas before porting. Keep the runnable specimens as a visual reference.</li></ol>
 <p><strong>Current scope:</strong> conversational topic groups, a word / phrase / sentence gallery, and mixed starred cards in Spanish, simplified Chinese with ruby pinyin, and Japanese with furigana or romaji. Type is explicit fixture data, not inferred from punctuation: generated conversation lines remain phrases. Out of scope: details panes, swipe actions, audio, backend/schema changes, and production integration.</p>
-<p><strong>Future studies:</strong> follow the <a href="../methodology.md">shared exploration methodology</a>. Create a separate directory under <code>explorations/</code> for each concept, keeping its standalone HTML, fixtures, and assets local so studies can evolve independently.</p>
+<p><strong>Future studies:</strong> follow the <a href="../../docs/explorations/methodology.md">shared exploration methodology</a>. Create a separate directory under <code>explorations/</code> for each concept, keeping its standalone HTML, fixtures, and assets local so studies can evolve independently.</p>
 </section>
 <section class="notes" id="handoff">
 <div class="eyebrow">Porting reference</div><h2>Preserve hierarchy, not CSS.</h2>
@@ -126,7 +126,7 @@ code { font-size:13px; background:#e9ece4; padding:2px 4px; }
 <li><strong>Starred collection:</strong> C combines words, phrases, and sentences. No topic context, type, speaker, or “or” marker appears on cards. Removing a star removes the entry; empty selection is intentional.</li>
 <li><strong>Interaction:</strong> stars have 44 × 44 CSS-pixel targets and pressed state. This artifact simulates only controls and stars, not production audio or details interactions.</li>
 <li><strong>Reading data:</strong> hand-authored base/annotation pairs, not automatic alignment. Unannotated kana and punctuation remain ordinary text. Chinese syllables pair with individual characters so readings stay attached while wrapping.</li>
-<li><strong>Native checks still required:</strong> iOS Safari ruby wrapping, VoiceOver order, Dynamic Type, and native font metrics. Browser scaling is not Dynamic Type. Have a fluent reviewer check fixtures before using them as teaching content. See the <a href="../../docs/CARD_SCHEMA.md">card schema</a>.</li>
+<li><strong>Native checks still required:</strong> iOS Safari ruby wrapping, VoiceOver order, Dynamic Type, and native font metrics. Browser scaling is not Dynamic Type. Have a fluent reviewer check fixtures before using them as teaching content. See the <a href="../../docs/card-schema.md">card schema</a>.</li>
 </ul>
 <p>Production references: <code>web/app/src/components/card.js</code> and conversation styles in <code>web/app/src/styles/components.css</code>. Gallery and C share the same compact anatomy: English, target, and optional word definition. Context and formality remain in fixture data but are not displayed on cards. Usage notes and examples remain in fixture data for expanded-card design; no expanded interaction is simulated here. Structured speaker metadata is never displayed as prose. These treatments remain explorations.</p>
 </section>

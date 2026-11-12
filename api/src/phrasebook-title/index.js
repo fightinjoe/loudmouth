@@ -1,4 +1,4 @@
-/** /phrasebook-title: independent, single-call UI naming. See docs/API_DESIGN.md. */
+/** /phrasebook-title: independent, single-call UI naming. See docs/api/phrasebook-title.md. */
 const { buildPhrasebookTitlePrompt } = require('./prompt');
 const { buildUsageReport } = require('../pricing');
 const { getBackendName } = require('../llm-config');

@@ -1,7 +1,7 @@
 {
   "version": "2.0-proposed",
-  "source": "RUBRIC.md",
-  "note": "Machine-readable fields only. Rules, outcome classes, priorities, examples and the decision log live in RUBRIC.md.",
+  "source": "../docs/evals/rubric.md",
+  "note": "Machine-readable fields only. Rules, outcome classes, priorities, examples and the decision log live in docs/evals/rubric.md.",
   "scale": [
     { "score": 4, "label": "high quality" },
     { "score": 3, "label": "usable" },

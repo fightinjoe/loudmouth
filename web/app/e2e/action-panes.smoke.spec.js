@@ -22,26 +22,6 @@ const KINDS = [
   { kind: 'creation', payload: { lang: 'ja' }, label: 'creation (topic entry)' },
   { kind: 'creation', payload: {}, label: 'creation (first-time language selection)' },
   {
-    kind: 'new-phrasebook',
-    payload: { suggestion: {
-      id: 'seed-greetings-ja', emoji: '', title: 'Greetings', lang: 'ja',
-      groups: [{
-        title: 'Greeting someone',
-        thingsToSay: [{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'}],
-        likelyExchanges: [{title:'Say hello',lines:[
-          {speaker:'you',responses:[{type:'phrase',lang:'ja',text:'こんにちは',translation:'Hello.'}]},
-          {speaker:'partner',responses:[{type:'phrase',lang:'ja',text:'どうも',translation:'Hi.'}]},
-        ]}],
-        exampleConversation: [
-          {card:{type:'phrase',lang:'ja',text:'こんにちは',translation:'hello'},speaker:'you'},
-          {card:{type:'phrase',lang:'ja',text:'どうも',translation:'hi'},speaker:'partner'},
-        ],
-        words: [],
-      }],
-    } },
-    label: 'new-phrasebook (confirm suggestion)',
-  },
-  {
     kind: 'json',
     payload: { title: 'Test', jsonString: '{"cards":[]}' },
     label: 'json',

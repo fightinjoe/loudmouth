@@ -8,7 +8,6 @@ import {
 } from '@catchphrase/card-schema';
 import { db, getCards, getCardsByLang, getDecks, getGroups, restoreAllData } from '../../js/db';
 import type { Deck, Group, LibraryEntry, LibraryBackup, Occurrence } from '../../js/library-types';
-import { SUGGESTED_PHRASEBOOKS, type SuggestedPhrasebook } from '../../js/suggested-phrasebooks';
 
 export interface FixtureOptions {
   library?: 'empty' | 'single' | 'multiple' | 'language-only';
@@ -126,21 +125,6 @@ export function textFixtureEntry(kind: 'long' | 'hostile', lang: Lang = 'ja'): L
   });
   if (entry.occurrence) entry.occurrence.translation = entry.card.translation;
   return entry;
-}
-
-/** Use the real retained suggestion through action/open, not a copied preview builder.
- * Its Japanese-only content is the existing production limitation. */
-export function fixtureSuggestion(): SuggestedPhrasebook {
-  const suggestion = structuredClone(SUGGESTED_PHRASEBOOKS[0]);
-  for (const group of suggestion.groups) {
-    for (const card of group.thingsToSay) validateCard(card);
-    for (const exchange of group.likelyExchanges) {
-      for (const line of exchange.lines) for (const card of line.responses) validateCard(card);
-    }
-    for (const line of group.exampleConversation) validateCard(line.card);
-    for (const family of group.words) for (const candidate of family.items) validateCandidate(candidate);
-  }
-  return suggestion;
 }
 
 /** The current real /context validator requires at least one question. A zero-question

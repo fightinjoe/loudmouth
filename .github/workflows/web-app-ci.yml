@@ -2,7 +2,7 @@ name: web-app CI
 
 on:
   push:
-    branches: [main, claude/jovial-lalande]
+    branches: [main]
     paths: ['web/app/**', 'api/src/schema/**', '.github/workflows/web-app-ci.yml']
   pull_request:
     paths: ['web/app/**', 'api/src/schema/**', '.github/workflows/web-app-ci.yml']
@@ -29,8 +29,7 @@ jobs:
       # Unit tests (Vitest).
       - run: npm test
 
-      # End-to-end smoke tests (Playwright). The chromium browser is cached
-      # by version so we only re-download when Playwright bumps.
+      # End-to-end smoke tests (Playwright).
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 

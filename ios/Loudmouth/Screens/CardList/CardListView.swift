@@ -8,7 +8,7 @@ private var deviceSafeTop: CGFloat {
 }
 
 /// The **content pane** body — the *content* layer of the Pane Protocol
-/// (see `web/docs/PANE_PROTOCOL.html`).
+/// (see `docs/web/pane-protocol.html`).
 ///
 /// Shows the currently selected deck's (or language's / starred) card list.
 /// It is hosted inside `DeckListView`'s sliding content pane; navigating

@@ -1,5 +1,5 @@
 /**
- * /context handler. See docs/API_DESIGN.md "/context".
+ * /context handler. See docs/api/context.md.
  *
  * First step of the prompt-first guided-creation split: given a seed
  * (situation, activity, or topic) and a target language, one model call

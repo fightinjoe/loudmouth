@@ -1,7 +1,7 @@
 ---
-description: Run the shared add_worktree worktree workflow.
+description: Create a feature worktree (asks for the branch intent).
 ---
 
-Read `.agents/skills/add_worktree/SKILL.md` from the repository root and execute that workflow. Resolve it against the repository root even when invoked from a subdirectory.
+Read `docs/skills/add_worktree.md` from the repository root and execute that workflow. Resolve it against the repository root even when invoked from a subdirectory.
 
 User arguments: $ARGUMENTS

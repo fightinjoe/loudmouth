@@ -94,7 +94,7 @@
   outline-offset: -2px;
 }
 
-/* Single-list treatment retained by virtual decks and suggested previews. */
+/* Single-list treatment retained by virtual language decks. */
 .deck-view-list {
   padding: 0 20px 96px;
 }
@@ -278,6 +278,10 @@ ruby {
   line-height: 1;
 }
 
+.deck-picker-chevron {
+  flex-shrink: 0;
+}
+
 /* ── Bottom Sheets ── */
 
 .bottom-sheet {
@@ -297,8 +301,8 @@ ruby {
 }
 
 /* Full-height action panes (review and creation) cover everything except the
-   service bar / status-bar gap at the top. Content-hugging panes
-   (new-phrasebook and settings) keep the beige .bg-primary default.
+   service bar / status-bar gap at the top. The content-hugging settings
+   pane keeps the beige .bg-primary default.
    Full panes use the gray-100 action-pane body. */
 .bottom-sheet--full {
   top: max(env(safe-area-inset-top, 0px), 44px);
@@ -360,7 +364,7 @@ ruby {
 }
 
 /* Nav pane sits behind the content pane, full-size — the same footprint
-   as the content pane (per PANE_PROTOCOL.html's canonical layer diagram).
+   as the content pane (per docs/web/pane-protocol.html's canonical layer diagram).
    When there is no active phrasebook, the nav pane fills the whole screen.
    When a phrasebook is open, sliding the content pane its own full width
    aside reveals the nav pane full-bleed, so the content pane no longer peeks
@@ -650,49 +654,7 @@ ruby {
 }
 
 
-/* ── New Phrasebook Panel ── */
-
-.new-phrasebook-panel {
-  z-index: 151;
-  padding-bottom: env(safe-area-inset-bottom, 24px);
-}
-
-.new-phrasebook-header {
-  padding: 1.5rem 1.25rem 0.5rem;
-  gap: 4px;
-}
-
-.new-phrasebook-body {
-  padding: 0.5rem 1.25rem;
-  gap: 4px;
-}
-
-.new-phrasebook-row {
-  padding: 12px 0;
-  border-bottom: 1px solid hsl(var(--gray-900) / 0.08);
-}
-
-.new-phrasebook-select {
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  font-weight: 500;
-  text-align: right;
-}
-
-.new-phrasebook-create-btn {
-  width: calc(100% - 2.5rem);
-  margin: 1rem 1.25rem 0;
-  padding: 0.9375rem;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--bg-surface);
-  font-weight: 600;
-  text-align: center;
-}
-
-
-/* ── Legacy grouped list for browse/system/preview modes ── */
+/* ── Legacy grouped list for browse/system modes ── */
 
 .deck-view-section-header {
   padding: 16px 20px 6px;
@@ -724,33 +686,4 @@ ruby {
 
 .deck-view-list [data-speaker="you"] .card-row {
   background: hsl(var(--gray-100));
-}
-
-/* ── Suggested phrasebooks + unsaved preview ── */
-
-.deck-header-save-pill {
-  padding: 0.5rem 1.25rem;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  color: var(--bg-surface);
-  font-weight: 600;
-}
-
-.suggested-row {
-  height: auto;
-  padding: 10px 0;
-}
-
-.suggested-row-view-btn {
-  flex-shrink: 0;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-  background: hsl(var(--blue-500) / 0.1);
-  color: var(--accent);
-  font-size: 0.8125rem;
-  font-weight: 500;
-}
-
-.deck-picker-chevron {
-  flex-shrink: 0;
 }

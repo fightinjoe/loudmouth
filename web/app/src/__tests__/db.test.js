@@ -102,7 +102,7 @@ function evidence(text, translation, start, end, occurrenceId) {
   };
 }
 
-function suggestedBook(name = "Book", text = "Hola", translation = "Hello") {
+function draftBook(name = "Book", text = "Hola", translation = "Hello") {
   return {
     name,
     lang: "es",
@@ -113,7 +113,7 @@ function suggestedBook(name = "Book", text = "Hola", translation = "Hello") {
 
 async function createBook(name = "Book", text = "Hola", translation = "Hello", targetStore = store) {
   return commitPhrasebook(
-    suggestedBook(name, text, translation),
+    draftBook(name, text, translation),
     { store: targetStore },
   );
 }
@@ -253,12 +253,8 @@ describe("commitPhrasebook", () => {
   });
 
   it("persists authored topic metadata without fabricating generation settings", async () => {
-    const input = suggestedBook("Suggestion");
-    input.ability = "conversational";
-    input.seedId = "seed-es";
-    const deck = await commitPhrasebook(input, { store });
+    const deck = await commitPhrasebook(draftBook("Authored"), { store });
     expect(await store.groups.where("deckId").equals(deck.id).count()).toBe(1);
-    expect(deck).toMatchObject({ ability: "conversational", seedId: "seed-es" });
     expect(deck).not.toHaveProperty("generation");
     const essential = (await getCards(deck.id, store)).find((entry) => entry.occurrence?.section === "thingsToSay");
     expect(essential.occurrence).not.toHaveProperty("speaker");
@@ -280,7 +276,7 @@ describe("commitPhrasebook", () => {
     const controller = new AbortController();
     store.cards.hook("creating", () => controller.abort());
 
-    await expect(commitPhrasebook(suggestedBook("Abort"), {
+    await expect(commitPhrasebook(draftBook("Abort"), {
       signal: controller.signal,
       store,
     })).rejects.toMatchObject({ name: "AbortError" });
@@ -290,7 +286,7 @@ describe("commitPhrasebook", () => {
   });
 
   it("preserves hostile answer keys through commit and backup restore", async () => {
-    const input = suggestedBook("Hostile context");
+    const input = draftBook("Hostile context");
     input.generation = {seed:"dinner",ability:"basics",answers:JSON.parse('{"__proto__":"family","constructor":"friends"}')};
     const deck = await commitPhrasebook(input, {store});
     await restoreAllData(await exportAllData(store), store);
@@ -336,7 +332,7 @@ describe("commitPhrasebook", () => {
   });
 
   it("retains independent essentials and equal-text meanings through reorder, reopen, and restore", async () => {
-    const input = suggestedBook("Independent");
+    const input = draftBook("Independent");
     input.groups[0].thingsToSay.push(phrase("essential-two", "Solo aquí", "Only here"));
     input.groups[0].exampleConversation[0] = phrase("reply", "Hola", "Hi", { speaker: "you" });
     const deck = await commitPhrasebook(input, { store });
@@ -867,7 +863,7 @@ describe("v4 namespace isolation and preferences", () => {
 
 describe("durable illustration ownership", () => {
   async function illustratedBook(state = "pending") {
-    const input = suggestedBook("Illustrated");
+    const input = draftBook("Illustrated");
     input.illustration = {
       requestId: crypto.randomUUID(), prompt: "A loose watercolor still life.", state,
       ...(state === "ready" ? {image} : {}),
@@ -943,7 +939,7 @@ describe("durable illustration ownership", () => {
     const invalid = {...deck.illustration,state:"ready",image:{...image}};
     corrupt(invalid);
     const before = await exportAllData(store);
-    await expect(commitPhrasebook({...suggestedBook("Invalid art"),illustration:invalid},{store})).rejects.toThrow();
+    await expect(commitPhrasebook({...draftBook("Invalid art"),illustration:invalid},{store})).rejects.toThrow();
     await expect(setDeckIllustration(deck.id,deck.illustration.requestId,invalid,store)).rejects.toThrow();
     const backup = structuredClone(before);
     backup.decks[0].illustration = invalid;

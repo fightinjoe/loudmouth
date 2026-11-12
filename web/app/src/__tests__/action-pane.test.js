@@ -57,77 +57,15 @@ function mountPane() {
   return { ui, rootEl, dispose, stageEl };
 }
 
-const suggestion = {
-  id: "seed-directions-ja",
-  emoji: "🧭",
-  title: "Directions",
+const deck = {
+  id: "d1",
+  name: "Directions",
   lang: "ja",
-  groups: [{
-    title: "On the street",
-    thingsToSay: [{
-      lang: "ja",
-      type: "phrase",
-      text: "まっすぐ行ってください",
-      translation: "please go straight",
-      reading: [["まっすぐ", null], ["行", "い"], ["ってください", null]],
-    }],
-    words: [{ title: "Directions", items: [{
-      card: {
-        lang: "ja",
-        type: "word",
-        text: "右",
-        translation: "right",
-        reading: [["右", "みぎ"]],
-        partOfSpeech: "noun",
-        senseKey: "right-direction",
-      },
-    }, {card:{lang:"ja",type:"word",text:"左",translation:"left",partOfSpeech:"noun",senseKey:"left-direction"}}] }],
-    likelyExchanges: [{title:"Ask the way",lines:[
-      {speaker:"you",responses:[{lang:"ja",type:"phrase",text:"駅はどこですか",translation:"Where is the station?"}]},
-      {speaker:"partner",responses:[{lang:"ja",type:"phrase",text:"まっすぐです",translation:"Straight ahead."},{lang:"ja",type:"phrase",text:"右です",translation:"To the right."}]},
-    ]}],
-    exampleConversation: [
-      {speaker:"you",card:{lang:"ja",type:"phrase",text:"駅はどこですか",translation:"Where is the station?",reading:[["駅","えき"],["はどこですか",null]]}},
-      {speaker:"partner",card:{lang:"ja",type:"phrase",text:"まっすぐ行ってください",translation:"Please go straight.",reading:[["まっすぐ",null],["行","い"],["ってください",null]]}},
-    ],
-  }],
+  createdAt: "2026-01-01T00:00:00.000Z",
+  mode: "study",
+  order: "default",
+  readingDisplay: "reading",
 };
-
-describe("action pane — suggested phrasebook preview", () => {
-  it("keeps section occurrences and repeated topic words distinct while sharing canonical cards", () => {
-    const repeated = {
-      ...suggestion,
-      groups: [
-        { ...suggestion.groups[0], title: "Same title" },
-        { ...suggestion.groups[0], title: "Same title" },
-      ],
-    };
-    const { ui, rootEl } = mountPane();
-    ui.transition("action/open", {
-      kind: "new-phrasebook",
-      payload: { suggestion: repeated },
-    });
-    rootEl.querySelector('[data-action="new-phrasebook/create"]').click();
-
-    const { deck, cards } = ui.get("content");
-    expect(new Set(deck.draftGroups.map((group) => group.id)).size).toBe(2);
-    expect(new Set(cards.map((entry) => entry.key)).size).toBe(16);
-    const essential = cards.filter((entry) => entry.occurrence?.section === "thingsToSay");
-    const exampleConversation = cards.filter((entry) => entry.occurrence?.section === "exampleConversation");
-    expect(essential).toHaveLength(2);
-    expect(exampleConversation).toHaveLength(4);
-    expect(essential.every((entry) => !("speaker" in entry.occurrence))).toBe(true);
-    expect(exampleConversation.map((entry) => entry.occurrence.speaker)).toEqual(["you","partner","you","partner"]);
-    expect(essential[0].cardId).toBe(exampleConversation[1].cardId);
-    expect(essential[0].occurrence.translation).toBe("please go straight");
-    expect(exampleConversation[1].occurrence.translation).toBe("Please go straight.");
-    const words = cards.filter((entry) => entry.wordPlacement);
-    expect(words).toHaveLength(4);
-    expect(words[0].cardId).toBe(words[2].cardId);
-    expect(words.map((entry) => entry.wordPlacement.groupId)).toEqual(deck.draftGroups.flatMap((group) => [group.id, group.id]));
-    expect(words.map((entry) => entry.wordPlacement.position)).toEqual([0,1,0,1]);
-  });
-});
 
 describe("bottom-sheet dismissal", () => {
   it("cannot reopen or retain a sheet closed before its first animation frame", () => {
@@ -169,7 +107,7 @@ describe("action owner disposal", () => {
   it("disposes active and still-closing sheets without closing a newer action", async () => {
     vi.useFakeTimers();
     const { ui, rootEl, dispose, stageEl } = mountPane();
-    ui.transition("action/open", { kind: "new-phrasebook", payload: { suggestion } });
+    ui.transition("action/open", { kind: "settings", payload: { deck, cards: [] } });
     rootEl.querySelector(".bottom-sheet").classList.add("bottom-sheet--visible");
     ui.transition("action/open", { kind: "json", payload: { title: "Export", jsonString: "{}" } });
     expect(rootEl.querySelector(".bottom-sheet")).not.toBeNull();
@@ -185,7 +123,7 @@ describe("action owner disposal", () => {
   it("lets an old animated dismissal finish without dismissing its replacement", async () => {
     vi.useFakeTimers();
     const { ui, rootEl } = mountPane();
-    ui.transition("action/open", { kind: "new-phrasebook", payload: { suggestion } });
+    ui.transition("action/open", { kind: "settings", payload: { deck, cards: [] } });
     rootEl.querySelector(".bottom-sheet").classList.add("bottom-sheet--visible");
     ui.transition("action/open", { kind: "json", payload: { title: "Export", jsonString: "{}" } });
     const action = ui.get("action");

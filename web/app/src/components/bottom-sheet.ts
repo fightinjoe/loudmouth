@@ -25,14 +25,12 @@ export interface BottomSheetHandle {
 const KIND_TO_PANEL_CLASS: Readonly<Record<string, string>> = {
   settings: "deck-settings-panel",
   review: "review-panel",
-  "new-phrasebook": "new-phrasebook-panel",
   creation: "creation-panel",
 };
 
 const KIND_TO_SCRIM_CLASS: Readonly<Record<string, string>> = {
   settings: "deck-settings-scrim",
   review: "review-scrim",
-  "new-phrasebook": "new-phrasebook-scrim",
   creation: "creation-scrim",
 };
 

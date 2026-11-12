@@ -1,5 +1,5 @@
 interface:
-  display_name: "Add Loudmouth worktree"
-  short_description: "Add Loudmouth worktree with isolated local development."
+  display_name: "Add worktree"
+  short_description: "Create an isolated feature worktree with its own ports and tmux window."
 policy:
   allow_implicit_invocation: false

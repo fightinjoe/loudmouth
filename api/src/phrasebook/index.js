@@ -420,7 +420,7 @@ async function translateTopics(args) {
 
 /**
  * Pure pipeline core: generate English topics, fan out translations,
- * and assemble CARD_SCHEMA cards by index.
+ * and assemble cards (docs/card-schema.md) by index.
  */
 async function performPhrasebook(
   parsedRequest,

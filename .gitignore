@@ -5,3 +5,5 @@
 evals/.runs/
 **/evals/failures/
 evals/corpora/
+/worktree.md
+**/.obsidian

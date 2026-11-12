@@ -1025,7 +1025,6 @@ describe("openCreationPanel — title and ability", () => {
     expect(getLastAbility("es")).toBeUndefined();
     committing.resolve({
       ...committedDeck,
-      ability: "conversational",
       generation: {
         ...committedDeck.generation,
         ability: "conversational",

@@ -5,7 +5,6 @@ import { icon } from "./icon";
 import { renderSourceContext } from "./source-context";
 
 export interface RenderCardRowOptions {
-  readOnly?: boolean;
   conversation?: boolean;
   optionSeparator?: boolean;
 }
@@ -18,14 +17,14 @@ export interface RenderCardRowOptions {
 export function renderCardRow(
   entry: LibraryEntry,
   readingDisplay: ReadingDisplay = "reading",
-  { readOnly = false, conversation = true, optionSeparator = false }: RenderCardRowOptions = {},
+  { conversation = true, optionSeparator = false }: RenderCardRowOptions = {},
 ): string {
   const { card, occurrence } = entry;
   const entryKey = escapeHTML(entry.key);
   const cardId = escapeHTML(entry.cardId);
   const isStarred = entry.membership?.starredAt != null;
   const speaker = conversation ? occurrence?.speaker : undefined;
-  const canStar = !readOnly && entry.membership !== undefined;
+  const canStar = entry.membership !== undefined;
   return `
     <div
       class="card-row-wrapper shrink-0 overflow-hidden"
