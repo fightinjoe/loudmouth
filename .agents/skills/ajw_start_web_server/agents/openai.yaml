@@ -1,0 +1,5 @@
+interface:
+  display_name: "Start web server"
+  short_description: "Start and verify the web app dev server in tmux."
+policy:
+  allow_implicit_invocation: true

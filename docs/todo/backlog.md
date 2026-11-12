@@ -1,7 +1,7 @@
 ---
 kind: ledger
 status: current
-summary: Backlog of decided work without a milestone: creation-flow redesign, phrasebook artwork, breakdown improvements, preset packs, placeholders, diagnostics mode, changing a remembered ability and prompt follow-ups.
+summary: Backlog of decided work without a milestone: creation-flow redesign, phrasebook artwork, breakdown improvements, preset packs, placeholders, diagnostics mode, changing a remembered ability, dependency upkeep and prompt follow-ups.
 verified: 2026-11-12
 statuses: [open, in-progress, blocked, done]
 ---
@@ -12,6 +12,8 @@ Decided work not yet assigned to a milestone.
 
 | Date | Status | Description | Details |
 |---|---|---|---|
+| 2026-11-12 | open | Decide which blocked npm install scripts to allow and commit the setting | [details](backlog/npm-install-scripts.md) |
+| 2026-11-12 | open | Update web development tooling flagged by npm audit and deprecation warnings | [details](backlog/web-dev-dependencies.md) |
 | 2026-11-12 | open | Let learners change the ability remembered for a language | [details](backlog/update-ability.md) |
 | 2026-11-12 | open | Review and improve phrase breakdown design and content, and extend it to Words | [details](backlog/breakdown-review.md) |
 | 2026-11-12 | open | Tile generator and color picker for phrasebook background artwork | [details](backlog/phrasebook-artwork.md) |

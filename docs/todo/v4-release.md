@@ -23,5 +23,7 @@ Deployment mechanics are in [API operations](../api/operations.md#deployment-ref
 
 | Date | Status | Description | Details |
 |---|---|---|---|
+| 2026-11-12 | open | Pin one Node.js version across local development, CI and Cloud Run | [details](v4-release/node-version.md) |
+| 2026-11-12 | open | Fix the 11 production npm audit findings in the API, one critical, before deploying | [details](v4-release/api-dependency-vulnerabilities.md) |
 | 2026-11-12 | open | Coordinated API, gateway and web release with a live end-to-end check | [details](v4-release/coordinated-release.md) |
 | 2026-11-12 | open | Deploy the revised English-generation prompt and spot-check live output | [details](v4-release/deploy-english-prompt.md) |

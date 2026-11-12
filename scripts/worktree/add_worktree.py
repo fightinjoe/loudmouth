@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Create a port-isolated Loudmouth worktree from the local main checkout."""
+"""Create and check port-isolated Loudmouth worktrees.
+
+Subcommands (each is one discrete step of docs/skills/add_worktree.md):
+  create <short-name> --intent TEXT [--id XYZ]   new worktree, env files, npm ci, OMP window, verify
+  install <worktree>                             rerun npm ci in web/app and api/src (recovery)
+  window <worktree>                              open the OMP tmux window if none exists for it
+  verify <worktree>                              check notes, env files, ignores, dependencies, window
+
+Dev servers are not started here; use scripts/dev-server.py (the ajw_start_*_server skills).
+"""
 
 from __future__ import annotations
 
@@ -33,7 +42,7 @@ CHROMIUM_RESTRICTED_IDS = {
 }
 LOCK_NAME = "loudmouth-add-worktree.lock"
 WORKTREE_NOTES = "worktree.md"
-WEB_DEV_COMMAND = "env __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=tiny npm run dev"
+WORKTREE_NAME_RE = re.compile(r"loudmouth-(\d{3})-([a-z0-9]+(?:-[a-z0-9]+)*)\Z")
 
 
 class SetupError(RuntimeError):
@@ -436,31 +445,90 @@ def require_tmux_session() -> None:
         raise SetupError("tmux session 'loudmouth' must exist before creating a worktree") from exc
 
 
-def open_tmux_window(result: dict[str, object]) -> str:
-    target = result["target"]
-    number = result["id"]
-    assert isinstance(target, Path)
-    assert isinstance(number, int)
-    window, left = tmux(
+def window_for(target: Path) -> str | None:
+    """The tmux window that has a pane at the worktree root, if any."""
+    try:
+        panes = tmux("list-panes", "-a", "-F", "#{session_name}:#{window_id}\t#{pane_current_path}")
+    except SetupError:
+        return None
+    for line in panes.splitlines():
+        window, _, path = line.partition("\t")
+        if path == os.fspath(target):
+            return window
+    return None
+
+
+def open_tmux_window(target: Path) -> str:
+    """Open a detached window in session loudmouth running omp at the worktree root."""
+    window, pane = tmux(
         "new-window", "-d", "-P", "-F", "#{window_id} #{pane_id}",
         "-t", "loudmouth:", "-n", target.name, "-c", os.fspath(target),
     ).split()
     try:
-        web = tmux(
-            "split-window", "-d", "-h", "-p", "35", "-P", "-F", "#{pane_id}",
-            "-t", left, "-c", os.fspath(target / "web" / "app"),
-        )
-        api = tmux(
-            "split-window", "-d", "-v", "-p", "50", "-P", "-F", "#{pane_id}",
-            "-t", web, "-c", os.fspath(target / "api" / "src"),
-        )
-        for pane, command in ((web, WEB_DEV_COMMAND), (api, "npm run dev"), (left, "omp")):
-            tmux("send-keys", "-t", pane, "-l", command)
-            tmux("send-keys", "-t", pane, "Enter")
-    except (SetupError, ValueError):
+        tmux("send-keys", "-t", pane, "-l", "omp")
+        tmux("send-keys", "-t", pane, "Enter")
+    except SetupError:
         tmux("kill-window", "-t", window)
         raise
-    return window
+    return f"loudmouth:{window}"
+
+
+def registered_worktree(path: str) -> tuple[Path, int]:
+    """Resolve a feature worktree created by `create`, returning its root and XYZ number."""
+    target = Path(path).resolve()
+    records = worktree_records(Path(__file__).resolve().parent)
+    main = main_checkout(records)
+    registered = {Path(r["worktree"]).resolve() for r in records if "worktree" in r}
+    if target not in registered or target == main:
+        raise SetupError(f"not a registered feature worktree: {target}")
+    match = WORKTREE_NAME_RE.fullmatch(target.name)
+    if not match:
+        raise SetupError(f"worktree directory is not named loudmouth-XYZ-short-name: {target.name}")
+    return target, int(match.group(1))
+
+
+def verify(target: Path, number: int) -> bool:
+    """Print one line per check; return whether every required check passed."""
+    ok = True
+
+    def check(passed: bool, label: str, required: bool = True) -> None:
+        nonlocal ok
+        print(f"  [{'ok' if passed else ('FAIL' if required else 'warn')}] {label}")
+        ok = ok and (passed or not required)
+
+    def env_value(relative: str, key: str) -> str | None:
+        path = target / relative
+        if not path.is_file():
+            return None
+        for line in path.read_text().splitlines():
+            name, _, value = line.partition("=")
+            if name.strip() == key:
+                return value.strip()
+        return None
+
+    print(f"Verifying {target}:")
+    status = git(target, "status", "--porcelain").stdout.decode().strip()
+    check(not status, "working tree is clean" if not status else f"working tree has changes:\n{status}")
+    ignored = [WORKTREE_NOTES, "web/app/.env.local", "api/.env.local"]
+    if (target / "api" / ".env").exists():
+        ignored.append("api/.env")
+    for relative in ignored:
+        present = (target / relative).is_file()
+        check(present and is_ignored(target, relative), f"{relative} exists and is ignored by git")
+    expected = {
+        ("web/app/.env.local", "VITE_DEV_PORT"): f"{number}0",
+        ("web/app/.env.local", "VITE_API_URL"): f"http://tiny:{number}1",
+        ("web/app/.env.local", "PLAYWRIGHT_PORT"): f"{number}2",
+        ("api/.env.local", "PORT"): f"{number}1",
+    }
+    for (relative, key), value in expected.items():
+        check(env_value(relative, key) == value, f"{relative} sets {key}={value}")
+    check((target / "api" / ".env").exists(), "api/.env credentials present", required=False)
+    for package in ("web/app", "api/src"):
+        check((target / package / "node_modules").is_dir(), f"{package}/node_modules installed")
+    window = window_for(target)
+    check(window is not None, f"tmux window with a pane at the worktree root: {window or 'none'}", required=False)
+    return ok
 
 
 def setup(short_name: str, requested_id: int | None, intent: str) -> dict[str, object]:
@@ -566,16 +634,19 @@ def setup(short_name: str, requested_id: int | None, intent: str) -> dict[str, o
             print(f"Worktree retained for recovery: {target}", file=sys.stderr)
             if branch:
                 print(f"Branch retained: {branch}", file=sys.stderr)
+            script = shlex.quote(os.fspath(Path(__file__).resolve()))
+            quoted = shlex.quote(os.fspath(target))
             print(
-                "After resolving the failure, continue setup with:\n"
-                f"  (cd {shlex.quote(os.fspath(target / 'web' / 'app'))} && npm ci)\n"
-                f"  (cd {shlex.quote(os.fspath(target / 'api' / 'src'))} && npm ci)",
+                "After resolving the failure, finish setup with:\n"
+                f"  python3 {script} install {quoted}\n"
+                f"  python3 {script} window {quoted}\n"
+                f"  python3 {script} verify {quoted}",
                 file=sys.stderr,
             )
         raise
 
 
-def print_result(result: dict[str, object]) -> None:
+def print_result(result: dict[str, object], window: str) -> None:
     main = result["main"]
     target = result["target"]
     branch = result["branch"]
@@ -590,38 +661,31 @@ def print_result(result: dict[str, object]) -> None:
     print(f"  Worktree: {target}")
     print(f"  Branch: {branch}")
     print(f"  Base main commit: {result['base_commit']}")
-    print(f"  Web app: {target / 'web' / 'app'}")
-    print(f"  API: {target / 'api' / 'src'}")
-    print("Ports:")
-    print(f"  Web: {number}0")
-    print(f"  API: {number}1")
+    print("Ports (servers not started; use the ajw_start_web_server / ajw_start_api_server skills):")
+    print(f"  Web: {number}0 (http://tiny:{number}0)")
+    print(f"  API: {number}1 (http://tiny:{number}1)")
     print(f"  Playwright: {number}2")
-    print(f"Remote web URL: http://tiny:{number}0")
-    print(f"API URL: http://tiny:{number}1")
-    print(f"Environment: {target / 'web' / 'app' / '.env.local'}")
-    print(f"Environment: {target / 'api' / '.env.local'}")
     print(f"Worktree notes (ignored): {target / WORKTREE_NOTES}")
     if result["credentials_present"]:
         print(f"API credentials copied privately to {target / 'api' / '.env'}")
     else:
         print(f"API credentials absent: main had no api/.env; API startup may require {target / 'api' / '.env'} or process credentials")
-    print("tmux panes (commands sent; check server readiness in the window):")
-    print(f"  OMP: {target} (omp)")
-    print(f"  Web: {target / 'web' / 'app'} ({WEB_DEV_COMMAND})")
-    print(f"  API: {target / 'api' / 'src'} (npm run dev)")
+    print(f"tmux window: {window} ({target.name}), running omp at the worktree root")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("short_name", type=slug, metavar="short-name")
-    parser.add_argument(
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    commands = parser.add_subparsers(dest="command", required=True)
+    create = commands.add_parser("create", help="create a worktree, install dependencies, open its OMP window, verify")
+    create.add_argument("short_name", type=slug, metavar="short-name")
+    create.add_argument(
         "--intent",
         type=intent_text,
         required=True,
         metavar="TEXT",
         help=f"what the branch is for; written to the ignored {WORKTREE_NOTES} in the new worktree",
     )
-    parser.add_argument(
+    create.add_argument(
         "--id",
         type=worktree_id,
         dest="requested_id",
@@ -631,26 +695,59 @@ def parse_args() -> argparse.Namespace:
             "their derived ports are restricted by Chromium"
         ),
     )
+    for name, text in (
+        ("install", "rerun npm ci in web/app and api/src"),
+        ("window", "open the OMP tmux window if the worktree has none"),
+        ("verify", "check notes, env files, ignores, dependencies and window"),
+    ):
+        command = commands.add_parser(name, help=text)
+        command.add_argument("worktree", help="path of a worktree made by create")
     return parser.parse_args()
 
 
-def main() -> int:
-    arguments = parse_args()
+def create(arguments: argparse.Namespace) -> int:
     result: dict[str, object] | None = None
     try:
         require_tmux_session()
         result = setup(arguments.short_name, arguments.requested_id, arguments.intent)
-        window = open_tmux_window(result)
-    except KeyboardInterrupt:
-        print("error: interrupted; no automatic rollback was attempted", file=sys.stderr)
-        return 130
+        target = result["target"]
+        assert isinstance(target, Path)
+        window = open_tmux_window(target)
     except (SetupError, OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         if result is not None:
             print(f"Worktree retained for recovery: {result['target']}", file=sys.stderr)
         return 1
-    print_result(result)
-    print(f"tmux window: loudmouth:{window} ({result['target'].name})")
+    print_result(result, window)
+    number = result["id"]
+    assert isinstance(number, int)
+    return 0 if verify(target, number) else 1
+
+
+def main() -> int:
+    arguments = parse_args()
+    try:
+        if arguments.command == "create":
+            return create(arguments)
+        target, number = registered_worktree(arguments.worktree)
+        if arguments.command == "install":
+            npm_ci(target / "web" / "app")
+            npm_ci(target / "api" / "src")
+        elif arguments.command == "window":
+            existing = window_for(target)
+            if existing:
+                print(f"tmux window already open: {existing}")
+            else:
+                require_tmux_session()
+                print(f"tmux window opened: {open_tmux_window(target)} ({target.name})")
+        else:
+            return 0 if verify(target, number) else 1
+    except KeyboardInterrupt:
+        print("error: interrupted; no automatic rollback was attempted", file=sys.stderr)
+        return 130
+    except (SetupError, OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     return 0
 
 

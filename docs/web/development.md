@@ -45,7 +45,7 @@ By default the app calls the deployed Cloud API Gateway. To test against a local
 cp .env.local.example .env.local   # sets VITE_API_URL=http://localhost:8080
 ```
 
-Then run both dev servers (in separate terminals, starting from the repository root):
+Then run both dev servers in separate terminals, starting from the repository root. Agents use the [start web server](../skills/ajw_start_web_server.md) and [start API server](../skills/ajw_start_api_server.md) skills instead, which place tmux panes and check readiness.
 
 ```bash
 cd api/src && npm run dev     # serves the API on http://localhost:8080
@@ -54,7 +54,7 @@ cd web/app && npm run dev     # picks up VITE_API_URL from .env.local
 
 `.env.local` is gitignored (`*.local`); Vite restarts pick up changes to it automatically. Remove or edit the file to switch back to the deployed API.
 
-Parallel feature worktrees get their own web, API and Playwright ports; see [add_worktree](../skills/add_worktree.md).
+Parallel feature worktrees get their own web, API and Playwright ports; see [add_worktree](../skills/add_worktree.md). Their servers are not started on creation; the same skills start them with the worktree's ports.
 
 ## Build
 

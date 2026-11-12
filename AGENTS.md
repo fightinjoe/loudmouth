@@ -42,11 +42,11 @@ Changes to prompt `*.txt` files require explicit user approval before editing. A
 
 Whenever you start a server (web app, API, preview or exploration) for the user to view:
 
-1. **Run it in a visible tmux pane** with `scripts/tmux-server.sh <working-dir> <command...>`. Inside tmux it opens a new pane in your current window below the bottom-right pane, or creates the right-hand pane when the window has only one column. The pane keeps a shell, so the user stops the server with Ctrl-C. Outside tmux (exit code 2), run it as a named background service and report how to stop it.
+1. **Run it in a visible tmux pane** with `scripts/tmux-server.sh [-t <pane>] <working-dir> <command...>`. It opens a new pane in your current window (or the window of `-t <pane>`) below the bottom-right pane, or creates the right-hand pane when the window has only one column. The pane keeps a shell, so the user stops the server with Ctrl-C. Without tmux (exit code 2), run it as a named background service and report how to stop it.
 2. **Bind to `0.0.0.0`** so it is reachable from other devices on the network (for example `python3 -m http.server <port> --bind 0.0.0.0`, or `--host 0.0.0.0` for Vite). Report both the localhost URL and the LAN URL (`ifconfig | grep 'inet '`; the interface is not always `en0`).
 3. **Serve the narrowest directory that works.** A `0.0.0.0` server is visible to the whole network; never expose the repository root, `.git`, or files containing secrets such as `.env`.
 4. Pick a free port (check with `lsof -nP -iTCP:<port> -sTCP:LISTEN`) rather than stopping another process.
-5. **Run the app with its own scripts.** The web app and API run together: `npm run dev` in `web/app` (Vite; host and port come from `vite.config.js` and `.env.local`) and `npm run dev` in `api/src`, each in its own pane. Never start the app with ad-hoc commands such as `npx vite --port …`: they skip `predev` and the configured port, and the app cannot reach the API. If either is already running, reuse it.
+5. **Run the app with its own scripts.** The web app and API run together, each in its own pane: start them with the `ajw_start_web_server` and `ajw_start_api_server` skills (`scripts/dev-server.py web|api`), which use each checkout's configured ports, reuse a server that is already running and verify readiness. Never start the app with ad-hoc commands such as `npx vite --port …`: they skip `predev` and the configured port, and the app cannot reach the API.
 
 ## gstack
 

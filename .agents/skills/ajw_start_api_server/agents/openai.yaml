@@ -1,0 +1,5 @@
+interface:
+  display_name: "Start API server"
+  short_description: "Start and verify the local API dev server in tmux."
+policy:
+  allow_implicit_invocation: true
