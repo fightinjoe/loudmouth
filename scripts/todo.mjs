@@ -4,7 +4,7 @@
 //   node scripts/todo.mjs add --ledger <ledger> --slug <slug> --title <title> --description <row>
 //        --summary <line> --what <text> --why <text> --done <text> [--open <text>] [--status open] [--date YYYY-MM-DD]
 //   node scripts/todo.mjs move --from <ledger> --slug <slug> --to <ledger>
-//   node scripts/todo.mjs milestone --slug <slug> --title <title> --summary <line> --description <row>
+//   node scripts/todo.mjs milestone --slug <slug> --title <title> --summary <line> --description <text after the bold title>
 //        --intro <text> [--status planned] [--date YYYY-MM-DD]
 //
 // <ledger> is a ledger page under docs/todo without `.md`, for example `backlog` or `v4-release`.
@@ -82,6 +82,19 @@ function insertRow(text, row, file) {
   const header = lines.findIndex(l => LEDGER_HEADER.test(l));
   if (header < 0 || !/^\|[\s:|-]+\|?\s*$/.test(lines[header + 1] ?? '')) fail(`${file} has no ledger table`);
   lines.splice(header + 2, 0, row);
+  return lines.join('\n');
+}
+
+// Pad the first ledger table's cells so its columns line up in the source (the index is kept aligned).
+function alignTable(text) {
+  const lines = text.split('\n');
+  const start = lines.findIndex(l => LEDGER_HEADER.test(l));
+  let end = start;
+  while (lines[end]?.startsWith('|')) end++;
+  const rows = lines.slice(start, end).map(l => l.trim().slice(1, -1).split('|').map(c => c.trim()));
+  const widths = rows[0].map((_, i) => Math.max(...rows.map(r => (r[i] ?? '').length)));
+  const out = rows.map((r, n) => `| ${widths.map((w, i) => (n === 1 ? '-'.repeat(w) : (r[i] ?? '').padEnd(w))).join(' | ')} |`);
+  lines.splice(start, end - start, ...out);
   return lines.join('\n');
 }
 
@@ -219,7 +232,7 @@ function milestone(argv) {
   if (!statuses.includes(status)) fail(`--status must be one of ${statuses.join(', ')}`);
   if (!DATE.test(date)) fail('--date must be YYYY-MM-DD');
   const f = {
-    title: line('title', v.title), summary: line('summary', v.summary),
+    title: line('title', v.title, { cell: true }), summary: line('summary', v.summary),
     description: line('description', v.description, { cell: true }), intro: line('intro', v.intro),
   };
 
@@ -228,7 +241,8 @@ function milestone(argv) {
     `# ${f.title}`, '', f.intro, '',
     '| Date | Status | Description | Details |', '|---|---|---|---|', '',
   ].join('\n');
-  const updatedIndex = insertRow(index, `| ${date} | ${status} | ${f.description} | [details](${slug}.md) |`, rel(INDEX));
+  const row = `| ${date} | ${status} | **${f.title}**<br>${f.description} | [details](${slug}.md) |`;
+  const updatedIndex = alignTable(insertRow(index, row, rel(INDEX)));
 
   writeFileSync(path, page);
   writeFileSync(INDEX, updatedIndex);

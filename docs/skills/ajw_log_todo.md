@@ -44,10 +44,10 @@ node scripts/todo.mjs add --ledger backlog --slug short-name --title "Record tit
   --what "..." --why "..." --done "..." [--open "..."]
 node scripts/todo.mjs move --from backlog --slug short-name --to public-launch
 node scripts/todo.mjs milestone --slug public-launch --title "Public launch" \
-  --summary "..." --description "Index row text" --intro "..."
+  --summary "..." --description "launch plan, API protection, ..." --intro "..."
 ```
 
-Create a milestone before adding its todos. Exit code 2 is a usage error with a message; exit code 1 means the docs check failed after writing: fix the reported errors.
+Create a milestone before adding its todos. Its index row reads `**<title>**<br><description>`, so `--description` omits the title; the script keeps the index table aligned. Exit code 2 is a usage error with a message; exit code 1 means the docs check failed after writing: fix the reported errors.
 
 ## 6. Finish by hand
 
