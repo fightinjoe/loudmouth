@@ -5,6 +5,7 @@ import type { ActionSlice, ActionOpen } from '../panes/action-pane';
 import type { DetailsSlice, DetailsOpen, TargetState } from '../panes/details-pane';
 import type { BreakdownResponse } from '@catchphrase/card-schema';
 import type { DeckIllustration, Group, LibraryEntry } from './library-types';
+import type { StarredTab } from './phrasebook-chapters';
 import type { Host, TransitionMap, UIState } from './uiState';
 
 export interface AppSlices {
@@ -29,13 +30,13 @@ export interface AppPayloads {
   'content/cards-changed': {cards: LibraryEntry[]; groups?: Group[]; deckId?: string};
   'content/card-star-changed': {deckId: string; cardId: string; starredAt: string | null};
   'content/illustration-updated': {deckId: string; illustration: DeckIllustration};
-  'content/jump-chapter': {chapterKey: string};
+  'content/open-chapter': {chapterKey: string; tab?: StarredTab};
+  'content/close-chapter': undefined;
+  'content/select-tab': {tab: StarredTab};
   'content/enter-edit': undefined;
   'content/reorder': {pageOrder: string[]};
   'content/confirm-edit': undefined;
   'content/cancel-edit': undefined;
-  'content/toggle-menu': undefined;
-  'content/close-menu': undefined;
   'content/browse': NonNullable<ContentSlice['browse']>;
   'content/browse-back': undefined;
   'details/open': DetailsOpen;

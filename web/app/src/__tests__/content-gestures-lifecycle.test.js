@@ -9,7 +9,7 @@ let gestures;
 let ui;
 beforeEach(() => {
   rootEl = document.createElement("div");
-  rootEl.innerHTML = '<div class="textbook-shelf" data-reorder-region="thingsToSay"><div class="card-row-wrapper" data-entry-key="one">One</div><div class="card-row-wrapper" data-entry-key="two">Two</div></div>';
+  rootEl.innerHTML = '<div class="chapter-row" tabindex="0"></div><div class="chapter-list" data-reorder-region="thingsToSay:group-1"><div class="card-row-wrapper" data-entry-key="one">One</div><div class="card-row-wrapper" data-entry-key="two">Two</div></div>';
   handleEl = document.createElement("div");
   reorderHandleEl = document.createElement("div");
   document.body.append(rootEl, handleEl, reorderHandleEl);
@@ -32,7 +32,7 @@ it("cancels a live reorder, restoring its placeholder without persisting", () =>
   gestures = wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isEdit: () => true });
   const rows = [...rootEl.querySelectorAll(".card-row-wrapper")];
   rows.forEach((row, index) => {
-    row.getBoundingClientRect = () => ({ top: index * 40, bottom: index * 40 + 40, height: 40, left: 0, width: 200 });
+    row.getBoundingClientRect = () => ({ top: index * 40, bottom: index * 40 + 40, height: 40, left: 0, right: 200, width: 200 });
   });
   touch(reorderHandleEl, "touchstart", 5, 10);
   touch(reorderHandleEl, "touchmove", 5, 100);
@@ -41,18 +41,18 @@ it("cancels a live reorder, restoring its placeholder without persisting", () =>
   gestures.dispose();
   expect(document.querySelector(".card-row-reorder-ghost")).toBeNull();
   expect(rootEl.querySelector(".card-row-reorder-placeholder")).toBeNull();
-  expect(rootEl.querySelector(".textbook-list--reordering")).toBeNull();
+  expect(rootEl.querySelector(".chapter-list--reordering")).toBeNull();
   expect(rootEl.querySelector("[data-dragging]")).toBeNull();
   expect([...rootEl.querySelectorAll(".card-row-wrapper")]).toEqual(rows);
   expect(ui.transition).not.toHaveBeenCalled();
 });
 
-it("releases shelf pointer capture and clears transient drag state", () => {
+it("releases row pointer capture and clears transient drag state", () => {
   gestures = wireContentGestures({ rootEl, handleEl, reorderHandleEl, ui, isEdit: () => false });
   rootEl.setPointerCapture = vi.fn();
   rootEl.hasPointerCapture = vi.fn(() => true);
   rootEl.releasePointerCapture = vi.fn();
-  const shelf = rootEl.querySelector(".textbook-shelf");
+  const shelf = rootEl.querySelector(".chapter-row");
   shelf.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 7, pointerType: "mouse", button: 0, clientX: 50, clientY: 0 }));
   shelf.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerId: 7, pointerType: "mouse", clientX: 10, clientY: 0 }));
   expect(rootEl.setPointerCapture).toHaveBeenCalledWith(7);

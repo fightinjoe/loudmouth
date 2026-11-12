@@ -173,9 +173,12 @@ The catalog has four sections:
   distinguished from shared tokens; this catalog does not invent a second theme.
 - **Components:** real renderers and panel controllers, named states, semantic Controls,
   source references, constraints, and explicitly documented existing limitations.
-- **Compositions:** library, textbook chapters, language browse, pane stacks and responsive cases.
-- **Interactions:** executable creation, stars/reorder, details, Review, settings/export,
-  suggestion and lifecycle journeys. These remain manually interactive after the scripted play.
+- **Compositions:** library, phrasebook landing and chapter sheet (`Compositions/Phrasebook`: each
+  category page, chapter menu, Starred tabs, collections, covers), language browse, pane stacks and
+  responsive cases.
+- **Interactions:** executable creation, stars, chapter navigation (`Interactions/Phrasebook`),
+  header collapse, Starred tabs/landing rows, reorder, details, Review, settings/export, suggestion
+  and lifecycle journeys. These remain manually interactive after the scripted play.
 
 Live stories provide a collapsible **Workbench** control outside the app: **Resolve** and **Fail**
 settle pending fixture requests, and **Reset scenario** disposes the UI and reseeds the scene.
@@ -271,11 +274,11 @@ close; disposed app owners cannot receive stale UI updates.
 |------|---------------|
 | `app.ts` | Shell markup, state registration, pane mounting, last-opened phrasebook |
 | `nav-pane.ts` | Illustrated welcome, seeded creation ideas, complete library shelves, language browsing |
-| `content-pane.ts` | Continuous textbook/browse state, chapter jumps, reorder mode, pane coordination |
+| `content-pane.ts` | Phrasebook landing/browse state, header collapse, chapter sheet (open/close, scroll to section, Starred tabs, chapter menu, focus), reorder mode, pane coordination |
 | `content-pane-load.ts` | Load stored, suggested-preview, and language-wide content |
-| `content-pane-render.ts` | Four-section topic chapters, learning shelves, exchanges/examples, supplemental collections, Starred markup |
+| `content-pane-render.ts` | Landing markup (title layer, illustration, Starred slot, chapter list, Review tray, sheet shell) and language-browse lists |
 | `content-pane-actions.ts` | Stars, audio, details entry, section-local reordering |
-| `content-pane-gestures.ts` | Native shelf interaction, desktop dragging, chapter jumps, section-local reorder |
+| `content-pane-gestures.ts` | Shell swipe, mouse dragging of landing rows and the Starred pager, landing-row keys, section-local reorder |
 | `details-pane.ts` | On-demand phrase analysis, candidate stars, modal focus and expansion |
 | `action-pane.ts` | Lifecycle for creation, suggestion confirmation, Review, settings, JSON |
 
@@ -286,9 +289,12 @@ within the pane or panel that starts the work.
 ### Components and API clients
 
 `src/components/` contains both markup renderers (`card.ts`, `source-context.ts`,
-`phrase-breakdown.ts`) and interactive panel controllers (`creation-panel.ts`, `review-panel.ts`,
+`phrase-breakdown.ts`, and the phrasebook view's `phrasebook-title.ts`, `chapter-card.ts`,
+`chapter-sheet.ts`) and interactive panel controllers (`creation-panel.ts`, `review-panel.ts`,
 `bottom-sheet.ts`). Controllers explicitly own mounting and teardown; renderers receive data and
-return markup. Web card-content editing is removed; phrasebook settings and card reordering remain.
+return markup. `src/js/phrasebook-chapters.ts` derives topics, the four category chapters (Words,
+Key phrases, Exchanges, Conversation), the Starred chapter and supplemental collections from joined
+entries. Web card-content editing is removed; phrasebook settings and card reordering remain.
 
 Standalone Storybook entries also expose **Phrasebook**, **Language**, **Textarea**,
 **BreakdownPhrase**, and **BreakdownCard**, rather than requiring a full library or dialog scene.
@@ -297,29 +303,45 @@ the shared situation-field markup, auto-growth, clear control and disposable inp
 The creation controller retains request invalidation and submission. Breakdown specimens reuse
 `renderSource` and `renderExplanations` directly; their standalone save controls log actions,
 while `PhraseBreakdown` and interaction stories exercise actual persistence.
+**Components/ChapterCard**, **Components/ChapterSheet**, and **PhrasebookTitle** render the
+phrasebook view's landing cards, sheet states, and title layer from the production renderers.
 
 `src/js/phrasebook-api.ts` validates creation responses against `@catchphrase/card-schema`.
 `phrasebook-illustration.ts` manages independent cover work; `phrase-breakdown.ts` validates and
 caches disposable analysis. `ability.ts` and `lang.ts` define the client enums reused by storage
 validation. Preferences remain separate from durable library content.
 
-### Textbook design
+### Phrasebook design
 
-The web uses a personal-textbook design: warm paper,
-fixed foreground speech-bubble titles, contextual illustrated backdrops, two-row Word
-and phrase shelves, and sequential exchanges and examples. `styles/textbook.css` owns shared tokens;
-`textbook-navigation.css`, `textbook-content.css`, and `textbook-creation.css` own their surfaces.
-Local neutral artwork lives in `public/textbook/`. Ready saved PNGs display as contained, nonrepeating
-phrasebook backdrops without cropping or paid regeneration. Missing/failed/pending artwork uses repeating frog paper.
+The web uses a personal-textbook design: warm paper, a fixed foreground speech-bubble title,
+contextual illustrations, and white reading surfaces. The phrasebook view follows the "Organized by
+category" design (iteration 6, superseding the iteration 5 topic decks) recorded in
+`explorations/phrasebook-organization/PHRASEBOOK_ORGANIZATION.html`; behavior is
+described in [the design doc](../../docs/DESIGN.md#phrasebook-view). `styles/textbook.css` owns
+shared tokens, including the `--phrasebook-*` colors derived from one `--phrasebook-accent` (no
+per-phrasebook accent is persisted yet); `textbook-navigation.css`, `textbook-content.css`, and
+`textbook-creation.css` own their surfaces. Local neutral artwork, including the header illustration
+mask, lives in `public/textbook/`. Ready saved PNGs fill the masked header illustration without
+repeating or paid regeneration. Missing/failed/pending artwork uses repeating frog paper.
 
 Creation retains its real language → situation → questions → checklist → generation lifecycle.
-Example situations seed the form, not a generated preview. Visible `.textbook-chapter` sections replace
-topic tabs; content state tracks `chapterKey`, and the `jump-chapter` transition scrolls to a chapter.
-The contents disclosure and Starred shortcut provide direct navigation without paging gestures.
+Example situations seed the form, not a generated preview. The landing shows a Starred card (only
+while stars exist), one card per category with content (Words, Key phrases, Exchanges,
+Conversation) whose row of deck cards is headed by family/exchange title (clustered per topic) or by
+topic, and supplemental collections. Content state tracks `chapterKey` (the chapter open in the
+chapter sheet: `category:words`, `category:phrases`, `category:exchanges`, `category:conversation`,
+`starred`, or a collection; `null` for the landing) and `starredTab`; `content/open-chapter`,
+`content/select-tab` (Starred only), and `content/close-chapter` drive the sheet. A category
+chapter is one page across every topic; only Starred has Words/Phrases tabs, and its tab is
+remembered per phrasebook for the session. **In context ›** opens the entry's category. The title
+bar collapses past 150 px of landing scroll and expands below 110 px. Reorder is entered from the
+sheet header and only within an open category or collection, per family, exchange turn, or topic
+section; whole-exchange saving is not implemented.
 The unchanged API generates watercolor covers, not seamless pattern assets. Physical-phone reach,
 VoiceOver, and iOS Safari gestures require separate acceptance checks beyond desktop Chromium.
 
-Historical feature-branch verification (2026-10-27, before v4 integration): production build/strict TypeScript passed, 240 web unit tests
+Historical feature-branch verification (2026-10-27, before v4 integration and the topic-decks
+phrasebook view): production build/strict TypeScript passed, 240 web unit tests
 and 129 API tests passed; all 12 browser cases passed across the final targeted runs after fixes.
 Desktop Chromium exercised a live Spanish creation and save, stars/Review, live phrase breakdown,
 Japanese suggested preview/Save, preserved seeded and retry inputs, cancellation, reduced motion,
@@ -327,7 +349,8 @@ and narrow rendering. A controlled offline request exercised the error surface. 
 image fixture verified late-artwork persistence without remounting cards or losing focus, scrolling,
 or edit state; it is not evidence of generated art quality or verification of the integrated v4 UI.
 
-Integrated v4 verification (2026-10-29): 130 API tests, 253 web unit tests, strict TypeScript,
+Integrated v4 verification (2026-10-29, before the topic-decks phrasebook view replaced the
+continuous textbook): 130 API tests, 253 web unit tests, strict TypeScript,
 production build, and all 12 mobile Chromium Playwright cases passed. Web unit tests used
 `NODE_OPTIONS=--no-experimental-webstorage` on Node 26. A separate 390px Chromium smoke checked
 seeded first-time creation, a locally saved v4 four-section fixture, explicit reply alternatives,
@@ -338,9 +361,10 @@ provider calls and does not establish live generation quality or iOS Safari beha
 
 `src/js/db.ts` owns the seven-table Dexie library, atomic phrasebook commits, canonical card identity,
 phrasebook-specific membership stars, occurrences, topic Word placements, and historical evidence.
-Each topic displays **Things to say**, **Likely exchanges**, **Words** with family titles, and
-**Example conversation**, in that order. Alternatives are explicit options within one exchange turn;
-the example is linear. After final topic selection, commit removes only exact-English Things to say
+Each topic stores **Things to say**, **Likely exchanges**, **Words** with family titles, and
+**Example conversation**; the chapter sheet gathers them across topics as the Key phrases,
+Exchanges, Words, and Conversation categories. Alternatives are explicit options within one
+exchange turn; the example is linear. After final topic selection, commit removes only exact-English Things to say
 already present in an earlier retained topic. Every exchange option, example line and family-local
 Word placement survives; shared Words reuse canonical cards and membership without removing
 placements across topics. Unchecked topics never suppress selected content. No API round trip or

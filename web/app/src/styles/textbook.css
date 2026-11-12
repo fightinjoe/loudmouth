@@ -12,6 +12,17 @@
   --bg-blue-tint: var(--textbook-blue-soft);
   --bg-primary: var(--textbook-paper);
   --border-default: #d9dfd4;
+  /* Phrasebook view: one accent per phrasebook; every tint derives from it. */
+  --phrasebook-accent: var(--textbook-green);
+  --phrasebook-accent-2: color-mix(in oklab, var(--phrasebook-accent) 80%, white);
+  --phrasebook-accent-soft: color-mix(in oklab, var(--phrasebook-accent) 24%, white);
+  --phrasebook-accent-wash: color-mix(in oklab, var(--phrasebook-accent) 8%, white);
+  --phrasebook-star-bg: color-mix(in oklab, var(--phrasebook-accent) 11%, white);
+  --phrasebook-star-line: color-mix(in oklab, var(--phrasebook-accent) 22%, white);
+  --phrasebook-bubble-top: color-mix(in oklab, var(--phrasebook-accent) 8%, white);
+  --phrasebook-bubble-bottom: color-mix(in oklab, var(--phrasebook-accent) 24%, white);
+  /* Where the white reading surface starts below the illustration. */
+  --phrasebook-content-top: 360px;
 }
 
 body {
@@ -32,7 +43,7 @@ button:not(:disabled) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-examples, .textbook-scroll, .textbook-shelf {
+  .nav-examples, .textbook-scroll, .chapter-row, .chapter-pager {
     scroll-behavior: auto;
   }
 }

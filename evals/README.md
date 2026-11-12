@@ -2,7 +2,11 @@
 
 **Goal: fast, reliable, trustworthy initial content.**
 [Current strategy](../docs/designs/phrasebook-quality-identity-storage-plan.md) ·
-[Proposed rubric](rubric.json) · [Subjective-review skill](../.agents/skills/content-quality-evaluation/SKILL.md)
+[Rubric](RUBRIC.md) · [Subjective-review skill](../.agents/skills/content-quality-evaluation/SKILL.md)
+
+The [endpoint baseline inputs](BASELINE.md) document the proposed Spanish-first context and
+phrasebook English-generation requests, their captured setup provenance and the staged comparison
+approach. The new request files are separate from the legacy CLI fixtures below.
 
 Current adapters and authored fixtures use **v4 four-section phrasebooks**: Things to say, Likely
 exchanges with explicit response options, titled Word families and a linear Example conversation.
@@ -51,6 +55,14 @@ zero. These workflows prove parser/routing/association behavior, not multilingua
 
 ### Current fixture provenance
 
+- [`fixtures/baseline-context.json`](fixtures/baseline-context.json): three self-contained `/context`
+  requests, each wrapped only with a case ID.
+- [`fixtures/baseline-phrasebook-english.json`](fixtures/baseline-phrasebook-english.json): four
+  self-contained `/phrasebook` requests for English-generation evaluation. Answers and checklist
+  labels come exclusively from the captured setup choices. No authored English or reviewer notes.
+- [`fixtures/captures/baseline-context.json`](fixtures/captures/baseline-context.json): three real
+  local HTTP `/context` captures, retained separately from model inputs. The existing CLI still uses
+  the registry below; see [baseline inputs](BASELINE.md) for selection policy and review scope.
 - [`fixtures/contexts.json`](fixtures/contexts.json): canonical request registry for `shoes-zh`,
   `allergy-ja`, `tea-cs`, `lost-bag-uk` and `pottery-es`. Each contains the exact singleton-topic
   `/phrasebook` request and ordinary/challenge label; all lanes use these IDs.
@@ -113,17 +125,11 @@ Never replace a missing saved response with a mock. Exports are disposable input
 
 ## Learning-quality assessment
 
-[`rubric.json`](rubric.json) owns the proposed 0–4 ordinal scale, dimensions and examples. Score
-coverage, correctness/contextual fit, vocabulary usefulness and conversation flow separately with
-exact citations. **3 needs editing to become good; 2 needs correction or supplementation to accomplish
-the task.** Missing assessment is null, never 0. Ordinal scores are not equal numerical distances;
-report per-topic findings/distributions, not a mean as proof of quality.
-
-Prioritize meaning/safety and supplied learner facts, useful Things to say, meaningful options and
-reusable families. Ordinary repetition or a relevant unfinished conversation is not automatically a
-failure. Distinguish illustrative language from invented learner facts. An unsupported safety
-assurance is not excused by good coverage scores. Assess pronunciation against written text and
-intended meaning; malformed rendering data and linguistic defects are different findings.
+[`RUBRIC.md`](RUBRIC.md) is the readable source for the 0–4 scale, dimensions, outcome classes
+(failure, warning, not the prompt), priorities, English-generation rules with real examples,
+translation and repair checks, review-record rules and the dated decision log. [`rubric.json`](rubric.json)
+holds only the version, scale and dimensions that tools read. Score dimensions separately with exact
+citations; never average ordinal scores, and record a missing assessment as null.
 
 For future comparisons, freeze inputs, configuration, rubric and decision criteria. Keep source
 English defects distinct from translation defects. Cite actual expected/received text and identify

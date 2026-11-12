@@ -314,13 +314,15 @@ function dependencyHashes() {
     './production.mjs', './topic-conversion.mjs',
     './review-contract.mjs', './review-composition.mjs', './repair-application.mjs',
     './contracts/detection.schema.json', './contracts/localized-repair.schema.json',
-    './instructions.mjs', './runner.mjs', '../rubric.json',
+    './instructions.mjs', './runner.mjs', '../rubric.json', '../RUBRIC.md',
   ];
   return Object.fromEntries(paths.map(path => [path, sha256(readFileSync(new URL(path, import.meta.url), 'utf8'))]));
 }
 function rubricReference() {
   const text = readFileSync(new URL('../rubric.json', import.meta.url), 'utf8');
-  return { path: 'evals/rubric.json', version: JSON.parse(text).version, sha256: sha256(text), scores: null, status: 'pending subjective review' };
+  const source = JSON.parse(text).source;
+  const rules = readFileSync(new URL(`../${source}`, import.meta.url), 'utf8');
+  return { path: `evals/${source}`, version: JSON.parse(text).version, sha256: sha256(text + rules), scores: null, status: 'pending subjective review' };
 }
 function stageResult(stage, callback) {
   try { return { stage, status: 'passed', structural: true, ...callback(), providerMeasurements: measurements() }; }

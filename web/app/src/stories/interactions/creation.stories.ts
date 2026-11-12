@@ -7,6 +7,7 @@ import { contextResponse, FIXTURE_TITLE, FIXTURE_TOPICS } from '../support/fixtu
 import { getScenario, logScenarioEvent } from '../support/scenario';
 import { allowLateResponse, failPending, requests, resolvePending, setOutcome, setResponseFactory, type Endpoint } from '../support/transport';
 import { creationAnswer, creationClick, creationCommit, creationElement, creationReachChecklist, creationScenario, creationSubmitTopic, type CreationArgs } from '../components/creation.stories';
+import { activeChapterPage, phrasebookLanding, settledChapterSheet } from '../support/phrasebook';
 
 const meta = {
   title: 'Interactions/Creation',
@@ -270,7 +271,7 @@ function titleJourney(outcome: 'success' | 'pending' | 'error'): Story {
         resolvePending('/phrasebook-title');
         await request('/phrasebook-title');
         expect((await db.decks.get(id))?.name).toBe(expected);
-        expect(await creationElement('.textbook-book-title')).toHaveTextContent(expected);
+        expect(await creationElement('.phrasebook-title')).toHaveTextContent(expected);
       }
       finished(`Title ${outcome} naming policy`);
     },
@@ -310,32 +311,36 @@ export const IllustrationFailureNonfatal: Story = {
 
 export const LateIllustrationPreservesReader: Story = {
   ...creationScenario({ library: 'single', outcomes: { '/phrasebook-image': 'pending' } }),
-  parameters: docs('A committed pending cover may finish after the sheet closes. Only its owning book changes. Actual content controls enter reorder mode and select a chapter; the cover update preserves cards, focus, reader/shelf scroll, chapter and edit state.'),
+  parameters: docs('A committed pending cover may finish after the sheet closes. Only its owning book changes. All three topics are selected so the Words row overflows at every app width. Actual content controls open a category and enter reorder mode; the cover update preserves cards, focus, landing scroll and category row scroll, the open chapter and edit state.'),
   play: async () => {
     const previous = (await db.decks.toArray())[0]!;
     await creationReachChecklist();
+    await userEvent.click(await creationElement('[data-action="creation/toggle-checklist-item"][data-index="2"]'));
     const id = await creationCommit();
     await closed();
     expect((await db.decks.get(id))?.illustration?.state).toBe('pending');
     const app = getScenario().app;
-    const chapter = await creationElement<HTMLElement>('.textbook-chapter');
-    app.ui.transition('content/jump-chapter', { chapterKey: chapter.dataset.chapterKey! });
-    await userEvent.click(await creationElement('[data-action="content/menu-edit"]'));
-    const row = await creationElement<HTMLElement>('.card-row-wrapper');
-    const focus = await creationElement<HTMLElement>('[data-action="content/done"]');
+    const reader = await phrasebookLanding();
+    await userEvent.click(reader.querySelector<HTMLElement>('.chapter-card[data-chapter-kind="category"] .chapter-card-header')!);
+    await settledChapterSheet();
+    await userEvent.click(await creationElement('.chapter-sheet-edit'));
+    const row = activeChapterPage().querySelector<HTMLElement>('.card-row-wrapper')!;
+    const focus = await creationElement<HTMLElement>('.chapter-sheet-done');
     focus.focus();
-    const reader = await creationElement<HTMLElement>('[data-region="textbook-reader"]');
-    const shelf = await creationElement<HTMLElement>('.textbook-shelf');
+    const deckRow = reader.querySelector<HTMLElement>('.chapter-row')!;
     reader.scrollTop = 160;
-    shelf.scrollLeft = 70;
-    const position = [reader.scrollTop, shelf.scrollLeft];
+    deckRow.scrollLeft = 70;
+    // Let native scroll snapping settle before recording the positions to preserve.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const position = [reader.scrollTop, deckRow.scrollLeft];
+    expect(position.every((value) => value > 0)).toBe(true);
     const state = app.ui.get('content');
     resolvePending('/phrasebook-image');
     await waitFor(async () => expect((await db.decks.get(id))?.illustration?.state).toBe('ready'));
     await creationElement('.textbook-cover');
-    expect(getScenario().root.querySelector('.card-row-wrapper')).toBe(row);
+    expect(row.isConnected).toBe(true);
     expect(document.activeElement).toBe(focus);
-    expect([reader.scrollTop, shelf.scrollLeft]).toEqual(position);
+    expect([reader.scrollTop, deckRow.scrollLeft]).toEqual(position);
     expect(app.ui.get('content').chapterKey).toBe(state.chapterKey);
     expect(app.ui.get('content').editMode).toBe(true);
     expect(app.ui.get('content').editOrder).toEqual(state.editOrder);

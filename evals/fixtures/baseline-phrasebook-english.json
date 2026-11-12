@@ -1,0 +1,80 @@
+[
+  {
+    "id": "directions-walking-es",
+    "request": {
+      "seed": "asking directions",
+      "language": "es",
+      "ability": "basics",
+      "answers": {
+        "What are you trying to find?": "A landmark or monument",
+        "How are you getting around?": "Walking"
+      },
+      "checklist": [
+        "Get someone's attention",
+        "Ask where a place is",
+        "Understand distance",
+        "Understand left and right",
+        "Ask for clarification",
+        "Thank the helper"
+      ]
+    }
+  },
+  {
+    "id": "directions-transit-es",
+    "request": {
+      "seed": "asking directions",
+      "language": "es",
+      "ability": "basics",
+      "answers": {
+        "What are you trying to find?": "A landmark or monument",
+        "How are you getting around?": "Using public transport"
+      },
+      "checklist": [
+        "Get someone's attention",
+        "Ask where a place is",
+        "Understand distance",
+        "Understand left and right",
+        "Ask for clarification",
+        "Thank the helper"
+      ]
+    }
+  },
+  {
+    "id": "surf-beginner-es",
+    "request": {
+      "seed": "surf vacation in Costa Rica",
+      "language": "es",
+      "ability": "basics",
+      "answers": {
+        "What is your current surfing level?": "Beginner",
+        "Where are you staying?": "Surf camp"
+      },
+      "checklist": [
+        "Rent a surfboard",
+        "Book a surf lesson",
+        "Ask about wave conditions",
+        "Buy sunscreen and wax",
+        "Chat with local surfers"
+      ]
+    }
+  },
+  {
+    "id": "family-dinner-first-meeting-es",
+    "request": {
+      "seed": "dinner with my partner’s parents",
+      "language": "es",
+      "ability": "basics",
+      "answers": {
+        "How well do you know them?": "First time meeting them",
+        "Where is the dinner taking place?": "At their home"
+      },
+      "checklist": [
+        "Greet and introduce myself",
+        "Compliment the home or food",
+        "Answer questions about myself",
+        "Discuss food preferences",
+        "Thank them and say goodbye"
+      ]
+    }
+  }
+]

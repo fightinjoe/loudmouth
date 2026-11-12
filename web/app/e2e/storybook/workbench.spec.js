@@ -55,12 +55,12 @@ test('first-time preparation commits selected topics once, only after confirmati
   expect((await libraryRows(page, 'decks'))).toHaveLength(1)
   expect((await libraryRows(page, 'groups')).sort((a, b) => a.position - b.position).map(group => group.title)).toEqual(['Ordering drinks', 'Paying the bill'])
   await expect(page.locator('.creation-panel')).toHaveCount(0)
-  await expect(page.locator('.textbook-chapter[data-chapter-kind="topic"]')).toHaveCount(2)
+  await expect(page.locator('.chapter-card[data-category="words"] .deck-group')).toHaveCount(2)
   await expect(page.locator('.workbench-log li').filter({ hasText: /API \d+ \/phrasebook: success/ })).toHaveCount(1)
 })
 
 test('membership stars stay shared across occurrences but scoped to their book', async ({ page }) => {
-  await openStory(page, 'interactions-textbook--membership-stars')
+  await openStory(page, 'interactions-phrasebook--membership-stars')
   await expect(page.locator('[data-action="content/review"], .card-star')).toHaveCount(0)
   const memberships = await libraryRows(page, 'memberships')
   expect(new Set(memberships.map(row => row.deckId)).size).toBeGreaterThan(1)
@@ -109,7 +109,7 @@ test('Review masks Chunks and retains finite navigation through direction change
   await expect(page.locator('.review-card-wrap')).toHaveAttribute('data-revealed', 'false')
   await page.locator('[data-action="review/close"]').click()
   await expect(page.locator('.review-panel')).toHaveCount(0)
-  await expect(page.locator('.textbook-chapter').first()).toBeVisible()
+  await expect(page.locator('.chapter-card').first()).toBeVisible()
 })
 
 test('late clipboard completion cannot update replacement export and Back has a fallback', async ({ page }) => {
@@ -122,27 +122,52 @@ test('late clipboard completion cannot update replacement export and Back has a 
 })
 
 test('touch reorder saves Done, restores Cancel, and preserves section ownership', async ({ page }) => {
-  await openStory(page, 'interactions-textbook--reorder-done-and-cancel')
+  await openStory(page, 'interactions-phrasebook--reorder-done-and-cancel')
   await expect(page.locator('#content-pane')).not.toHaveAttribute('data-edit-mode')
   const occurrences = await libraryRows(page, 'occurrences')
   expect(occurrences.filter(row => row.section === 'likelyExchanges').every(row => row.exchangeId && Number.isInteger(row.turnIndex))).toBe(true)
 })
 
-test('real pointer shelf dragging scrolls without speaking or opening details', async ({ page }) => {
-  await openStory(page, 'interactions-textbook--textbook-navigation-and-shelves')
-  const shelf = page.locator('.textbook-shelf[data-reorder-region="thingsToSay"]').first()
-  await shelf.evaluate(element => { element.scrollLeft = 0 })
-  await shelf.scrollIntoViewIfNeeded()
-  const bounds = await shelf.boundingBox()
+test('category deck cards reveal their section and Escape returns focus to the opening card', async ({ page }) => {
+  await openStory(page, 'interactions-phrasebook--category-navigation')
+  await expect(page.locator('#content-pane')).not.toHaveAttribute('data-chapter-open')
+  await expect(page.locator('.chapter-card[data-chapter-kind="category"]')).toHaveCount(4)
+  await expect(page.locator('.chapter-card[data-category="words"] .deck-card').last()).toBeFocused()
+})
+
+test('real pointer category row dragging scrolls without opening the chapter, speaking or opening details', async ({ page }) => {
+  await openStory(page, 'interactions-phrasebook--starred-tabs-and-rows')
+  const row = page.locator('.chapter-card[data-category="words"] .chapter-row')
+  await row.evaluate(element => { element.scrollLeft = 0 })
+  await row.scrollIntoViewIfNeeded()
+  const bounds = await row.boundingBox()
   const before = await page.locator('.workbench-log').textContent()
   await page.mouse.move(bounds.x + bounds.width - 30, bounds.y + 35)
   await page.mouse.down()
   await page.mouse.move(bounds.x + 30, bounds.y + 35, { steps: 12 })
   await page.mouse.up()
-  await expect.poll(() => shelf.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  await expect.poll(() => row.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  await expect(page.locator('#content-pane')).not.toHaveAttribute('data-chapter-open')
   await expect(page.locator('#details-layer')).toHaveAttribute('data-details-state', 'closed')
   const after = await page.locator('.workbench-log').textContent()
   expect((after.match(/Speech ja:/g) ?? []).length).toBe((before.match(/Speech ja:/g) ?? []).length)
+})
+
+test('real pointer Starred pager dragging settles on the next tab', async ({ page }) => {
+  await openStory(page, 'interactions-phrasebook--starred-tabs-and-rows')
+  await page.locator('.chapter-card--starred .chapter-card-header').click()
+  await expect(page.locator('#content-pane')).toHaveAttribute('data-chapter-open')
+  await page.locator('.chapter-tab[data-tab="words"]').click()
+  await expect(page.locator('.chapter-tab[aria-selected="true"]')).toHaveAttribute('data-tab', 'words')
+  const pager = page.locator('[data-region="chapter-pager"]')
+  await expect.poll(() => pager.evaluate(element => element.scrollLeft)).toBe(0)
+  const bounds = await pager.boundingBox()
+  await page.mouse.move(bounds.x + bounds.width - 20, bounds.y + 80)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + 20, bounds.y + 80, { steps: 12 })
+  await page.mouse.up()
+  await expect(page.locator('.chapter-tab[aria-selected="true"]')).toHaveAttribute('data-tab', 'phrases')
+  await expect(page.locator('#details-layer')).toHaveAttribute('data-details-state', 'closed')
 })
 
 test('switching stories resets only sandbox storage and cancels pending requests', async ({ page }) => {

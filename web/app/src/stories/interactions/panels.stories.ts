@@ -169,7 +169,7 @@ export const SettingsAndJson: Story = {
       if (clipboardResult === 'error') throw new Error('Fixture clipboard rejection');
       copied = text; logScenarioEvent('Clipboard write', `${text.length} characters`);
     } } });
-    await click('.textbook-book-tools [data-action="content/menu-settings"]');
+    await click('.phrasebook-tools [data-action="content/menu-settings"]');
     await ready('#ds-name-row');
     for (const answer of [null, '   ']) {
       promptResult = answer;
@@ -224,7 +224,7 @@ export const SettingsAndJson: Story = {
     expect(element('.json-pane-textarea')).toHaveAttribute('readonly');
     await click('.json-pane-back');
     await waitFor(() => expect(root.querySelector('.json-panel')).toBeNull());
-    await click('.textbook-book-tools [data-action="content/menu-settings"]');
+    await click('.phrasebook-tools [data-action="content/menu-settings"]');
     await ready('#ds-delete-row');
     confirmResult = true;
     await click('#ds-delete-row');

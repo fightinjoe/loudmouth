@@ -133,8 +133,8 @@ Gestures live inside each pane's `bindEvents` and wire directly to **static hand
 
 The old `src/js/gestures.js` factory module is **removed**. Each pane co-locates its own gesture wiring next to the contract that owns the static handle. Examples in the current tree:
 
-- `src/panes/content-pane-gestures.js` — shell swipe, card-row reveal swipe, and edit-mode reorder. All three are wired to handles rendered by the content pane.
-- `src/components/bottom-sheet.js` — swipe-down-to-dismiss, wired to `.sheet-handle` inside every action pane.
+- `src/panes/content-pane-gestures.ts` — shell edge swipe, mouse dragging of the landing's card rows and the Starred sheet pager, Arrow/Home/End on focused landing rows, and edit-mode reorder. Wired to the content pane's static root, shell handle, and reorder handle.
+- `src/components/bottom-sheet.ts` — swipe-down-to-dismiss, wired to `.sheet-handle` inside every action pane.
 
 All gestures follow the axis-lock, real-time tracking, and `data-dragging` suppression patterns described in the Swipe gesture pattern section above. They never call a transition during `touchmove` — only on `touchend`/`touchcancel` (Rule 6).
 
@@ -146,8 +146,8 @@ The Loudmouth web app organizes UI state, panes, events, and gestures according 
 
 When implementing a new pane, follow the contract in Rule 3 verbatim: a default export of `{ namespace, initialState, transitions, render, bindEvents }`. The `host` argument to `bindEvents` provides `ui` (the state machine) and `delegate` (the layer's single click handler). The primitives that back the protocol live in:
 
-- `src/js/uiState.js` — `createUIState`, `createHost`, `setAttrSafe`, `setListHTMLSafe`.
-- `src/js/delegate.js` — `createDelegate`.
+- `src/js/uiState.ts` — `createUIState`, `createHost`, `setAttrSafe`, `setListHTMLSafe`.
+- `src/js/delegate.ts` — `createDelegate`.
 
 Cross-pane communication goes through `host.ui` transitions, never through method bags or direct imports of other panes.
 
@@ -169,7 +169,7 @@ persisted card field. `/phrase-breakdown` and its gateway route must deploy with
 
 **End-to-end smoke tests** live in `e2e/`. Use Playwright against the production build. Run with `npm run test:e2e`; `npm run test:all` runs unit + e2e. `e2e/action-panes.smoke.spec.js` opens every action-pane kind in a real browser and fails on ANY console error or uncaught exception — the guard for runtime-only bugs (e.g. a temporal-dead-zone `ReferenceError` in an `onMount` closure) that unit tests and the build don't catch. Both run in CI on every PR touching `web/app/**` (`.github/workflows/web-app-ci.yml`).
 
-The app exposes `window.__loudmouth = { ui, db }` (see `src/panes/app.js`) so e2e tests drive `action/open` transitions and seed decks the same way the app does internally. It's inert in production. When you add a new action-pane kind, add it to the `KINDS` list in the smoke spec.
+The app exposes `window.__loudmouth = { ui, db }` (see `src/panes/app.ts`) so e2e tests drive `action/open` transitions and seed decks the same way the app does internally. It's inert in production. When you add a new action-pane kind, add it to the `KINDS` list in the smoke spec.
 
 ## Docs to keep current
 

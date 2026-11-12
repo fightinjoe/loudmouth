@@ -36,7 +36,19 @@ test('hostile historical source stays inert through the real card lifecycle', as
     return {deckId:deck.id,entryKey:entry.key,phraseId:entry.cardId,chunkId:entries.find(entry=>entry.card.type==='chunk').cardId}
   },payload)
 
-  const row = page.locator(`[data-entry-key="${entryKey}"].card-row`)
+  // Landing cards render the hostile topic title and translation as text.
+  const phrasesCard = page.locator('[data-region="chapter-list"] > .chapter-card[data-category="phrases"] .deck-card')
+  await expect(phrasesCard.locator('.deck-card-label')).toHaveText(payload)
+  await expect(phrasesCard.locator('.deck-card-english')).toHaveText(payload)
+  const exchangeGroup = page.locator('[data-region="chapter-list"] > .chapter-card[data-category="exchanges"] .deck-group')
+  await expect(exchangeGroup).toHaveAttribute('aria-label', payload)
+  await expect(exchangeGroup.locator('.deck-card-label')).toHaveText(payload)
+  await phrasesCard.click()
+  const sheet = page.locator('[data-region="chapter-sheet"]')
+  await expect(sheet.locator('[data-region="chapter-sheet-title"]')).toHaveText('Key phrases')
+  const openPage = sheet.locator('.chapter-page:not([inert])')
+  await expect(openPage.locator('[data-topic-id] > .chapter-group-title')).toHaveText(payload)
+  const row = openPage.locator(`[data-entry-key="${entryKey}"].card-row`)
   await expect(row.locator('.card-term-english')).toHaveText(payload)
   await expect(row.locator('.card-term-target rt')).toHaveText('ねこ')
   await expect(row.locator('.card-term-target')).toContainText(payload)
@@ -48,7 +60,7 @@ test('hostile historical source stays inert through the real card lifecycle', as
   },deckId)).toEqual([phraseId])
 
   await page.reload()
-  await expect(page.locator('.card-term-english').first()).toHaveText(payload)
+  await expect(page.locator('[data-region="chapter-list"] > .chapter-card[data-category="phrases"] .deck-card-label')).toHaveText(payload)
   await page.evaluate(async deckId=>{
     const {db,ui}=window.__loudmouth
     ui.transition('action/open',{kind:'review',payload:{deck:await db.db.decks.get(deckId),cards:await db.getReviewCards(deckId)}})

@@ -14,8 +14,9 @@ guided conversation. The learner answers context questions, chooses conversation
 receives **Things to say**, **Likely exchanges** with explicit alternative responses, **Words** in
 titled families, and a linear **Example conversation**, in that order for each topic.
 Its value is learning language on the learner's terms, not speaking on their behalf or imposing a
-fixed curriculum. Web presents continuous illustrated chapters with two-row Word/phrase shelves,
-sequential exchanges and examples, supplemental saved material, and a deduplicated Starred collection.
+fixed curriculum. Web presents an illustrated landing of category cards — Words, Key phrases,
+Exchanges and Conversation — each opening one sheet that gathers that category from every topic,
+plus supplemental saved material and a deduplicated Starred collection.
 Review uses the same phrasebook-scoped starred set.
 
 ## User and problem
@@ -49,10 +50,10 @@ The web app and API support Chinese, Japanese, Spanish, Czech, and Ukrainian.
    canonical cards and stars are shared. Initial memberships are unstarred; cover completion never delays text saving.
 4. **Prioritize:** stars belong to the current phrasebook. Starring an analysis candidate saves its
    learning target and historical evidence; unstarring retains both.
-5. **Review:** browse continuous topic chapters containing Things to say, Likely exchanges, titled
-   Word families, and Example conversation, or jump to **Starred**. Review the phrasebook's starred
-   set with reveal, direction switching, pronunciation, and swiping. Words use dictionary forms;
-   Chunks retain their original source context.
+5. **Review:** open a category from the phrasebook landing — Words, Key phrases (Things to say),
+   Exchanges or Conversation — to browse it across every topic, or open **Starred**. Review the
+   phrasebook's starred set with reveal, direction switching, pronunciation, and swiping. Words use
+   dictionary forms; Chunks retain their original source context.
 
 Web Phrase cards support on-demand semantic breakdowns in the details layer. Opening analysis
 does not save cards. Explicit target stars save Words or Chunks; Regenerate refreshes disposable
@@ -81,8 +82,10 @@ analysis without overwriting saved teaching. Character and Grammar card types re
 - Guided phrasebook creation through `/context` → `/phrasebook`, with dynamic context questions and
   a checklist of conversations to prepare.
 - Four-section topic generation: Things to say, Likely exchanges, Words in titled families, Example conversation.
-- Web continuous textbook chapters with two-row learning shelves, optional supplemental collections,
-  and phrasebook-scoped review with reveal, direction toggle, swipe navigation, and audio. This does not establish iOS parity.
+- Web phrasebook landing with category cards (Words, Key phrases, Exchanges, Conversation), one
+  chapter sheet page per category, optional supplemental collections, a Starred pane, and
+  phrasebook-scoped review with reveal, direction toggle, swipe navigation, and audio. This does not
+  establish iOS parity.
 - Illustrated home navigation with seeded creation ideas and complete library shelves.
 - Web phrase breakdowns with source-aligned semantic parts, contextual explanations, and dictionary
   Words; explicit stars save learning targets to the active phrasebook.

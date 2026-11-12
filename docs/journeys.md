@@ -109,33 +109,49 @@ Content *(phrasebook)*.
 **One-line:** The learner opens a phrasebook, browses conversations and vocabulary, and stars the cards
 they want in the review set.
 
-**Panes traversed:** Navigation *(library)* → Content *(phrasebook)*, optionally Details *(card)*.
+**Panes traversed:** Navigation *(library)* → Content *(phrasebook landing → chapter sheet)*, optionally
+Details *(card)*.
 
 ### Step by step
 
-1. **Open a phrasebook.** Selecting a recent or language-grouped phrasebook opens its continuous
-   illustrated textbook, as does completing creation.
-2. **Browse chapters.**
-   - Every Group remains a distinct chapter, including groups with equal titles.
-   - Each chapter shows **Things to say**, **Likely exchanges**, **Words** with family titles, and
-     **Example conversation**, in that order. Swipe phrase and Word shelves horizontally while the
-     textbook scrolls vertically; exchange turns and example lines remain sequential.
-   - Unplaced entries occupy supplemental **Translations**, **Words**, or **Chunks** sections.
-   - **In this phrasebook** jumps to chapters; **Starred** is always available, even at zero.
-     **Review starred cards** stays reachable and is disabled until the phrasebook has stars.
-3. **Read an exchange or example.** Speaker metadata renders learner and partner turns on opposite
-   sides. Each titled exchange has explicit response options within a turn, separated by “or”;
-   Example conversation is a separate linear sequence without alternative separators.
-4. **Use a card.** On web, tapping a card speaks it. Long-press a phrase for 500 ms to open its
-   breakdown; right-click or Shift+F10 provides the same action. Select a phrase part or use
+1. **Open a phrasebook.** Selecting a recent or language-grouped phrasebook opens its illustrated
+   landing, as does completing creation. The bubble title collapses to a slim bar as the landing
+   scrolls.
+2. **Choose a category.**
+   - A **Starred** card leads the landing once the phrasebook has stars; it is absent at zero.
+   - Each category with content — **Words**, **Key phrases**, **Exchanges**, **Conversation** — has
+     one card with its glyph and count. Words and Exchanges rows hold one card per family or
+     exchange, headed by its title and clustered by topic; Key phrases and Conversation rows hold one
+     card per topic, headed by the topic title, including topics with equal titles. Swipe or drag a
+     row sideways while the landing scrolls vertically.
+   - Unplaced entries appear as supplemental **Translations**, **Words**, or **Chunks** cards after
+     the categories.
+   - **Review starred cards** stays in the landing's tray and is disabled until the phrasebook has
+     stars.
+3. **Open the chapter sheet.** A category header opens that category from the top; a deck card opens
+   it scrolled to that family, exchange, or topic, briefly highlighting an exchange. The category is
+   one page covering every topic: Words and Exchanges sections are headed by family or exchange
+   title with the topic underneath, Key phrases and Conversation sections by topic, and headings stay
+   pinned while their section scrolls. The sheet title is a chapter menu for switching to Starred,
+   another category, or a collection without closing the sheet. Back, the scrim, or Escape returns
+   to the landing.
+4. **Read an exchange or example.** Exchanges read top to bottom: learner turns left on gray, partner
+   turns right on white. Each titled exchange has explicit response options within a turn,
+   separated by “or”; Example conversation is a separate linear sequence without alternative
+   separators.
+5. **Use a card.** On web, tapping a card in the sheet speaks it. Long-press a phrase for 500 ms to
+   open its breakdown; right-click or Shift+F10 provides the same action. Select a phrase part or use
    **SHOW ALL** to inspect every explanation; optional patterns include notes and another example.
    The source stays visible during generation and errors, with Retry after a failure.
-5. **Prioritize.** The star affordance changes the review set without opening details or speaking.
-   Starred cards turn blue; the final Starred chapter deduplicates memberships in Review order.
-6. **Return or maintain content.** Close, Escape, or the scrim returns to the original card and scroll
-   position. The phrasebook title menu exposes settings and reorder, not card-content editing.
-   Reorder stays within a section, one exchange turn's response options, or one Word family.
-   Opening another pane dismisses the breakdown rather than stacking task interfaces.
+6. **Prioritize.** The star affordance changes the review set without opening details or speaking.
+   Starred cards take the phrasebook accent tint; the Starred sheet deduplicates memberships in
+   Review order under **Words** and **Phrases** tabs, remembering the tab for this phrasebook during
+   the session, and each row's **In context ›** opens its category at that card.
+7. **Return or maintain content.** Close, Escape, or the scrim returns to the original card and scroll
+   position. Settings open from the title bar; **Reorder cards** sits in the chapter sheet header.
+   Neither edits card content. Reorder stays within one topic's section, one exchange turn's response
+   options, or one Word family, and closing the sheet discards an unsaved reorder. Opening another
+   pane dismisses the breakdown rather than stacking task interfaces.
 
 ### Key rules
 
@@ -145,7 +161,7 @@ they want in the review set.
 - Conversation order and titled Word families come from generated groups; the learner is not
   asked to file generated cards. Shared Words keep their placements in every topic/family.
 - Starring is bounded binary emphasis, not a score or progress state.
-- **Review starred cards** remains available throughout the textbook and is disabled without stars.
+- **Review starred cards** remains available from the landing and is disabled without stars.
   Extending an existing phrasebook is not part of the current flow.
 
 ## Journey 3 — Reviewing starred cards
@@ -157,9 +173,10 @@ listens to pronunciation, and swipes through the finite set.
 
 ### Entry
 
-The learner taps **Review starred cards** from the textbook with at least one starred card. Review
-receives every starred card in phrasebook order. At zero, Starred remains available with an empty
-state and Review is disabled. Removing the final star does not navigate away.
+The learner taps **Review starred cards** in the phrasebook landing's tray with at least one starred
+card. Review receives every starred card in phrasebook order. At zero, the Starred card disappears
+from the landing and Review is disabled. Removing the final star does not navigate away; an open
+Starred sheet shows its empty state.
 
 ### Review states
 
@@ -197,7 +214,8 @@ phrasebook)*.
 2. Confirm the target language and learner ability in the action pane.
 3. Open the fully populated read-only preview in the content pane.
 4. Tap **Save** in the preview header to commit it to the local library.
-5. Continue in the normal continuous textbook with the same starring, details, and Review behavior.
+5. Continue in the normal phrasebook landing and chapter sheet with the same starring, details, and
+   Review behavior.
 
 Dismissing before **Save** leaves the library unchanged. A preview is transient and does not behave as
 a partially created phrasebook.

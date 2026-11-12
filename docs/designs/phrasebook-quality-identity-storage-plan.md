@@ -96,6 +96,11 @@ Report exact expected/actual text and attributable reviewer judgments rather tha
 A generator cannot certify its own output. New paid studies or production prompt/model changes
 require their own explicit scope; old approvals provide no authority to resume work.
 
+The [shared endpoint baseline strategy](../../evals/BASELINE.md) defines the next comparison:
+three natural seeds in Spanish, four frozen phrasebook profiles including a walking/transit contrast,
+then broader single-model diagnosis and separate safety coverage. Exact profile fixtures and study
+settings must be reviewed before execution; the existing five-context tooling remains unchanged.
+
 ## Identity, storage and independent iOS work
 
 These remain separate future decisions, not prerequisites to the completed v4 milestone:

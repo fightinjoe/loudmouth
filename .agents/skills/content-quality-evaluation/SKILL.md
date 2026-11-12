@@ -5,7 +5,7 @@ description: Propose or independently review phrasebook evaluation scenarios, En
 
 # Content-quality evaluation
 
-Read `evals/README.md`, `evals/rubric.json`, the selected canonical context in
+Read `evals/README.md`, `evals/RUBRIC.md`, the selected canonical context in
 `evals/fixtures/contexts.json`, and the normative contract relevant to the artifact.
 Production contracts: load the relevant endpoint design linked from
 [`docs/API_DESIGN.md`](../../../docs/API_DESIGN.md#endpoints), plus `docs/CARD_SCHEMA.md` for card work.
@@ -48,15 +48,19 @@ The API overview is needed for shared rules, not as a mandatory load of every en
 
 Review the context and actual candidate artifact before opening answer expectations or candidate names.
 If blind review is impossible, disclose it. Record the actual version from `evals/rubric.json`.
+Classify technical problems with the rubric's outcome classes: invalid JSON is reported with its likely
+cause but is not a prompt regression; count overruns are warnings unless about 10× the limit.
 
 ### A — English generation
 
-- Prioritize independently useful essentials, then relevant reusable Words; check supplied facts,
-  level, safety and requested intents. A topic about explaining an allergy needs an allergy statement,
-  not merely ingredient questions.
-- Score coverage, correctness/fit, vocabulary usefulness and conversation flow separately on the
-  existing 0–4 ordinal anchors. Ordinary repetition can be flow 3; do not call every awkward dialogue
-  unusable. An illustrative statement is not automatically an invented fact about the learner.
+- Prioritize natural, independently reusable phrases, then coverage of requested intents; check
+  supplied facts, level and safety. A topic about explaining an allergy needs an allergy statement,
+  not merely ingredient questions. Apply the English generation rules in `evals/RUBRIC.md`.
+- Score coverage, correctness/fit, vocabulary usefulness, conversation flow and naturalness/reusability
+  separately on the existing 0–4 ordinal anchors. Prompt comparisons score every rule; model
+  comparisons report rules the current prompt does not request separately (see the rubric).
+  Ordinary repetition can be flow 3; first-option continuation incoherence is minor unless it teaches
+  a wrong meaning. An illustrative statement is not automatically an invented fact about the learner.
 - A relevant conversation can pause or continue in many plausible ways. Not reaching a preferred
   ending is an improvement suggestion, not a material failure by itself. Cite a concrete unrelated
   reply, contradiction or misleading meaning/role for stronger claims. Evaluate a missing standalone
@@ -146,8 +150,8 @@ reusable tooling, historical review records and temporary workspaces. Original s
 history; record disputed/revised interpretations separately rather than silently rewriting prior grades.
 
 
-Use the record contract in `evals/rubric.json`: context ID, lane, artifact SHA-256, rubric version,
-reviewer, four dimension scores or null, findings, uncertainties and overall disposition. Keep
+Use the record contract in `evals/RUBRIC.md`: context ID, lane, artifact SHA-256, rubric version,
+reviewer, the lane's dimension scores or null, findings, uncertainties and overall disposition. Keep
 assistant, independent model and qualified human assessments attributable and separate. Use
 `usable`, `material-failure` or `unresolved` as review dispositions, not a fabricated promotion seal.
 Name A, B or C in every review sample. Explain `unresolved` as “cannot confidently decide whether

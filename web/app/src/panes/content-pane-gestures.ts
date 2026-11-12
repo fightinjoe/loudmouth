@@ -1,6 +1,6 @@
 import type { AppUI } from "../js/app-types";
 
-/** Native shelves share the pane with shell and section-local reorder handles. */
+/** Native horizontal scrollers (landing rows, Starred pager) share the pane with shell and section-local reorder handles. */
 export interface WireContentGesturesOptions {
   rootEl: HTMLElement;
   handleEl: HTMLElement;
@@ -36,7 +36,10 @@ const OPEN_THRESHOLD = 100;
 const CARD_WRAPPER_SEL = ".card-row-wrapper";
 const REORDER_THRESHOLD_PX = 4;
 const REORDER_PLACEHOLDER_CLASS = "card-row-reorder-placeholder";
-const REORDER_REORDERING_CLASS = "textbook-list--reordering";
+const REORDER_REORDERING_CLASS = "chapter-list--reordering";
+/** Landing rows take arrow keys; rows and the sheet pager take mouse drags. */
+const ROW_SEL = ".chapter-row";
+const DRAG_SEL = ".chapter-row, .chapter-pager";
 const REORDER_GHOST_CLASS = "card-row-reorder-ghost";
 
 function closestHTMLElement(target: EventTarget | null, selector: string): HTMLElement | null {
@@ -49,7 +52,7 @@ function firstTouch(touches: TouchList): Touch | null {
   return touches.item(0);
 }
 
-/** Shelf touches stay native; only mouse drags and focused shelf keys are handled. */
+/** Scroller touches stay native; only mouse drags (rows, pager) and focused-row arrow keys are handled. */
 export function wireContentGestures({
   rootEl,
   handleEl,
@@ -127,7 +130,7 @@ export function wireContentGestures({
   let shelfClickTimer: number | undefined;
 
   rootEl.addEventListener("keydown", (event) => {
-    const shelf = closestHTMLElement(event.target, ".textbook-shelf");
+    const shelf = closestHTMLElement(event.target, ROW_SEL);
     if (!shelf || event.target !== shelf || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || isEdit()) return;
     event.preventDefault();
     const left = event.key === "Home" ? 0 : event.key === "End" ? shelf.scrollWidth
@@ -136,7 +139,7 @@ export function wireContentGestures({
   }, { signal });
 
   rootEl.addEventListener("pointerdown", (event) => {
-    const shelf = closestHTMLElement(event.target, ".textbook-shelf");
+    const shelf = closestHTMLElement(event.target, DRAG_SEL);
     if (!shelf || event.pointerType !== "mouse" || event.button !== 0 || isEdit()) return;
     shelfDrag = { shelf, pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: shelf.scrollLeft, active: false };
   }, { signal });
@@ -206,9 +209,11 @@ export function wireContentGestures({
     const touch = firstTouch(event.touches);
     if (!touch) return;
     const regions = [...rootEl.querySelectorAll<HTMLElement>("[data-reorder-region]")];
+    // Pager pages beside the visible one share its rows' heights, so hit-test both axes.
     const row = regions.flatMap(visibleRows).find((candidate) => {
       const rect = candidate.getBoundingClientRect();
-      return touch.clientY >= rect.top && touch.clientY < rect.bottom;
+      return touch.clientY >= rect.top && touch.clientY < rect.bottom
+        && touch.clientX >= rect.left && touch.clientX < rect.right;
     });
     const region = row?.closest<HTMLElement>("[data-reorder-region]");
     if (!row || !region) return;

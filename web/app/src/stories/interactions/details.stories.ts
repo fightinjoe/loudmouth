@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/html-vite';
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { validateBreakdownRequest, validateBreakdownResponse } from '@catchphrase/card-schema';
-import { db, getCards, getReviewCards, toggleCardStar } from '../../js/db';
+import { db, getCards, getReviewCards, restoreAllData, toggleCardStar } from '../../js/db';
 import { cardRequest, readCache } from '../../js/phrase-breakdown';
 import type { LibraryEntry } from '../../js/library-types';
 import { toImportJson } from '../../components/json-panel';
 import { appStory, getScenario, logScenarioEvent } from '../support/scenario';
-import { breakdownResponse } from '../support/fixtures';
+import { activeChapterPage, openChapter } from '../support/phrasebook';
+import { breakdownResponse, fixtureBackup } from '../support/fixtures';
 import { allowLateResponse, requests, resolvePending, setOutcome, setResponseFactory } from '../support/transport';
 import { speechEvents, ttsText } from '../support/speech';
 
@@ -17,7 +18,14 @@ const meta = {
 } satisfies Meta;
 export default meta;
 type Story = StoryObj;
-const scene = () => appStory({ library: 'single', initial: 'textbook' });
+// Extra Things to say make the open Phrases page scroll, so close restoration can prove it keeps the page position.
+const scene = () => appStory({ library: 'single', initial: 'textbook', setup: async () => {
+  const backup = fixtureBackup();
+  const group = backup.groups[0]!;
+  const source = backup.occurrences.find((entry) => entry.groupId === group.id && entry.section === 'thingsToSay')!;
+  for (let index = 2; index < 10; index += 1) backup.occurrences.push({ ...source, id: `11111111-1111-4111-8111-${String(index).padStart(12, '0')}`, position: index });
+  await restoreAllData(backup);
+} });
 // Match the app's ES2022 runtime/library; Promise.withResolvers requires ES2024.
 const pause = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 const query = <T extends HTMLElement = HTMLElement>(selector: string): T => {
@@ -27,14 +35,16 @@ const query = <T extends HTMLElement = HTMLElement>(selector: string): T => {
 };
 const apiCount = () => requests.filter((request) => request.endpoint === '/phrase-breakdown').length;
 const spoken = () => speechEvents.filter((event) => event.kind === 'speak');
+/** A Phrase row on the visible page of the open chapter sheet; opens Key phrases when none is open. */
 async function phrase(): Promise<{ row: HTMLElement; opener: HTMLButtonElement; entry: LibraryEntry }> {
   // Initial navigation refresh legitimately cancels any active hold. Start gestures
   // only after both independently loaded production panes have mounted their data.
   await waitFor(() => expect(getScenario().app.ui.get('nav').items.length).toBeGreaterThan(0));
+  if (getScenario().app.ui.get('content').chapterKey === null) await openChapter('category:phrases');
   let result: { row: HTMLElement; opener: HTMLButtonElement; entry: LibraryEntry } | undefined;
   await waitFor(() => {
-    const { root, app } = getScenario();
-    for (const row of root.querySelectorAll<HTMLElement>('[data-action="content/open-card"]')) {
+    const { app } = getScenario();
+    for (const row of activeChapterPage().querySelectorAll<HTMLElement>('[data-action="content/open-card"]')) {
       const entry = app.ui.get('content').cards.find((candidate) => candidate.key === row.dataset.entryKey);
       const opener = row.querySelector<HTMLButtonElement>('.card-term');
       if (entry?.card.type === 'phrase' && opener) { result = { row, opener, entry }; break; }
@@ -60,7 +70,7 @@ async function open(method: 'keyboard' | 'context' = 'keyboard') {
     await fireEvent.pointerUp(origin.opener, { pointerId: 42, pointerType: 'mouse', isPrimary: true, button: 2 });
   }
   await waitFor(() => expect(query('#details-layer')).toHaveAttribute('data-details-state', 'open'));
-  await expect(query('[role="dialog"]')).toBeVisible();
+  await expect(query('.details-surface')).toBeVisible();
   return origin;
 }
 async function close(method: 'button' | 'scrim' | 'escape' = 'button'): Promise<void> {
@@ -90,7 +100,7 @@ export const KeyboardFocusAndCloseRestoration: Story = {
   play: async () => {
     const { root } = getScenario();
     const origin = await phrase();
-    const scroll = query<HTMLElement>('[data-region="textbook-reader"]');
+    const scroll = activeChapterPage();
     scroll.scrollTop = 40;
     const originalScroll = scroll.scrollTop;
     await expect(originalScroll).toBeGreaterThan(0);
@@ -113,7 +123,7 @@ export const KeyboardFocusAndCloseRestoration: Story = {
     await expect(origin.opener).toHaveFocus();
     await open(); await ready(); await close('button');
     await expect(origin.opener).toHaveFocus();
-    await expect(root.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    await expect(root.querySelectorAll('.details-surface')).toHaveLength(1);
     logScenarioEvent('Keyboard/context opening and all close paths restore focus and scroll');
   },
 };
@@ -130,7 +140,7 @@ export const ShortTapSpeaksHoldDoesNot: Story = {
     // scrolling during a hold is intentionally a cancellation path in production.
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
     pointer(opener, 'pointerdown');
-    await waitFor(() => expect(query('[role="dialog"]')).toBeVisible(), { timeout: 1500 });
+    await waitFor(() => expect(query('.details-surface')).toBeVisible(), { timeout: 1500 });
     pointer(window, 'pointerup');
     await fireEvent.click(opener);
     await ready();
@@ -168,7 +178,6 @@ export const ContextKeyOpensPhraseOnly: Story = {
   play: async () => {
     const { app } = getScenario();
     await phrase();
-    app.ui.transition('content/jump-chapter', { chapterKey: 'starred' });
     // The real Starred chapter can be empty; use saved membership operations to populate all types.
     const { data } = getScenario();
     const entries = await getCards(data.deck!.id);
@@ -178,16 +187,17 @@ export const ContextKeyOpensPhraseOnly: Story = {
     }
     app.ui.transition('content/cards-changed', { deckId: data.deck!.id, cards: await getCards(data.deck!.id) });
     for (const kind of ['word', 'chunk'] as const) {
+      await openChapter('starred', kind === 'word' ? 'words' : 'phrases');
       let row: HTMLElement | undefined;
       await waitFor(() => {
-        row = [...getScenario().root.querySelectorAll<HTMLElement>('[data-action="content/open-card"]')].find((element) => app.ui.get('content').cards.find((entry) => entry.key === element.dataset.entryKey)?.card.type === kind);
+        row = [...activeChapterPage().querySelectorAll<HTMLElement>('[data-action="content/open-card"]')].find((element) => app.ui.get('content').cards.find((entry) => entry.key === element.dataset.entryKey)?.card.type === kind);
         expect(row).toBeDefined();
       });
       await fireEvent.contextMenu(row!);
       await fireEvent.keyDown(row!, { key: 'ContextMenu' });
       await expect(app.ui.get('details')).toBeNull();
     }
-    app.ui.transition('content/jump-chapter', { chapterKey: `group:${data.groups[0]!.id}` });
+    await openChapter('category:phrases');
     const origin = await phrase();
     await fireEvent.keyDown(origin.opener, { key: 'ContextMenu' });
     await ready();
@@ -367,9 +377,9 @@ export const ActionAndContentSwitchReleaseFocus: Story = {
     app.ui.transition('action/close');
     await waitFor(() => expect(root.querySelector('.json-pane-back')).toBeNull());
     await open(); await ready();
-    app.ui.transition('content/jump-chapter', { chapterKey: 'starred' });
+    await openChapter('starred');
     await expect(query('#details-layer')).toHaveAttribute('data-details-state', 'closed');
-    const destination = root.querySelector<HTMLElement>('#content-pane button');
+    const destination = root.querySelector<HTMLElement>('#content-pane .chapter-sheet-back');
     if (!destination) throw new Error('Content switch needs a focus destination');
     destination.focus();
     await pause(550);

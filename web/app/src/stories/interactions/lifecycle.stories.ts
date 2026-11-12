@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/html-vite';
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { getReviewCards } from '../../js/db';
 import { appStory, getScenario, logScenarioEvent, onScenarioCleanup, replaceScenarioProperty } from '../support/scenario';
+import { activeChapterPage, openChapter, phrasebookLanding } from '../support/phrasebook';
 import { requests, resolvePending } from '../support/transport';
 
 const meta = {
@@ -19,7 +20,7 @@ async function reconnect(): Promise<void> {
   const parent = host.parentElement!;
   host.remove();
   parent.append(host);
-  await waitFor(() => expect(getScenario().root.querySelector('.textbook-chapter')).toBeInTheDocument());
+  await phrasebookLanding();
 }
 
 export const PendingCreationReplacement: Story = {
@@ -34,15 +35,15 @@ export const PendingCreationReplacement: Story = {
     resolvePending();
     expect(getScenario().app.ui.get('action')).toBeNull();
     expect(getScenario().root.querySelector('.creation-panel')).not.toBeInTheDocument();
-    logScenarioEvent('PASS', 'Pending creation aborted; replacement remains the textbook');
+    logScenarioEvent('PASS', 'Pending creation aborted; replacement remains the phrasebook');
   },
 };
 
 export const PendingBreakdownReplacement: Story = {
   ...appStory({ library: 'single', initial: 'textbook', outcomes: { '/phrase-breakdown': 'pending' } }),
   play: async () => {
-    await waitFor(() => expect(getScenario().root.querySelector('.card-term')).toBeInTheDocument());
-    const opener = getScenario().root.querySelector<HTMLElement>('.card-term')!;
+    await openChapter('category:phrases');
+    const opener = activeChapterPage().querySelector<HTMLElement>('.card-term')!;
     opener.focus();
     await fireEvent.keyDown(opener, { key: 'F10', shiftKey: true });
     await waitFor(() => expect(requests.some(request => request.endpoint === '/phrase-breakdown' && request.status === 'pending')).toBe(true));

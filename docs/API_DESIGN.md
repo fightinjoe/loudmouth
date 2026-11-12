@@ -113,7 +113,8 @@ Current endpoint limitations belong with their endpoint, including the low-prior
 semantic continuation warning, not in a second global behavior catalog.
 
 - [API operations](../api/README.md): configuration, implementation map, local development, tests and deployment.
-- [Evaluation guidance](../evals/README.md) and [rubric](../evals/rubric.json): current workflows, scoped reporting and quality assessment.
+- [Evaluation guidance](../evals/README.md) and [rubric](../evals/RUBRIC.md): current workflows, scoped reporting and quality assessment.
+- [To-do](TODO.md): decided non-prompt API work and production test/fix/deploy items.
 - [Product brief](BRIEF.md): goals, scope and deferred product work.
 - [Interaction design](DESIGN.md) and [journeys](journeys.md): client flows and state.
 - [Card schema](CARD_SCHEMA.md): shared card contracts, identity, evidence and persistence.

@@ -25,7 +25,9 @@ from bottom to top: **shell**, **content**, **details**, and **action**.
   phrasebook library shelves, language-grouped navigation, and the new-phrasebook entry point.
   Opening library navigation reveals it.
 - **Content pane** (content) — shows the selected phrasebook or a browse list. Changing content swaps
-  this pane's screen rather than adding a layer.
+  this pane's screen rather than adding a layer. A phrasebook's **chapter sheet** is a modal surface
+  inside the content pane, not a separate layer: it covers the landing and keeps the details and
+  action layers above it.
 - **Details pane** (details) — an expanding phrase-card modal over a scrim on web. It explains one
   phrase and returns to the original card and content scroll position when dismissed.
 - **Action pane** (action) — an optional modal bottom sheet over a scrim. It hosts new-phrasebook
@@ -125,7 +127,7 @@ Dismissal aborts text requests and discards uncommitted results. Incomplete save
 Context completion starts independent seed-based cover work. Answer/checklist changes reuse it;
 a new seed or dismissal before commit cancels it. Atomic text commit binds the request identity to
 the saved phrasebook, after which closing creation does not cancel it. A late result updates only
-that book's illustration and visible backdrop, without remounting cards or resetting chapter, scroll,
+that book's illustration and visible artwork, without remounting cards or resetting chapter, tab, scroll,
 focus, or reorder state. Failed art is nonfatal. Reload marks interrupted pending art failed without
 automatically restarting paid work.
 
@@ -144,45 +146,81 @@ saved phrasebook. Durable transaction and cancellation boundaries remain authori
 
 ## Phrasebook view
 
-Web phrasebooks are continuous, situation-specific textbooks. The fixed foreground title contains
-library navigation, settings, reorder controls, and the target language; the body scrolls vertically
-under it. There are no topic tabs, paged panels, or edge swipes that compete with horizontal shelves.
-The expandable **In this phrasebook** contents and **Starred** shortcut jump to stable chapter IDs.
-This web adoption does not change native iOS.
+The design record is `explorations/phrasebook-organization/PHRASEBOOK_ORGANIZATION.html`
+(iteration 6, "Organized by category"). A web phrasebook opens on a vertically scrolling **landing**
+of category cards; each category opens in a **chapter sheet** that gathers that category from every
+topic. This supersedes the iteration 5 topic decks, which gave each topic its own landing card and
+tabbed sheet. This web adoption does not change native iOS.
 
-Each Group is a chapter, ordered by stored Group position and identified by Group ID even when
-titles duplicate. Chapters contain **Things to say**, **Likely exchanges**, **Words** with family
-titles, and **Example conversation**, in that order. Things to say and each Word family use two-row
-horizontal shelves. Shelves fill top-to-bottom before advancing a column; native touch scrolling,
-desktop dragging, and focused Arrow/Home/End navigation reveal further items. Long text wraps
-rather than clipping.
+The fixed title layer starts as a speech-bubble title over the illustration, with Library on the
+left and Settings (stored phrasebooks) or **Save** (previews) on the right. Once the landing scrolls
+past 150 px the bubble gives way to a slim single-line title bar; it returns below 110 px, so small
+scrolls near the threshold do not flicker. The illustration and the target-language pill scroll
+with the content; the white reading surface starts beneath the illustration.
 
-Each likely exchange has its own title and alternating-speaker turns, with explicit alternative
-responses inside a turn. Example conversation is linear, with one phrase per speaker turn.
-Exchanges and examples are never reordered into shelves: learner and partner lines retain their
-side and sequence. “or” appears only between explicit response options within one exchange turn,
-never between adjacent example lines or inferred from matching speakers.
-Each Phrase occurrence supplies its own translation, topic, section, and local position; exchange
-options also retain exchange ID and turn index. Repeated occurrences may share a durable Phrase
-without sharing presentation state. Exact-English cross-topic Things to say duplicates are removed
-at commit; empty sections are omitted. Every Word-family placement remains even when the canonical
-Word is shared across topics. Exchange and family titles, IDs and order are durable.
+The landing lists, in order: a **Starred** card when the phrasebook has stars (absent at zero), one
+card per category with content — **Words**, **Key phrases**, **Exchanges**, **Conversation** — then
+supplemental **Translations**, **Words**, and **Chunks** cards when unplaced entries exist. A
+category card has a header (glyph, category title with its count, **Open**) and one horizontally
+snapping row of deck cards. Words counts word-family groups and Exchanges counts exchanges; their
+deck cards are headed by the family or exchange title and clustered per topic. Key phrases and
+Conversation count topics and have one deck card per topic, headed by the topic title; Conversation
+cards preview the first lines as speaker-aligned bubbles. Topics follow stored Group position and
+are identified by Group ID even when titles duplicate. Each deck card previews its first item with
+English and a count; empty families, exchanges and topic sections are omitted, and a category with
+no content has no card. Touch scrolls the row natively; desktop mouse drag and focused
+Arrow/Home/End keys also move it. The Starred card groups starred Words by family title and starred
+Phrases and Chunks under **Phrases**. Deck cards are previews: labels, first item and count truncate
+to one line and English to three; category names wrap to two lines. Full text is in the chapter
+sheet, where card text wraps.
 
-Supplemental **Translations**, **Words**, and **Chunks** follow when unplaced entries exist.
-Topic Word placements are not copied into supplemental Words. A final **Starred** chapter is always
-available, including its empty state. It contains each starred membership once in saved entry order,
-the same order as Review; repeated Phrases use their first saved occurrence and translation.
-The persistent **Review starred cards** action is available throughout the textbook and disabled
-when there are no stars.
+A category header opens its chapter at the top; a deck card opens the same chapter scrolled to that
+family, exchange or topic section, briefly highlighting an exchange. The sheet is modal: the
+landing, title layer, and Review tray become inert; Back, the scrim, or Escape close it and return
+focus to the opener. Its title is a **chapter menu** listing Starred (only when stars exist), the
+categories with content (the current chapter is always listed), then the supplemental collections;
+picking an item replaces the content. Arrow/Home/End move within the menu, and Escape closes the
+menu before the sheet.
 
-The backdrop shows saved contextual artwork against warm ivory reading paper. The unchanged API
-generates a 16:9 watercolor cover, not a seamless tiled pattern. Ready artwork is contained without
-cropping or repeating; existing saved images are reused without automatic regeneration. Missing,
-pending, and failed artwork uses the repeating static frog paper. Ready completion changes only
-the backdrop and library thumbnail, without remounting cards or resetting scroll, focus, or reorder.
+A category chapter is one vertical page without tabs covering every topic. Words sections are
+headed by family and Exchanges sections by exchange title, each with its topic named underneath;
+Key phrases and Conversation sections are headed by topic. Section headings stay pinned while their
+section scrolls. Supplemental collections show one list without tabs. A category without content
+shows a short empty message.
+
+Exchanges read vertically: learner turns sit left on gray, partner turns right on white with a
+border. Explicit response options inside one turn are separated by “or”; “or” never appears
+between adjacent example lines or is inferred from matching speakers. Example conversation is linear,
+one phrase per speaker turn. Each Phrase occurrence supplies its own translation, topic, section,
+and local position; exchange options also retain exchange ID and turn index. Repeated occurrences
+may share a durable Phrase without sharing presentation state. Exact-English cross-topic Things to
+say duplicates are removed at commit; empty sections are omitted. Every Word-family placement
+remains even when the canonical Word is shared across topics. Exchange and family titles, IDs and
+order are durable. Topic Word placements are not copied into supplemental Words.
+
+The **Starred** sheet has **Words** and **Phrases** tabs over a horizontally snapping pager; tapping
+a tab, Arrow keys on the tabs, or swiping the pager changes tab. The Starred tab is remembered for
+the current phrasebook during the session and resets when another phrasebook is selected. Starred
+contains each starred membership once in saved entry order, the same order as Review; repeated
+Phrases use their first saved occurrence and translation. Each row shows its context (topic and Word
+family) and an **In context ›** link that opens the entry's category chapter and highlights the row.
+The landing's **Review starred cards** tray is available on stored phrasebooks and disabled when
+there are no stars.
+
+Saving a whole exchange as one review item is not implemented; the exploration records it only as
+a schema proposal, and stars remain per card.
+
+Ready saved artwork fills the masked header illustration without repeating; existing saved images
+are reused without automatic regeneration. The unchanged API generates a 16:9 watercolor cover, not
+a seamless tiled pattern. Missing, pending, and failed artwork uses the repeating static frog paper.
+Ready completion changes only the illustration and library thumbnail, without remounting cards or
+resetting scroll, focus, or reorder.
+
+Phrasebook color comes from `--phrasebook-*` tokens in `web/app/src/styles/textbook.css`, all derived
+from one `--phrasebook-accent`. No per-phrasebook accent is persisted yet, so every phrasebook uses
+the default green.
 
 Typography uses Hepta Slab titles, Roboto Condensed section labels, and Manrope language cards.
-White rounded cards sit on paper; pale green edge-attached labels separate learning sections.
 Target language and any reading precede English. Japanese displays script with available furigana
 or romaji according to the phrasebook reading setting; absent romaji retains script.
 Chinese pinyin remains ruby-aligned. Word definitions remain smaller optional teaching text.
@@ -190,24 +228,27 @@ Chunk cards show the full immutable source with its saved span highlighted.
 
 Stars are independent 44px targets and update every occurrence of a membership without changing
 another phrasebook. Unstarring keeps the saved card, membership, and evidence. Live counts are
-announced; removing a focused Starred row restores focus to a remaining row, its chapter, or the
-Starred shortcut rather than losing it.
+announced; removing a focused Starred row moves focus to the next remaining star or the sheet's
+Back button rather than losing it.
 
-Cards can be starred for review when they have a membership in the active phrasebook. Tapping any
-card speaks it: Phrases use their pronunciation, Words their dictionary headword, and Chunks the
-full preserved source snapshot. Phrase breakdown opens on a 500 ms long press, right-click, or
-Shift+F10/Context Menu key while the card is focused. Movement, scrolling, cancellation, or navigation
-cancels the hold; its release never also plays audio. Stars remain independent tap targets.
-There is no card speaker icon or visible Explore phrase link.
+Cards can be starred for review when they have a membership in the active phrasebook. Landing deck
+cards only open the sheet; card rows in the sheet or language browse speak on tap:
+Phrases use their pronunciation, Words their dictionary headword, and Chunks the full preserved
+source snapshot. Phrase breakdown opens on a 500 ms long press, right-click, or Shift+F10/Context
+Menu key while the card is focused. Movement, scrolling, cancellation, or navigation cancels the
+hold; its release never also plays audio. Stars remain independent tap targets. There is no card
+speaker icon or visible Explore phrase link.
 
-**Reorder cards** changes shelves into vertical lists and keeps reordering within Things to say
-or Example conversation, within a single exchange turn's options, or within a single Word family.
-It updates placements or occurrences, never canonical card identity, exchange/turn ownership or
-family ownership. Contents and Starred have no reorder overlay. Card-content editing and its swipe
-edit/delete actions are removed from the web app; card taps do not open an editor. Phrasebook
-settings, including naming, remain available from the title menu. Preview **Save**, source details,
-and language browsing remain available; language-wide browsing has no star/review controls without
-a phrasebook.
+**Reorder cards** is a control in the chapter sheet header of a stored phrasebook while a category
+or supplemental collection is open; Starred has no reorder. **Done** saves and **Cancel** restores;
+closing the sheet leaves reorder without saving. Reordering stays within one topic's Key phrases
+(Things to say) or Example conversation section, within a single exchange turn's options, or within
+a single Word family. It updates placements or occurrences, never canonical card identity,
+exchange/turn ownership or family ownership. Card-content editing and its swipe edit/delete actions
+are removed from the web app; card taps do not open an editor. Phrasebook settings, including
+naming, open from the title layer's Settings button. Preview **Save**, source details, and language
+browsing remain available; language-wide browsing is a plain list with no chapter sheet and no
+star/review controls without a phrasebook.
 
 Physical-device thumb reach, VoiceOver, and iOS Safari gesture behavior require their own checks.
 Very long titles with enlarged text remain a hierarchy stress case. A new situation starts guided
@@ -256,10 +297,11 @@ drag-to-dismiss in this variant. Native iOS behavior is unchanged.
 
 ## Review
 
-Review is a full-height action-pane mode opened from a phrasebook. Its study set contains one joined
-entry per starred membership in phrasebook display order; a repeated Phrase uses that phrasebook's
-first occurrence. Default order preserves that list, while the saved reverse or random setting is
-applied once when the review session opens. With no starred memberships, the action is unavailable.
+Review is a full-height action-pane mode opened from the **Review starred cards** tray on a stored
+phrasebook's landing. Its study set contains one joined entry per starred membership in saved entry
+order, the same order as the Starred sheet; a repeated Phrase uses that phrasebook's first
+occurrence. Default order preserves that list, while the saved reverse or random setting is applied
+once when the review session opens. With no starred memberships, the tray's action is disabled.
 
 Each target keeps its own review contract:
 

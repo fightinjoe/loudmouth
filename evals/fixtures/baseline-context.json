@@ -1,0 +1,26 @@
+[
+  {
+    "id": "directions-es",
+    "request": {
+      "seed": "asking directions",
+      "language": "es",
+      "ability": "basics"
+    }
+  },
+  {
+    "id": "surf-es",
+    "request": {
+      "seed": "surf vacation in Costa Rica",
+      "language": "es",
+      "ability": "basics"
+    }
+  },
+  {
+    "id": "family-dinner-es",
+    "request": {
+      "seed": "dinner with my partner’s parents",
+      "language": "es",
+      "ability": "basics"
+    }
+  }
+]

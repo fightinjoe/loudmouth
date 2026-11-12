@@ -7,7 +7,6 @@ import { renderSourceContext } from "./source-context";
 export interface RenderCardRowOptions {
   readOnly?: boolean;
   conversation?: boolean;
-  wordTile?: boolean;
   optionSeparator?: boolean;
 }
 
@@ -19,7 +18,7 @@ export interface RenderCardRowOptions {
 export function renderCardRow(
   entry: LibraryEntry,
   readingDisplay: ReadingDisplay = "reading",
-  { readOnly = false, conversation = true, wordTile = false, optionSeparator = false }: RenderCardRowOptions = {},
+  { readOnly = false, conversation = true, optionSeparator = false }: RenderCardRowOptions = {},
 ): string {
   const { card, occurrence } = entry;
   const entryKey = escapeHTML(entry.key);
@@ -29,7 +28,7 @@ export function renderCardRow(
   const canStar = !readOnly && entry.membership !== undefined;
   return `
     <div
-      class="card-row-wrapper shrink-0 overflow-hidden${wordTile ? " card-word-tile" : ""}"
+      class="card-row-wrapper shrink-0 overflow-hidden"
       ${speaker ? `data-speaker="${speaker}"` : ""}
       ${optionSeparator ? "data-option-separator" : ""}
       data-entry-key="${entryKey}"

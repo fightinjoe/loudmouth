@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phrasebook creation · Catchphrase exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hepta+Slab:wght@600&amp;family=Manrope:wght@400;500;600;700&amp;family=Roboto+Condensed:wght@400;500;600&amp;family=Roboto+Flex:opsz,wght@8..144,400..700&amp;display=swap" rel="stylesheet">
+<style>
+/* ---------- Study page chrome (shared with the phrasebook-organization study) ---------- */
+:root{color-scheme:light;--w:402px;--s:1;--accent:#3c7740;
+ --accent-2:color-mix(in oklab,var(--accent) 80%,white);
+ --accent-soft:color-mix(in oklab,var(--accent) 24%,white);
+ --accent-wash:color-mix(in oklab,var(--accent) 8%,white);
+ --starbg:color-mix(in oklab,var(--accent) 11%,white);
+ --starline:color-mix(in oklab,var(--accent) 22%,white);
+ --g50:#f9fafb;--g100:#f1f3f6;--g200:#e2e7f0;--g300:#cbd2e1;--g400:#94a0b8;--cap:#64718b;--body:#0f182a;--err:#a3361f;
+ /* Current web app creation tokens (web/app/src/styles/textbook.css) */
+ --tb-paper:#f5f1e6;--tb-green:#3c7740;--tb-green-soft:#d3e1cb;--tb-blue:#0875c9;--tb-blue-soft:#dbefff}
+*{box-sizing:border-box}
+body{margin:0;background:#f4f5ef;color:var(--body);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1820px;margin:auto;padding:40px 24px 72px}
+h1,h2,h3,h4,p{margin:0}
+.intro{max-width:900px}.intro p{color:var(--cap);margin-top:10px}
+h1{font:600 clamp(34px,4.6vw,54px)/1.08 "Hepta Slab",Georgia,serif;color:var(--accent);letter-spacing:-.02em;margin:12px 0 14px}
+.eyebrow{font:500 12px/1.4 "Roboto Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+a{color:var(--accent);text-underline-offset:3px}
+.links{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;font-size:13px}
+button,select,input,textarea{font:inherit;color:inherit}button{cursor:pointer}
+:focus-visible{outline:3px solid #b5582d;outline-offset:-3px}
+.controls{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;align-items:end;gap:12px 18px;background:#fff;border:1px solid var(--g200);border-radius:12px;padding:16px;margin:26px 0 10px;box-shadow:0 4px 16px rgba(15,24,42,.06)}
+.controls label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650}
+.controls select{min-height:44px;background:#fff;border:1px solid #b8c4b5;border-radius:6px;padding:8px}
+.controls .reset{min-height:44px;background:#fff;border:1px solid #b8c4b5;border-radius:6px;padding:8px 14px}
+.caption{font-size:13px;color:var(--cap);margin:10px 0 4px;max-width:1100px}
+#status{min-height:21px;font-size:13px;color:var(--accent);margin-bottom:24px}
+.studies{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,calc(var(--w) + 8px)),1fr));gap:56px 24px;justify-items:center}
+.direction{width:var(--w);max-width:100%}
+.direction>header{margin-bottom:12px;min-height:118px}
+.direction>header h2{font:600 22px/1.25 "Hepta Slab",Georgia,serif;margin-top:4px}
+.direction>header p{font-size:13px;color:var(--cap);margin-top:6px}
+.log{list-style:none;margin:10px 0 0;padding:10px 12px;min-height:96px;background:#fff;border:1px solid var(--g200);border-radius:10px;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--cap)}
+.log li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log li:first-child{color:var(--body)}
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:-1px}
+
+/* ---------- Phone + shared backdrop (the library is a stand-in, identical in every phone) ---------- */
+.phone{--s:1;position:relative;isolation:isolate;width:var(--w);max-width:100%;height:874px;border-radius:68px;overflow:hidden;background:var(--tb-paper);border:1px solid var(--g300);box-shadow:0 4px 10px rgba(0,0,0,.08);font-size:calc(16px * var(--s));font-family:Manrope,"Helvetica Neue",sans-serif;color:var(--body)}
+.phone svg{width:1.25em;height:1.25em;flex:none}
+.lib{position:absolute;inset:0;padding:88px 22px 40px;overflow-y:auto;scrollbar-width:none}
+.lib h3{font:600 2em/1.15 "Hepta Slab",Georgia,serif;color:var(--accent);transform:rotate(-3deg);margin:8px 0 26px}
+.lib-new{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:52px;border:0;border-radius:18px;background:#fff;color:var(--accent);font:600 1em/1.3 Manrope,sans-serif}
+.lib-lbl{font:500 .875em/1.3 "Roboto Condensed",sans-serif;text-transform:uppercase;color:var(--accent);margin:26px 0 8px}
+.lib-book{background:#fff;border-radius:20px;padding:16px 18px;margin-bottom:8px}
+.lib-book b{display:block;font:600 1.125em/1.3 Manrope,sans-serif;overflow-wrap:anywhere}
+.lib-book span{font-size:.875em;color:var(--cap)}
+.lib-book.fresh{background:var(--starbg)}
+.lib-empty{color:var(--cap);font-size:.9375em}
+.scrim{position:absolute;inset:0;z-index:20;background:rgba(84,108,156,.3);opacity:0;pointer-events:none;transition:opacity .25s}
+.phone.open .scrim{opacity:1;pointer-events:auto}
+.pane{position:absolute;left:0;right:0;bottom:0;z-index:30;display:flex;flex-direction:column;overflow:hidden;transform:translateY(103%);visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),visibility 0s linear .32s}
+.phone.open .pane{transform:none;visibility:visible;transition:transform .32s cubic-bezier(.2,.8,.2,1),visibility 0s}
+.pane[inert]{pointer-events:none}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ======================================================================
+   A · Current (ported from web/app/src/styles/textbook-creation.css, rem → em)
+   ====================================================================== */
+.dA .pane{top:44px;border-radius:30px 30px 0 0;background-color:var(--tb-paper);background-image:linear-gradient(to bottom,transparent,var(--tb-paper) 88%),url(assets/frogs.png);background-size:100% 100%,420px auto;box-shadow:0 -4px 16px rgba(0,0,0,.12);font-family:"Roboto Flex","Noto Sans JP",sans-serif}
+.dA .sheet-handle{position:absolute;z-index:4;top:8px;left:50%;width:36px;height:5px;border-radius:3px;transform:translateX(-50%);background:var(--tb-green-soft)}
+.dA .creation-heading{position:relative;z-index:2;flex:0 0 auto;padding-bottom:3em;background:url(assets/header.svg) center bottom/100% 100% no-repeat}
+.dA .pane-header{display:flex;align-items:center;gap:8px;padding:16px 20px 6px}
+.dA .pane-header-title{flex:1;min-width:0;text-align:center;font-size:.875em;line-height:1.5;overflow-wrap:anywhere}
+.dA .creation-header-right{flex:0 0 44px}
+.dA .creation-back{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;border:0;border-radius:50%;background:none;color:var(--tb-green)}
+.dA .creation-title-bubble{padding:0 28px 12px}
+.dA .creation-chapter-label{display:table;max-width:100%;margin:0 0 10px;border-radius:7px;padding:4px 9px;background:var(--tb-green-soft);color:var(--tb-green);font-size:.6875em;font-weight:600;line-height:1.5;letter-spacing:.04em}
+.dA .creation-title{margin:0;font:600 clamp(1.625em,6vw,2em)/1.2 "Hepta Slab",Georgia,serif;letter-spacing:-.035em;overflow-wrap:anywhere}
+.dA .creation-step-body{display:flex;flex:1 1 auto;flex-direction:column;gap:20px;min-height:0;padding:12px 20px 24px;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable}
+.dA .creation-step-body>*{flex-shrink:0}
+.dA .creation-question,.dA .creation-checklist,.dA .creation-input-form{min-width:0;margin:0;padding:0;border:0}
+.dA .creation-question-label{display:block;width:100%;margin:0;padding:0;font-size:1.125em;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+.dA .creation-supporting-copy,.dA .creation-question-progress{margin:8px 0 16px;color:var(--cap);font-size:.875em;line-height:1.6}
+.dA .creation-term{border-radius:12px;padding:10px 14px;background:var(--tb-green-soft)}
+.dA .creation-term-text{color:var(--tb-green);font-size:.875em;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+.dA .creation-input-form{display:flex;flex-direction:column;gap:12px;margin-top:auto}
+.dA .creation-input-form .creation-supporting-copy{margin:0}
+.dA .creation-input-field-row{position:relative;border:1px solid var(--tb-green-soft);border-radius:18px;padding:16px 48px 16px 16px;background:#fff}
+.dA .creation-input-field{display:block;width:100%;min-height:5em;max-height:min(30vh,14em);margin:0;border:0;padding:0;background:transparent;font-size:1em;line-height:1.6;resize:none;overflow-y:auto;overflow-wrap:anywhere}
+.dA .creation-input-field:focus{outline:0}
+.dA ::placeholder{color:var(--cap);opacity:1}
+.dA .creation-input-clear{position:absolute;top:7px;right:4px;display:grid;place-items:center;width:44px;height:44px;border:0;background:none;color:var(--tb-green)}
+.dA .creation-input-wrap[data-has-value=false] .creation-input-clear{display:none}
+.dA .creation-language-choice{display:flex;align-items:center;gap:8px;min-height:48px;border:1px solid var(--tb-green-soft);border-radius:12px;padding:10px 14px;background:#fff;font-size:.875em;line-height:1.5;text-align:left}
+.dA .creation-language-choice>:first-child{flex:1;min-width:0}
+.dA .creation-language-change{color:var(--tb-blue)}
+.dA .creation-radio-items,.dA .creation-checklist-items{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.dA .creation-radio-item,.dA .creation-checklist-item{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;border:1px solid var(--tb-green-soft);border-radius:14px;padding:16px;background:#fff;text-align:left;cursor:pointer}
+.dA .creation-radio-item>span,.dA .creation-checklist-item>span:last-child{min-width:0;font-size:1em;line-height:1.5;overflow-wrap:anywhere}
+.dA .creation-radio-item:has(:checked),.dA .creation-checklist-item[aria-pressed=true]{border-color:var(--tb-blue);background:var(--tb-blue-soft)}
+.dA .creation-radio-item input[type=radio]{appearance:none;flex:0 0 22px;width:22px;height:22px;margin:0;border:2px solid var(--tb-green);border-radius:50%;background:#fff;cursor:pointer}
+.dA .creation-radio-item input[type=radio]:checked{border-color:var(--tb-blue);background:radial-gradient(circle,var(--tb-blue) 0 5px,#fff 5px)}
+.dA .creation-other-label{flex:1;min-width:0;font-size:.875em;line-height:1.5}
+.dA .creation-other-input{display:block;width:100%;min-height:44px;margin-top:4px;border:0;border-bottom:1px solid var(--tb-green);border-radius:0;padding:4px 0;background:transparent;font-size:1.143em;line-height:1.5}
+.dA .creation-selection-count{align-self:flex-start;margin:0;border-radius:8px;padding:4px 9px;background:var(--tb-green-soft);color:var(--tb-green);font-size:.75em;line-height:1.5}
+.dA .creation-checklist{display:flex;flex-direction:column}
+.dA .creation-checklist-check{display:flex;align-items:center;justify-content:center;flex:0 0 24px;width:24px;height:24px;border:1.5px solid var(--tb-green);border-radius:6px;color:#fff}
+.dA .creation-checklist-check svg{width:18px;height:18px}
+.dA .creation-checklist-item[aria-pressed=true] .creation-checklist-check{border-color:var(--tb-blue);background:var(--tb-blue)}
+.dA .creation-context-footer{position:relative;z-index:1;display:flex;flex:0 0 auto;gap:12px;padding:12px 20px 28px;background:var(--tb-paper)}
+.dA .creation-primary,.dA .creation-secondary{display:flex;flex:1 1 0;align-items:center;justify-content:center;gap:8px;min-width:0;min-height:54px;border:1px solid transparent;border-radius:16px;padding:14px 16px;font-size:1em;font-weight:600;line-height:1.5;text-align:center;overflow-wrap:anywhere}
+.dA .creation-primary{background:var(--tb-blue);color:#fff}
+.dA .creation-secondary{border-color:var(--tb-green-soft);background:#fff;color:var(--tb-blue)}
+.dA button:disabled{opacity:.5;cursor:default}
+.dA :is(button,input,textarea):focus-visible{outline:3px solid var(--tb-blue);outline-offset:3px}
+.dA .creation-radio-item:focus-within,.dA .creation-input-field-row:focus-within{outline:2px solid var(--tb-blue);outline-offset:2px}
+.dA [data-focus]:focus{outline:none}
+.dA .creation-wait-body{align-items:center;justify-content:safe center;gap:16px;text-align:center}
+.dA .creation-wait-body .creation-term{align-self:stretch}
+.dA .creation-status-copy{font:600 1.25em/1.5 "Hepta Slab",Georgia,serif}
+.dA .creation-wait-body .creation-supporting-copy{max-width:28em;margin:0}
+.dA .creation-loading-mark{display:flex;align-items:flex-end;justify-content:center;gap:5px;width:76px;height:76px;border:2px solid var(--tb-green);border-radius:15px 15px 22px 15px;padding:20px 12px;background:var(--tb-green-soft);transform:rotate(-6deg)}
+.dA .creation-loading-mark span{width:10px;height:24px;border-radius:3px;background:var(--tb-green);animation:pulse 1.5s ease-in-out infinite}
+.dA .creation-loading-mark span:nth-child(2){height:34px;animation-delay:.15s}
+.dA .creation-loading-mark span:nth-child(3){height:28px;animation-delay:.3s}
+.dA .creation-error-message{border:1px solid var(--tb-green-soft);border-radius:18px;padding:20px;background:#fff;overflow-wrap:anywhere}
+.dA .creation-error-message>p+p{margin-top:12px}
+.dA .creation-error-message .creation-supporting-copy{margin-bottom:0}
+.dA.narrow .pane-header{padding-inline:12px}.dA.narrow .creation-title-bubble{padding-inline:22px}.dA.narrow .creation-step-body{padding-inline:14px}.dA.narrow .creation-context-footer{gap:8px;padding-inline:14px}
+
+/* ======================================================================
+   Shared iteration-2 vocabulary for B, C, D: white pane, filled (not outlined) fields,
+   one question per page, the grouped conversation list from iteration 1 B.
+   ====================================================================== */
+.dB .pane,.dC .pane,.dD .pane{height:92.68%;background:#fff;border-radius:40px 40px 62px 62px;filter:drop-shadow(0 -4px 7px rgba(0,0,0,.25))}
+.nh{position:relative;z-index:6;display:flex;align-items:center;gap:4px;min-height:64px;padding:20px 20px 0;flex:none}
+.nh-back{display:grid;place-items:center;flex:none;width:44px;height:44px;margin:0 -7px;border:0;border-radius:50%;background:none;color:var(--accent)}
+.nh-title{flex:1;min-width:0;text-align:center;font:400 1.375em/1.27 "Roboto Condensed",sans-serif;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.nh-side{flex:none;width:30px}
+.lbl{font:500 .875em/1.3 "Roboto Condensed",sans-serif;color:var(--accent);text-transform:uppercase;letter-spacing:.02em;overflow-wrap:anywhere}
+.muted{color:var(--cap)}
+.hint{font-size:.9375em;line-height:1.5;color:var(--cap)}
+.pill-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;border:0;border-radius:28px;padding:12px 22px;background:var(--accent);color:#fff;font:600 1.0625em/1.3 Manrope,sans-serif;text-align:center;overflow-wrap:break-word}
+.pill-btn:disabled{background:var(--g100);color:var(--g400);cursor:default}
+.text-btn{display:flex;align-items:center;justify-content:center;gap:6px;min-height:48px;border:0;border-radius:24px;padding:0 18px;background:none;color:var(--accent);font:600 1em/1.3 Manrope,sans-serif}
+.foot{flex:none;display:flex;flex-wrap:wrap-reverse;gap:4px 8px;align-items:center;justify-content:center;padding:12px 20px 30px;background:#fff}
+.foot .pill-btn{flex:1 1 11em;width:auto}
+.dots{display:inline-flex;gap:5px}.dots i{width:7px;height:7px;border-radius:50%;background:var(--accent-2);animation:pulse 1.2s ease-in-out infinite}.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+.bar{position:relative;height:4px;border-radius:2px;background:var(--accent-wash);overflow:hidden}.bar::after{content:"";position:absolute;inset:0;width:40%;border-radius:2px;background:var(--accent);animation:slide 1.4s ease-in-out infinite}
+.dB [data-focus]:focus,.dC [data-focus]:focus,.dD [data-focus]:focus,[data-autofocus]:not(input,textarea,button):focus{outline:none}
+/* Page stage: the outgoing page is kept briefly so Next and Back animate both pages. */
+[data-stage]{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+[data-page]{position:relative;z-index:1;flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;background:#fff}
+.pg-out{position:absolute;inset:0;z-index:0;overflow:hidden;background:#fff;pointer-events:none}
+.pg-out.back{z-index:2}
+/* Filled fields */
+.fill{position:relative;border-radius:20px;background:var(--g100);padding:16px 18px;transition:background .15s,box-shadow .15s}
+.fill:focus-within{background:#fff;box-shadow:0 0 0 2px var(--accent-soft),0 6px 18px rgba(15,24,42,.08)}
+.fill textarea{display:block;width:100%;min-height:5.2em;max-height:10em;border:0;background:none;padding:0 34px 0 0;resize:none;font:400 1.1875em/1.45 Manrope,sans-serif;overflow-wrap:anywhere}
+.fill textarea:focus{outline:0}
+.fill ::placeholder{color:var(--g400);opacity:1}
+.fill .x{position:absolute;right:4px;top:4px;display:grid;place-items:center;width:44px;height:44px;border:0;background:none;color:var(--g400)}
+.fill[data-has-value=false] .x{display:none}
+.count{align-self:flex-end;font:500 .75em/1 "Roboto Condensed",sans-serif;color:var(--g400)}
+/* Language dropdown (pattern from the phrasebook pane's title menu) */
+.lwrap{position:relative;display:inline-flex}
+.lbtn{display:inline-flex;align-items:center;gap:8px;min-height:44px;border:0;border-radius:22px;background:var(--g100);padding:0 12px 0 16px;font:600 .9375em/1.2 Manrope,sans-serif;color:var(--body)}
+.lbtn.need{background:var(--accent-wash);color:var(--accent)}
+.lbtn svg{width:18px;height:18px;color:var(--accent);transition:transform .18s}
+.lbtn[aria-expanded=true] svg{transform:rotate(180deg)}
+.lmenu{position:absolute;top:calc(100% + 6px);left:0;z-index:20;width:min(260px,calc(var(--w) - 40px));padding:6px;border-radius:18px;background:#fff;box-shadow:0 12px 32px rgba(15,24,42,.18),0 0 0 1px var(--g200)}
+.lmenu .note{padding:8px 10px 6px;font-size:.8125em;line-height:1.4;color:var(--cap)}
+.litem{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;border:0;border-radius:12px;background:none;padding:8px 10px;text-align:left;font:400 1.0625em/1.25 Manrope,sans-serif}
+.litem:hover,.litem:focus-visible{background:var(--g50)}
+.litem[aria-checked=true]{background:var(--accent-wash);color:var(--accent);font-weight:600}
+.litem .f{font-size:1.3em}.litem span:nth-child(2){flex:1}
+.litem .ck{visibility:hidden;color:var(--accent)}.litem[aria-checked=true] .ck{visibility:visible}
+.refresh{display:flex;align-items:center;gap:10px;margin:0 0 4px;font-size:.875em;color:var(--cap)}
+.notice{border-radius:14px;background:var(--accent-wash);color:var(--accent);padding:10px 14px;font-size:.9375em}
+/* Conversation list: grouped card with check circles (iteration 1 B, kept) */
+.pick{display:flex;flex-direction:column;border-radius:20px;background:#fff;box-shadow:inset 0 0 0 1px var(--g200);overflow:hidden}
+.pick button{display:flex;align-items:center;gap:12px;min-height:54px;border:0;border-top:1px solid var(--g200);background:none;padding:12px 16px;text-align:left;font:400 1.0625em/1.35 Manrope,sans-serif;overflow-wrap:anywhere}
+.pick button:first-child{border-top:0}
+.pick button[aria-pressed=true]{background:var(--starbg)}
+.tick{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--g300);color:#fff}
+.tick svg{width:16px;height:16px}
+[aria-pressed=true]>.tick{background:var(--accent);box-shadow:none}
+/* Radio circle used by B and C */
+.radio{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--g300);background:#fff}
+:checked~.radio{box-shadow:inset 0 0 0 7px var(--accent)}
+.other-in{display:block;width:100%;min-height:44px;margin-top:8px;border:0;border-radius:14px;background:#fff;padding:0 14px;font:400 1em/1.3 Manrope,sans-serif}
+.other-in:focus{outline:0;box-shadow:0 0 0 2px var(--accent-soft)}
+.other-in::placeholder{color:var(--g400)}
+
+/* ======================================================================
+   B · Quiet pages: horizontal slide, sentence with inline language, filled rows, milestone loader
+   ====================================================================== */
+.b2-prog{flex:none;height:4px;margin:12px 24px 0;border-radius:2px;background:var(--g100);overflow:hidden}
+.b2-prog i{display:block;height:100%;border-radius:2px;background:var(--accent);transition:width .3s ease-out}
+.b2-page{display:flex;flex-direction:column;gap:14px;min-height:100%;padding:26px 20px 20px}
+.b2-sent{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font:500 1.0625em/1.4 Manrope,sans-serif;color:var(--cap)}
+.b2-q{font:600 1.5em/1.25 Manrope,sans-serif;overflow-wrap:anywhere}
+.b2-opts{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.b2-opt{display:flex;align-items:center;gap:14px;min-height:58px;border-radius:18px;background:var(--g100);padding:14px 18px;cursor:pointer;font:400 1.125em/1.35 Manrope,sans-serif;overflow-wrap:anywhere;transition:background .15s}
+.b2-opt>span:last-child{flex:1;min-width:0}
+.b2-opt:has(input:checked){background:var(--starbg)}
+.b2-opt:has(input:focus-visible){outline:3px solid #b5582d;outline-offset:2px}
+.b2-opt.other{flex-wrap:wrap}
+.b2-ld{display:flex;flex-direction:column;gap:18px;border-radius:24px;background:var(--g50);padding:22px 20px}
+.b2-ld h3{font:600 1.25em/1.3 Manrope,sans-serif}
+.b2-ms{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.b2-ms li{display:flex;gap:12px;align-items:flex-start}
+.b2-ms .ic{display:grid;place-items:center;flex:none;width:26px;height:26px;margin-top:1px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--g300);color:#fff}
+.b2-ms .ic svg{width:16px;height:16px}
+.b2-ms .done .ic{background:var(--accent);box-shadow:none}
+.b2-ms .busy .ic{box-shadow:inset 0 0 0 2.5px var(--accent-wash);border-top:2.5px solid var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+.b2-ms b{display:block;font:600 1em/1.35 Manrope,sans-serif}
+.b2-ms .todo b{color:var(--g400);font-weight:500}
+.b2-ms div>span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;font-size:.875em;line-height:1.4;color:var(--cap);overflow-wrap:anywhere}
+.dB .pg-in.fwd{animation:bInR .32s cubic-bezier(.2,.8,.2,1)}.dB .pg-out.fwd{animation:bOutL .32s cubic-bezier(.2,.8,.2,1) forwards}
+.dB .pg-in.back{animation:bInL .32s cubic-bezier(.2,.8,.2,1)}.dB .pg-out.back{animation:bOutR .32s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes bInR{from{transform:translateX(100%)}}@keyframes bOutL{to{transform:translateX(-30%);opacity:.4}}
+@keyframes bInL{from{transform:translateX(-30%);opacity:.4}}@keyframes bOutR{to{transform:translateX(100%)}}
+
+/* ======================================================================
+   C · Bold band: question in a slab band, language as the pane-title menu, grouped lists, rising pages
+   ====================================================================== */
+.c2-title{flex:1;min-width:0;display:flex;justify-content:center}
+.c2-tbtn{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:44px;border:0;border-radius:12px;background:none;padding:0 8px;font:400 1.375em/1.2 "Roboto Condensed",sans-serif;color:var(--body)}
+.c2-tbtn:hover{background:var(--g50)}
+.c2-tbtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c2-tbtn svg{width:18px;height:18px;color:var(--accent);transition:transform .18s}
+.c2-tbtn[aria-expanded=true] svg{transform:rotate(180deg)}
+.c2-tbtn.need span{color:var(--accent)}
+.nh .lmenu{left:50%;transform:translateX(-50%);top:calc(100% + 2px)}
+.c2-band{margin:14px 16px 0;border-radius:28px;background:var(--accent-wash);padding:22px 22px 24px}
+.c2-band .lbl{margin-bottom:8px}
+.c2-q{font:600 1.5em/1.25 "Hepta Slab",Georgia,serif;color:var(--accent);overflow-wrap:anywhere}
+.c2-band .hint{margin-top:8px}
+.c2-body{display:flex;flex-direction:column;gap:12px;padding:18px 20px 20px}
+.c2-list{display:flex;flex-direction:column;border-radius:20px;background:#fff;box-shadow:inset 0 0 0 1px var(--g200);overflow:hidden}
+.c2-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;min-height:56px;border-top:1px solid var(--g200);padding:12px 16px;cursor:pointer;font:400 1.0625em/1.35 Manrope,sans-serif;overflow-wrap:anywhere}
+.c2-row:first-child{border-top:0}
+.c2-row>span:nth-of-type(2){flex:1;min-width:0}
+.c2-row:has(input:checked){background:var(--starbg)}
+.c2-row:has(input:focus-visible){outline:3px solid #b5582d;outline-offset:-3px}
+.c2-row .other-in{background:var(--g50)}
+.c2-ld{display:flex;flex-direction:column;gap:14px;padding:22px 20px}
+.c2-now{font:600 1.0625em/1.4 Manrope,sans-serif}
+.c2-now span{font-weight:400;color:var(--cap)}
+.c2-rot{border-radius:20px;background:var(--g50);padding:18px 18px 16px;min-height:7.5em}
+.c2-rot .item{margin-top:8px;transition:opacity .25s}
+.c2-rot .item.fade{opacity:0}
+.c2-rot b{display:block;font:600 1.125em/1.35 Manrope,sans-serif;overflow-wrap:anywhere}
+.c2-rot span{display:block;margin-top:2px;font-size:.9375em;color:var(--cap)}
+.c2-pips{display:flex;gap:5px;margin-top:12px}.c2-pips i{width:6px;height:6px;border-radius:50%;background:var(--g300)}.c2-pips i.on{background:var(--accent)}
+.dC .pg-in.fwd{animation:cInU .34s cubic-bezier(.2,.8,.2,1)}.dC .pg-out.fwd{animation:cOutU .22s ease-in forwards}
+.dC .pg-in.back{animation:cInD .34s cubic-bezier(.2,.8,.2,1)}.dC .pg-out.back{animation:cOutD .22s ease-in forwards}
+@keyframes cInU{from{transform:translateY(40px);opacity:0}}@keyframes cOutU{to{transform:translateY(-24px);opacity:0}}
+@keyframes cInD{from{transform:translateY(-40px);opacity:0}}@keyframes cOutD{to{transform:translateY(24px);opacity:0}}
+
+/* ======================================================================
+   D · Answer trail: answers collect in a row under the header; filled tiles; category-preview loader
+   ====================================================================== */
+.d2-trail{position:relative;z-index:5;flex:none;display:flex;align-items:center;gap:6px;padding:12px 0 4px 20px}
+.d2-row{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;padding-right:20px;scrollbar-width:none;-webkit-mask:linear-gradient(90deg,transparent,#000 14px);mask:linear-gradient(90deg,transparent,#000 14px)}
+.d2-row::-webkit-scrollbar{display:none}
+.d2-chip{flex:none;display:inline-flex;align-items:center;gap:6px;max-width:15em;min-height:40px;border:0;border-radius:20px;background:var(--g100);padding:0 14px;font:500 .875em/1.2 Manrope,sans-serif;color:var(--body)}
+.d2-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.d2-chip.cur{background:var(--accent-wash);color:var(--accent);font-weight:600}
+.d2-chip svg{width:16px;height:16px;color:var(--accent)}
+.d2-chip.need{background:var(--accent-wash);color:var(--accent)}
+.d2-trail .lmenu{left:20px;top:calc(100% + 2px)}
+.d2-page{display:flex;flex-direction:column;gap:14px;min-height:100%;padding:22px 20px 20px}
+.d2-q{font:600 1.5em/1.25 Manrope,sans-serif;overflow-wrap:anywhere}
+.d2-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5em,1fr));gap:8px;margin-top:6px}
+.d2-tiles.one{grid-template-columns:1fr}
+.d2-tile{display:flex;align-items:center;min-height:72px;border-radius:20px;background:var(--g100);padding:14px 18px;cursor:pointer;font:500 1.0625em/1.3 Manrope,sans-serif;overflow-wrap:break-word;transition:background .15s,color .15s}
+.d2-tile:has(input:checked){background:var(--accent);color:#fff}
+.d2-tile:has(input:focus-visible){outline:3px solid #b5582d;outline-offset:2px}
+.d2-other{border-radius:20px;background:var(--g100);padding:6px 6px 6px 18px;display:flex;align-items:center;gap:8px}
+.d2-other .other-in{margin:0;background:none;padding:0}
+.d2-other .other-in:focus{box-shadow:none}
+.d2-other:focus-within{box-shadow:0 0 0 2px var(--accent-soft)}
+.d2-cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5em,1fr));gap:8px}
+.d2-cat{border-radius:18px;background:var(--g50);padding:14px 14px 16px;display:flex;flex-direction:column;gap:8px;min-height:7.5em}
+.d2-cat .lbl{overflow-wrap:normal}
+.d2-cat i{display:block;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--g100) 0%,var(--g200) 50%,var(--g100) 100%);background-size:200% 100%;animation:shimmer 1.6s linear infinite}
+.d2-cat i:nth-child(3){width:70%}.d2-cat i:nth-child(4){width:85%}
+.d2-for{font-size:.875em;color:var(--cap);overflow-wrap:anywhere}
+.d2-for b{color:var(--body);font-weight:600}
+.dD .pg-in.fwd,.dD .pg-in.back{animation:dIn .28s ease-out}
+.dD .pg-out.fwd,.dD .pg-out.back{animation:dOut .2s ease-in forwards}
+@keyframes dIn{from{opacity:0;transform:scale(.97)}}@keyframes dOut{to{opacity:0}}
+
+@media(prefers-reduced-motion:reduce){.pane,.phone.open .pane,.scrim{transition:none}.dots i,.bar::after,.d2-cat i,.b2-ms .busy .ic,.dA .creation-loading-mark span{animation:none}.pg-in,.pg-out{animation:none!important}}
+
+/* Notes */
+.notes{margin-top:56px;border-top:1px solid var(--g200);padding-top:24px;max-width:1240px}
+.notes h2{font:600 26px/1.2 "Hepta Slab",Georgia,serif;margin:6px 0 10px}
+.notes p{margin-top:10px;max-width:1040px}
+.notes table{border-collapse:collapse;width:100%;margin-top:14px;font-size:14px;background:#fff}
+.notes th,.notes td{text-align:left;vertical-align:top;border-bottom:1px solid var(--g200);padding:12px 10px}
+.notes thead th{font:500 13px/1.3 "Roboto Condensed",sans-serif;text-transform:uppercase;color:var(--accent)}
+.notes tbody th{width:150px}
+.notes ul{padding-left:20px}.notes li{margin:6px 0}
+code{font-size:12px}
+@media(max-width:520px){main{padding:24px 10px 48px}.controls{position:static;padding:12px}.phone{border-radius:40px}.notes th,.notes td{padding:10px 6px}.notes tbody th{width:90px}}
+</style>
+</head>
+<body>
+<main>
+<header class="intro">
+<div class="eyebrow">Catchphrase / exploration · iteration 2 · status: exploring</div>
+<h1>What should creating a phrasebook look like?</h1>
+<p><strong>Question.</strong> The phrasebook view now uses the category-deck design (<a href="../phrasebook-organization/PHRASEBOOK_ORGANIZATION.html">phrasebook organization, iteration 6</a>). Guided creation still uses the earlier textbook styling, and its form elements are the weakest part. Inside the same action pane, which visual direction should creation take? Iteration 2 combines what worked in iteration 1 and tries three calmer ways to present it.</p>
+<p><strong>Boundary.</strong> Four phones compare treatments of the same surface and task: describe a situation, answer a few questions, choose conversations, and wait. A is the current web app, unchanged, as the reference. B, C, and D share what iteration 1 kept: one question per page, with Next and Back animating the pages; a white pane with filled rather than outlined fields; the language chosen on the first page from a dropdown; the iteration 1 B conversation list, starting with only the first conversation selected; and a loader that says what is happening. They differ in how bold they are, where the language lives, the answer controls, the page motion, and the loader. Every phone uses one static <code>/context</code> response, whatever you type. Non-goals: prompt or API changes, real requests, cover art, the library, the phrasebook view, and native iOS.</p>
+<nav class="links" aria-label="Study sections"><a href="#lab">Live specimens</a><a href="#directions">Directions</a><a href="#record">Decision record</a><a href="#handoff">Handoff</a><a href="../methodology.md">Methodology</a></nav>
+</header>
+
+<section id="lab" aria-label="Live specimens">
+<form class="controls" id="controls">
+<label>Visit<select id="visit"><option value="first">First visit · no language</option><option value="returning" selected>Returning · Spanish, ability unknown</option><option value="ability">Returning · Spanish, ability known</option></select></label>
+<label>Situation prefill<select id="seed"><option value="empty" selected>Empty</option><option value="seed">Seeded example</option><option value="long">Long (198 characters)</option></select></label>
+<label>Content<select id="content"><option value="surf" selected>Surf capture</option><option value="long">Long labels</option></select></label>
+<label>Responses<select id="speed"><option value="typical" selected>Typical (2.5 s / 5 s)</option><option value="fast">Fast (0.7 s / 1.2 s)</option><option value="slow">Slow (8 s / 14 s)</option><option value="ctxfail">Context fails once</option><option value="pbfail">Phrasebook fails once</option></select></label>
+<label>Show every phone at<select id="jump"><option value="">(live)</option><option value="language">Language</option><option value="topic">Situation</option><option value="questions">First question</option><option value="checklist">Conversations</option><option value="generating">Preparing</option><option value="error">Error</option></select></label>
+<label>Phone width<select id="width"><option>320</option><option selected>402</option><option>430</option></select></label>
+<label>Text size<select id="scale"><option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label>
+<button class="reset" type="reset">Reset study</button>
+</form>
+<p class="caption">Each phone runs the whole flow on its own: type anything, continue, answer, choose conversations, and create. Mock requests resolve after the selected delay; the log under each phone shows what the real client would request, abort, or reuse. Try changing the language after answering a question in B, C, or D: the situation and answers stay, the questions are refreshed for the new language, and only answers that no longer apply (such as language ability) are asked again. “Show every phone at” puts all four on the same step. Back, Cancel, and Escape close menus, then step back or dismiss; a created phrasebook appears in the stand-in library behind the pane, and “New phrasebook” reopens it. Not implemented: drag-to-dismiss, swipe between pages, real title and cover requests (the title is a fixed mock), saving, and on-screen keyboards.</p>
+<p id="status" role="status" aria-live="polite"></p>
+<div class="studies">
+<section class="direction"><header><div class="eyebrow">A · Current · in web app</div><h2>Textbook paper</h2><p>Reference. Frog paper, speech-bubble heading, outlined radio and checkbox rows, blue buttons.</p></header><div class="phone dA" id="phone-a" data-dir="A"></div><ol class="log" id="log-a" aria-label="Phone A requests"></ol></section>
+<section class="direction"><header><div class="eyebrow">B · Iteration 2</div><h2>Quiet pages</h2><p>A sentence with the language inline, filled answer rows, pages that slide sideways, and a loader that lists real milestones.</p></header><div class="phone dB" id="phone-b" data-dir="B"></div><ol class="log" id="log-b" aria-label="Phone B requests"></ol></section>
+<section class="direction"><header><div class="eyebrow">C · Iteration 2</div><h2>Bold band</h2><p>Each question sits in a tinted slab band. The language is the pane title’s menu on every page. Grouped lists, pages that rise.</p></header><div class="phone dC" id="phone-c" data-dir="C"></div><ol class="log" id="log-c" aria-label="Phone C requests"></ol></section>
+<section class="direction"><header><div class="eyebrow">D · Iteration 2</div><h2>Answer trail</h2><p>Answers collect in a row under the header, the language first. Large filled tiles, a crossfade, and a loader that previews the categories.</p></header><div class="phone dD" id="phone-d" data-dir="D"></div><ol class="log" id="log-d" aria-label="Phone D requests"></ol></section>
+</div>
+</section>
+
+<section class="notes" id="directions"><div class="eyebrow">Directions</div><h2>Form elements, side by side</h2>
+<table aria-label="Form element treatments">
+<thead><tr><th>Element</th><th>A · Current</th><th>B · Quiet pages</th><th>C · Bold band</th><th>D · Answer trail</th></tr></thead>
+<tbody>
+<tr><th>Situation</th><td>Outlined white box near the bottom, under a heading and help text.</td><td>The question at the top, then a gray-filled field that turns white with a soft ring on focus.</td><td>The question in the slab band; the filled field directly below it.</td><td>The question at the top, then the same filled field.</td></tr>
+<tr><th>Language</th><td>A row under the field (“Change ›”) opening a separate radio page.</td><td>A dropdown inside the sentence “I’m learning [Spanish ▾]” on the first page only.</td><td>The pane title is the menu (“New Spanish phrasebook ▾”) on every page.</td><td>The first chip of the answer trail, on every page.</td></tr>
+<tr><th>Questions</th><td>Outlined radio rows, Previous / Next, no motion.</td><td>Gray-filled rows with a radio circle; the selected row takes the accent tint. Pages slide sideways.</td><td>One grouped list with hairline dividers, the radio circle, and the accent tint. Pages rise and settle.</td><td>Large filled tiles, two per row when short; the selected tile fills with the accent. Pages crossfade. Earlier answers are tappable chips.</td></tr>
+<tr><th>Conversations</th><td>Outlined checkbox rows, model defaults.</td><td colspan="3">The iteration 1 B grouped list with check circles, starting with only the first conversation selected. The copy calls them conversations that go into the phrasebook’s categories, not chapters.</td></tr>
+<tr><th>Waiting</th><td>Bar-chart mark and a fixed sentence.</td><td>A checklist of real milestones (situation, language or answers, request, saving) with elapsed seconds.</td><td>The iteration 1 C bar with a real status line, plus a panel that rotates through what is being prepared.</td><td>A preview of the four categories the phrasebook will have, shimmering, with the conversations they cover.</td></tr>
+</tbody></table>
+</section>
+
+<section class="notes" id="record"><div class="eyebrow">Decision record</div><h2>Exploring</h2>
+<table aria-label="Decision record"><tbody>
+<tr><th>Status</th><td>Exploring (iteration 2). Nothing selected; the current design (A) remains in the web app.</td></tr>
+<tr><th>Question</th><td>Which visual direction should guided creation take inside the action pane, now that the phrasebook view uses the category-deck design? The main concern is the form elements.</td></tr>
+<tr><th>This iteration’s feedback</th><td>All three iteration 1 directions improved on the current design but fell short. <em>Kept:</em> one context question per screen (A), with Previous and Next animating the content; B’s conversation checklist styling, defaulting to only the first conversation; C’s bolder look, its language selector on the first screen, and its loader, because it leaves room for changing details; D’s language dropdown, though changing it need not reset the flow. <em>Rejected:</em> A’s noise (the see-through background image and outlined form elements); B’s chat framing (an AI styled as a human conversation feels wrong, and content anchored to the bottom made the answer options slow to notice); C’s heavy outlines and large text that hid the prompt, its WYSIWYG title card (the title is rewritten later, the styling felt incongruous, and you edited text below it), and its strongly reinforced chapters, which clash with phrasebooks where topics are a secondary grouping; D’s showing every question at once, its loader inside the button, and conversations popping in.</td></tr>
+<tr><th>Hypotheses</th><td><em>B</em> tests whether a quiet page with the language woven into the opening sentence keeps the prompt prominent. <em>C</em> tests whether boldness can come from one tinted slab band rather than outlines and type size, and whether the pane-title menu (as in the phrasebook view) is the right home for language. <em>D</em> tests whether a visible trail of answers makes earlier answers quick to revisit and makes changing the language mid-flow feel safe. Loaders: whether listing real milestones (B), rotating through what is being prepared (C), or previewing the category structure (D) makes the wait feel informative. These are hypotheses, not observations.</td></tr>
+<tr><th>Proposals beyond styling</th><td>Two iteration 2 behaviors change the <a href="../../docs/DESIGN.md#guided-creation">guided creation</a> contract and need a decision before adoption. <em>First conversation only:</em> the client ignores the model’s suggested <code>checked</code> defaults. <em>Language change keeps answers:</em> today a confirmed language change clears context, answers, and the checklist. Here it keeps the situation, requests <code>/context</code> again for the new language, and carries over answers and conversation choices whose labels still match. Ability is per language, so its answer is dropped unless remembered for the new language, and the flow returns to the first unanswered question.</td></tr>
+<tr><th>Observation</th><td id="observed"><em>Iteration 2</em> (2026-11-06, headless Chromium via Playwright on macOS, 1500–1800 px viewport, no console or page errors). <em>Live flows</em> (Fast responses, Returning · Spanish, ability unknown): in B, C, and D, Next stayed disabled until an answer; 120 ms after Next, the incoming and outgoing pages both carried their forward animation classes, and the outgoing page was gone by 520 ms. Answering Basics and Beginner, then switching to Czech, showed “Updating questions for Czech…”, logged a <code>/context</code> refresh, and kept 1 answer (Beginner; the ability answer was dropped as intended). C and D returned to the ability question with “New for Czech: answer this, then continue.” B, whose language lives on the first page, was taken back there; Continue waited for the refresh and resumed at the ability question. After Conversational, Next showed the surfing level with Beginner still selected. The conversation list opened with only Rent a surfboard selected. Each phone created a Czech “Surfing in Costa Rica” with 2 conversations. The loaders read: B “Writing 2 conversations · Started in the background 1 s ago”; C “Writing 2 conversations · started 1 s ago” with the rotating panel; D the four category cards “Covering Rent a surfboard, Ask about wave conditions”. In D, tapping the situation chip in the trail went back to the situation page with the backward animation. <em>First visit:</em> B–D showed a disabled “Choose a language to continue”; the menu focused its first item, ArrowDown twice and Enter chose Spanish, and Continue was enabled. <em>Failure:</em> “Context fails once” showed each error; Try again resubmitted and reached the ability question. <em>Stress</em> (320 px, 150% text, long labels, 198-character situation) at every jump step, including the open language menu: no element extended past a pane edge after fixes. The first pass found D’s two-column tiles and category labels breaking mid-word (“Conver sational”, “EXCHANGE S”) and B’s milestone text unclamped; tiles and categories now fall back to one column and the detail clamps to three lines. The first pass also found the outgoing page’s radio buttons joining the live radio group, which unchecked a kept answer on the incoming page; the outgoing copy now uses a separate group name. At that size, Back moves below Next, C’s menu title truncates (“New Spani…”), and D’s trail shows a partial chip. Not checked: physical devices, touch, swipes, VoiceOver, on-screen keyboards, and frame-level animation smoothness. <em>Iteration 1</em> (2026-11-06): the four iteration 1 phones completed the flow, stress cases were checked, and A matched the web app’s Storybook stories. Those directions are retired; their implementation is in version history.</td></tr>
+<tr><th>Decision</th><td>Pending feedback. Rejected in iteration 1: chat framing, all questions on one page, WYSIWYG title card, numbered chapters with switches, outlined fields, and a loader inside the button (reasons above).</td></tr>
+<tr><th>Open checks</th><td>Physical iPhone Safari with the on-screen keyboard open (field and footer placement, pane height). Page animations during momentum scroll and with VoiceOver focus moves. VoiceOver announcement of the language menu, the answer trail (D), and the loader’s changing details. Native Dynamic Type. Whether swiping between pages should accompany the animated Next and Back. Whether a <code>/context</code> refresh on language change is worth its cost, and how often the new questions differ in practice.</td></tr>
+</tbody></table>
+</section>
+
+<section class="notes" id="handoff"><div class="eyebrow">Implementation handoff</div><h2>Data assumptions and behavior</h2>
+<ul>
+<li><strong>Fixture.</strong> The <code>/context</code> response is the captured <code>surf-es</code> body in <a href="../../evals/fixtures/captures/baseline-context.json"><code>evals/fixtures/captures/baseline-context.json</code></a> (seed “surf vacation in Costa Rica”, 2 questions, 6 conversations). It is returned for every seed and language. “Long labels” is hand-authored stress content within the <a href="../../docs/api/context.md">context contract</a> limits (5 options, 8 conversations). The mock title “Surfing in Costa Rica” stands in for <a href="../../docs/api/phrasebook-title.md"><code>/phrasebook-title</code></a> and only appears in the library after saving.</li>
+<li><strong>Semantics held constant.</strong> The ability question (None, Basics, Conversational) is prepended only when ability is unknown and has no Other; context questions start unselected; Next stays disabled until an answer; the speculative <code>/phrasebook</code> request starts when the conversation list appears; changing an answer or the situation aborts it; 1–8 conversations; the final wait lasts at least 1000 ms and overlaps any remaining generation; a failure keeps choices and Retry starts fresh work; dismissal aborts everything. Exceptions in B–D are listed under “Proposals beyond styling”.</li>
+<li><strong>Loader truth.</strong> The API reports no progress inside a request. Milestones in B are real client states: the request was sent, the background result is ready or pending (and since when), and saving follows. C’s rotating panel lists what will be prepared, not progress. D’s category cards are an indeterminate shimmer. Elapsed seconds are real.</li>
+<li><strong>Page motion.</strong> The outgoing page stays in place for about 0.3 s while the incoming page enters: B slides horizontally (back reverses), C rises 40 px and fades (back descends), D crossfades with a slight scale. Only page changes animate; selecting an answer does not. Reduced motion removes all of it. Headers, progress, the trail, and footers stay still.</li>
+<li><strong>Pane geometry.</strong> A matches the current full-height sheet (44 px from the top, 30 px top radius, paper and frog background, header bubble). B–D use the phrasebook pane: 92.68% height, 40 / 62 px radii, white, with the back button and condensed title of the pane header. C’s title menu follows the phrasebook pane’s topic and category menu (<code>aria-haspopup="menu"</code>, <code>menuitemradio</code> items, arrow keys, Escape).</li>
+<li><strong>Retry.</strong> After a <code>/context</code> failure, A returns to the situation page as the app does; B–D resubmit the same situation on Try again.</li>
+<li><strong>Limits.</strong> The <code>/context</code> seed limit is 200 characters before trimming; B–D enforce it with <code>maxlength</code> and B shows the count. The current app does not limit the field.</li>
+</ul>
+</section>
+</main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Fixtures ---------- */
+const LANGS={zh:['🇨🇳','Chinese'],ja:['🇯🇵','Japanese'],es:['🇪🇸','Spanish'],cs:['🇨🇿','Czech'],uk:['🇺🇦','Ukrainian']};
+const ORDER=['zh','ja','es','cs','uk'];
+const AQ='What is your language ability?';
+const ABIL=['None','Basics','Conversational'];
+const FIX={
+ surf:{title:'Surfing in Costa Rica',
+  /* evals/fixtures/captures/baseline-context.json · surf-es body, verbatim */
+  questions:[{label:'What is your current surfing level?',options:['Beginner','Intermediate','Advanced']},{label:'Where are you staying?',options:['Surf camp','Hotel or resort','Hostel or Airbnb']}],
+  checklist:[{label:'Rent a surfboard',checked:true},{label:'Book a surf lesson',checked:true},{label:'Ask about wave conditions',checked:true},{label:'Buy sunscreen and wax',checked:true},{label:'Report lost equipment',checked:false},{label:'Chat with local surfers',checked:false}]},
+ long:{title:'Two weeks at a beginner surf camp near Tamarindo with daily lessons',
+  questions:[{label:'Before you paddle out each morning, who will you most often need to talk with on the beach?',options:['The instructor who runs the beginner group at the surf camp','Other travelers in my group','Locals already out in the lineup','Shop staff renting boards and selling wax and sunscreen','Mostly nobody; I’ll be on my own']},{label:'Do you expect to need medical help for cuts, stings, or sunburn?',options:['Yes, I want to be ready','No']}],
+  checklist:[{label:'Explain a reef cut to a pharmacist and ask for supplies',checked:true},{label:'Negotiate a weekly board rental with a damage deposit',checked:true},{label:'Ask the instructor to repeat safety instructions slowly',checked:true},{label:'Report a lost leash and fins at the surf shop',checked:true},{label:'Ask locals where the rip currents are today',checked:true},{label:'Order breakfast before the dawn session',checked:true},{label:'Arrange a shared taxi to a different beach',checked:false},{label:'Small talk in the water between sets',checked:false}]}};
+const SEEDS={empty:'',seed:'surf vacation in Costa Rica',long:'Two weeks at a beginner surf camp near Tamarindo, Costa Rica: morning lessons, renting boards, buying wax and sunscreen, and chatting with locals and other travelers at the beach bar in the evening.'};
+const SPEED={typical:{ctx:2500,pb:5000},fast:{ctx:700,pb:1200},slow:{ctx:8000,pb:14000},ctxfail:{ctx:2500,pb:5000,ctxFail:1},pbfail:{ctx:2500,pb:5000,pbFail:1}};
+const MIN_LOADING=1000;
+
+/* ---------- Icons (web/app/src/icons) ---------- */
+const I={
+ back:'<svg viewBox="-7.446 -3.333 26.667 26.667" aria-hidden="true"><path d="M10 20L0 10L10 0L11.775 1.775L3.55 10L11.775 18.225L10 20Z" fill="currentColor"/></svg>',
+ next:'<svg viewBox="-7.446 -3.333 26.667 26.667" aria-hidden="true"><path d="M1.775 20L0 18.225L8.225 10L0 1.775L1.775 0L11.775 10L1.775 20Z" fill="currentColor"/></svg>',
+ close:'<svg viewBox="-2.333 -2.333 18.667 18.667" aria-hidden="true"><path d="M1.4 14L0 12.6L5.6 7L0 1.4L1.4 0L7 5.6L12.6 0L14 1.4L8.4 7L14 12.6L12.6 14L7 8.4L1.4 14Z" fill="currentColor"/></svg>',
+ check:'<svg viewBox="-2.717 -4.854 21.733 21.733" aria-hidden="true"><path d="M5.7 12.025L0 6.325L1.425 4.9L5.7 9.175L14.875 0L16.3 1.425L5.7 12.025Z" fill="currentColor"/></svg>',
+ caret:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ plus:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'};
+const langLabel=l=>l?`${LANGS[l][0]} ${LANGS[l][1]}`:'';
+const DOTS='<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>';
+const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+
+/* ---------- Settings ---------- */
+const settings={};
+function readSettings(){Object.assign(settings,{visit:$('visit').value,seed:$('seed').value,content:$('content').value,speed:$('speed').value});}
+const rememberedAbility=l=>settings.visit==='ability'&&l==='es'?'Basics':null;
+
+/* Page order, used to choose the animation direction. */
+function pageOrder(s){
+ if(s.step==='language')return 0;
+ if(s.step==='topic')return 1;
+ if(s.step==='generating')return s.phase==='context'?1.5:30;
+ if(s.step==='questions')return 2+s.qi;
+ if(s.step==='checklist')return 20;
+ if(s.step==='error')return s.resume==='checklist'?30:1.5;
+ return 40;
+}
+
+/* ---------- One creation flow per phone. Request semantics follow docs/DESIGN.md#guided-creation;
+   R.firstOnly and R.keepOnLanguage are the iteration 2 proposals. ---------- */
+function makeFlow(phone,R,logEl){
+ const s={};let ctxTok=0,titleTok=0,pbTok=0,commitTok=0,menu=false,lastKey='',lastOrder=null;
+ const fx=()=>FIX[settings.content];
+ const sp=()=>SPEED[settings.speed];
+ function log(msg){s.log.unshift(msg);s.log.length=Math.min(s.log.length,5);logEl.innerHTML=s.log.map(m=>`<li>${esc(m)}</li>`).join('');}
+ const short=t=>t.length>28?t.slice(0,27)+'…':t;
+ function reset(){
+  ctxTok++;titleTok++;pbTok++;commitTok++;menu=false;lastKey='';lastOrder=null;
+  const first=settings.visit==='first';
+  Object.assign(s,{open:true,step:first&&!R.noLanguagePage?'language':'topic',lang:first?undefined:'es',pending:first?undefined:'es',ability:rememberedAbility('es'),
+   topic:SEEDS[settings.seed],contextSeed:null,questions:[],qi:0,answers:{},other:new Set(),checklist:[],error:null,resume:'topic',phase:'context',
+   pb:null,title:null,titleSeed:null,frozen:null,refreshing:null,refreshWait:null,notice:null,waitStart:0,createAt:0,ctxFails:sp().ctxFail||0,pbFails:sp().pbFail||0,
+   library:first?[]:[{title:'Ordering at a café',lang:'ja',count:3}],fresh:null,log:[]});
+  if(first)s.ability=null;
+  logEl.innerHTML='';
+  render();
+ }
+ /* Request mocks */
+ function requestTitle(seed){
+  const tok=++titleTok;s.title=null;s.titleSeed=seed;log(`POST /phrasebook-title · "${short(seed)}"`);
+  setTimeout(()=>{if(tok!==titleTok||!s.open)return;s.title=fx().title;},900);
+ }
+ function abortTitle(){titleTok++;s.titleSeed=null;}
+ function resetContext(){
+  if(s.step==='generating'&&s.phase==='context')log('abort /context');
+  ctxTok++;invalidatePb();s.contextSeed=null;s.questions=[];s.qi=0;s.other.clear();s.checklist=[];s.answers={};s.refreshing=null;
+ }
+ function invalidatePb(why){
+  if(s.pb){if(s.pb.status==='pending')log(`abort /phrasebook${why?' ('+why+')':''}`);else log(`discard /phrasebook result${why?' ('+why+')':''}`);}
+  s.pb=null;pbTok++;
+ }
+ function ensurePb(){
+  if(s.pb)return s.pb;
+  const tok=++pbTok;let done;const promise=new Promise(r=>done=r);
+  const pb={tok,status:'pending',promise,started:Date.now(),readyAt:0};s.pb=pb;
+  log(`POST /phrasebook (speculative) · ${s.checklist.length} conversations · ${s.ability||s.answers[AQ]} · ${s.lang}`);
+  setTimeout(()=>{
+   if(s.pb!==pb){done();return;}
+   if(s.pbFails>0){s.pbFails--;pb.status='error';log('/phrasebook → 502 (mock)');}
+   else{pb.status='ready';pb.readyAt=Date.now();log('/phrasebook → 200, held until Create');}
+   done();
+   if(s.step==='generating'&&s.phase==='phrasebook')render();
+  },sp().pb);
+  return pb;
+ }
+ async function submitTopic(){
+  const t=s.topic.trim();if(!t||!s.lang)return;
+  s.topic=t;if(s.titleSeed!==t)requestTitle(t);
+  s.resume='topic';s.error=null;
+  if(t===s.contextSeed&&s.refreshing){
+   const r=s.refreshing;s.step='generating';s.phase='context';s.waitStart=r.started;render();
+   await r.promise;if(s.refreshing||!s.open||s.step!=='generating')return;
+   s.qi=0;showQorC();return;
+  }
+  if(t===s.contextSeed){s.qi=0;log('reuse /context (same situation)');showQorC();return;}
+  resetContext();s.step='generating';s.phase='context';s.waitStart=Date.now();render();
+  const tok=++ctxTok;
+  log(`POST /context · "${short(t)}" · ${s.lang}${s.ability?' · '+s.ability.toLowerCase():''}`);
+  await sleep(sp().ctx);
+  if(tok!==ctxTok||!s.open)return;
+  if(s.ctxFails>0){s.ctxFails--;log('/context → 502 (mock)');s.error='The service didn’t respond in time (mock 502).';s.step='error';render();return;}
+  loadContext(t);log(`/context → 200 · ${fx().questions.length} questions, ${fx().checklist.length} conversations`);
+  showQorC();
+ }
+ function loadContext(t){
+  s.questions=fx().questions.filter(q=>q.label!==AQ).map(q=>({...q}));
+  if(!s.ability)s.questions.unshift({label:AQ,options:ABIL.slice(),ability:true});
+  if(R.firstOnly){s.checklist=fx().checklist.map((c,i)=>({label:c.label,checked:i===0}));}
+  else{let n=0;s.checklist=fx().checklist.map(c=>{const checked=c.checked&&n<8;if(checked)n++;return{label:c.label,checked};});if(!n&&s.checklist[0])s.checklist[0].checked=true;}
+  s.contextSeed=t;
+ }
+ function showQorC(){s.step=s.questions.length?'questions':'checklist';if(s.step==='checklist')ensurePb();render();}
+ function setAnswer(i,v){
+  const q=s.questions[i];if(!q)return;
+  if(s.answers[q.label]!==v){s.answers[q.label]=v;invalidatePb('answer changed');}
+ }
+ function next(){
+  if(s.refreshing)return;
+  const q=s.questions[s.qi];if(!q||!s.answers[q.label]?.trim())return;
+  s.notice=null;
+  if(s.qi<s.questions.length-1)s.qi++;else{s.step='checklist';ensurePb();}
+  render();
+ }
+ function back(){
+  if(menu){menu=false;render();return;}
+  if(s.step==='topic'||s.step==='generating'||s.step==='error'){close();return;}
+  if(s.step==='language'){if(s.lang){s.pending=s.lang;s.step='topic';render();}else close();return;}
+  if(s.step==='checklist'){s.qi=Math.max(0,s.questions.length-1);s.step=s.questions.length?'questions':'topic';render();return;}
+  if(s.step==='questions'){s.notice=null;if(s.qi>0)s.qi--;else s.step='topic';render();}
+ }
+ /* Current app: a confirmed language change keeps the situation and clears context. */
+ function confirmLang(code){
+  const sel=code||s.pending;if(!sel)return;
+  if(sel!==s.lang){
+   if(s.lang)log(`language → ${sel}: keep situation, clear context`);
+   resetContext();abortTitle();s.frozen=null;s.lang=sel;s.ability=rememberedAbility(sel);
+  }
+  s.pending=sel;s.step='topic';s.error=null;render();
+ }
+ /* Iteration 2 proposal: keep situation, answers, and choices; refresh /context for the new language. */
+ async function changeLanguageKeep(sel){
+  menu=false;
+  if(sel===s.lang){render();return;}
+  const had=s.contextSeed!==null;
+  log(`language → ${sel}: keep situation${had?' and answers; refresh /context':''}`);
+  ctxTok++;invalidatePb('language changed');
+  s.lang=s.pending=sel;s.ability=rememberedAbility(sel);
+  if(!had){render();return;}
+  const tok=ctxTok,seed=s.contextSeed;let done;const promise=new Promise(r=>done=r);
+  s.refreshing={lang:sel,started:Date.now(),promise};render();
+  log(`POST /context · "${short(seed)}" · ${sel}${s.ability?' · '+s.ability.toLowerCase():''} (refresh)`);
+  await sleep(sp().ctx);
+  if(tok!==ctxTok||!s.open){done();return;}
+  const oldAnswers={...s.answers},oldOther=new Set([...s.other].map(i=>s.questions[i]?.label)),oldChecked=new Set(s.checklist.filter(c=>c.checked).map(c=>c.label));
+  delete oldAnswers[AQ];
+  loadContext(seed);s.answers={};s.other.clear();
+  s.questions.forEach((q,i)=>{if(oldAnswers[q.label]!=null){s.answers[q.label]=oldAnswers[q.label];if(oldOther.has(q.label))s.other.add(i);}});
+  const kept=s.checklist.filter(c=>oldChecked.has(c.label)).length;
+  if(kept)s.checklist.forEach(c=>c.checked=oldChecked.has(c.label));
+  const carried=Object.keys(s.answers).length;
+  log(`/context → 200 · kept ${carried} answers, ${kept} conversations`);
+  s.refreshing=null;done();
+  if(s.step==='questions'||s.step==='checklist'){
+   const firstOpen=s.questions.findIndex(q=>!s.answers[q.label]?.trim());
+   if(firstOpen>=0&&(s.step==='checklist'||firstOpen<s.qi)){s.step='questions';s.qi=firstOpen;s.notice=`New for ${LANGS[sel][1]}: answer this, then continue.`;}
+   else if(s.step==='checklist')ensurePb();
+  }
+  render();
+ }
+ async function create(){
+  if(s.step==='generating'||s.refreshing)return;
+  const pb=ensurePb();
+  if(pb.status==='error'){showPbError();return;}
+  s.frozen=s.frozen||s.title||s.topic;abortTitle();
+  s.resume='checklist';s.step='generating';s.phase='phrasebook';s.error=null;s.waitStart=s.createAt=Date.now();render();
+  const tok=++commitTok;
+  log(`Create · title frozen: "${short(s.frozen)}"`);
+  await Promise.all([pb.promise,sleep(MIN_LOADING)]);
+  if(tok!==commitTok||!s.open||s.pb!==pb)return;
+  if(pb.status!=='ready'){showPbError();return;}
+  const kept=s.checklist.filter(c=>c.checked).length;
+  log(`saved locally · ${kept} of ${s.checklist.length} conversations`);
+  s.library.unshift({title:s.frozen,lang:s.lang,count:kept});s.fresh=s.frozen;
+  s.open=false;s.step='done';render();announce(`Phone ${phone.dataset.dir}: created “${s.frozen}”.`);
+ }
+ function showPbError(){s.resume='checklist';s.error='We couldn’t prepare the phrasebook (mock 502).';s.step='error';render();}
+ function retry(){
+  s.error=null;
+  if(s.resume==='checklist'&&s.questions.length){s.step='checklist';invalidatePb();ensurePb();render();return;}
+  s.step='topic';render();if(R.retrySubmits&&s.topic.trim())submitTopic();
+ }
+ function close(){
+  if(!s.open)return;
+  log(s.step==='generating'||s.pb||s.refreshing?'dismiss: abort pending work':'dismiss');
+  ctxTok++;titleTok++;commitTok++;s.pb=null;pbTok++;s.refreshing=null;s.open=false;menu=false;render();
+ }
+ function reopen(){
+  Object.assign(s,{open:true,step:s.lang||R.noLanguagePage?'topic':'language',pending:s.lang,topic:'',contextSeed:null,questions:[],qi:0,answers:{},other:new Set(),checklist:[],error:null,pb:null,title:null,titleSeed:null,frozen:null,fresh:null,refreshing:null,notice:null});
+  lastKey='';lastOrder=null;render();
+ }
+ function toggle(i){
+  const c=s.checklist[i];if(!c)return;
+  const n=s.checklist.filter(x=>x.checked).length;
+  if((c.checked&&n===1)||(!c.checked&&n===8))return;
+  c.checked=!c.checked;render();
+ }
+ /* "Show every phone at": load the fixture synchronously, then land on a step. */
+ function jump(step){
+  ctxTok++;commitTok++;menu=false;s.open=true;s.error=null;s.refreshing=null;s.notice=null;phone.dataset.focusOnRender='0';
+  if(step==='language'){
+   s.pending=s.lang;
+   if(R.noLanguagePage){menu=true;if(s.step!=='questions'&&s.step!=='checklist')s.step='topic';}else s.step='language';
+   render();return;
+  }
+  s.lang=s.lang||'es';s.pending=s.lang;
+  if(!s.topic.trim())s.topic=SEEDS.seed;
+  if(step==='topic'){s.step='topic';render();return;}
+  const t=s.topic.trim();s.topic=t;
+  if(s.contextSeed!==t||!s.questions.length){resetContext();loadContext(t);requestTitle(t);}
+  if(step==='questions'){s.answers={};s.other.clear();invalidatePb();s.qi=0;s.step='questions';render();return;}
+  s.questions.forEach(q=>{if(!s.answers[q.label]?.trim())s.answers[q.label]=q.options[q.ability?1:0];});
+  s.step='checklist';s.qi=s.questions.length-1;ensurePb();
+  if(step==='checklist'){render();return;}
+  if(step==='error'){s.resume='checklist';s.error='We couldn’t prepare the phrasebook (mock 502).';s.step='error';render();return;}
+  if(step==='generating')create();
+ }
+
+ /* Rendering, page motion, focus, and events */
+ const pane=()=>phone.querySelector('.pane');
+ function render(){
+  phone.classList.toggle('open',s.open);
+  phone.classList.toggle('narrow',settings.width<350);
+  const lib=phone.querySelector('.lib');
+  lib.innerHTML=`<h3>Catchphrase</h3><button class="lib-new" type="button" data-act="reopen">${I.plus}New phrasebook</button><p class="lib-lbl">Your phrasebooks</p>${s.library.length?s.library.map(b=>`<div class="lib-book${b.title===s.fresh?' fresh':''}"><b>${esc(b.title)}</b><span>${langLabel(b.lang)} · ${plural(b.count,'conversation')}</span></div>`).join(''):'<p class="lib-empty">None yet.</p>'}`;
+  lib.inert=s.open;
+  const p=pane();p.inert=!s.open;
+  const key=`${s.step}|${s.qi}|${s.phase}`,order=pageOrder(s);
+  const active=document.activeElement,keep=p.contains(active)?active.dataset.key:null;
+  const old=p.querySelector('[data-stage]>[data-page]'),oldScroll=old?.scrollTop||0;
+  p.innerHTML=s.open?R.render(s,{menu}):'';
+  sync();
+  R.after?.(p,s);
+  const pageChanged=key!==lastKey&&lastKey;
+  if(!s.open){if(p.contains(active)||active===document.body)lib.querySelector('.lib-new')?.focus({preventScroll:true});}
+  else if(pageChanged&&phone.dataset.focusOnRender==='1'&&(p.contains(active)||active===document.body)){(p.querySelector('[data-autofocus]')||p.querySelector('[data-focus]'))?.focus({preventScroll:true});}
+  else if(keep){const el=p.querySelector(`[data-key="${CSS.escape(keep)}"]`);el?.focus({preventScroll:true});if(el&&/^(text|textarea)$/.test(el.type||'')){el.selectionStart=el.selectionEnd=el.value.length;}}
+  if(s.open&&pageChanged&&old&&lastOrder!==null&&order!==lastOrder&&!reduced()){
+   const stage=p.querySelector('[data-stage]'),nw=stage?.querySelector('[data-page]');
+   if(stage&&nw){
+    const dir=order>lastOrder?'fwd':'back';
+    old.classList.add('pg-out',dir);old.inert=true;old.setAttribute('aria-hidden','true');old.removeAttribute('data-page');
+    old.querySelectorAll('[data-key],[data-autofocus],[id]').forEach(e=>{e.removeAttribute('data-key');e.removeAttribute('data-autofocus');e.removeAttribute('id');});
+    /* A detached copy must not join the live radio group, or it would uncheck the new page's answer. */
+    old.querySelectorAll('input[type=radio]').forEach(r=>{r.name+='-leaving';});
+    stage.appendChild(old);old.scrollTop=oldScroll;nw.classList.add('pg-in',dir);
+    setTimeout(()=>{old.remove();nw.classList.remove('pg-in','fwd','back');},380);
+   }
+  }
+  lastKey=s.open?key:'';lastOrder=s.open?order:null;
+ }
+ function sync(){
+  const p=pane();
+  p.querySelectorAll('textarea[data-input=topic]').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px';});
+  p.querySelectorAll('[data-has-value]').forEach(w=>w.dataset.hasValue=String(s.topic.length>0));
+  p.querySelectorAll('[data-enable=topic]').forEach(b=>b.disabled=!s.topic.trim()||!s.lang);
+  const q=s.questions[s.qi];
+  p.querySelectorAll('[data-enable=answer]').forEach(b=>b.disabled=!(q&&s.answers[q.label]?.trim())||!!s.refreshing);
+  p.querySelectorAll('[data-enable=ready]').forEach(b=>b.disabled=!!s.refreshing);
+  p.querySelectorAll('[data-count]').forEach(c=>c.textContent=`${s.topic.length} / 200`);
+  tick();
+ }
+ function tick(){if(s.open&&(s.step==='generating'||s.refreshing))R.tick?.(pane(),s);}
+ setInterval(tick,400);
+ const api={s,render,reset,jump,
+  pickLang(code){if(R.keepOnLanguage)changeLanguageKeep(code);else confirmLang(code);},
+  input(v){s.topic=v;if(s.contextSeed!==null&&v.trim()!==s.contextSeed)invalidatePb('situation changed');sync();},
+  clear(){s.topic='';if(s.contextSeed!==null)invalidatePb('situation changed');render();phone.querySelector('[data-input=topic]')?.focus();},
+  other(text,i=s.qi){s.other.add(i);setAnswer(i,text.trim());sync();},
+  rewind(to){menu=false;s.notice=null;if(to==='topic')s.step='topic';else{s.qi=+to;s.step='questions';}render();}};
+ phone.innerHTML='<div class="lib"></div><div class="scrim" data-act="close"></div><div class="pane" role="dialog" aria-modal="true" aria-label="New phrasebook"></div>';
+ phone.addEventListener('click',e=>{
+  const el=e.target.closest('[data-act]');if(!el||!phone.contains(el)||el.disabled)return;
+  if(el.matches('input'))return;
+  phone.dataset.focusOnRender='1';
+  const a=el.dataset.act,d=el.dataset;
+  switch(a){
+   case 'close':if(menu){menu=false;render();}else close();break;
+   case 'back':back();break;
+   case 'cancel':close();break;
+   case 'reopen':reopen();break;
+   case 'confirm-lang':confirmLang();break;
+   case 'edit-lang':s.pending=s.lang;s.step='language';render();break;
+   case 'clear':api.clear();break;
+   case 'submit-topic':submitTopic();break;
+   case 'next':next();break;
+   case 'toggle':toggle(+d.i);break;
+   case 'create':create();break;
+   case 'retry':retry();break;
+   case 'rewind':api.rewind(d.to);break;
+   case 'menu':menu=!menu;render();if(menu)(phone.querySelector('[role=menuitemradio][aria-checked=true]')||phone.querySelector('[role=menuitemradio]'))?.focus();else phone.querySelector('[data-act=menu]')?.focus();break;
+   case 'menu-pick':api.pickLang(d.lang);phone.querySelector('[data-act=menu]')?.focus();break;
+  }
+ });
+ phone.addEventListener('change',e=>{
+  const el=e.target;if(!el.matches('input[type=radio][data-act]'))return;
+  phone.dataset.focusOnRender='0';
+  if(el.dataset.act==='answer'){s.other.delete(s.qi);setAnswer(s.qi,el.value);render();}
+  if(el.dataset.act==='other'){s.other.add(s.qi);setAnswer(s.qi,phone.querySelector('[data-input=other]')?.value.trim()||'');render();phone.querySelector('[data-input=other]')?.focus();}
+  if(el.dataset.act==='pick-lang'){s.pending=el.value;phone.querySelector('[data-act=confirm-lang]').disabled=false;}
+ });
+ phone.addEventListener('input',e=>{
+  const el=e.target;
+  if(el.dataset.input==='topic')api.input(el.value);
+  if(el.dataset.input==='other'){const r=phone.querySelector('input[type=radio][data-act=other]');if(r)r.checked=true;api.other(el.value);}
+ });
+ phone.addEventListener('focusin',e=>{
+  const el=e.target;
+  if(el.dataset.input==='other'){const r=phone.querySelector('input[type=radio][data-act=other]');if(r&&!r.checked){r.checked=true;s.other.add(s.qi);setAnswer(s.qi,el.value.trim());sync();}}
+ });
+ phone.addEventListener('keydown',e=>{
+  const el=e.target;
+  if(e.key==='Escape'&&s.open){e.preventDefault();phone.dataset.focusOnRender='1';const m=menu;back();if(m)phone.querySelector('[data-act=menu]')?.focus();return;}
+  if(e.key==='Enter'&&!e.isComposing&&el.dataset.input==='other'){e.preventDefault();phone.dataset.focusOnRender='1';next();}
+  if(menu&&['ArrowDown','ArrowUp','Home','End'].includes(e.key)){
+   const items=[...phone.querySelectorAll('[role=menuitemradio]')];const i=items.indexOf(document.activeElement);
+   const n=e.key==='Home'?0:e.key==='End'?items.length-1:(i+(e.key==='ArrowDown'?1:-1)+items.length)%items.length;
+   e.preventDefault();items[n]?.focus();
+  }
+ });
+ return api;
+}
+
+/* ---------- A · Current (markup mirrors web/app/src/components/creation-panel.ts) ---------- */
+const A={
+ render(s){
+  const head=(chapter,title,backLabel='Back')=>`<div class="sheet-handle" aria-hidden="true"></div><header class="creation-heading"><div class="pane-header"><button class="creation-back" data-act="back" data-key="back" aria-label="${backLabel}">${I.back}</button><div class="pane-header-title">${s.step==='topic'||s.step==='language'||!s.lang?'New phrasebook':esc(langLabel(s.lang))}</div><div class="creation-header-right"></div></div><div class="creation-title-bubble"><p class="creation-chapter-label">${esc(chapter)}</p><h2 class="creation-title" tabindex="-1" data-focus>${esc(title)}</h2></div></header>`;
+  const term=`<div class="creation-term"><p class="creation-term-text">${esc(s.topic)}</p></div>`;
+  const radios=(opts,name,act,sel,lab=v=>esc(v),extra='')=>`<div class="creation-radio-items">${opts.map((v,i)=>`<label class="creation-radio-item"><input type="radio" name="${name}" data-act="${act}" data-key="${name}-${i}" value="${esc(v)}" ${sel===v?'checked':''}><span>${lab(v)}</span></label>`).join('')}${extra}</div>`;
+  if(s.step==='language')return `${head('First, the language','Where shall we begin?')}<div class="creation-step-body"><fieldset class="creation-question"><legend class="creation-question-label" tabindex="-1" data-autofocus>Which language would you like to learn?</legend><p class="creation-supporting-copy">Choose a language for this phrasebook. You can change it before you begin.</p>${radios(ORDER,'lang-a','pick-lang',s.pending,c=>esc(langLabel(c)))}</fieldset></div><div class="creation-context-footer"><button class="creation-primary" data-act="confirm-lang" data-key="confirm" ${s.pending?'':'disabled'}><span>Next</span>${I.next}</button></div>`;
+  if(s.step==='topic')return `${head('Your own little textbook','Your next chapter.')}<div class="creation-step-body"><div class="creation-input-form"><label class="creation-question-label" for="a-situation">What are you getting ready for?</label><p class="creation-supporting-copy" id="a-help">Tell us about an upcoming situation. We’ll prepare the language you’ll want to say and understand.</p><div class="creation-input-wrap" data-has-value="false"><div class="creation-input-field-row"><textarea id="a-situation" class="creation-input-field" rows="3" data-input="topic" data-key="topic" data-autofocus aria-describedby="a-help" placeholder="Dinner with my partner’s parents, a surf trip, my first dance class…">${esc(s.topic)}</textarea><button class="creation-input-clear" data-act="clear" aria-label="Clear situation">${I.close}</button></div></div><button class="creation-language-choice" data-act="edit-lang" data-key="lang" aria-label="Change language: ${LANGS[s.lang][1]}"><span>${esc(langLabel(s.lang))}</span><span class="creation-language-change">Change</span>${I.next}</button></div></div><div class="creation-context-footer"><button class="creation-primary" data-act="submit-topic" data-key="submit" data-enable="topic"><span>Prepare my phrasebook</span>${I.next}</button></div>`;
+  if(s.step==='questions'){
+   const q=s.questions[s.qi],isOther=s.other.has(s.qi),v=s.answers[q.label];
+   const other=q.ability?'':`<div class="creation-radio-item"><input type="radio" name="a-q" data-act="other" data-key="other-r" aria-label="Other" ${isOther?'checked':''}><label class="creation-other-label" for="a-other">Other<input id="a-other" class="creation-other-input" type="text" data-input="other" data-key="other" placeholder="Tell us a little more…" aria-label="Other answer" autocomplete="off" value="${isOther?esc(v||''):''}"></label></div>`;
+   return `${head('A little about you','Make it yours.')}<div class="creation-step-body">${term}<fieldset class="creation-question"><legend class="creation-question-label" tabindex="-1" data-autofocus>${esc(q.label)}</legend><p class="creation-question-progress">Question ${s.qi+1} of ${s.questions.length}</p>${radios(q.options,'a-q','answer',isOther?undefined:v,undefined,other)}</fieldset></div><div class="creation-context-footer"><button class="creation-secondary" data-act="back" data-key="prev">${I.back}<span>Previous</span></button><button class="creation-primary" data-act="next" data-key="next" data-enable="answer"><span>Next</span>${I.next}</button></div>`;
+  }
+  if(s.step==='checklist'){
+   const n=s.checklist.filter(c=>c.checked).length;
+   return `${head('Your table of contents','What matters to you?')}<div class="creation-step-body">${term}<section class="creation-checklist" aria-labelledby="a-cl"><h3 id="a-cl" class="creation-question-label">Choose the conversations to prepare.</h3><p class="creation-supporting-copy">Select 1–8 chapters. Each brings together useful phrases, words, and both sides of a conversation.</p><p class="creation-selection-count" role="status">${n} selected</p><div class="creation-checklist-items">${s.checklist.map((c,i)=>`<button class="creation-checklist-item" data-act="toggle" data-i="${i}" data-key="t${i}" aria-pressed="${c.checked}"><span class="creation-checklist-check" aria-hidden="true">${c.checked?I.check:''}</span><span>${esc(c.label)}</span></button>`).join('')}</div></section></div><div class="creation-context-footer"><button class="creation-primary" data-act="create" data-key="create"><span>Create my phrasebook</span>${I.next}</button></div>`;
+  }
+  if(s.step==='generating'){
+   const pb=s.phase==='phrasebook';
+   return `${head(pb?'Putting it all together':'Finding your starting point',pb?'A textbook, just for you.':'Let’s set the scene.','Cancel creation')}<div class="creation-step-body creation-wait-body" role="status" aria-live="polite">${term}<div class="creation-loading-mark" aria-hidden="true"><span></span><span></span><span></span></div><p class="creation-status-copy">${pb?'Preparing your phrasebook…':'Finding the right questions…'}</p><p class="creation-supporting-copy">${pb?'Gathering the phrases, words, and conversations for your selected chapters.':'A few details will help make the language useful to you.'}</p></div><div class="creation-context-footer"><button class="creation-secondary" data-act="cancel" data-key="cancel">Cancel</button></div>`;
+  }
+  if(s.step==='error')return `${head('A pause in preparation','Let’s try that again.')}<div class="creation-step-body">${s.topic?term:''}<div class="creation-error-message" role="alert"><p class="creation-question-label">We couldn’t finish this step.</p><p>${esc(s.error)}</p><p class="creation-supporting-copy">Your situation and choices are still here.</p></div></div><div class="creation-context-footer"><button class="creation-secondary" data-act="cancel" data-key="cancel">Cancel</button><button class="creation-primary" data-act="retry" data-key="retry">Try again</button></div>`;
+  return '';
+ }};
+
+/* ---------- Shared pieces for B, C, D ---------- */
+const nCk=s=>s.checklist.filter(c=>c.checked).length;
+const secs=t=>Math.max(0,Math.round((Date.now()-t)/1000));
+const langItems=s=>ORDER.map(c=>`<button class="litem" role="menuitemradio" aria-checked="${s.lang===c}" data-act="menu-pick" data-lang="${c}" data-key="m-${c}"><span class="f" aria-hidden="true">${LANGS[c][0]}</span><span>${LANGS[c][1]}</span><span class="ck">${I.check}</span></button>`).join('');
+const langMenu=(s,note)=>`<div class="lmenu" role="menu" aria-label="Language">${note&&s.contextSeed?`<p class="note">Your situation and answers stay. Questions are refreshed for the new language.</p>`:''}${langItems(s)}</div>`;
+const pick=s=>`<div class="pick" role="group" aria-label="Conversations to include">${s.checklist.map((c,i)=>`<button data-act="toggle" data-i="${i}" data-key="t${i}" aria-pressed="${c.checked}"><span class="tick" aria-hidden="true">${c.checked?I.check:''}</span><span>${esc(c.label)}</span></button>`).join('')}</div>`;
+const pickCopy='Each one adds phrases, words, exchanges, and a sample conversation to your phrasebook. Choose 1 to 8.';
+const refreshLine=s=>s.refreshing?`<p class="refresh" role="status">${DOTS}Updating questions for ${LANGS[s.refreshing.lang][1]}…</p>`:'';
+const noticeLine=s=>s.notice?`<p class="notice" role="status">${esc(s.notice)}</p>`:'';
+const fieldHTML=(s,id,ph,auto)=>`<div class="fill" data-has-value="false"><textarea id="${id}" rows="3" maxlength="200" data-input="topic" data-key="topic" ${auto?'data-autofocus':''} placeholder="${ph}">${esc(s.topic)}</textarea><button class="x" data-act="clear" aria-label="Clear situation">${I.close}</button></div>`;
+const PH='Dinner with my partner’s parents, a surf trip, my first dance class…';
+const errorFoot='<div class="foot"><button class="text-btn" data-act="cancel" data-key="cancel">Cancel</button><button class="pill-btn" data-act="retry" data-key="retry" data-autofocus>Try again</button></div>';
+const errorMsg=s=>s.resume==='checklist'?'Your situation, answers, and choices are still here.':'Your situation is still here.';
+const answersLine=s=>s.questions.map(q=>s.answers[q.label]).filter(Boolean).join(' · ');
+
+/* ---------- B · Quiet pages ---------- */
+const B={noLanguagePage:true,keepOnLanguage:true,firstOnly:true,retrySubmits:true,
+ render(s,{menu}){
+  const total=s.questions.length+2;
+  const done=s.step==='topic'?0:s.step==='questions'?1+s.qi:s.step==='checklist'?total-1:s.step==='generating'&&s.phase==='phrasebook'?total:s.step==='error'&&s.resume==='checklist'?total:0.5;
+  const head=`<div class="nh"><button class="nh-back" data-act="back" data-key="back" aria-label="${s.step==='topic'?'Close':'Back'}">${I.back}</button><h2 class="nh-title" tabindex="-1" data-focus>New phrasebook</h2><div class="nh-side"></div></div><div class="b2-prog" aria-hidden="true"><i style="width:${Math.min(100,done/total*100)}%"></i></div>`;
+  const stage=(page,foot)=>`${head}<div data-stage><div data-page><div class="b2-page">${page}</div></div></div>${foot}`;
+  if(s.step==='topic'){
+   const btn=`<button class="lbtn${s.lang?'':' need'}" data-act="menu" data-key="menu" aria-haspopup="menu" aria-expanded="${menu}" aria-label="Language: ${s.lang?LANGS[s.lang][1]:'not chosen'}" ${s.lang?'':'data-autofocus'}>${s.lang?`<span aria-hidden="true">${LANGS[s.lang][0]}</span>${LANGS[s.lang][1]}`:'Choose a language'}${I.caret}</button>`;
+   return stage(`<div class="b2-sent">I’m learning <div class="lwrap">${btn}${menu?langMenu(s,true):''}</div></div><label class="b2-q" for="b2-sit">What are you getting ready for?</label><p class="hint">Describe an upcoming situation. We’ll prepare what you’ll want to say and understand.</p>${refreshLine(s)}${fieldHTML(s,'b2-sit',PH,!!s.lang)}<span class="count" data-count aria-hidden="true"></span>`,
+    `<div class="foot"><button class="pill-btn" data-act="submit-topic" data-key="submit" data-enable="topic">${s.lang?'Continue':'Choose a language to continue'}</button></div>`);
+  }
+  if(s.step==='questions'){
+   const q=s.questions[s.qi],v=s.answers[q.label],isOther=s.other.has(s.qi);
+   const opts=q.options.map((o,i)=>`<label class="b2-opt"><input class="sr" type="radio" name="b2-q" data-act="answer" data-key="o${i}" value="${esc(o)}" ${!isOther&&v===o?'checked':''}><span class="radio" aria-hidden="true"></span><span>${esc(o)}</span></label>`).join('');
+   const other=q.ability?'':`<label class="b2-opt other"><input class="sr" type="radio" name="b2-q" data-act="other" data-key="other-r" ${isOther?'checked':''}><span class="radio" aria-hidden="true"></span><span>Something else${isOther?`<input class="other-in" type="text" data-input="other" data-key="other" aria-label="Your answer" placeholder="Type your answer" autocomplete="off" value="${esc(v||'')}">`:''}</span></label>`;
+   return stage(`${noticeLine(s)}${refreshLine(s)}<p class="lbl">About you · ${s.qi+1} of ${s.questions.length}</p><fieldset style="border:0;margin:0;padding:0;min-width:0"><legend class="b2-q" tabindex="-1" data-autofocus>${esc(q.label)}</legend><div class="b2-opts">${opts}${other}</div></fieldset>`,
+    `<div class="foot"><button class="text-btn" data-act="back" data-key="prev">Back</button><button class="pill-btn" data-act="next" data-key="next" data-enable="answer">Next</button></div>`);
+  }
+  if(s.step==='checklist')return stage(`${refreshLine(s)}<p class="lbl">Conversations · ${nCk(s)} selected</p><h3 class="b2-q" tabindex="-1" data-autofocus>Which conversations should it cover?</h3><p class="hint">${pickCopy}</p>${pick(s)}`,
+    `<div class="foot"><button class="text-btn" data-act="back" data-key="prev">Back</button><button class="pill-btn" data-act="create" data-key="create" data-enable="ready">Create phrasebook</button></div>`);
+  if(s.step==='generating'){
+   const pb=s.phase==='phrasebook';
+   const li=(st,t,d)=>`<li class="${st}"><span class="ic" aria-hidden="true">${st==='done'?I.check:''}</span><div><b>${t}</b><span>${d}</span></div></li>`;
+   let items;
+   if(!pb)items=li('done','Your situation',esc(s.topic))+li('done','Language',esc(LANGS[s.lang][1]))+li('busy','Choosing a few questions about it','<span data-elapsed>0</span> s so far · usually under 10 s')+li('todo','Your answers','Next, one question per page');
+   else{
+    const ready=s.pb?.status==='ready',early=ready&&s.pb.readyAt<=s.createAt;
+    items=li('done','Your situation and answers',esc([s.topic,answersLine(s)].filter(Boolean).join(' · ')))
+     +li(ready?'done':'busy',`Writing ${plural(nCk(s),'conversation')}`,ready?(early?'Finished in the background while you were choosing':'Finished'):`Started in the background <span data-since>0</span> s ago`)
+     +li('todo','Saving to this device','Then your phrasebook opens');
+   }
+   return stage(`<div class="b2-ld" role="status" aria-live="polite"><h3 tabindex="-1" data-autofocus>${pb?'Preparing your phrasebook':'Reading your situation'}</h3><ul class="b2-ms">${items}</ul></div>`,
+    `<div class="foot"><button class="text-btn" data-act="cancel" data-key="cancel">Cancel</button></div>`);
+  }
+  if(s.step==='error')return stage(`<div class="b2-ld" role="alert"><h3 tabindex="-1" style="color:var(--err)">We couldn’t finish this step</h3><p>${esc(s.error)}</p><p class="hint">${errorMsg(s)}</p></div>`,errorFoot);
+  return '';
+ },
+ tick(p,s){
+  p.querySelectorAll('[data-elapsed]').forEach(e=>e.textContent=secs(s.waitStart));
+  if(s.pb)p.querySelectorAll('[data-since]').forEach(e=>e.textContent=secs(s.pb.started));
+ }};
+
+/* ---------- C · Bold band ---------- */
+const C={noLanguagePage:true,keepOnLanguage:true,firstOnly:true,retrySubmits:true,
+ render(s,{menu}){
+  const title=s.lang?`New ${LANGS[s.lang][1]} phrasebook`:'Choose a language';
+  const head=`<div class="nh"><button class="nh-back" data-act="back" data-key="back" aria-label="${s.step==='topic'?'Close':'Back'}">${I.back}</button><div class="c2-title"><button class="c2-tbtn${s.lang?'':' need'}" data-act="menu" data-key="menu" aria-haspopup="menu" aria-expanded="${menu}" aria-label="${esc(title)}. Change language" ${s.lang?'data-focus':'data-autofocus'}><span>${esc(title)}</span>${I.caret}</button></div><div class="nh-side"></div>${menu?langMenu(s,true):''}</div>`;
+  const band=(eyebrow,q,hint='',tag='h3',attrs='')=>`<div class="c2-band"><p class="lbl">${eyebrow}</p><${tag} class="c2-q" tabindex="-1" data-autofocus ${attrs}>${q}</${tag}>${hint?`<p class="hint">${hint}</p>`:''}</div>`;
+  const stage=(page,foot)=>`${head}<div data-stage><div data-page>${page}</div></div>${foot}`;
+  if(s.step==='topic')return stage(`<div class="c2-band"><p class="lbl">${s.lang?esc(LANGS[s.lang][1])+' · new phrasebook':'Start with a language above'}</p><label class="c2-q" for="c2-sit">What are you getting ready for?</label><p class="hint">Describe an upcoming situation. We’ll prepare what you’ll want to say and understand.</p></div><div class="c2-body">${refreshLine(s)}${fieldHTML(s,'c2-sit',PH,!!s.lang)}</div>`,
+   `<div class="foot"><button class="pill-btn" data-act="submit-topic" data-key="submit" data-enable="topic">${s.lang?'Continue':'Choose a language to continue'}</button></div>`);
+  if(s.step==='questions'){
+   const q=s.questions[s.qi],v=s.answers[q.label],isOther=s.other.has(s.qi);
+   const rows=q.options.map((o,i)=>`<label class="c2-row"><input class="sr" type="radio" name="c2-q" data-act="answer" data-key="o${i}" value="${esc(o)}" ${!isOther&&v===o?'checked':''} aria-describedby="c2-ql"><span class="radio" aria-hidden="true"></span><span>${esc(o)}</span></label>`).join('');
+   const other=q.ability?'':`<label class="c2-row"><input class="sr" type="radio" name="c2-q" data-act="other" data-key="other-r" ${isOther?'checked':''} aria-describedby="c2-ql"><span class="radio" aria-hidden="true"></span><span>Something else${isOther?`<input class="other-in" type="text" data-input="other" data-key="other" aria-label="Your answer" placeholder="Type your answer" autocomplete="off" value="${esc(v||'')}">`:''}</span></label>`;
+   return stage(`${band(`About you · ${s.qi+1} of ${s.questions.length}`,esc(q.label),'','h3','id="c2-ql"')}<div class="c2-body">${noticeLine(s)}${refreshLine(s)}<div class="c2-list" role="radiogroup" aria-labelledby="c2-ql">${rows}${other}</div></div>`,
+    `<div class="foot"><button class="text-btn" data-act="back" data-key="prev">Back</button><button class="pill-btn" data-act="next" data-key="next" data-enable="answer">Next</button></div>`);
+  }
+  if(s.step==='checklist')return stage(`${band(`Conversations · ${nCk(s)} selected`,'Which conversations should it cover?',pickCopy)}<div class="c2-body">${refreshLine(s)}${pick(s)}</div>`,
+   `<div class="foot"><button class="text-btn" data-act="back" data-key="prev">Back</button><button class="pill-btn" data-act="create" data-key="create" data-enable="ready">Create phrasebook</button></div>`);
+  if(s.step==='generating'){
+   const pb=s.phase==='phrasebook';
+   const n=C.items(s).length;
+   return stage(`${band(pb?'Almost there':'Getting started',pb?'Preparing your phrasebook':'Reading your situation')}<div class="c2-ld" role="status" aria-live="polite"><div class="bar" aria-hidden="true"></div><p class="c2-now" data-now></p><div class="c2-rot" aria-live="off"><p class="lbl">${pb?'Your phrasebook will include':'What comes next'}</p><div class="item" data-rot></div><div class="c2-pips" aria-hidden="true">${'<i></i>'.repeat(n)}</div></div></div>`,
+    `<div class="foot"><button class="text-btn" data-act="cancel" data-key="cancel">Cancel</button></div>`);
+  }
+  if(s.step==='error')return stage(`<div class="c2-band" style="background:#fdf3f0"><p class="lbl" style="color:var(--err)">Couldn’t finish this step</p><h3 class="c2-q" tabindex="-1" data-autofocus style="color:var(--err)">Let’s try that again</h3><p class="hint">${esc(s.error)} ${errorMsg(s)}</p></div>`,errorFoot);
+  return '';
+ },
+ items(s){
+  if(s.phase==='phrasebook')return s.checklist.filter(c=>c.checked).map(c=>[c.label,'Phrases, words, exchanges, and a sample conversation']);
+  return [['A few questions about you','Who you’ll talk to and what you’ll need, so the language fits'],['Conversations worth preparing','You choose which ones go into the phrasebook'],['A title for your phrasebook','Based on your situation']];
+ },
+ tick(p,s){
+  const now=p.querySelector('[data-now]');if(!now)return;
+  const pb=s.phase==='phrasebook';
+  if(!pb)now.innerHTML=`Waiting for questions <span>· ${secs(s.waitStart)} s</span>`;
+  else if(s.pb?.status==='ready')now.innerHTML=`Written in the background · <span>saving to this device</span>`;
+  else now.innerHTML=`Writing ${plural(nCk(s),'conversation')} <span>· started ${s.pb?secs(s.pb.started):0} s ago</span>`;
+  const items=C.items(s),i=Math.floor((Date.now()-s.waitStart)/2200)%items.length;
+  const rot=p.querySelector('[data-rot]');
+  if(rot&&rot.dataset.i!==String(i)){
+   const set=()=>{rot.dataset.i=i;rot.innerHTML=`<b>${esc(items[i][0])}</b><span>${esc(items[i][1])}</span>`;rot.classList.remove('fade');};
+   if(rot.dataset.i===undefined||reduced())set();else{rot.classList.add('fade');setTimeout(set,250);}
+   p.querySelectorAll('.c2-pips i').forEach((e,k)=>e.classList.toggle('on',k===i));
+  }
+ }};
+
+/* ---------- D · Answer trail ---------- */
+const D={noLanguagePage:true,keepOnLanguage:true,firstOnly:true,retrySubmits:true,
+ render(s,{menu}){
+  const cur=s.step==='topic'?'topic':s.step==='questions'?String(s.qi):'';
+  const chips=[];
+  const pastTopic=s.step!=='topic'&&s.topic.trim();
+  if(pastTopic)chips.push(`<button class="d2-chip${cur==='topic'?' cur':''}" data-act="rewind" data-to="topic" data-key="c-topic" aria-label="Situation: ${esc(s.topic)}. Edit"><span>${esc(s.topic)}</span></button>`);
+  if(s.step==='questions'||s.step==='checklist'||s.step==='generating'||s.step==='error')s.questions.forEach((q,i)=>{const v=s.answers[q.label];if(v&&(s.step!=='questions'||i!==s.qi))chips.push(`<button class="d2-chip" data-act="rewind" data-to="${i}" data-key="c-${i}" aria-label="${esc(q.label)} ${esc(v)}. Change" ${s.step==='generating'?'disabled':''}><span>${esc(v)}</span></button>`);});
+  const lang=`<button class="d2-chip${s.lang?'':' need'}" data-act="menu" data-key="menu" aria-haspopup="menu" aria-expanded="${menu}" aria-label="Language: ${s.lang?LANGS[s.lang][1]:'not chosen'}" ${s.lang?'':'data-autofocus'} ${s.step==='generating'?'disabled':''}>${s.lang?`<span aria-hidden="true">${LANGS[s.lang][0]}</span><span>${LANGS[s.lang][1]}</span>`:'<span>Choose a language</span>'}${I.caret}</button>`;
+  const head=`<div class="nh"><button class="nh-back" data-act="back" data-key="back" aria-label="${s.step==='topic'?'Close':'Back'}">${I.back}</button><h2 class="nh-title" tabindex="-1" data-focus>New phrasebook</h2><div class="nh-side"></div></div><div class="d2-trail">${lang}${chips.length?`<div class="d2-row" role="group" aria-label="Your answers so far">${chips.join('')}</div>`:''}${menu?langMenu(s,true):''}</div>`;
+  const stage=(page,foot)=>`${head}<div data-stage><div data-page><div class="d2-page">${page}</div></div></div>${foot}`;
+  if(s.step==='topic')return stage(`<label class="d2-q" for="d2-sit">What are you getting ready for?</label><p class="hint">Describe an upcoming situation. We’ll prepare what you’ll want to say and understand.</p>${refreshLine(s)}${fieldHTML(s,'d2-sit',PH,!!s.lang)}`,
+   `<div class="foot"><button class="pill-btn" data-act="submit-topic" data-key="submit" data-enable="topic">${s.lang?'Continue':'Choose a language to continue'}</button></div>`);
+  if(s.step==='questions'){
+   const q=s.questions[s.qi],v=s.answers[q.label],isOther=s.other.has(s.qi);
+   const short=q.options.every(o=>o.length<=18);
+   const tiles=q.options.map((o,i)=>`<label class="d2-tile"><input class="sr" type="radio" name="d2-q" data-act="answer" data-key="o${i}" value="${esc(o)}" ${!isOther&&v===o?'checked':''}><span>${esc(o)}</span></label>`).join('');
+   const other=q.ability?'':`<label class="d2-other"><input class="sr" type="radio" name="d2-q" data-act="other" data-key="other-r" ${isOther?'checked':''} aria-label="Something else"><input class="other-in" type="text" data-input="other" data-key="other" aria-label="Something else" placeholder="Something else…" autocomplete="off" value="${isOther?esc(v||''):''}"></label>`;
+   return stage(`${noticeLine(s)}${refreshLine(s)}<p class="lbl">About you · ${s.qi+1} of ${s.questions.length}</p><fieldset style="border:0;margin:0;padding:0;min-width:0"><legend class="d2-q" tabindex="-1" data-autofocus>${esc(q.label)}</legend><div class="d2-tiles${short?'':' one'}">${tiles}</div>${other?`<div style="margin-top:8px">${other}</div>`:''}</fieldset>`,
+    `<div class="foot"><button class="text-btn" data-act="back" data-key="prev">Back</button><button class="pill-btn" data-act="next" data-key="next" data-enable="answer">Next</button></div>`);
+  }
+  if(s.step==='checklist')return stage(`${refreshLine(s)}<p class="lbl">Conversations · ${nCk(s)} selected</p><h3 class="d2-q" tabindex="-1" data-autofocus>Which conversations should it cover?</h3><p class="hint">${pickCopy}</p>${pick(s)}`,
+   `<div class="foot"><button class="text-btn" data-act="back" data-key="prev">Back</button><button class="pill-btn" data-act="create" data-key="create" data-enable="ready">Create phrasebook</button></div>`);
+  if(s.step==='generating'){
+   const pb=s.phase==='phrasebook';
+   const body=pb
+    ?`<div class="d2-cats" aria-hidden="true">${['Words','Key phrases','Exchanges','Conversation'].map(c=>`<div class="d2-cat"><p class="lbl">${c}</p><i></i><i></i><i></i></div>`).join('')}</div><p class="d2-for">Covering <b>${s.checklist.filter(c=>c.checked).map(c=>esc(c.label)).join(', ')}</b></p>`
+    :`<div class="d2-cats" aria-hidden="true" style="grid-template-columns:1fr">${[0,1,2].map(()=>`<div class="d2-cat" style="min-height:0"><i style="width:60%"></i></div>`).join('')}</div><p class="d2-for">Questions about <b>${esc(s.topic)}</b> for ${esc(LANGS[s.lang][1])}</p>`;
+   return stage(`<h3 class="d2-q" tabindex="-1" data-autofocus>${pb?'Preparing your phrasebook':'Finding a few questions'}</h3><p class="hint" role="status" aria-live="polite" data-d2now></p>${body}`,
+    `<div class="foot"><button class="text-btn" data-act="cancel" data-key="cancel">Cancel</button></div>`);
+  }
+  if(s.step==='error')return stage(`<h3 class="d2-q" tabindex="-1" data-autofocus style="color:var(--err)">We couldn’t finish this step</h3><p>${esc(s.error)}</p><p class="hint">${errorMsg(s)}</p>`,errorFoot);
+  return '';
+ },
+ after(p){const cur=p.querySelector('.d2-row');if(cur)cur.scrollLeft=cur.scrollWidth;},
+ tick(p,s){
+  const e=p.querySelector('[data-d2now]');if(!e)return;
+  if(s.phase!=='phrasebook')e.textContent=`${secs(s.waitStart)} s · usually under 10 s`;
+  else if(s.pb?.status==='ready')e.textContent='Written in the background. Saving to this device.';
+  else e.textContent=`Started in the background ${s.pb?secs(s.pb.started):0} s ago`;
+ }};
+
+/* ---------- Page wiring ---------- */
+function announce(m){$('status').textContent=m;}
+const flows=[['phone-a',A,'log-a'],['phone-b',B,'log-b'],['phone-c',C,'log-c'],['phone-d',D,'log-d']].map(([id,R,log])=>makeFlow($(id),R,$(log)));
+function applyLayout(){
+ settings.width=+$('width').value;
+ document.documentElement.style.setProperty('--w',settings.width+'px');
+ document.querySelectorAll('.phone').forEach(p=>p.style.setProperty('--s',$('scale').value));
+}
+function resetAll(){readSettings();applyLayout();$('jump').value='';flows.forEach(f=>f.reset());announce('Study reset.');}
+['visit','seed','content','speed'].forEach(id=>$(id).addEventListener('change',()=>{readSettings();$('jump').value='';flows.forEach(f=>f.reset());announce('Phones restarted with the new settings.');}));
+['width','scale'].forEach(id=>$(id).addEventListener('change',()=>{applyLayout();flows.forEach(f=>f.render());}));
+$('jump').addEventListener('change',e=>{const v=e.target.value;if(!v)return;flows.forEach(f=>f.jump(v));announce(`All phones: ${e.target.selectedOptions[0].textContent}.`);});
+$('controls').addEventListener('reset',()=>{setTimeout(resetAll,0);});
+readSettings();applyLayout();flows.forEach(f=>f.reset());
+})();
+</script>
+</body>
+</html>

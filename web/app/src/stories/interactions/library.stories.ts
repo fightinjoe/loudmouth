@@ -45,7 +45,7 @@ export const MenuLanguageBrowseAndBack: Story = {
     await waitFor(() => expect(element('[data-region="browse-list"]')).toHaveTextContent('All saved cards'));
     await expect(getScenario().app.ui.get('shell').exposed).toBe('foreground');
     await click('[data-action="content/browse-back"]');
-    await waitFor(() => expect(getScenario().root.querySelector('.textbook-reader')).not.toBeNull());
+    await waitFor(() => expect(getScenario().root.querySelector('[data-region="textbook-reader"]')).not.toBeNull());
     await expect(getScenario().app.ui.get('content').browse).toBeNull();
     await click('[data-action="content/menu"]');
     await click('[data-action="nav/browse-lang"][data-lang="ja"]');

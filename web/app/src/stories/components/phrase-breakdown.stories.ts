@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/html-vite';
 import { expect, waitFor } from 'storybook/test';
 import { validateBreakdownRequest, validateBreakdownResponse } from '@catchphrase/card-schema';
 import type { ReadingDisplay } from '../../js/library-types';
+import { entryChapterKey } from '../../js/phrasebook-chapters';
 import type { DetailsReadyState } from '../../panes/details-pane';
 import { appStory, getScenario, logScenarioEvent, type ScenarioOptions } from '../support/scenario';
 import { breakdownResponse } from '../support/fixtures';
@@ -47,11 +48,22 @@ function specimen(variant: Variant = {}): Story {
     mount(root, data, app) {
       let opened = false;
       let decorated = false;
+      let chapterRequested = false;
       const open = (): void => {
         if (opened) return;
         const content = app.ui.get('content');
         const entry = content.cards.find((candidate) => candidate.card.type === 'phrase');
         if (!entry) return;
+        // Card rows live in the chapter sheet: open the entry's chapter first.
+        // Deferred so the content owner finishes this notification before the next transition.
+        if (content.chapterKey === null) {
+          if (!chapterRequested) {
+            chapterRequested = true;
+            const chapterKey = entryChapterKey(entry);
+            queueMicrotask(() => app.ui.transition('content/open-chapter', { chapterKey }));
+          }
+          return;
+        }
         const row = [...root.querySelectorAll<HTMLElement>('[data-action="content/open-card"]')].find((element) => element.dataset.entryKey === entry.key);
         const opener = row?.querySelector<HTMLElement>('.card-term');
         if (!opener) return;
@@ -90,7 +102,7 @@ function specimen(variant: Variant = {}): Story {
     ...scenario,
     render(args) { controls = args; return scenario.render(); },
     play: async () => {
-      await waitFor(() => expect(getScenario().root.querySelector('[role="dialog"]')).toBeVisible());
+      await waitFor(() => expect(getScenario().root.querySelector('.details-surface')).toBeVisible());
       await waitFor(() => expect(getScenario().root.querySelector('[data-region="details-source"]')?.textContent?.trim()).toBeTruthy());
       if (variant.outcome !== 'pending') {
         await waitFor(() => expect(getScenario().app.ui.get('details')?.status).toBe(variant.outcome === 'error' || variant.outcome === 'invalid' ? 'error' : 'ready'));

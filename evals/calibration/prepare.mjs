@@ -73,10 +73,11 @@ export async function materializeCalibration({ destination, bindings, fixtures =
     limitation: 'Source hashes are provenance, not executable dependency snapshots. Requests and the standalone replay adapter are frozen in these suites.',
   };
   const rubric = JSON.parse(await readFile(new URL('../rubric.json', import.meta.url), 'utf8'));
-  const criteria = [
+  const rubricText = await readFile(new URL(`../${rubric.source}`, import.meta.url), 'utf8');
+  const criteriaFor = lane => [
     { id: 'contract', description: 'Native raw JSON parsing and the exact per-request response schema; technical validity does not establish learning quality.', method: 'deterministic', layer: 'raw', priority: 1, gate: true },
-    ...rubric.dimensions.map((dimension, index) => ({ id: dimension.id, description: dimension.question, method: 'human', layer: 'parsed', priority: index + 2 })),
-    { id: 'separate-checks', description: rubric.separateChecks.join('\n'), method: 'human', layer: 'raw', priority: 1, gate: true },
+    ...rubric.dimensions.filter(dimension => dimension.lanes.includes(lane)).map((dimension, index) => ({ id: dimension.id, description: dimension.question, method: 'human', layer: 'parsed', priority: index + 2 })),
+    { id: 'separate-checks', description: 'The "Translation and repair checks" and "Outcome classes" sections of the rubric in goal.md.', method: 'human', layer: 'raw', priority: 1, gate: true },
   ];
   await mkdir(path.dirname(root), { recursive: true });
   await mkdir(root); // Exclusive: never overwrite a prior freeze or native evidence.
@@ -116,8 +117,8 @@ export async function materializeCalibration({ destination, bindings, fixtures =
     };
     const files = {
       'suite.mjs': `export default ${JSON.stringify(config, null, 2)};\n`,
-      'cases.json': json(cases), 'rubric.json': json({ ...rubric, criteria }),
-      'goal.md': `# ${group.stage} calibration\n\n${note.brief}\n\n${rubric.priorities.join('\n\n')}\n\nDiagnostic only; independent linguistic review remains pending. Wrong ruby is not an automatic whole-topic failure. Meaning is the user-facing term; senseKey remains the schema field.\n`,
+      'cases.json': json(cases), 'rubric.json': json({ ...rubric, criteria: criteriaFor(group.stage[0]) }),
+      'goal.md': `# ${group.stage} calibration\n\n${note.brief}\n\nDiagnostic only; independent linguistic review remains pending. Wrong ruby is not an automatic whole-topic failure. Meaning is the user-facing term; senseKey remains the schema field.\n\n---\n\n${rubricText}`,
       'adapter.mjs': adapter, 'source-manifest.json': json(sourceManifest), 'proposal.json': json(note),
     };
     for (const [file, contents] of Object.entries(files)) await writeFile(path.join(dir, file), contents, { flag: 'wx' });

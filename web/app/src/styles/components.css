@@ -16,44 +16,6 @@
   overflow: hidden;
 }
 
-/* ── Deck Title Tap Menu ── */
-
-#deck-title-menu {
-  position: fixed;
-  /* top/left are written by JS to track the title button's
-     getBoundingClientRect (see content-pane.js positionTitleMenu). */
-  border-radius: var(--radius-sm);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: 300;
-  min-width: 160px;
-  visibility: hidden;
-  opacity: 0;
-  transform: translateX(-50%) translateY(-4px);
-  transition:
-    opacity 150ms ease,
-    transform 150ms ease;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-#content-pane[data-menu-open] #deck-title-menu {
-  visibility: visible;
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-  pointer-events: auto;
-}
-
-#deck-title-menu-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 299;
-  display: none;
-}
-
-#content-pane[data-menu-open] #deck-title-menu-scrim {
-  display: block;
-}
-
 .menu-item {
   display: block;
   text-align: left;
@@ -73,7 +35,7 @@
 
 /* ── Edit mode reorder handle ── */
 /* A right-side lane reaches either speaker's reorder grip while leaving the
-   rest of the continuous chapter available for native vertical scrolling. */
+   rest of the topic page available for native vertical scrolling. */
 #reorder-handle {
   position: absolute;
   top: 0;
@@ -135,37 +97,6 @@
 /* Single-list treatment retained by virtual decks and suggested previews. */
 .deck-view-list {
   padding: 0 20px 96px;
-}
-
-/* ── Four-section topic structure ── */
-
-.topic-subheading {
-  margin: 16px 20px 8px;
-  font-family: var(--font-family-manrope);
-  font-size: 14px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.exchange-turn + .exchange-turn {
-  margin-top: 8px;
-}
-
-.topic-exchange + .topic-exchange,
-.topic-word-family + .topic-word-family {
-  margin-top: 20px;
-}
-
-.card-word-tile {
-  min-width: 0;
-}
-
-.card-word-tile .card-row {
-  padding: 12px;
-}
-
-.card-word-tile .card-term-definition {
-  padding-right: 0;
 }
 
 .card-term-reading {

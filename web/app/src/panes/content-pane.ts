@@ -14,22 +14,29 @@ import type {
   LibraryEntry,
   ReadingDisplay,
 } from "../js/library-types";
+import {
+  entryChapterKey,
+  getDeckChapters,
+  normalizeChapterKey,
+  STARRED_CHAPTER_KEY,
+  STARRED_TABS,
+  type StarredTab,
+} from "../js/phrasebook-chapters";
 import { setAttrSafe, setListHTMLSafe } from "../js/uiState";
 import { icon } from "../components/icon";
+import { renderChapterMenu, renderChapterSheetBody } from "../components/chapter-sheet";
 import type { PreviewDeck } from "./action-pane";
 import { registerCardActions } from "./content-pane-actions";
 import { wireContentGestures } from "./content-pane-gestures";
 import { loadDeckData } from "./content-pane-load";
 import {
-  getDeckChapters,
-  normalizeChapterKey,
+  entryContextLabel,
   renderBrowseBody,
   renderBrowseCardsHTML,
-  renderChapter,
-  renderChapterNavigation,
   renderDeckBody,
   renderIllustration,
-  STARRED_CHAPTER_KEY,
+  renderChapterList,
+  renderStarredSlot,
   type ContentBrowse,
 } from "./content-pane-render";
 import { SUGGESTED_PHRASEBOOKS } from "../js/suggested-phrasebooks";
@@ -71,8 +78,10 @@ export interface ContentSlice {
   groups: Group[];
   editMode: boolean;
   editOrder: string[] | null;
-  menuOpen: boolean;
+  /** Chapter shown in the sheet (a category, Starred, or a collection); null while the landing page is in front. */
   chapterKey: string | null;
+  /** Starred tab remembered for this phrasebook during the session. */
+  starredTab: StarredTab;
   starPatch: ContentStarPatch | null;
   reload: number;
   browse: ContentBrowse | null;
@@ -104,6 +113,11 @@ function resolvedGroups(deck: ContentDeck | null, groups?: Group[]): Group[] {
   return isPreviewDeck(deck) ? previewGroups(deck) : [];
 }
 
+/** A tab applies only to Starred, the one chapter with tabs. */
+function withStarredTab(slice: ContentSlice, chapterKey: string | null, tab: StarredTab | undefined): ContentSlice {
+  return chapterKey === STARRED_CHAPTER_KEY && tab && STARRED_TABS.some(({ key }) => key === tab) && slice.starredTab !== tab
+    ? { ...slice, starredTab: tab } : slice;
+}
 
 const initialState: ContentSlice = {
   deckId: null,
@@ -112,8 +126,8 @@ const initialState: ContentSlice = {
   groups: [],
   editMode: false,
   editOrder: null,
-  menuOpen: false,
   chapterKey: null,
+  starredTab: "words",
   starPatch: null,
   reload: 0,
   browse: null,
@@ -125,7 +139,7 @@ const transitions = {
     deckId: id,
     browse: null,
     ...(id !== slice.deckId
-      ? { deck: null, cards: [], groups: [], chapterKey: null, starPatch: null }
+      ? { deck: null, cards: [], groups: [], chapterKey: null, starredTab: "words", starPatch: null }
       : {}),
   }),
 
@@ -144,7 +158,6 @@ const transitions = {
       groups: nextGroups,
       editMode: false,
       editOrder: null,
-      menuOpen: false,
       browse: null,
       chapterKey: deck && !isSystemDeck(deck)
         ? normalizeChapterKey(cards, nextGroups, slice.deckId === deck.id ? slice.chapterKey : null)
@@ -190,21 +203,32 @@ const transitions = {
     return { ...slice, cards, starPatch: { deckId, cardId, starredAt } };
   },
 
-  "content/jump-chapter": (slice, { chapterKey }) => {
+  // Opening Starred keeps its remembered tab unless a card names one.
+  "content/open-chapter": (slice, { chapterKey, tab }) => {
     if (!slice.deck || isSystemDeck(slice.deck)) return slice;
     const key = normalizeChapterKey(slice.cards, slice.groups, chapterKey);
-    return key === slice.chapterKey ? slice : { ...slice, chapterKey: key };
+    if (!key || (slice.editMode && key !== slice.chapterKey)) return slice;
+    const next = withStarredTab(slice, key, tab);
+    return key === next.chapterKey ? next : { ...next, chapterKey: key };
   },
 
+  "content/close-chapter": (slice) => slice.chapterKey === null ? slice : {
+    ...slice,
+    chapterKey: null,
+    editMode: false,
+    editOrder: null,
+  },
+
+  "content/select-tab": (slice, { tab }) => withStarredTab(slice, slice.chapterKey, tab),
+
   "content/enter-edit": (slice) => isStoredDeck(slice.deck)
+    && slice.chapterKey !== null && slice.chapterKey !== STARRED_CHAPTER_KEY
     ? {
         ...slice,
         editMode: true,
-        menuOpen: false,
         editOrder: slice.cards.map((entry) => entry.key),
       }
     : slice,
-
   // Replace only the reordered section's slots; persistence gets every entry key.
   "content/reorder": (slice, { pageOrder }) => {
     if (!slice.editMode || !slice.editOrder) return slice;
@@ -243,7 +267,6 @@ const transitions = {
       cards,
       editMode: false,
       editOrder: null,
-      menuOpen: false,
       starPatch: null,
     };
   },
@@ -252,11 +275,8 @@ const transitions = {
     ...slice,
     editMode: false,
     editOrder: null,
-    menuOpen: false,
   }),
 
-  "content/toggle-menu": (slice) => ({ ...slice, menuOpen: !slice.menuOpen }),
-  "content/close-menu": (slice) => ({ ...slice, menuOpen: false }),
   "content/browse": (slice, payload) => ({ ...slice, browse: payload }),
   "content/browse-back": (slice) => ({ ...slice, browse: null }),
 } satisfies AppTransitions;
@@ -264,6 +284,14 @@ const transitions = {
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "The change could not be saved.";
 }
+
+/** Header switches from bubble to bar past COLLAPSE_AT and back below EXPAND_AT; the gap prevents flicker. */
+const COLLAPSE_AT = 150;
+const EXPAND_AT = 110;
+const SCROLLERS = '[data-region="textbook-reader"], .chapter-row, .chapter-pager, .chapter-page, .deck-view-list';
+const MENU_OPEN_CLASS = "chapter-sheet--menu-open";
+const COLLAPSED_CLASS = "phrasebook--collapsed";
+const FLASH_CLASS = "chapter-flash";
 
 const contentPane = {
   namespace: "content" as const,
@@ -274,14 +302,9 @@ const contentPane = {
     return `
       <div id="content-pane" class="content-pane absolute-inset flex-col bg-surface transition-transform"${initial.deck ? "" : " data-empty"}>
         <div class="meat screen flex-1 flex-col bg-surface overflow-hidden" data-region="content-body">
-          ${renderDeckBody(initial.deck, initial.cards, initial.groups, initial.chapterKey)}
+          ${renderDeckBody(initial.deck, initial.cards, initial.groups)}
         </div>
         <div id="reorder-handle" class="reorder-handle" aria-hidden="true"></div>
-        <div id="deck-title-menu-scrim" data-action="content/close-menu"></div>
-        <div id="deck-title-menu" class="deck-title-menu bg-surface overflow-hidden">
-          <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-action="content/menu-settings">Settings</button>
-          <button class="deck-title-menu-item fg-body text-menu-item text-left tappable" data-action="content/menu-edit">Reorder cards</button>
-        </div>
       </div>
     `;
   },
@@ -292,14 +315,17 @@ const contentPane = {
     const meatEl = rootEl.querySelector<HTMLElement>('[data-region="content-body"]');
     const handleEl = stageEl.querySelector<HTMLElement>(".shell-swipe-handle");
     const reorderHandleEl = rootEl.querySelector<HTMLElement>("#reorder-handle");
-    const menuEl = rootEl.querySelector<HTMLElement>("#deck-title-menu");
-    if (!meatEl || !handleEl || !reorderHandleEl || !menuEl) {
+    if (!meatEl || !handleEl || !reorderHandleEl) {
       throw new Error("Content pane is missing required elements");
     }
 
     let disposed = false;
     let ownerVersion = 0;
     const isCurrentOwner = (version: number): boolean => !disposed && version === ownerVersion;
+    /** The landing control that opened the chapter sheet; focus returns here on close. */
+    let sheetOpener: HTMLElement | null = null;
+    let headerFrame = 0;
+    let pagerSettleTimer: number | undefined;
 
     function visibleEntries(slice: ContentSlice): LibraryEntry[] {
       if (!slice.editMode || !slice.editOrder) return slice.cards;
@@ -310,42 +336,40 @@ const contentPane = {
       });
     }
 
+    const region = (name: string): HTMLElement | null => meatEl.querySelector<HTMLElement>(`[data-region="${name}"]`);
+
+    const scrollKey = (element: HTMLElement): string => element.matches(".chapter-row")
+      ? `row:${element.closest<HTMLElement>("[data-chapter-key]")?.dataset.chapterKey}`
+      : element.matches(".chapter-page") ? `page:${element.dataset.tab}` : element.dataset.region ?? "browse";
+
     const captureScrolls = (): Map<string, [number, number]> => {
       const positions = new Map<string, [number, number]>();
-      meatEl.querySelectorAll<HTMLElement>('[data-region="textbook-reader"], .textbook-shelf, .deck-view-list').forEach((element) => {
-        const key = element.matches(".textbook-shelf")
-          ? `${element.closest<HTMLElement>("[data-chapter-key]")?.dataset.chapterKey}:${element.dataset.reorderRegion}`
-          : element.dataset.region ?? "browse";
-        positions.set(key, [element.scrollLeft, element.scrollTop]);
+      meatEl.querySelectorAll<HTMLElement>(SCROLLERS).forEach((element) => {
+        positions.set(scrollKey(element), [element.scrollLeft, element.scrollTop]);
       });
       return positions;
     };
 
     const restoreScrolls = (positions: ReadonlyMap<string, [number, number]>): void => {
-      meatEl.querySelectorAll<HTMLElement>('[data-region="textbook-reader"], .textbook-shelf, .deck-view-list').forEach((element) => {
-        const key = element.matches(".textbook-shelf")
-          ? `${element.closest<HTMLElement>("[data-chapter-key]")?.dataset.chapterKey}:${element.dataset.reorderRegion}`
-          : element.dataset.region ?? "browse";
-        const position = positions.get(key);
+      meatEl.querySelectorAll<HTMLElement>(SCROLLERS).forEach((element) => {
+        const position = positions.get(scrollKey(element));
         if (position) { element.scrollLeft = position[0]; element.scrollTop = position[1]; }
       });
     };
 
-    const jumpChapter = (key: string | null): void => {
-      if (!key) return;
-      const chapter = [...meatEl.querySelectorAll<HTMLElement>(".textbook-chapter")]
-        .find((element) => element.dataset.chapterKey === key);
-      const reader = meatEl.querySelector<HTMLElement>('[data-region="textbook-reader"]');
-      if (!chapter || !reader) return;
-      reader.scrollTop += chapter.getBoundingClientRect().top - reader.getBoundingClientRect().top;
-      chapter.focus({ preventScroll: true });
-    };
-
     const showInlineError = (message: string | null): void => {
-      const errorElement = meatEl.querySelector<HTMLElement>('[data-region="content-error"]');
+      const errorElement = region("content-error");
       if (!errorElement) return;
       errorElement.textContent = message ?? "";
       errorElement.hidden = message === null;
+    };
+
+    const updateCollapse = (): void => {
+      const reader = region("textbook-reader");
+      const y = reader?.scrollTop ?? 0;
+      const collapsed = meatEl.classList.contains(COLLAPSED_CLASS);
+      if (!collapsed && y > COLLAPSE_AT) meatEl.classList.add(COLLAPSED_CLASS);
+      else if (collapsed && y < EXPAND_AT) meatEl.classList.remove(COLLAPSED_CLASS);
     };
 
     const patchStar = (patch: ContentStarPatch, entries: readonly LibraryEntry[]): void => {
@@ -367,72 +391,149 @@ const contentPane = {
         });
     };
 
-    const updateChapters = (next: ContentSlice, starOnly = false): void => {
+    const closeMenu = (restoreFocus: boolean): void => {
+      const sheet = region("chapter-sheet");
+      if (!sheet?.classList.contains(MENU_OPEN_CLASS)) return;
+      sheet.classList.remove(MENU_OPEN_CLASS);
+      const toggle = sheet.querySelector<HTMLElement>(".chapter-sheet-switch");
+      toggle?.setAttribute("aria-expanded", "false");
+      if (restoreFocus) toggle?.focus({ preventScroll: true });
+    };
+
+    const openMenu = (): void => {
+      const sheet = region("chapter-sheet");
+      if (!sheet) return;
+      sheet.classList.add(MENU_OPEN_CLASS);
+      sheet.querySelector(".chapter-sheet-switch")?.setAttribute("aria-expanded", "true");
+      (sheet.querySelector<HTMLElement>('.chapter-menu-item[aria-checked="true"]')
+        ?? sheet.querySelector<HTMLElement>(".chapter-menu-item"))?.focus({ preventScroll: true });
+    };
+
+    /** Selected tab and inert pages follow state; the pager is scrolled only by its callers. */
+    const syncTabs = (slice: ContentSlice): void => {
+      const body = region("chapter-sheet-body");
+      if (!body) return;
+      const pages = [...body.querySelectorAll<HTMLElement>(".chapter-page")];
+      const wanted = slice.starredTab;
+      const active = pages.some((page) => page.dataset.tab === wanted) ? wanted : pages[0]?.dataset.tab;
+      body.querySelectorAll<HTMLElement>(".chapter-tab").forEach((tab) => {
+        const selected = tab.dataset.tab === active;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
+      pages.forEach((page) => { page.inert = page.dataset.tab !== active; });
+    };
+
+    const alignPager = (slice: ContentSlice, behavior: ScrollBehavior): void => {
+      const pager = region("chapter-pager");
+      if (!pager) return;
+      const pages = [...pager.querySelectorAll<HTMLElement>(".chapter-page")];
+      const index = Math.max(0, pages.findIndex((page) => page.dataset.tab === slice.starredTab));
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      pager.scrollTo({ left: index * pager.clientWidth, behavior: reduced ? "auto" : behavior });
+    };
+
+    const activePage = (): HTMLElement | null =>
+      region("chapter-pager")?.querySelector<HTMLElement>(".chapter-page:not([inert])") ?? null;
+
+    /** Scrolls the active page to a word family, exchange, or entry; exchanges and entries flash. */
+    const reveal = (selector: string, flash: boolean): void => {
+      const page = activePage();
+      const target = page?.querySelector<HTMLElement>(selector);
+      if (!page || !target) return;
+      page.scrollTop += target.getBoundingClientRect().top - page.getBoundingClientRect().top - (flash ? 48 : 0);
+      if (!flash) return;
+      target.classList.remove(FLASH_CLASS);
+      void target.offsetWidth;
+      target.classList.add(FLASH_CLASS);
+    };
+
+    /** Rebuilds the sheet's header text, chapter menu, and (optionally) its pages. */
+    const syncSheet = (slice: ContentSlice, rebuildBody: boolean): void => {
+      const sheet = region("chapter-sheet");
+      if (!sheet || !slice.deck) return;
+      const chapters = getDeckChapters(visibleEntries(slice), slice.groups);
+      const chapter = chapters.find((candidate) => candidate.key === slice.chapterKey) ?? null;
+      setAttrSafe(rootEl, "chapterOpen", chapter ? "" : null);
+      setAttrSafe(sheet, "chapterKind", chapter?.kind ?? null);
+      const title = region("chapter-sheet-title");
+      if (title && chapter && title.textContent !== chapter.title) title.textContent = chapter.title;
+      sheet.querySelector(".chapter-sheet-switch")?.setAttribute("aria-label", chapter ? `${chapter.title}, choose another chapter` : "Choose a chapter");
+      const menu = region("chapter-menu");
+      const menuHTML = renderChapterMenu(chapters, slice.chapterKey);
+      if (menu && menu.innerHTML !== menuHTML) setListHTMLSafe(menu, menuHTML);
+      const body = region("chapter-sheet-body");
+      if (rebuildBody && body && chapter) {
+        const html = renderChapterSheetBody(chapter, {
+          readingDisplay: slice.deck.readingDisplay,
+          readOnly: isPreviewDeck(slice.deck),
+          tab: slice.starredTab,
+          contextFor: (entry) => entryContextLabel(entry, chapters),
+        });
+        if (body.innerHTML !== html) setListHTMLSafe(body, html);
+      }
+      syncTabs(slice);
+      const landingInert = chapter !== null;
+      [region("book-header"), region("textbook-reader"), meatEl.querySelector<HTMLElement>(".textbook-review-bar")]
+        .forEach((element) => { if (element) element.inert = landingInert; });
+    };
+
+    /** Landing cards, Starred card, open sheet, and status after card data changes. */
+    const updatePhrasebook = (next: ContentSlice, starOnly = false): void => {
       if (!next.deck) return;
-      const container = meatEl.querySelector<HTMLElement>('[data-region="textbook-chapters"]');
-      if (!container) return;
       const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      const focusedChapter = active?.closest<HTMLElement>(".textbook-chapter");
-      const focusedKey = focusedChapter?.dataset.chapterKey;
+      const scope = active?.closest<HTMLElement>('[data-region="chapter-sheet-body"], [data-region="chapter-cards"]');
+      const scopeName = scope?.dataset.region;
       const focusedEntry = active?.closest<HTMLElement>("[data-entry-key]")?.dataset.entryKey;
       const focusedStar = active?.matches(".card-star") ?? false;
-      const focusedStars = [...focusedChapter?.querySelectorAll<HTMLElement>(".card-star") ?? []];
-      const focusedIndex = active ? focusedStars.indexOf(active) : -1;
+      // Stars on hidden (inert) tab pages cannot take focus, so successors come from the visible page only.
+      const visibleStars = (root: HTMLElement | null | undefined): HTMLElement[] =>
+        [...root?.querySelectorAll<HTMLElement>(".card-star") ?? []].filter((star) => !star.closest("[inert]"));
+      const focusedIndex = active && scope ? visibleStars(scope).indexOf(active) : -1;
       const scrolls = captureScrolls();
       const chapters = getDeckChapters(visibleEntries(next), next.groups);
-      const existing = new Map([...container.children].map((element) =>
-        [(element as HTMLElement).dataset.chapterKey, element as HTMLElement]));
-      const keys = new Set(chapters.map((chapter) => chapter.key));
-      for (const [key, element] of existing) {
-        if (!key || !keys.has(key)) element.remove();
+      const starredSlot = region("starred-card");
+      const starredHTML = renderStarredSlot(chapters);
+      if (starredSlot && starredSlot.innerHTML !== starredHTML) setListHTMLSafe(starredSlot, starredHTML);
+      if (!starOnly) {
+        const list = region("chapter-list");
+        const listHTML = renderChapterList(chapters);
+        if (list && list.innerHTML !== listHTML) setListHTMLSafe(list, listHTML);
       }
-      chapters.forEach((chapter, index) => {
-        let current = existing.get(chapter.key);
-        if (!current) {
-          const template = document.createElement("template");
-          template.innerHTML = renderChapter(chapter, next.deck!, index);
-          current = template.content.firstElementChild as HTMLElement;
-        } else if (!starOnly || chapter.key === STARRED_CHAPTER_KEY) {
-          const template = document.createElement("template");
-          template.innerHTML = renderChapter(chapter, next.deck!, index);
-          const fresh = template.content.firstElementChild!;
-          const list = current.querySelector<HTMLElement>('[data-region="chapter-cards"]');
-          const nextList = fresh.querySelector<HTMLElement>('[data-region="chapter-cards"]');
-          if (list && nextList && list.innerHTML !== nextList.innerHTML) setListHTMLSafe(list, nextList.innerHTML);
-          const title = current.querySelector(".textbook-chapter-title");
-          const nextTitle = fresh.querySelector(".textbook-chapter-title");
-          if (title && nextTitle && title.innerHTML !== nextTitle.innerHTML) title.innerHTML = nextTitle.innerHTML;
-        }
-        if (container.children[index] !== current) container.insertBefore(current, container.children[index] ?? null);
-      });
-      const navigation = meatEl.querySelector<HTMLElement>('[data-region="chapter-navigation"]');
-      if (navigation) {
-        if (starOnly) {
-          navigation.querySelectorAll(".textbook-star-count").forEach((count) => {
-            count.textContent = String(chapters.find((chapter) => chapter.kind === "starred")?.entries.length ?? 0);
-          });
-        } else {
-          const open = navigation.querySelector("details")?.open ?? false;
-          setListHTMLSafe(navigation, renderChapterNavigation(chapters));
-          const details = navigation.querySelector("details");
-          if (details) details.open = open;
-        }
-      }
+      syncSheet(next, !starOnly || next.chapterKey === STARRED_CHAPTER_KEY);
       const count = chapters.find((chapter) => chapter.kind === "starred")?.entries.length ?? 0;
-      const status = meatEl.querySelector('[data-region="starred-status"]');
+      const status = region("starred-status");
       if (status) status.textContent = `${count} cards starred in this phrasebook.`;
       restoreScrolls(scrolls);
-      if (!active || active.isConnected || !focusedKey) return;
-      const chapter = [...container.children].find((element) =>
-        (element as HTMLElement).dataset.chapterKey === focusedKey) as HTMLElement | undefined;
-      const row = [...chapter?.querySelectorAll<HTMLElement>(".card-row-wrapper") ?? []]
+      if (!active || active.isConnected || !scopeName) return;
+      const nextScope = region(scopeName);
+      const row = [...nextScope?.querySelectorAll<HTMLElement>(".card-row-wrapper") ?? []]
         .find((element) => element.dataset.entryKey === focusedEntry);
       const target = row?.querySelector<HTMLElement>(focusedStar ? ".card-star" : ".card-term")
-        ?? (focusedIndex >= 0 ? [...chapter?.querySelectorAll<HTMLElement>(".card-star") ?? []][focusedIndex] : null)
-        ?? chapter
-        ?? meatEl.querySelector<HTMLElement>(".textbook-star-link");
+        ?? (focusedIndex >= 0 ? visibleStars(nextScope)[focusedIndex] : null)
+        ?? (next.chapterKey ? meatEl.querySelector<HTMLElement>(".chapter-sheet-back") : meatEl.querySelector<HTMLElement>(".chapter-card-header"));
       target?.focus({ preventScroll: true });
     };
+
+    /** Opening focuses Back; switching keeps the switcher focused; closing returns to the opener. */
+    const chapterMoved = (next: ContentSlice, previous: ContentSlice): void => {
+      closeMenu(false);
+      syncSheet(next, true);
+      alignPager(next, "auto");
+      if (next.chapterKey && !previous.chapterKey) {
+        region("chapter-sheet-body")?.querySelectorAll<HTMLElement>(".chapter-page").forEach((page) => { page.scrollTop = 0; });
+        meatEl.querySelector<HTMLElement>(".chapter-sheet-back")?.focus({ preventScroll: true });
+      } else if (next.chapterKey) {
+        region("chapter-sheet-body")?.querySelectorAll<HTMLElement>(".chapter-page").forEach((page) => { page.scrollTop = 0; });
+        meatEl.querySelector<HTMLElement>(".chapter-sheet-switch")?.focus({ preventScroll: true });
+      } else {
+        const fallback = [...meatEl.querySelectorAll<HTMLElement>(".chapter-card")]
+          .find((card) => card.dataset.chapterKey === previous.chapterKey)?.querySelector<HTMLElement>(".chapter-card-header");
+        (sheetOpener?.isConnected ? sheetOpener : fallback)?.focus({ preventScroll: true });
+        sheetOpener = null;
+      }
+    };
+
     const unsubContent = ui.subscribe("content", (next, previous) => {
       if (next.deckId !== previous.deckId || next.reload !== previous.reload
         || (next.deck !== previous.deck && next.cards !== previous.cards)) ownerVersion += 1;
@@ -443,12 +544,14 @@ const contentPane = {
       const cardsChanged = next.cards !== previous.cards;
       const groupsChanged = next.groups !== previous.groups;
       const chapterChanged = next.chapterKey !== previous.chapterKey;
+      const tabChanged = next.starredTab !== previous.starredTab;
       const reorderedWhileEditing = next.editMode
         && previous.editMode
         && next.editOrder !== previous.editOrder;
       const leavingEditOrder = previous.editMode
         && !next.editMode
         && previous.editOrder !== null;
+      let sheetSynced = false;
 
       const illustrationOnly = samePhrasebook && deckChanged
         && !cardsChanged && !groupsChanged
@@ -456,23 +559,25 @@ const contentPane = {
         && "illustration" in next.deck && "illustration" in previous.deck
         && next.deck.illustration !== previous.deck.illustration;
       if (illustrationOnly && next.deck && "illustration" in next.deck) {
-        const hero = meatEl.querySelector<HTMLElement>('[data-region="deck-hero"]');
+        const hero = region("deck-hero");
         if (hero) hero.innerHTML = renderIllustration(next.deck.illustration);
       } else if (browseChanged || (deckChanged && !samePhrasebook)) {
         const scrolls = next.deckId === previous.deckId ? captureScrolls() : new Map<string, [number, number]>();
         meatEl.innerHTML = next.browse
           ? renderBrowseBody(next.browse)
-          : renderDeckBody(next.deck, next.cards, next.groups, next.chapterKey);
+          : renderDeckBody(next.deck, next.cards, next.groups);
+        meatEl.classList.remove(COLLAPSED_CLASS);
+        if (!next.browse) { syncSheet(next, true); alignPager(next, "auto"); sheetSynced = true; }
         restoreScrolls(scrolls);
+        updateCollapse();
       } else if (!next.browse
         && cardsChanged
         && next.starPatch
         && next.starPatch !== previous.starPatch) {
         patchStar(next.starPatch, next.cards);
-        updateChapters(next, true);
+        updatePhrasebook(next, true);
       } else if (!next.browse
         && (deckChanged || cardsChanged || groupsChanged || reorderedWhileEditing || leavingEditOrder)) {
-        const orderedEntries = visibleEntries(next);
         if (next.deck && isSystemDeck(next.deck)) {
           const list = meatEl.querySelector<HTMLElement>(
             '.deck-view-list[data-region="card-list"]',
@@ -480,18 +585,21 @@ const contentPane = {
           if (list) {
             setListHTMLSafe(
               list,
-              renderBrowseCardsHTML(next.deck, orderedEntries, next.groups),
+              renderBrowseCardsHTML(next.deck, visibleEntries(next), next.groups),
             );
           }
         } else if (next.deck) {
-          updateChapters(next);
-          const title = meatEl.querySelector<HTMLElement>(".pane-header-title");
-          if (title && title.textContent !== next.deck.name) title.textContent = next.deck.name;
+          updatePhrasebook(next);
+          sheetSynced = !chapterChanged;
+          const name = next.deck.name;
+          meatEl.querySelectorAll<HTMLElement>(".phrasebook-title, .phrasebook-minibar span").forEach((title) => {
+            if (title.textContent !== name) title.textContent = name;
+          });
         }
-      } else if (!next.browse && chapterChanged) {
-        jumpChapter(next.chapterKey);
       }
 
+      if (!next.browse && chapterChanged) chapterMoved(next, previous);
+      else if (!next.browse && tabChanged && !sheetSynced) syncTabs(next);
 
       if (cardsChanged || deckChanged || browseChanged) {
         const reviewButton = meatEl.querySelector<HTMLButtonElement>('[data-action="content/review"]');
@@ -502,23 +610,11 @@ const contentPane = {
       }
 
       setAttrSafe(rootEl, "editMode", next.editMode ? "" : null);
-      setAttrSafe(handleEl, "readingShelves", meatEl.querySelector(".textbook-reader") ? "" : null);
-      setAttrSafe(rootEl, "menuOpen", next.menuOpen ? "" : null);
+      setAttrSafe(handleEl, "readingShelves", region("textbook-reader") ? "" : null);
       setAttrSafe(rootEl, "empty", next.browse || next.deck ? null : "");
-      if (next.menuOpen && !previous.menuOpen) positionTitleMenu();
       if (next.deck?.mode) stageEl.dataset.deckMode = next.deck.mode;
       else delete stageEl.dataset.deckMode;
     });
-
-    const positionTitleMenu = (): void => {
-      const anchor = meatEl.querySelector<HTMLElement>('[data-action="content/deck-title"]');
-      if (!anchor) return;
-      const rect = anchor.getBoundingClientRect();
-      const origin = rootEl.getBoundingClientRect();
-      // The transformed content pane is the fixed menu's containing block.
-      menuEl.style.top = `${rect.bottom - origin.top + 4}px`;
-      menuEl.style.left = `${rect.left - origin.left + rect.width / 2}px`;
-    };
 
     let inflight = 0;
     const unsubLoad = ui.subscribe("content", (next, previous) => {
@@ -535,6 +631,63 @@ const contentPane = {
       });
     });
 
+    // Scroll does not bubble: one capturing listener watches the reader (header) and the pager (tab).
+    const settlePager = (pager: HTMLElement): void => {
+      window.clearTimeout(pagerSettleTimer);
+      pagerSettleTimer = undefined;
+      if (pager.dataset.dragging !== undefined || !pager.clientWidth) return;
+      const pages = [...pager.querySelectorAll<HTMLElement>(".chapter-page")];
+      const tab = pages[Math.round(pager.scrollLeft / pager.clientWidth)]?.dataset.tab as StarredTab | undefined;
+      if (tab && tab !== ui.get("content").starredTab) ui.transition("content/select-tab", { tab });
+    };
+    const listeners = new AbortController();
+    meatEl.addEventListener("scroll", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (target.dataset.region === "textbook-reader") {
+        if (!headerFrame) headerFrame = requestAnimationFrame(() => { headerFrame = 0; updateCollapse(); });
+      } else if (target.dataset.region === "chapter-pager") {
+        window.clearTimeout(pagerSettleTimer);
+        pagerSettleTimer = window.setTimeout(() => settlePager(target), 140);
+      }
+    }, { capture: true, passive: true, signal: listeners.signal });
+    meatEl.addEventListener("scrollend", (event) => {
+      if (event.target instanceof HTMLElement && event.target.dataset.region === "chapter-pager") settlePager(event.target);
+    }, { capture: true, signal: listeners.signal });
+
+    rootEl.addEventListener("pointerdown", (event) => {
+      if (event.target instanceof Element && !event.target.closest(".chapter-menu, .chapter-sheet-switch")) closeMenu(false);
+    }, { signal: listeners.signal });
+
+    rootEl.addEventListener("keydown", (event) => {
+      const sheet = region("chapter-sheet");
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (event.key === "Escape") {
+        if (sheet?.classList.contains(MENU_OPEN_CLASS)) { event.preventDefault(); closeMenu(true); return; }
+        if (ui.get("content").chapterKey !== null) { event.preventDefault(); ui.transition("content/close-chapter"); }
+        return;
+      }
+      if (target?.matches(".chapter-menu-item") && ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+        event.preventDefault();
+        const items = [...target.parentElement!.querySelectorAll<HTMLElement>(".chapter-menu-item")];
+        const index = items.indexOf(target);
+        const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1
+          : (index + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+        items[nextIndex]?.focus();
+      } else if (target?.matches(".chapter-tab") && ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+        event.preventDefault();
+        const tabs = [...target.parentElement!.querySelectorAll<HTMLElement>(".chapter-tab")];
+        const index = tabs.indexOf(target);
+        const nextTab = tabs[event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length];
+        const tab = nextTab?.dataset.tab as StarredTab | undefined;
+        if (!nextTab || !tab) return;
+        ui.transition("content/select-tab", { tab });
+        alignPager(ui.get("content"), "smooth");
+        nextTab.focus();
+      }
+    }, { signal: listeners.signal });
+
     function isEdit(): boolean {
       return ui.get("content").editMode;
     }
@@ -547,26 +700,53 @@ const contentPane = {
     });
     delegate.register("content/menu", () => ui.transition("shell/toggle"));
 
-    delegate.register("content/deck-title", () => {
-      const deck = ui.get("content").deck;
-      if (isSystemDeck(deck)) ui.transition("shell/toggle");
-      else if (isStoredDeck(deck)) ui.transition("content/toggle-menu");
-    });
-
     delegate.register("content/menu-settings", () => {
-      ui.transition("content/close-menu");
       const { deck, cards } = ui.get("content");
       if (isStoredDeck(deck)) {
         ui.transition("action/open", { kind: "settings", payload: { deck, cards } });
       }
     });
 
-    delegate.register("content/menu-edit", () => {
-      ui.transition("content/close-menu");
-      ui.transition("content/enter-edit");
+    delegate.register("content/menu-edit", () => ui.transition("content/enter-edit"));
+
+    delegate.register("content/open-chapter", (_event, element) => {
+      const { chapterKey, tab, focus } = element.dataset;
+      if (!chapterKey) return;
+      if (ui.get("content").chapterKey === null) sheetOpener = element;
+      ui.transition("content/open-chapter", { chapterKey, tab: tab as StarredTab | undefined });
+      if (ui.get("content").chapterKey !== chapterKey) return;
+      closeMenu(false);
+      if (tab) alignPager(ui.get("content"), "auto");
+      const [kind, id] = focus?.split(/:(.*)/s) ?? [];
+      if (!id) return;
+      // Family and topic sections scroll into place; an exchange also flashes.
+      const attribute = kind === "family" ? "data-family-id" : kind === "topic" ? "data-topic-id" : kind === "exchange" ? "data-exchange-id" : null;
+      if (attribute) reveal(`[${attribute}="${CSS.escape(id)}"]`, kind === "exchange");
     });
 
-    delegate.register("content/close-menu", () => ui.transition("content/close-menu"));
+    delegate.register("content/close-chapter", () => ui.transition("content/close-chapter"));
+
+    delegate.register("content/toggle-chapter-menu", () => {
+      if (region("chapter-sheet")?.classList.contains(MENU_OPEN_CLASS)) closeMenu(true);
+      else openMenu();
+    });
+
+    delegate.register("content/select-tab", (_event, element) => {
+      const tab = element.dataset.tab as StarredTab | undefined;
+      if (!tab) return;
+      ui.transition("content/select-tab", { tab });
+      alignPager(ui.get("content"), "smooth");
+    });
+
+    delegate.register("content/open-in-context", (_event, element) => {
+      const entry = ui.get("content").cards.find((candidate) => candidate.key === element.dataset.entryKey);
+      if (!entry) return;
+      const chapterKey = entryChapterKey(entry);
+      ui.transition("content/open-chapter", { chapterKey });
+      if (ui.get("content").chapterKey !== chapterKey) return;
+      alignPager(ui.get("content"), "auto");
+      reveal(`.card-row-wrapper[data-entry-key="${CSS.escape(entry.key)}"]`, true);
+    });
 
     delegate.register("content/done", (_event, element) => {
       const slice = ui.get("content");
@@ -676,30 +856,24 @@ const contentPane = {
       }
     });
 
-    delegate.register("content/jump-chapter", (_event, element) => {
-      const chapterKey = element.dataset.chapterKey;
-      if (!chapterKey) return;
-      const details = element.closest("details");
-      if (details) details.open = false;
-      ui.transition("content/jump-chapter", { chapterKey });
-      jumpChapter(chapterKey);
-    });
     delegate.register("content/cancel-edit", () => ui.transition("content/cancel-edit"));
 
     const unregisterCardActions = registerCardActions({ host, rootEl, isEdit });
     const registeredActions = [
       "content/menu",
-      "content/deck-title",
       "content/menu-settings",
       "content/menu-edit",
-      "content/close-menu",
+      "content/open-chapter",
+      "content/close-chapter",
+      "content/toggle-chapter-menu",
+      "content/select-tab",
+      "content/open-in-context",
       "content/done",
       "content/review",
       "content/save-preview",
       "content/browse-back",
       "content/browse-select",
       "content/browse-view-suggested",
-      "content/jump-chapter",
       "content/cancel-edit",
     ];
 
@@ -712,6 +886,9 @@ const contentPane = {
       unsubLoad();
       unregisterCardActions();
       gestures.dispose();
+      listeners.abort();
+      cancelAnimationFrame(headerFrame);
+      window.clearTimeout(pagerSettleTimer);
       handleEl.removeAttribute("data-reading-shelves");
       for (const action of registeredActions) delegate.unregister(action);
     };

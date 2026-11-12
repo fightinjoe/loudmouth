@@ -1,0 +1,206 @@
+{
+  "source": "Local HTTP POST /context; final normalized responses, not raw provider text.",
+  "promptSha256": "e137704acc39912afabc1fb516ee4d24ada3fafee672decad8d8123a21f83bd3",
+  "captures": [
+    {
+      "id": "directions-es",
+      "request": {
+        "seed": "asking directions",
+        "language": "es",
+        "ability": "basics"
+      },
+      "observedAt": "2026-11-02T21:18:08Z",
+      "status": 200,
+      "elapsedMs": 6536,
+      "body": {
+        "questions": [
+          {
+            "label": "What are you trying to find?",
+            "options": [
+              "A specific street or address",
+              "Public transit station",
+              "A landmark or monument",
+              "A shop or restaurant"
+            ]
+          },
+          {
+            "label": "How are you getting around?",
+            "options": [
+              "Walking",
+              "Driving a car",
+              "Using public transport",
+              "Riding a bicycle"
+            ]
+          }
+        ],
+        "checklist": [
+          {
+            "label": "Get someone's attention",
+            "checked": true
+          },
+          {
+            "label": "Ask where a place is",
+            "checked": true
+          },
+          {
+            "label": "Understand distance",
+            "checked": true
+          },
+          {
+            "label": "Understand left and right",
+            "checked": true
+          },
+          {
+            "label": "Ask for clarification",
+            "checked": true
+          },
+          {
+            "label": "Thank the helper",
+            "checked": true
+          }
+        ],
+        "imagePrompt": "A zoomed-in close-up of a loose, wet-on-wet watercolor still life on plain white paper, 16:9 landscape format. The main objects together occupy 90–94% of the canvas width and height, reaching nearly edge to edge: an unfolded paper street map resting diagonally across the frame, a vintage magnetic compass placed near the center, and a pair of worn walking shoes positioned near the right edge, viewed from a slight three-quarter angle. Arrange the objects across the full landscape frame. Keep every object fully visible, with only a narrow 3–5% white safety margin at the outer edges. Painted with soft, bleeding edges and no ink or pencil outlines; forms are defined only by pools of color, gentle pigment blooms, and soft granulation. A few pale, translucent washes of blush, peach, and lavender sit immediately behind the large objects, suggesting an outdoor journey without showing any details. Delicate, understated, and calm, with tight framing and minimal surrounding whitespace. All surfaces are plain and unmarked, with no labels, signs, letters, maps with readable text, logos, or lettering. No people or hands.",
+        "usage": {
+          "model": "gemini-3.5-flash-lite",
+          "inputTokens": 1616,
+          "outputTokens": 513,
+          "totalTokens": 2129,
+          "costUsd": 0.0017672999999999999,
+          "durationMs": 6485
+        }
+      }
+    },
+    {
+      "id": "surf-es",
+      "request": {
+        "seed": "surf vacation in Costa Rica",
+        "language": "es",
+        "ability": "basics"
+      },
+      "observedAt": "2026-11-02T21:18:14Z",
+      "status": 200,
+      "elapsedMs": 1524,
+      "body": {
+        "questions": [
+          {
+            "label": "What is your current surfing level?",
+            "options": [
+              "Beginner",
+              "Intermediate",
+              "Advanced"
+            ]
+          },
+          {
+            "label": "Where are you staying?",
+            "options": [
+              "Surf camp",
+              "Hotel or resort",
+              "Hostel or Airbnb"
+            ]
+          }
+        ],
+        "checklist": [
+          {
+            "label": "Rent a surfboard",
+            "checked": true
+          },
+          {
+            "label": "Book a surf lesson",
+            "checked": true
+          },
+          {
+            "label": "Ask about wave conditions",
+            "checked": true
+          },
+          {
+            "label": "Buy sunscreen and wax",
+            "checked": true
+          },
+          {
+            "label": "Report lost equipment",
+            "checked": false
+          },
+          {
+            "label": "Chat with local surfers",
+            "checked": false
+          }
+        ],
+        "imagePrompt": "A zoomed-in close-up of a loose, wet-on-wet watercolor still life on plain white paper, 16:9 landscape format. The main objects together occupy 90–94% of the canvas width and height, reaching nearly edge to edge: a brightly colored surfboard placed diagonally across the full landscape frame, with a block of surf wax and a round bottle of sunscreen resting near one end, viewed from a slight three-quarter angle. Keep every object fully visible, with only a narrow 3–5% white safety margin at the outer edges. Painted with soft, bleeding edges and no ink or pencil outlines; forms are defined only by pools of color, gentle pigment blooms, and soft granulation. A few pale, translucent washes of blush, peach, and lavender sit immediately behind the objects, suggesting a sunny tropical beach without showing any details. Delicate, understated, and calm, with tight framing and minimal surrounding whitespace. All surfaces are plain and unmarked, with no labels, signs, logos, or lettering. No people or hands.",
+        "usage": {
+          "model": "gemini-3.5-flash-lite",
+          "inputTokens": 1619,
+          "outputTokens": 450,
+          "totalTokens": 2069,
+          "costUsd": 0.0016107,
+          "durationMs": 1521
+        }
+      }
+    },
+    {
+      "id": "family-dinner-es",
+      "request": {
+        "seed": "dinner with my partner’s parents",
+        "language": "es",
+        "ability": "basics"
+      },
+      "observedAt": "2026-11-02T21:18:16Z",
+      "status": 200,
+      "elapsedMs": 1802,
+      "body": {
+        "questions": [
+          {
+            "label": "How well do you know them?",
+            "options": [
+              "First time meeting them",
+              "Met them a few times before",
+              "Already know them well"
+            ]
+          },
+          {
+            "label": "Where is the dinner taking place?",
+            "options": [
+              "At their home",
+              "At a restaurant",
+              "At a family gathering"
+            ]
+          }
+        ],
+        "checklist": [
+          {
+            "label": "Greet and introduce myself",
+            "checked": true
+          },
+          {
+            "label": "Compliment the home or food",
+            "checked": true
+          },
+          {
+            "label": "Answer questions about myself",
+            "checked": true
+          },
+          {
+            "label": "Discuss food preferences",
+            "checked": true
+          },
+          {
+            "label": "Offer help with the table",
+            "checked": false
+          },
+          {
+            "label": "Thank them and say goodbye",
+            "checked": true
+          }
+        ],
+        "imagePrompt": "A zoomed-in close-up of a loose, wet-on-wet watercolor still life on plain white paper, 16:9 landscape format. The main objects together occupy 90–94% of the canvas width and height, reaching nearly edge to edge: two elegant white dinner plates placed side by side, flanked by silverware, with two crystal glasses filled with pale amber wine, viewed from a slight three-quarter angle. Arrange the objects across the full landscape frame, placing long items horizontally to use its width. Keep every object fully visible, with only a narrow 3–5% white safety margin at the outer edges. Painted with soft, bleeding edges and no ink or pencil outlines; forms are defined only by pools of color, gentle pigment blooms, and soft granulation. A few pale, translucent washes of blush, peach, and lavender sit immediately behind the objects, suggesting a warm dining room without showing any details. Delicate, understated, and calm, with tight framing and minimal surrounding whitespace. All surfaces are plain and unmarked, with no labels, signs, menus, logos, or lettering. No people or hands.",
+        "usage": {
+          "model": "gemini-3.5-flash-lite",
+          "inputTokens": 1621,
+          "outputTokens": 503,
+          "totalTokens": 2124,
+          "costUsd": 0.0017438,
+          "durationMs": 1799
+        }
+      }
+    }
+  ]
+}

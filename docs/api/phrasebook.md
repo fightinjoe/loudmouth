@@ -41,7 +41,11 @@ Structural acceptance is not a guarantee of translation, pronunciation or teachi
 Seed, answer labels/values and topics must remain nonempty after trimming. Trimmed answer-key
 collisions return `400`. Ability controls which material is worth spending lines on, not grammar
 difficulty: `none` includes first-week language, `basics` assumes it, and `conversational` prioritizes
-situation-specific language. The learner chooses the topic count.
+situation-specific language. At every level, generic language (greetings, thanks, apologies, polite
+openers, "Could you help me?") stays out of Things to say and Words; `none` learners meet it in Likely
+exchanges and the Example conversation. The prompt also asks for single-option exchange openers and no
+"Do you speak English?" fallback; the parser still accepts 1–3 options on every turn. The learner
+chooses the topic count.
 
 ### Model tasks and raw authoring output
 

@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phrasebook organization · Catchphrase exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hepta+Slab:wght@600&amp;family=Inter:ital,wght@1,300&amp;family=Manrope:wght@400;600&amp;family=Roboto+Condensed:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+/* Phrasebook tokens: everything themable derives from one accent. */
+:root{color-scheme:light;--w:402px;--s:1;--accent:#3c7740;
+ --accent-2:color-mix(in oklab,var(--accent) 80%,white);
+ --accent-soft:color-mix(in oklab,var(--accent) 24%,white);
+ --accent-wash:color-mix(in oklab,var(--accent) 8%,white);
+ --starbg:color-mix(in oklab,var(--accent) 11%,white);
+ --starline:color-mix(in oklab,var(--accent) 22%,white);
+ --bubble-top:color-mix(in oklab,var(--accent) 8%,white);
+ --bubble-bottom:color-mix(in oklab,var(--accent) 24%,white);
+ --g50:#f9fafb;--g100:#f1f3f6;--g200:#e2e7f0;--g300:#cbd2e1;--g400:#94a0b8;--cap:#64718b;--body:#0f182a;--content-top:392px}
+*{box-sizing:border-box}
+body{margin:0;background:#f4f5ef;color:var(--body);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1500px;margin:auto;padding:40px 24px 72px}
+h1,h2,h3,h4,h5,p{margin:0}
+.intro{max-width:880px}.intro p{color:var(--cap);margin-top:10px}
+h1{font:600 clamp(34px,4.6vw,54px)/1.08 "Hepta Slab",Georgia,serif;color:var(--accent);letter-spacing:-.02em;margin:12px 0 14px}
+.eyebrow{font:500 12px/1.4 "Roboto Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+a{color:var(--accent);text-underline-offset:3px}
+.links{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;font-size:13px}
+button,select,input{font:inherit;color:inherit}button{cursor:pointer}
+:focus-visible{outline:3px solid #b5582d;outline-offset:-3px}
+.controls{display:flex;flex-wrap:wrap;align-items:end;gap:12px 18px;background:#fff;border:1px solid var(--g200);border-radius:12px;padding:16px;margin:26px 0 10px}
+.controls label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650}
+.controls select{min-height:44px;background:#fff;border:1px solid #b8c4b5;border-radius:6px;padding:8px}
+.controls .check{flex-direction:row;align-items:center;min-height:44px;gap:8px}.check input{width:18px;height:18px;accent-color:var(--accent)}
+.controls .reset{min-height:44px;background:#fff;border:1px solid #b8c4b5;border-radius:6px;padding:8px 14px}
+.accentctl{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650}
+.swatches{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.swatch{width:44px;height:44px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px var(--g300);padding:0}
+.swatch[aria-pressed=true]{box-shadow:0 0 0 2px var(--body)}
+.swatches input[type=color]{width:44px;height:44px;border:1px solid var(--g300);border-radius:50%;padding:2px;background:#fff}
+#contrast{font-size:12px;font-weight:400;color:var(--cap)}#contrast.warn{color:#a3361f;font-weight:650}
+.caption{font-size:13px;color:var(--cap);margin:10px 0 4px;max-width:1000px}
+#status{min-height:21px;font-size:13px;color:var(--accent);margin-bottom:24px}
+.studies{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,calc(var(--w) + 24px)),1fr));gap:56px 24px;justify-items:center}
+.direction{width:var(--w);max-width:100%}
+.direction>header{margin-bottom:12px}.direction>header h2{font:600 22px/1.25 "Hepta Slab",Georgia,serif;margin-top:4px}
+
+/* ---------- Phone (Figma v04 1188:19933, 1217:23156) ---------- */
+.phone{--p:0;position:relative;isolation:isolate;width:var(--w);max-width:100%;height:874px;border-radius:68px;overflow:hidden;background:#fff;border:1px solid var(--g300);box-shadow:0 4px 10px rgba(0,0,0,.08);font-family:Manrope,"Helvetica Neue",sans-serif}
+.screen{position:absolute;inset:0;z-index:2;overflow-y:auto;overscroll-behavior:contain;overflow-anchor:none;scrollbar-width:none}
+.lead{position:relative;height:var(--content-top)}
+.art{position:absolute;left:0;top:0;width:100%;height:420px;pointer-events:none;background:url(assets/surf-paper.png) -139px 78px/746px 407px no-repeat;-webkit-mask:url(assets/header-mask.svg) -183px 97.5px/833.795px 321.066px no-repeat;mask:url(assets/header-mask.svg) -183px 97.5px/833.795px 321.066px no-repeat;filter:var(--art-filter,none)}
+.pill{position:absolute;right:26px;top:195px;background:var(--accent-soft);border:2px solid #fff;border-radius:30px;padding:4px 12px;font:500 14px/18px "Roboto Condensed",sans-serif;text-transform:uppercase;color:var(--accent)}
+.body{position:relative;background:#fff;min-height:calc(100% - var(--content-top));padding:7px 0 60px}
+.screen::-webkit-scrollbar,.hrow::-webkit-scrollbar,.pager::-webkit-scrollbar,.page::-webkit-scrollbar,.tabs::-webkit-scrollbar{display:none}
+[data-slot]:empty{display:none}
+
+/* Title bubble: fixed in front. With "collapse", it switches state once the content passes a scroll threshold — no in-between frames. */
+.titlebar{position:absolute;top:0;left:0;right:0;height:265px;z-index:3;pointer-events:none}
+.bubble-wrap{position:absolute;inset:0;transform-origin:50% 0;transition:opacity .18s ease-out,transform .18s ease-out}
+.bubble{position:absolute;left:-2.99%;top:-8px;width:105.98%;height:265px;pointer-events:auto}
+.title{position:absolute;left:50%;top:80px;transform:translateX(-50%) rotate(-4deg);font:600 min(32px,calc(var(--w) * .08))/1.25 "Hepta Slab",Georgia,serif;color:var(--accent);text-align:center;white-space:nowrap}
+.ico{position:absolute;top:64px;width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center}.ico img{width:24px;height:24px}.ico.l{left:20px;width:30px;height:30px}.ico.r{right:20px}
+.minibar{position:absolute;left:0;right:0;top:0;height:108px;display:flex;align-items:flex-end;justify-content:center;padding:0 64px 16px;background:rgba(255,255,255,.96);box-shadow:0 1px 0 var(--g200);opacity:0;transition:opacity .18s ease-out;font:600 calc(18px * var(--s))/1.2 "Hepta Slab",Georgia,serif;color:var(--accent);text-align:center}
+.minibar span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden}
+.phone.collapsed .bubble-wrap{opacity:0;transform:translateY(-24px)}
+.phone.collapsed .bubble{pointer-events:none}
+.phone.collapsed .minibar{opacity:1;pointer-events:auto}
+
+.sec{display:flex;flex-direction:column;gap:8px;padding:10px}
+.lbl{font:500 calc(14px * var(--s))/calc(18px * var(--s)) "Roboto Condensed",sans-serif;color:var(--accent);text-transform:uppercase;overflow-wrap:anywhere}
+.hrow{display:flex;gap:8px;align-items:stretch;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:10px;margin:0 -10px;padding:6px 10px;scrollbar-width:none}
+.hrow.dragging,.pager.dragging{scroll-snap-type:none;cursor:grabbing;user-select:none}
+.vlist{display:flex;flex-direction:column;gap:8px}
+.empty{padding:10px 20px;color:var(--cap);font-size:calc(15px * var(--s))}
+
+/* Cards */
+.card{position:relative;min-width:0;background:var(--g50);border-radius:20px;padding:20px 20px 10px;display:flex;flex-direction:column;gap:6px;overflow-wrap:break-word}
+.card.on,.alt.on{background:var(--starbg)}
+.tgt{font:400 calc(22px * var(--s))/calc(26px * var(--s)) Manrope,sans-serif;color:var(--body);padding-right:18px}
+.en{font:italic 300 calc(18px * var(--s))/calc(22px * var(--s)) Inter,sans-serif;color:var(--cap)}
+.hide-en .en,.hide-en .dk-hero-en{display:none}
+.ctx{font:500 calc(11px * var(--s))/calc(14px * var(--s)) "Roboto Condensed",sans-serif;text-transform:uppercase;letter-spacing:.02em;color:var(--g400);padding-right:18px;margin:-6px 0 -2px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden}
+/* Stars and icons are masks so they follow the accent. */
+.star{position:absolute;top:-4px;right:-4px;width:44px;height:44px;border:0;border-radius:12px;background:none}
+.star::before,.xstar::before,.starglyph,.back::before{content:"";display:block;background:var(--g300);-webkit-mask:url(assets/star-off.svg) center/contain no-repeat;mask:url(assets/star-off.svg) center/contain no-repeat}
+.star::before{position:absolute;inset:10px}
+.star[aria-pressed=true]::before,.xstar[aria-pressed=true]::before,.starglyph{background:var(--accent);-webkit-mask-image:url(assets/star-on.svg);mask-image:url(assets/star-on.svg)}
+.flash{animation:flash 1.6s ease-out}
+@keyframes flash{0%,40%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 3px transparent}}
+.foot{margin-top:4px;display:flex}
+.inctx{min-height:36px;margin:0 -8px -6px;padding:0 8px;border:0;border-radius:10px;background:none;font:500 calc(13px * var(--s))/1 "Roboto Condensed",sans-serif;text-transform:uppercase;color:var(--accent-2)}
+
+/* Exchanges and conversation: vertical, learner left (gray), partner right (white, bordered); "or" between alternatives. */
+.dlg{display:flex;flex-direction:column;gap:8px}
+.turn{width:86%;display:flex;flex-direction:column;border-radius:20px;overflow:hidden}
+.turn.you{align-self:flex-start;background:var(--g50)}
+.turn.partner{align-self:flex-end;background:#fff;box-shadow:inset 0 0 0 1px var(--g200)}
+.alt{position:relative;padding:20px 20px 10px;display:flex;flex-direction:column;gap:6px}
+.alt .star{top:0;right:0}
+.or{position:relative;height:1px;background:var(--g200);margin:0 20px}
+.or span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:0 8px;font:500 11px/14px "Roboto Condensed",sans-serif;text-transform:uppercase;color:var(--g400)}
+.turn.you .or span{background:var(--g50)}.turn.partner .or span{background:#fff}
+.xhead{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:18px}
+.xstar{flex:none;display:flex;align-items:center;gap:6px;min-height:44px;margin:-13px -6px;padding:0 8px;border:0;border-radius:22px;background:none;font:500 calc(13px * var(--s))/1 "Roboto Condensed",sans-serif;text-transform:uppercase;color:var(--accent-2)}
+.xstar::before{width:20px;height:20px}
+.xstar::after{content:"Save exchange"}.xstar[aria-pressed=true]::after{content:"Saved"}
+.convo{display:flex;flex-direction:column;gap:8px;padding:0 10px}
+.card.cline{width:86%}
+.card.cline.you{align-self:flex-start}
+.card.cline.partner{align-self:flex-end;background:#fff;box-shadow:inset 0 0 0 1px var(--g200)}
+.card.cline.partner.on{background:var(--starbg);box-shadow:none}
+
+/* Phrases tab: spaced, outlined cards with an accent edge so phrases read as a list, not a conversation. */
+.plist{gap:12px}
+.plist>.card{background:#fff;border-radius:16px;box-shadow:inset 0 0 0 1px var(--g200),inset 4px 0 0 var(--accent-soft)}
+.plist>.card.on{background:var(--starbg);box-shadow:inset 0 0 0 1px var(--starline),inset 4px 0 0 var(--accent)}
+
+/* Pane */
+.scrim{position:absolute;inset:0;z-index:29;background:rgba(84,108,156,.3);opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.open{opacity:1;pointer-events:auto}
+.pane{position:absolute;left:0;right:0;bottom:0;height:92.68%;z-index:30;background:#fff;border-radius:40px 40px 62px 62px;filter:drop-shadow(0 -4px 7px rgba(0,0,0,.25));display:flex;flex-direction:column;transform:translateY(103%);visibility:hidden;transition:transform .32s cubic-bezier(.2,.8,.2,1),visibility 0s linear .32s}
+.pane.open{transform:none;visibility:visible;transition:transform .32s cubic-bezier(.2,.8,.2,1),visibility 0s}
+.ph-head{position:relative;display:flex;align-items:center;gap:4px;min-height:64px;padding:20px 20px 0}
+.ph-switch{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;gap:4px;border:0;border-radius:12px;background:none;padding:0 6px;color:var(--body)}
+.ph-switch:hover{background:var(--g50)}
+.caret{flex:none;width:18px;height:18px;color:var(--accent);transition:transform .18s ease-out}
+.ph-switch[aria-expanded=true] .caret{transform:rotate(180deg)}
+.topic-menu{position:absolute;left:16px;right:16px;top:72px;z-index:5;display:none;max-height:520px;overflow-y:auto;overscroll-behavior:contain;padding:6px;border-radius:18px;background:#fff;box-shadow:0 12px 32px rgba(15,24,42,.18),0 0 0 1px var(--g200)}
+.topic-menu.open{display:block}
+.tm-item{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;border:0;border-radius:12px;background:none;padding:8px 10px;text-align:left;font:400 calc(17px * var(--s))/1.25 Manrope,sans-serif;color:var(--body)}
+.tm-item:hover,.tm-item:focus-visible{background:var(--g50)}
+.tm-item[aria-checked=true]{background:var(--accent-wash);color:var(--accent);font-weight:600}
+.tm-num{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font:600 13px/1 "Hepta Slab",Georgia,serif}
+.tm-num .starglyph{width:14px;height:14px}
+.tm-name{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.tm-check{flex:none;width:18px;height:18px;color:var(--accent);visibility:hidden}.tm-item[aria-checked=true] .tm-check{visibility:visible}
+.back{position:relative;flex:none;width:44px;height:44px;margin:0 -7px;border:0;border-radius:50%;background:none}
+.back::before{position:absolute;inset:10px;background:var(--accent);-webkit-mask-image:url(assets/icon-back.svg);mask-image:url(assets/icon-back.svg)}
+.ph-title{min-width:0;text-align:center;font:400 calc(22px * var(--s))/calc(28px * var(--s)) "Roboto Condensed",sans-serif;color:var(--body);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.ph-side{flex:none;width:30px}
+.tabs{display:flex;justify-content:safe center;padding-top:20px;border-bottom:1px solid var(--g200);overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+.tab{flex:none;min-height:40px;padding:10px 16px;border:0;border-bottom:2px solid transparent;background:none;font:500 calc(14px * var(--s))/calc(18px * var(--s)) "Roboto Condensed",sans-serif;text-transform:uppercase;color:var(--cap);white-space:nowrap}
+.tab[aria-selected=true]{color:var(--accent);border-bottom-color:var(--accent)}
+.pager{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}
+.page{position:relative;flex:0 0 100%;min-width:0;overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-align:start;scroll-snap-stop:always;padding:10px 0 48px;scrollbar-width:none}
+/* Group headings stay pinned while their group scrolls. */
+.pane .page .sec>.lbl,.pane .page .xhead{position:sticky;top:0;z-index:2;background:#fff;margin:-10px -10px 0;padding:10px;box-shadow:0 -10px 0 #fff}
+
+/* Topic cards */
+.tcards{display:flex;flex-direction:column;gap:12px;padding:10px}
+.tcard{background:var(--g50);border-radius:24px;padding:4px 10px 14px}
+.thead{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;border:0;background:none;padding:8px 4px;text-align:left;border-radius:18px}
+.tnum{flex:none;display:grid;place-items:center;min-width:30px;font:600 calc(28px * var(--s))/1 "Hepta Slab",Georgia,serif;color:var(--accent)}
+.starglyph{width:24px;height:24px}
+.tname{flex:1;min-width:0;font:600 calc(18px * var(--s))/1.25 Manrope,sans-serif;color:var(--body);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.tcount{font-weight:400;color:var(--cap)}
+.tgo{display:flex;flex:none;min-height:30px;align-items:center;padding:0 12px;border-radius:15px;background:var(--accent-wash);color:var(--accent);font:500 12px/1 "Roboto Condensed",sans-serif;text-transform:uppercase}
+.tcard.starred{background:var(--starbg)}
+/* Organized by category: a glyph stands in for the chapter numeral; single-page panes drop the tab bar. */
+.cglyph{font:600 calc(24px * var(--s))/1 "Hepta Slab",Georgia,serif;color:var(--accent)}
+.tabs:has(>.tab:only-child){display:none}
+.pane .page .sec-ctx{margin:-4px 0 0;-webkit-line-clamp:1}
+.sec>.convo{padding:0}
+
+/* Category cards: grouped by category. Words and Exchanges break out one card per family or exchange; joined cards share a rounded group. */
+.decks{margin:0 -10px;padding:4px 10px 12px;gap:8px}
+.dgroup{flex:none;display:flex;border:1px solid var(--g200);border-radius:16px;overflow:hidden;background:#fff}
+.dcard{flex:0 0 min(calc(196px * var(--s)),calc(var(--w) * .62));width:min(calc(196px * var(--s)),calc(var(--w) * .62));height:calc(168px * var(--s));scroll-snap-align:start;display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:0;border-left:1px solid var(--g200);background:#fff;text-align:left;color:var(--body)}
+.dcard:first-child{border-left:0}
+.dcard:hover{background:var(--g50)}
+.dc-lbl{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-tgt{font:400 calc(22px * var(--s))/1.2 Manrope,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-en{flex:1;min-height:0;font:italic 300 calc(15px * var(--s))/1.25 Inter,sans-serif;color:var(--cap);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.dc-foot{flex:none;margin-top:auto;font:500 calc(12px * var(--s))/1.3 "Roboto Condensed",sans-serif;color:var(--cap);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dk-b{font:400 calc(14px * var(--s))/1.25 Manrope,sans-serif;padding:5px 9px;border-radius:12px;width:88%;background:var(--g50);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none}
+.dk-b.partner{align-self:flex-end;background:#fff;box-shadow:inset 0 0 0 1px var(--g200)}
+.tcard.starred .dgroup{border-color:var(--starline)}
+.tcard.starred .dcard{border-left-color:var(--starline)}
+.tcard.starred .dcard:first-child{border-left:0}
+.hide-en .dc-en{visibility:hidden}
+
+@media(prefers-reduced-motion:reduce){.pane,.pane.open,.scrim,.bubble-wrap,.minibar,.caret{transition:none}.flash{animation:none;box-shadow:0 0 0 3px var(--accent)}}
+
+/* Notes */
+.notes{margin-top:56px;border-top:1px solid var(--g200);padding-top:24px;max-width:1180px}
+.notes h2{font:600 26px/1.2 "Hepta Slab",Georgia,serif;margin:6px 0 10px}
+.notes p{margin-top:10px;max-width:1000px}
+.notes table{border-collapse:collapse;width:100%;margin-top:14px;font-size:14px;background:#fff}
+.notes th,.notes td{text-align:left;vertical-align:top;border-bottom:1px solid var(--g200);padding:12px 10px}
+.notes thead th{font:500 13px/1.3 "Roboto Condensed",sans-serif;text-transform:uppercase;color:var(--accent)}
+.notes tbody th{width:170px}
+.notes ul{padding-left:20px}.notes li{margin:6px 0}
+code{font-size:12px}
+@media(max-width:520px){main{padding:24px 10px 48px}.controls{padding:12px}.phone{border-radius:40px}.notes th,.notes td{padding:10px 6px}.notes tbody th{width:96px}}
+</style>
+</head>
+<body>
+<main>
+<header class="intro">
+<div class="eyebrow">Catchphrase / exploration · iteration 6 · status: category decks selected and adopted in web app</div>
+<h1>Topic decks, or category decks?</h1>
+<p><strong>Question.</strong> Iteration 6: after using the web app, organizing by category reads as more valuable than organizing by topic. If the landing page leads with the four categories (Words, Key phrases, Exchanges, Conversation) and each category gathers every topic’s content, is it easier to study and find things than the standardized topic decks? Iteration 5 asked whether the topic card reads at a glance, whether the header should switch from bubble to bar at one scroll point, and whether a menu in the pane header makes moving between topics easy.</p>
+<p><strong>Boundary.</strong> Two phones with the same content, stars, and page-wide controls (including accent). The first is the standardized topic organization already in the web app. The second, new in iteration 6, organizes by category: Words and Exchanges cards are headed by their group (word family or exchange title), and Key phrases and Conversation cards by their topic. Both share the collapsing title, Starred card, spaced Phrases cards, and vertical exchanges. Alternatives from earlier iterations are retired; their rationale is kept in the decision record. Non-goals: audio, phrase breakdown, Review, reordering, CJK readings, library navigation, and native iOS.</p>
+<nav class="links" aria-label="Study sections"><a href="#lab">Live specimens</a><a href="#design">Design</a><a href="#by-category">By category</a><a href="#theming">Accent theming</a><a href="#record">Decision record</a><a href="#handoff">Handoff</a><a href="../methodology.md">Methodology</a></nav>
+</header>
+
+<section id="lab" aria-label="Live specimens">
+<form class="controls" id="controls">
+<label>Visit<select id="visit"><option value="first">First visit · no stars</option><option value="returning" selected>Returning · 7 stars</option><option value="heavy">Heavy use · 30+ stars</option></select></label>
+<label>Content<select id="content"><option value="full" selected>Surf · 5 topics</option><option value="one">Single topic</option><option value="long">Long titles &amp; phrase</option></select></label>
+<label>Phone width<select id="width"><option>320</option><option selected>402</option><option>430</option></select></label>
+<label>Text size<select id="scale"><option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label>
+<label class="check"><input id="english" type="checkbox" checked>English</label>
+<div class="accentctl" id="theming-controls">Phrasebook accent
+ <div class="swatches" role="group" aria-label="Accent presets"></div>
+ <span id="contrast" aria-live="polite"></span>
+</div>
+<label class="check"><input id="tintart" type="checkbox">Tint art to accent (simulation)</label>
+<button class="reset" type="reset">Reset study</button>
+</form>
+<p class="caption">Scroll a phone past the illustration: the bubble switches to a slim title bar at one point and switches back when you return near the top. <em>By topic:</em> tap a card to open its topic on that category; Words and Exchanges cards also scroll to their group, and a topic header reopens the last category you viewed. The pane title switches topic and keeps the category. <em>By category:</em> tap a card to open that category for every topic, scrolled to the card’s word family, exchange, or topic; a category header opens it at the top. The pane title switches category. In both, rows snap and scroll by touch, trackpad, or mouse drag, and Back, the scrim, or Escape close the menu and then the pane. Not implemented: tapping a card to speak, long-press breakdown, Review, drag-to-dismiss, and the decorative library and settings icons.</p>
+<p id="status" role="status" aria-live="polite"></p>
+<div class="studies">
+<section class="direction"><header><div class="eyebrow">Superseded reference · iteration 5</div><h2>Organized by topic</h2></header><div class="phone" id="phone-a"></div></section>
+<section class="direction"><header><div class="eyebrow">Selected · in web app</div><h2>Organized by category</h2></header><div class="phone" id="phone-b" data-org="category"></div></section>
+</div>
+</section>
+
+<section class="notes" id="design"><div class="eyebrow">Iteration 5 · superseded by category organization</div><h2>Shared treatments and the topic design</h2>
+<table aria-label="Design elements">
+<thead><tr><th>Element</th><th>Treatment</th></tr></thead>
+<tbody>
+<tr><th>Topic card</th><td>A large serif chapter numeral, the topic title, and an “Open” pill. Starred uses the same card with the accent star in place of the numeral and is hidden when nothing is starred.</td></tr>
+<tr><th>Category cards</th><td>One rounded group per category, 8 px apart, with no stack effect. Words get one card per family and Exchanges one per exchange: the group title, its first word or line with English, and a count (“4 words”, “3 lines”). Phrases (“Key phrases”) and Conversation are single cards. Starred uses the same groups: word families, phrases, and saved exchanges.</td></tr>
+<tr><th>Title on scroll</th><td>Past 150 px of scroll the bubble fades out and a white bar with the one-line title fades in (180 ms); it switches back below 110 px. There is no in-between state while scrolling.</td></tr>
+<tr><th>Phrases tab</th><td>White outlined cards, 12 px apart, with an accent edge.</td></tr>
+<tr><th>Pane topic menu</th><td>The pane title is a button with a caret. It opens a menu of Starred (when anything is starred) and every topic, with the current one checked. Choosing one replaces the pane’s content and keeps the remembered category, so you can read Words topic after topic.</td></tr>
+</tbody></table>
+</section>
+
+<section class="notes" id="by-category"><div class="eyebrow">Selected in iteration 6</div><h2>Organized by category</h2>
+<table aria-label="Category organization">
+<thead><tr><th>Element</th><th>Treatment</th></tr></thead>
+<tbody>
+<tr><th>Landing</th><td>Starred first (unchanged, hidden when empty), then one card per category in the order Words, Key phrases, Exchanges, Conversation. A serif glyph replaces the chapter numeral, and the header counts the category’s groups or topics (“11 groups”, “5 topics”, “13 exchanges”).</td></tr>
+<tr><th>Words and Exchanges cards</th><td>One card per word family or exchange, headed by its group title (“Surfboard types”, “Payment and deposit”), with the first word or line, its English, and a count. Cards from the same topic share a rounded group, so the row still clusters by topic without naming it on every card.</td></tr>
+<tr><th>Key phrases and Conversation cards</th><td>One card per topic, headed by the topic title, with the first phrase or the first conversation lines. All topics’ cards share one group.</td></tr>
+<tr><th>Category pane</th><td>One vertical page per category, covering every topic, with no tabs. Words and Exchanges sections are headed by their group, with the topic as a small line underneath; Key phrases and Conversation sections are headed by topic. Headings stay pinned. A card scrolls the pane to its section and an exchange flashes. The title menu switches category (and Starred), not topic.</td></tr>
+<tr><th>Starred</th><td>Unchanged. “In context ›” opens the item’s category scrolled to it, rather than its topic.</td></tr>
+</tbody></table>
+</section>
+
+<section class="notes" id="theming"><div class="eyebrow">Accent theming</div><h2>One accent, derived tokens</h2>
+<p>Each phrasebook supplies one accent color. Every themed surface is derived from it with <code>color-mix(in oklab, accent N%, white)</code>, so a new phrasebook needs only that value:</p>
+<table aria-label="Accent tokens"><thead><tr><th>Token</th><th>Derivation</th><th>Used for</th></tr></thead><tbody>
+<tr><th><code>--accent</code></th><td>The phrasebook’s accent</td><td>Section labels, title text, active tab, filled stars, numbers, back icon</td></tr>
+<tr><th><code>--accent-2</code></th><td>80% accent</td><td>Secondary actions: “In context”, “Save exchange”</td></tr>
+<tr><th><code>--accent-soft</code></th><td>24% accent</td><td>Language pill, bubble bottom, spaced-card edge</td></tr>
+<tr><th><code>--accent-wash</code></th><td>8% accent</td><td>Bubble top, strip header band, “Open” pill</td></tr>
+<tr><th><code>--starbg</code> / <code>--starline</code></th><td>11% / 22% accent</td><td>Starred card background and border</td></tr>
+</tbody></table>
+<p>The control reports the accent’s contrast on white; labels are 14 px, so they need at least 4.5:1. Stars, icons, and the bubble are CSS masks or inline SVG so they follow the accent. The illustration stays as authored. “Tint art to accent” rotates its hue toward the accent to preview a matching art set; it is a simulation, not a production technique.</p>
+</section>
+
+<section class="notes" id="record"><div class="eyebrow">Decision record</div><h2>Selected direction: category decks</h2>
+<table aria-label="Decision record"><tbody>
+<tr><th>Status</th><td>Organization by category (iteration 6) is selected and adopted into the web app (<code>web/app</code>) as the phrasebook view, replacing the topic organization adopted in iteration 5. The topic phone stays as the superseded reference. Shared treatments carry over: collapsing title, Starred card, spaced Phrases cards, vertical exchanges, accent tokens. Native iOS is unchanged.</td></tr>
+<tr><th>Accepted</th><td>The landing page leads with Starred (hidden when empty), then one card per category with content, each with a snapping row of deck cards: Words and Exchanges cards headed by their family or exchange title and clustered by topic, Key phrases and Conversation cards headed by their topic. A modal sheet per category covers every topic on one vertical page with pinned headings; Words and Exchanges sections name their topic underneath; a title menu switches category. Starred keeps Words and Phrases tabs; “In context ›” opens the item’s category. Carried over from iteration 5: spaced Phrases cards and a title that collapses to a bar at a scroll threshold. Exchanges are vertical with “or” between alternatives. Content scrolls behind a fixed title; the illustration scrolls with the content. Floating trays are reserved for actions.</td></tr>
+<tr><th>Rejected</th><td>Cross-type shelves on the landing (it1 A); full content on the landing (it1 B); count dashboards (it1 C); a floating navigation dock (it1 B); sticky cross-topic lens tabs (it2); starred cards grouped only by topic (it2); swiping between topics inside the pane (it2); horizontal exchange rows (it2); a persistent non-modal study sheet (it3, kept as the opposing reference); a conversation-led organization (it3, hard to scan; its “or” divider and green connecting bar were kept as visual references); exhaustive word lists in one Words deck (it3); one deck per category with a stack effect (it4); a shrinking title bubble, and any title change that tracks the scroll position (it4); badge and header-strip topic cards, and divided, numbered, or gray-filled Phrases lists (it5, standardized away); organization by topic with category tabs and a topic menu (it5, superseded in it6: category was more valuable in use).</td></tr>
+<tr><th>This iteration’s feedback</th><td>Iteration 6: using the web app, organizing by category is much more valuable than organizing by topic. Show the content organized that way: Words and Exchanges cards headed by their group title, Key phrases and Conversation cards headed by their topic. Iteration 5: category cards should break out their groupings at the top level, without the stack effect (Figma 1281:28072); collapse to bar as a single switch at a scroll point; a dropdown in the pane header to choose another topic. Iteration 4: the Words deck was too long, the bubble should get out of the way, topic cards and the Phrases tab needed visual work, and accent and art vary per phrasebook.</td></tr>
+<tr><th>Observation</th><td id="observed"><em>Iteration 6</em> (2026-11-06, same headless Chrome setup, 1000 px viewport, no console errors). The category phone listed Starred · 7, Words · 11 groups, Key phrases · 5 topics, Exchanges · 13 exchanges, and Conversation · 5 topics. Words and Exchanges rows held five topic groups each, with cards headed by family or exchange title (“Surfboard types · 4 words”, “Payment and deposit · 4 lines”); Key phrases and Conversation rows held one group of topic-headed cards (“Rent a surfboard · 8 phrases”, “· 7 lines”). Every card measured 168 px. Tapping Payment and deposit opened Exchanges as one page without a tab bar, with that exchange 80 px below the top and highlighted; the title menu listed Starred and the four categories with Exchanges checked, and choosing Words showed family sections with their topic underneath. Tapping Ask about wave conditions under Key phrases opened that topic’s section pinned at the top. “In context ›” from Starred opened Words and highlighted surfboard. Stress (320 px, 150% text, long titles, heavy stars): 42 cards, none overflowed. Not checked: physical devices. <em>Iteration 5</em> (2026-11-05, 560 px viewport, no console errors). This pass compared three phones (the standardized design plus badge/divided and strip/numbered alternatives, since removed). <em>Cards:</em> Rent a surfboard showed four groups: Words (Surfboard types, Rental terms, Useful descriptors), Key phrases, Exchanges (three exchanges), and Conversation. Footers read 4 words ×3, 8 phrases, 3/4/3 lines, and 7 lines; every card measured 168 px. Starred showed word families and phrases. Tapping Rental terms opened Words with that family at the top of the page; tapping Payment and deposit opened Exchanges with it highlighted. <em>Header:</em> scrolling to 0, 100, 140, 160, 300, 130, 105, and 0 px gave expanded, expanded, expanded, collapsed, collapsed, collapsed, expanded, expanded. That confirms the 150 px switch and 110 px return, with nothing in between. <em>Topic menu:</em> it listed Starred and five topics with the current topic checked, and focus moved onto the checked item. ArrowDown moved to the next topic, and Escape closed the menu (leaving the pane open) and refocused the title. Choosing topic 3 kept the Words tab; choosing Starred showed its three tabs. Back closed the pane and returned focus to the card. The first pass clipped the menu to one item because its maximum height was measured against the header; it now allows up to 520 px and shows all six. <em>Stress</em> (320 px, 150% text, long titles, heavy stars): no card overflowed and every footer stayed visible; the collapsed bar’s title truncates to “Surf…” at this size.</td></tr>
+<tr><th>Open checks</th><td><em>Category organization:</em> whether Words and Exchanges cards need their topic named on the card, since only the grouping shows it; whether one long row of 11–13 cards stays scannable in a real phrasebook with up to 8 topics, or the category pane should open on a topic list; whether an exchange makes sense outside its topic; how Review and reordering would map to categories; and whether the app should offer both organizations or replace one. Physical iPhone Safari: horizontal card rows vs. vertical scroll, the threshold switch during momentum scrolling and rubber-band overscroll, and the menu’s reach for one-handed use. VoiceOver order of the fixed title and the collapsed bar, and announcement of the menu. Native Dynamic Type. <code>color-mix()</code> support on the minimum iOS version. Which accents real art sets will use, and whether derived tints keep enough contrast with that art. Whether whole-exchange saving fits <a href="../../docs/CARD_SCHEMA.md">the card schema</a>.</td></tr>
+</tbody></table>
+</section>
+
+<section class="notes" id="handoff"><div class="eyebrow">Implementation handoff</div><h2>Data assumptions and geometry</h2>
+<ul>
+<li><strong>Data.</strong> Fixture follows <a href="../../docs/api/phrasebook.md">phrasebook v4</a>: ordered topics, each with Things to say (shown as “Phrases”), Likely exchanges, Word families, and an Example conversation. Exact-English cross-topic Things to say duplicates are removed, as at commit. The English is the <code>surf-beginner-es</code> evaluation; the Spanish is hand-authored and illustrative.</li>
+<li><strong>Stars.</strong> A star belongs to the durable Phrase or Word (keyed by exact English here) and updates every occurrence. Whole-exchange saving uses the exchange’s durable ID as a new kind of membership; this is a schema proposal.</li>
+<li><strong>Layers.</strong> The illustration (Figma <code>image 46/47</code>, at −139, 78, masked by the ragged <code>Rectangle 2</code>) and the language pill scroll with the content; the white reading surface starts at 392 px. The bubble title is a fixed layer in front. It switches to the collapsed bar when the content scroll passes 150 px and back below 110 px; the gap prevents flicker when the scroll position rests near the threshold.</li>
+<li><strong>Category cards.</strong> 196 × 168 px (scaled with text size, capped at 62% of the phone width), no stack layers. Cards in one category share a group with a 16 px radius, a 1 px gray-200 border, and 1 px dividers; groups are 8 px apart and each card is a snap point. A Words card opens Words and scrolls to its family; an Exchanges card opens Exchanges at its exchange; topic headers open the remembered category.</li>
+<li><strong>Pane topic menu.</strong> A button with <code>aria-haspopup="menu"</code> and <code>aria-expanded</code> opens a menu of <code>menuitemradio</code> items (current one checked). Arrow keys, Home, and End move focus; Escape or a tap outside closes it and returns focus to the title. Choosing an item replaces the pane content in place without closing the pane; Back still returns focus to the original topic.</li>
+<li><strong>Remembered category.</strong> The pane opens on the category last shown in any topic of that phrasebook, for this session. Choosing a deck updates it. Persisting it across sessions is a product decision left open.</li>
+<li><strong>Exchanges.</strong> Each turn is one bubble aligned to its speaker (learner left on <code>#f9fafb</code>; partner right, white with a gray-200 border, 86% width), with alternatives stacked inside and a labeled “or” divider. Each alternative keeps its own star.</li>
+<li><strong>Pinned headings.</strong> Word family titles and exchange titles are <code>position: sticky</code> inside their own group, so the next heading pushes the previous one out; a 10 px white edge covers the page’s top padding.</li>
+</ul>
+</section>
+</main>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const P=(en,es)=>({en,es});
+const T=(who,...opts)=>({who,opts});
+const C=(who,en,es)=>({who,en,es});
+const W=(family,...items)=>({family,items:items.map(([en,es])=>({en,es}))});
+const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motion=()=>reduced()?'auto':'smooth';
+
+/* Fixture: evals/surf-beginner-es (English, verbatim) + hand-authored Costa Rican Spanish. Illustrative, not validated teaching content. */
+const BASE=[
+{title:'Rent a surfboard',
+ say:[P("Hi, I'd like to rent a surfboard.",'Hola, quisiera alquilar una tabla de surf.'),P("I'm a beginner, so I need a soft-top board.",'Soy principiante, así que necesito una tabla blanda.'),P('How much is it to rent a board for one hour?','¿Cuánto cuesta alquilar una tabla por una hora?'),P('Do you have any bigger boards?','¿Tiene tablas más grandes?'),P("I'm staying at the surf camp.",'Me estoy quedando en el campamento de surf.'),P('Can I leave my flip-flops here while I surf?','¿Puedo dejar mis chancletas aquí mientras surfeo?'),P('What time do I need to bring the board back?','¿A qué hora tengo que devolver la tabla?'),P("Thanks, I'll take this one.",'Gracias, me llevo esta.')],
+ ex:[{title:'Partner offers a board',turns:[T('partner',P('Have you surfed before?','¿Ha surfeado antes?'),P('Do you know how to surf?','¿Sabe surfear?')),T('you',P("I'm a beginner.",'Soy principiante.'),P("I've never surfed before.",'Nunca he surfeado.')),T('partner',P("No problem, I'll give you a soft-top board.",'No hay problema, le doy una tabla blanda.'),P('Then I recommend a bigger soft-top board.','Entonces le recomiendo una tabla blanda más grande.'))]},
+  {title:'Payment and deposit',turns:[T('you',P('How much is it?','¿Cuánto es?'),P("What's the price per hour?",'¿Cuál es el precio por hora?')),T('partner',P("It's ten dollars an hour.",'Son diez dólares por hora.'),P("It's fifteen dollars for two hours.",'Son quince dólares por dos horas.')),T('you',P('Do I need to leave a deposit?','¿Tengo que dejar un depósito?'),P('Can I pay with a card?','¿Puedo pagar con tarjeta?')),T('partner',P('Yes, a twenty-dollar deposit.','Sí, un depósito de veinte dólares.'),P('No deposit, just pay when you return.','Sin depósito, solo paga cuando regrese.'))]},
+  {title:'Where to return the board',turns:[T('you',P('Where should I bring the board back?','¿Adónde traigo la tabla de vuelta?'),P('Where do I return the board?','¿Dónde devuelvo la tabla?')),T('partner',P("Right here, before five o'clock.",'Aquí mismo, antes de las cinco.'),P('To the surf camp office by sunset.','A la oficina del campamento antes del atardecer.')),T('you',P('Got it, thanks.','Entendido, gracias.'),P("Okay, I'll be back before then.",'Está bien, vuelvo antes.'))]}],
+ words:[W('Surfboard types',['surfboard','la tabla de surf'],['longboard','el longboard'],['shortboard','la tabla corta'],['soft-top','la tabla blanda']),W('Rental terms',['rent','alquilar'],['deposit','el depósito'],['hour','la hora'],['return','devolver']),W('Useful descriptors',['beginner','principiante'],['bigger','más grande'],['smaller','más pequeño'],['available','disponible'])],
+ convo:[C('you',"Hi, I'd like to rent a surfboard.",'Hola, quisiera alquilar una tabla de surf.'),C('partner','Sure. Have you surfed before?','Claro. ¿Ha surfeado antes?'),C('you',"I'm a beginner.",'Soy principiante.'),C('partner',"Okay, I'll give you a soft-top board. It's ten dollars an hour.",'Bueno, le doy una tabla blanda. Son diez dólares por hora.'),C('you','Do I need to leave a deposit?','¿Tengo que dejar un depósito?'),C('partner','Yes, a twenty-dollar deposit. Just bring the board back before five.','Sí, un depósito de veinte dólares. Solo devuelva la tabla antes de las cinco.'),C('you',"Got it, thanks. I'll take this one.",'Entendido, gracias. Me llevo esta.')]},
+{title:'Book a surf lesson',
+ say:[P("I'd like to book a surf lesson.",'Quisiera reservar una clase de surf.'),P("I'm a beginner.",'Soy principiante.'),P("I'm staying at the surf camp.",'Me estoy quedando en el campamento de surf.'),P('What time do lessons start?','¿A qué hora empiezan las clases?'),P('How much is a lesson?','¿Cuánto cuesta una clase?'),P('Do you have lessons tomorrow?','¿Tienen clases mañana?'),P('Where do we meet for the lesson?','¿Dónde nos encontramos para la clase?'),P('Do I need to bring anything?','¿Necesito traer algo?')],
+ ex:[{title:'Booking at the surf school',turns:[T('you',P("Hi, I'd like to book a surf lesson.",'Hola, quisiera reservar una clase de surf.')),T('partner',P("Sure, what's your surfing level?",'Claro, ¿cuál es su nivel de surf?'),P('Of course. Have you surfed before?','Por supuesto. ¿Ha surfeado antes?')),T('you',P("I'm a beginner.",'Soy principiante.')),T('partner',P('Great, we have a beginner group tomorrow at 9 a.m.','Genial, tenemos un grupo de principiantes mañana a las nueve.'),P('No problem. We can put you in a beginner class.','No hay problema. Lo podemos poner en una clase de principiantes.')),T('you',P('That sounds good. How much is it?','Suena bien. ¿Cuánto cuesta?'))]},
+  {title:'Asking about what to bring',turns:[T('partner',P('Do you have your own board?','¿Tiene su propia tabla?')),T('you',P("No, I don't. Can I rent one?",'No. ¿Puedo alquilar una?'))]}],
+ words:[W('Lesson types',['private lesson','la clase privada'],['group lesson','la clase en grupo']),W('Equipment',['surfboard','la tabla de surf'],['wetsuit','el traje de neopreno'],['rash guard','la licra'])],
+ convo:[C('you',"Hi, I'd like to book a surf lesson.",'Hola, quisiera reservar una clase de surf.'),C('partner',"Sure, what's your level?",'Claro, ¿cuál es su nivel?'),C('you',"I'm a beginner. I'm staying at the surf camp.",'Soy principiante. Me estoy quedando en el campamento de surf.'),C('partner',"Great. We have a lesson tomorrow at 9 a.m. It's $40.",'Genial. Tenemos una clase mañana a las nueve. Cuesta cuarenta dólares.'),C('you','That works. Where do we meet?','Me sirve. ¿Dónde nos encontramos?'),C('partner','Right here at the surf school.','Aquí mismo, en la escuela de surf.'),C('you','Do I need to bring anything?','¿Necesito traer algo?'),C('partner','Just a swimsuit and sunscreen. We provide the board.','Solo el traje de baño y bloqueador. Nosotros ponemos la tabla.'),C('you','Perfect, see you tomorrow.','Perfecto, nos vemos mañana.')]},
+{title:'Ask about wave conditions',
+ say:[P('How are the waves today?','¿Cómo están las olas hoy?'),P('Is it good for beginners?','¿Está bueno para principiantes?'),P('What time is high tide?','¿A qué hora es la marea alta?'),P('Where is the best spot for a beginner?','¿Cuál es el mejor lugar para un principiante?'),P('Are there strong currents today?','¿Hay corrientes fuertes hoy?')],
+ ex:[{title:"Asking a local about today's waves",turns:[T('you',P('How are the waves today?','¿Cómo están las olas hoy?'),P('Is it a good day for surfing?','¿Es un buen día para surfear?')),T('partner',P('The waves are small and clean this morning.','Las olas están pequeñas y limpias esta mañana.'),P('The waves are big and messy right now.','Las olas están grandes y desordenadas ahorita.')),T('you',P('Thanks. What time is high tide?','Gracias. ¿A qué hora es la marea alta?'))]},
+  {title:'Checking if conditions suit a beginner',turns:[T('you',P('Is it good for beginners?','¿Está bueno para principiantes?')),T('partner',P('Yes, the waves are small and slow.','Sí, las olas están pequeñas y lentas.'),P("No, it's too strong for beginners today.",'No, hoy está muy fuerte para principiantes.')),T('you',P('Okay, is there a better spot for beginners?','Bueno, ¿hay un lugar mejor para principiantes?'))]}],
+ words:[W('Wave size and shape',['small','pequeño'],['big','grande'],['clean','limpio'],['messy','desordenado']),W('Water movement',['current','la corriente'],['tide','la marea'],['high tide','la marea alta'],['low tide','la marea baja'])],
+ convo:[C('you','How are the waves today?','¿Cómo están las olas hoy?'),C('partner',"They're small and clean this morning.",'Están pequeñas y limpias esta mañana.'),C('you','Is it good for beginners?','¿Está bueno para principiantes?'),C('partner','Yes, but watch out for the current.','Sí, pero cuidado con la corriente.'),C('you','Thanks. Where is the best spot for a beginner?','Gracias. ¿Cuál es el mejor lugar para un principiante?'),C('partner','Near the lifeguard tower.','Cerca de la torre del salvavidas.')]},
+{title:'Buy sunscreen and wax',
+ say:[P("I'd like to buy sunscreen and surf wax.",'Quisiera comprar bloqueador y cera para surf.'),P('Do you have sunscreen for the face?','¿Tiene bloqueador para la cara?'),P('Do you have surf wax for warm water?','¿Tiene cera de surf para agua tibia?'),P('How much does this cost?','¿Cuánto cuesta esto?'),P('Can I pay by card?','¿Puedo pagar con tarjeta?')],
+ ex:[{title:'Asking for sunscreen and wax in a shop',turns:[T('you',P("Hi, I'm looking for sunscreen and surf wax.",'Hola, busco bloqueador y cera para surf.')),T('partner',P('We have both. The wax is over there.','Tenemos las dos cosas. La cera está por allá.'),P('We only have sunscreen right now.','Ahorita solo tenemos bloqueador.')),T('you',P('Where is the sunscreen? I need something for my face.','¿Dónde está el bloqueador? Necesito algo para la cara.'))]},
+  {title:'Choosing the right wax',turns:[T('you',P('Do you have wax for warm water?','¿Tiene cera para agua tibia?')),T('partner',P('Yes, this one is for warm water.','Sí, esta es para agua tibia.'),P('No, we only have cold water wax.','No, solo tenemos cera para agua fría.')),T('you',P("Great, I'll take one.",'Genial, me llevo una.'))]},
+  {title:'Asking about price and payment',turns:[T('you',P('How much is the sunscreen and wax together?','¿Cuánto es el bloqueador y la cera juntos?')),T('partner',P("That's ten dollars.",'Son diez dólares.')),T('you',P('Can I pay by card?','¿Puedo pagar con tarjeta?')),T('partner',P('Yes, we take cards.','Sí, aceptamos tarjeta.'),P('Sorry, cash only.','Lo siento, solo efectivo.'))]}],
+ words:[W('Protection from the sun',['sunscreen','el bloqueador'],['sunblock','el protector solar'],['sunburn','la quemadura de sol'],['shade','la sombra']),W('Surfboard care',['surf wax','la cera para surf'],['warm water wax','la cera para agua tibia'],['basecoat','la capa base'],['comb','el peine para cera'])],
+ convo:[C('you','Hi, do you have sunscreen and surf wax?','Hola, ¿tiene bloqueador y cera para surf?'),C('partner','Yes, we have both. The wax is on the shelf.','Sí, tenemos las dos. La cera está en el estante.'),C('you','Is this wax for warm water?','¿Esta cera es para agua tibia?'),C('partner','Yes, that one is for warm water.','Sí, esa es para agua tibia.'),C('you','Perfect. How much for the sunscreen and this wax?','Perfecto. ¿Cuánto es el bloqueador y esta cera?'),C('partner',"That's twelve dollars.",'Son doce dólares.'),C('you','Can I pay by card?','¿Puedo pagar con tarjeta?'),C('partner','Yes, of course.','Sí, claro.')]},
+{title:'Chat with local surfers',
+ say:[P("Hi, how's the surf today?",'Hola, ¿cómo está el surf hoy?'),P("I'm a beginner.",'Soy principiante.'),P("I'm staying at a surf camp.",'Me estoy quedando en un campamento de surf.'),P('Is this spot good for beginners?','¿Este lugar es bueno para principiantes?'),P("Where's a good place to paddle out?",'¿Dónde es un buen lugar para remar hacia adentro?'),P('What time is high tide?','¿A qué hora es la marea alta?'),P('Thanks for the tip!','¡Gracias por el consejo!')],
+ ex:[{title:'Asking about surf conditions',turns:[T('you',P("How's the surf today?",'¿Cómo está el surf hoy?')),T('partner',P("It's good, small and clean.",'Está bueno, pequeño y limpio.'),P("It's a bit big and choppy today.",'Hoy está un poco grande y picado.')),T('you',P('Is it good for beginners?','¿Está bueno para principiantes?')),T('partner',P("Yes, it's perfect for beginners.",'Sí, está perfecto para principiantes.'),P("No, maybe try tomorrow when it's smaller.",'No, mejor pruebe mañana cuando esté más pequeño.'))]},
+  {title:'Local surfer asks about you',turns:[T('partner',P('Are you a surfer?','¿Eres surfista?')),T('you',P("I'm a beginner.",'Soy principiante.')),T('partner',P('Cool, where are you staying?','Pura vida, ¿dónde te estás quedando?'),P('Nice, do you have a board?','Qué bien, ¿tienes tabla?')),T('you',P("I'm staying at a surf camp.",'Me estoy quedando en un campamento de surf.')),T('partner',P("That's a good place.",'Es un buen lugar.'),P('Nice, they have good instructors.','Qué bien, tienen buenos instructores.'))]},
+  {title:'Asking about board rental',turns:[T('you',P('Where can I rent a board?','¿Dónde puedo alquilar una tabla?')),T('partner',P("There's a shop near the beach.",'Hay una tienda cerca de la playa.'),P('The surf camp has boards.','El campamento tiene tablas.')),T('you',P("Thanks, I'll check it out.",'Gracias, voy a ver.'))]}],
+ words:[W('Surf conditions',['wave','la ola'],['tide','la marea'],['swell','el oleaje'],['wind','el viento']),W('Surf gear',['board','la tabla'],['wetsuit','el traje de neopreno'],['leash','la cuerda'],['fin','la quilla'])],
+ convo:[C('you',"Hi, how's the surf today?",'Hola, ¿cómo está el surf hoy?'),C('partner',"It's small and clean. Are you going out?",'Está pequeño y limpio. ¿Vas a entrar?'),C('you',"Yeah, I'm a beginner. Is this spot good for beginners?",'Sí, soy principiante. ¿Este lugar es bueno para principiantes?'),C('partner',"Yes, it's perfect. Just watch out for the rocks on the left.",'Sí, está perfecto. Solo cuidado con las rocas a la izquierda.'),C('you',"Thanks for the tip! Where's a good place to paddle out?",'¡Gracias por el consejo! ¿Dónde es un buen lugar para remar hacia adentro?'),C('partner','Go around the rocks, on the right side.','Rodea las rocas, por el lado derecho.')]}
+];
+const LONG_TITLES={0:'Rent a soft-top surfboard for the whole week and ask about a multi-day discount',2:'Ask whether today’s wave conditions are safe for a nervous first-timer'};
+const LONG_PHRASE=P("Sorry, I'm still learning. Could you say that again a little more slowly, please?",'Perdón, todavía estoy aprendiendo. ¿Podría repetirlo un poco más despacio, por favor?');
+const RETURNING=['w:surfboard','w:longboard',"p:I'm a beginner.",'p:How much is it to rent a board for one hour?','p:What time is high tide?','w:tide','p:Can I pay by card?'];
+
+let groups=[],index=new Map(),stars=new Set();
+function build(){
+ const mode=$('content').value;
+ let src=structuredClone(BASE);
+ if(mode==='one')src=src.slice(0,1);
+ if(mode==='long'){for(const [i,t] of Object.entries(LONG_TITLES))src[i].title=t;src[0].say.splice(1,0,structuredClone(LONG_PHRASE));}
+ const seenSay=new Set();index=new Map();
+ groups=src.map((g,gi)=>{
+  const add=(it,type,sec)=>{it.key=(type==='word'?'w:':'p:')+it.en;it.gi=gi;it.type=type;it.sec=sec;if(!index.has(it.key))index.set(it.key,{item:it});return it;};
+  const say=g.say.filter(p=>!seenSay.has(p.en)&&seenSay.add(p.en)).map(p=>add(p,'phrase','say'));
+  g.ex.forEach((x,ei)=>{Object.assign(x,{key:`x:${gi}:${ei}`,gi,ei,type:'exchange',sec:'ex',en:x.title});index.set(x.key,{item:x});x.turns.forEach(t=>t.opts.forEach(o=>add(o,'phrase','ex')));});
+  g.words.forEach(f=>f.items.forEach(w=>{w.family=f.family;add(w,'word','words');}));
+  g.convo.forEach(l=>add(l,'phrase','convo'));
+  return {...g,gi,say,allWords:g.words.flatMap(f=>f.items)};
+ });
+}
+function starredItems(){const out=[],seen=new Set(),push=it=>{if(stars.has(it.key)&&!seen.has(it.key)){seen.add(it.key);out.push(it);}};groups.forEach(g=>{g.say.forEach(push);g.ex.forEach(x=>{push(x);x.turns.forEach(t=>t.opts.forEach(push));});g.words.forEach(f=>f.items.forEach(push));g.convo.forEach(push);});return out;}
+function applyVisit(){
+ const v=$('visit').value;let keys=[];
+ if(v==='returning')keys=RETURNING;
+ if(v==='heavy')keys=RETURNING.concat(groups.filter(g=>g.gi===0||g.gi===2).flatMap(g=>g.say.map(p=>p.key)),groups.flatMap(g=>g.words.filter(f=>/Rental|Water|gear/.test(f.family)).flatMap(f=>f.items.map(w=>w.key))),groups.slice(0,2).map(g=>g.ex[0].key));
+ stars=new Set(keys.filter(k=>index.has(k)));
+}
+
+/* ---------- Behavior constants ---------- */
+const COLLAPSE_AT=150,EXPAND_AT=110; // px of content scroll; the gap prevents flicker at the threshold
+
+/* ---------- Shared builders ---------- */
+const TABS=[['words','Words'],['phrases','Phrases'],['exchanges','Exchanges'],['convo','Conversation']];
+const SEC_TAB={words:0,say:1,ex:2,convo:3};
+const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+const starBtn=it=>{const on=stars.has(it.key);return `<button type="button" class="star" data-star="${esc(it.key)}" aria-pressed="${on}" aria-label="${on?'Unstar':'Star'}: ${esc(it.en)}"></button>`;};
+const xStarBtn=x=>{const on=stars.has(x.key);return `<button type="button" class="xstar" data-star="${esc(x.key)}" aria-pressed="${on}" aria-label="${on?'Remove saved exchange':'Save whole exchange'}: ${esc(x.title)}"></button>`;};
+function card(it,o={}){const on=stars.has(it.key);return `<div class="card${o.cls?' '+o.cls:''}${on?' on':''}" data-key="${esc(it.key)}">${o.ctx?`<div class="ctx">${esc(o.ctx)}</div>`:''}<div class="tgt" lang="es">${esc(it.es)}</div><div class="en">${esc(it.en)}</div>${starBtn(it)}${o.foot||''}</div>`;}
+const alt=o=>`<div class="alt${stars.has(o.key)?' on':''}" data-key="${esc(o.key)}"><div class="tgt" lang="es">${esc(o.es)}</div><div class="en">${esc(o.en)}</div>${starBtn(o)}</div>`;
+const turn=t=>`<div class="turn ${t.who}" role="group" aria-label="${t.who==='you'?'You':'Partner'}${t.opts.length>1?`, ${t.opts.length} alternatives`:''}">${t.opts.map(alt).join('<div class="or" aria-hidden="true"><span>or</span></div>')}</div>`;
+const exchangeBlock=(x,o={})=>`<section class="sec" data-xkey="${esc(x.key)}">${o.ctx?`<div class="ctx" style="margin:0">${esc(o.ctx)}</div>`:''}<div class="xhead"><h4 class="lbl">${esc(x.title)}</h4>${xStarBtn(x)}</div><div class="dlg">${x.turns.map(turn).join('')}</div>${o.foot||''}</section>`;
+const inCtx=key=>`<div class="foot"><button type="button" class="inctx" data-open="ctx" data-key="${esc(key)}">In context ›</button></div>`;
+const PAGES={
+ words:g=>g.words.length?g.words.map(f=>`<section class="sec" data-group="${esc(f.family)}"><h4 class="lbl">${esc(f.family)}</h4><div class="vlist">${f.items.map(w=>card(w)).join('')}</div></section>`).join(''):'<p class="empty">No words in this topic.</p>',
+ phrases:g=>g.say.length?`<section class="sec"><div class="vlist plist">${g.say.map(p=>card(p)).join('')}</div></section>`:'<p class="empty">No phrases in this topic.</p>',
+ exchanges:g=>g.ex.length?g.ex.map(x=>exchangeBlock(x)).join(''):'<p class="empty">No exchanges in this topic.</p>',
+ convo:g=>g.convo.length?`<div class="convo">${g.convo.map(l=>card(l,{cls:'cline '+l.who})).join('')}</div>`:'<p class="empty">No conversation in this topic.</p>'
+};
+const BUBBLE_PATH='M414 141.097C414 162.147 397.684 179.596 376.681 181.007L132.838 197.384C127.91 203.921 114.137 226.458 138.102 248.87C97.3941 244.815 83.9774 208.898 81.4648 200.834L54.6807 202.634C31.5864 204.185 12.0002 185.87 12 162.724V8H414V141.097Z';
+const bubbleSvg=id=>`<svg class="bubble" viewBox="0 0 426 265.446" preserveAspectRatio="none" aria-hidden="true"><defs><filter id="${id}-f" x="0" y="0" width="426" height="265.446" filterUnits="userSpaceOnUse"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".25"/></filter><linearGradient id="${id}-g" x1="213" y1="73.5" x2="213" y2="248.87" gradientUnits="userSpaceOnUse"><stop style="stop-color:var(--bubble-top)"/><stop offset="1" style="stop-color:var(--bubble-bottom)"/></linearGradient><clipPath id="${id}-c"><path d="${BUBBLE_PATH}"/></clipPath></defs><g filter="url(#${id}-f)"><path d="${BUBBLE_PATH}" fill="url(#${id}-g)"/><path d="${BUBBLE_PATH}" fill="none" stroke="#fff" stroke-width="8" clip-path="url(#${id}-c)"/></g></svg>`;
+const titleLayer=id=>`<div class="titlebar"><div class="minibar" aria-hidden="true"><span>Surf vacation in Costa Rica 🏄</span></div><div class="bubble-wrap">${bubbleSvg(id)}<h2 class="title">Surf vacation in<br>Costa Rica 🏄</h2></div><span class="ico l" aria-hidden="true"><img src="assets/icon-menu.svg" alt=""></span><span class="ico r" aria-hidden="true"><img src="assets/icon-settings.svg" alt=""></span></div>`;
+
+/* Category cards: one rounded group per category. Words break out one card per family and Exchanges one per exchange; Phrases and Conversation are single cards. */
+const bubbles=list=>list.slice(0,3).map(l=>`<span class="dk-b ${l.who}" lang="es">${esc(l.es)}</span>`).join('');
+const dcard=(attrs,label,it,foot)=>`<button type="button" class="dcard" ${attrs}><span class="lbl dc-lbl">${esc(label)}</span><span class="dc-tgt" lang="es">${esc(it.es)}</span><span class="dc-en">${esc(it.en)}</span><span class="dc-foot">${foot}</span></button>`;
+const dgroup=(label,cards)=>cards.length?`<div class="dgroup" role="group" aria-label="${label}">${cards.join('')}</div>`:'';
+const convoCard=(attrs,list)=>`<button type="button" class="dcard" ${attrs}><span class="lbl dc-lbl">Conversation</span>${bubbles(list)}<span class="dc-foot">${plural(list.length,'line')}</span></button>`;
+const familiesOf=words=>[...new Set(words.map(w=>w.family))].map(family=>({family,items:words.filter(w=>w.family===family)}));
+const thead=(attrs,num,name)=>`<button type="button" class="thead" ${attrs}><span class="tnum">${num}</span><span class="tname">${name}</span><span class="tgo" aria-hidden="true">Open</span></button>`;
+function topicCard(g){
+ const at=(tab,focus='')=>`data-open="topic" data-gi="${g.gi}" data-tab="${tab}"${focus?` data-focus="${esc(focus)}"`:''}`;
+ const groupsHtml=[
+  dgroup('Words',g.words.map(f=>dcard(at(0,'g:'+f.family),f.family,f.items[0],plural(f.items.length,'word')))),
+  dgroup('Key phrases',g.say.length?[dcard(at(1),'Key phrases',g.say[0],plural(g.say.length,'phrase'))]:[]),
+  dgroup('Exchanges',g.ex.map(x=>dcard(at(2,x.key),x.title,x.turns[0].opts[0],plural(x.turns.length,'line')))),
+  dgroup('Conversation',g.convo.length?[convoCard(at(3),g.convo)]:[])
+ ].join('');
+ return `<article class="tcard">${thead(`data-open="topic" data-gi="${g.gi}"`,g.gi+1,esc(g.title))}<div class="hrow decks" tabindex="0" role="group" aria-label="${esc(g.title)}: categories">${groupsHtml}</div></article>`;
+}
+function starredCard(){
+ const S=starredItems(),w=S.filter(i=>i.type==='word'),p=S.filter(i=>i.type==='phrase'),x=S.filter(i=>i.type==='exchange');
+ if(!S.length)return '';
+ const at=tab=>`data-open="starred" data-tab="${tab}"`;
+ const groupsHtml=[
+  dgroup('Starred words',familiesOf(w).map(f=>dcard(at(0),f.family,f.items[0],plural(f.items.length,'word')))),
+  dgroup('Starred phrases',p.length?[dcard(at(1),'Phrases',p[0],plural(p.length,'phrase'))]:[]),
+  dgroup('Saved exchanges',x.map(e=>dcard(at(2),e.title,e.turns[0].opts[0],plural(e.turns.length,'line'))))
+ ].join('');
+ return `<article class="tcard starred">${thead('data-open="starred"','<span class="starglyph" aria-hidden="true"></span>',`Starred <span class="tcount">· ${S.length}</span>`)}<div class="hrow decks" tabindex="0" role="group" aria-label="Starred collections">${groupsHtml}</div></article>`;
+}
+function starredPages(){
+ const S=starredItems(),ctx=it=>groups[it.gi].title+(it.type==='word'?' · '+it.family:'');
+ const list=(a,empty,cls='')=>a.length?`<section class="sec"><div class="vlist${cls}">${a.map(it=>card(it,{ctx:ctx(it),foot:inCtx(it.key)})).join('')}</div></section>`:`<p class="empty">${empty}</p>`;
+ const xs=S.filter(i=>i.type==='exchange');
+ return [['Words',list(S.filter(i=>i.type==='word'),'No starred words.')],['Phrases',list(S.filter(i=>i.type==='phrase'),'No starred phrases.',' plist')],['Exchanges',xs.length?xs.map(x=>exchangeBlock(x,{ctx:groups[x.gi].title,foot:inCtx(x.key)})).join(''):'<p class="empty">No saved exchanges. Use “Save exchange” on any exchange.</p>']];
+}
+
+/* ---------- Organized by category (iteration 6) ----------
+   Landing: one card per category. Words and Exchanges cards are headed by their group (family or
+   exchange title), clustered by topic; Key phrases and Conversation cards are headed by topic.
+   Pane: one category, every topic, on one vertical page with pinned group headings. */
+const CATS=[['words','Words','Aa','group'],['phrases','Key phrases','“','topic'],['exchanges','Exchanges','⇆','exchange'],['convo','Conversation','…','topic']];
+const SEC_CAT={words:'words',say:'phrases',ex:'exchanges',convo:'convo'};
+const catLabel=c=>CATS.find(([k])=>k===c)[1];
+function categoryCard([c,label,glyph,unit]){
+ const at=focus=>`data-open="category" data-cat="${c}" data-focus="${esc(focus)}"`;
+ const byTopic=(list,make)=>list.map(g=>dgroup(esc(g.title),make(g))).join('');
+ const rowHtml=c==='words'?byTopic(groups.filter(g=>g.words.length),g=>g.words.map(f=>dcard(at(`g:${g.gi}:${f.family}`),f.family,f.items[0],plural(f.items.length,'word'))))
+  :c==='exchanges'?byTopic(groups.filter(g=>g.ex.length),g=>g.ex.map(x=>dcard(at(x.key),x.title,x.turns[0].opts[0],plural(x.turns.length,'line'))))
+  :c==='phrases'?dgroup('Key phrases by topic',groups.filter(g=>g.say.length).map(g=>dcard(at(`g:t:${g.gi}`),g.title,g.say[0],plural(g.say.length,'phrase'))))
+  :dgroup('Conversations by topic',groups.filter(g=>g.convo.length).map(g=>`<button type="button" class="dcard" ${at(`g:t:${g.gi}`)}><span class="lbl dc-lbl">${esc(g.title)}</span>${bubbles(g.convo)}<span class="dc-foot">${plural(g.convo.length,'line')}</span></button>`));
+ const n=c==='words'?groups.reduce((s,g)=>s+g.words.length,0):c==='exchanges'?groups.reduce((s,g)=>s+g.ex.length,0):groups.filter(g=>c==='phrases'?g.say.length:g.convo.length).length;
+ return `<article class="tcard">${thead(`data-open="category" data-cat="${c}"`,`<span class="cglyph" aria-hidden="true">${glyph}</span>`,`${label} <span class="tcount">· ${plural(n,unit)}</span>`)}<div class="hrow decks" tabindex="0" role="group" aria-label="${label}">${rowHtml}</div></article>`;
+}
+/* Words and Exchanges sections are headed by their group, with the topic as context; Key phrases and Conversation by topic. */
+const CPAGE={
+ words:()=>groups.flatMap(g=>g.words.map(f=>`<section class="sec" data-group="${esc(`${g.gi}:${f.family}`)}"><h4 class="lbl">${esc(f.family)}</h4><div class="ctx sec-ctx">${esc(g.title)}</div><div class="vlist">${f.items.map(w=>card(w)).join('')}</div></section>`)).join('')||'<p class="empty">No words in this phrasebook.</p>',
+ phrases:()=>groups.filter(g=>g.say.length).map(g=>`<section class="sec" data-group="t:${g.gi}"><h4 class="lbl">${esc(g.title)}</h4><div class="vlist plist">${g.say.map(p=>card(p)).join('')}</div></section>`).join('')||'<p class="empty">No phrases in this phrasebook.</p>',
+ exchanges:()=>groups.flatMap(g=>g.ex.map(x=>exchangeBlock(x,{ctx:g.title}))).join('')||'<p class="empty">No exchanges in this phrasebook.</p>',
+ convo:()=>groups.filter(g=>g.convo.length).map(g=>`<section class="sec" data-group="t:${g.gi}"><h4 class="lbl">${esc(g.title)}</h4><div class="convo">${g.convo.map(l=>card(l,{cls:'cline '+l.who})).join('')}</div></section>`).join('')||'<p class="empty">No conversation in this phrasebook.</p>'
+};
+
+/* ---------- Phone controller ---------- */
+const phones=[...document.querySelectorAll('.phone')].map(el=>({el,id:el.id,org:el.dataset.org||'topic',lastTab:0}));
+function mount(ph){
+ const cards=ph.org==='category'?CATS.map(categoryCard).join(''):groups.map(topicCard).join('');
+ ph.el.innerHTML=`<div class="screen"><div class="lead"><div class="art" aria-hidden="true"></div><span class="pill">Spanish 🇨🇷</span></div><div class="body"><div class="tcards"><div data-slot="starred"></div>${cards}</div></div></div>${titleLayer(ph.id)}<div class="scrim"></div><div class="pane" role="dialog" aria-modal="true"></div>`;
+ ph.screen=ph.el.querySelector('.screen');ph.pane=ph.el.querySelector('.pane');ph.scrim=ph.el.querySelector('.scrim');ph.paneState=null;
+ ph.el.classList.remove('collapsed');
+ ph.screen.addEventListener('scroll',()=>{if(ph.hraf)return;ph.hraf=requestAnimationFrame(()=>{ph.hraf=0;const y=ph.screen.scrollTop,c=ph.el.classList.contains('collapsed');if(!c&&y>COLLAPSE_AT)ph.el.classList.add('collapsed');else if(c&&y<EXPAND_AT)ph.el.classList.remove('collapsed');});},{passive:true});
+ refresh(ph);
+}
+function rerender(container,html,fallback){
+ const a=document.activeElement;let idx=-1;
+ if(a&&container.contains(a)&&a.matches('[data-star]'))idx=[...container.querySelectorAll('[data-star]')].indexOf(a);
+ const rows=[...container.querySelectorAll('.hrow')].map(s=>s.scrollLeft),top=container.scrollTop;
+ container.innerHTML=html;container.scrollTop=top;
+ container.querySelectorAll('.hrow').forEach((s,i)=>{s.scrollLeft=rows[i]||0;});
+ if(idx>=0){const all=container.querySelectorAll('[data-star]'),t=all[Math.min(idx,all.length-1)]||fallback?.();t?.focus({preventScroll:true});}
+}
+function refresh(ph){
+ ph.el.querySelectorAll('[data-slot]').forEach(s=>rerender(s,starredCard(),()=>ph.el.querySelector('.body button')));
+ if(ph.paneState?.kind==='starred'){const pages=ph.pane.querySelectorAll('.page');starredPages().forEach(([,html],i)=>{if(pages[i])rerender(pages[i],html,()=>ph.pane.querySelector('.back'));});}
+}
+
+/* Modal pane with tabbed pages */
+function showPane(ph,opener){
+ ph.paneOpener=opener;ph.pane.classList.add('open');ph.scrim.classList.add('open');ph.screen.inert=true;ph.el.querySelector('.titlebar').inert=true;
+ ph.pane.querySelector('.back').focus({preventScroll:true});
+}
+function closePane(ph){
+ if(!ph.paneState)return;
+ ph.paneState=null;closeMenu(ph,false);ph.pane.classList.remove('open');ph.scrim.classList.remove('open');ph.screen.inert=false;ph.el.querySelector('.titlebar').inert=false;
+ if(ph.paneOpener?.isConnected)ph.paneOpener.focus({preventScroll:true});
+}
+function openTabs(ph,state,title,pages,tab,opener){
+ ph.paneState={...state,tab};
+ ph.pane.setAttribute('aria-labelledby',`${ph.id}-pt`);
+ const S=starredItems().length,current=state.kind==='starred'?'starred':state.kind==='category'?'c:'+state.cat:String(state.gi);
+ const items=(S?[['starred','<span class="starglyph" aria-hidden="true"></span>','Starred']]:[]).concat(ph.org==='category'?CATS.map(([k,l,gl])=>['c:'+k,gl,l]):groups.map(g=>[String(g.gi),g.gi+1,esc(g.title)]));
+ const check='<svg class="tm-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+ ph.pane.innerHTML=`<div class="ph-head"><button type="button" class="back" data-close aria-label="Back to phrasebook"></button><button type="button" class="ph-switch" data-menu aria-haspopup="menu" aria-expanded="false" aria-controls="${ph.id}-menu" aria-label="${esc(title)}, choose another ${ph.org==='category'?'category':'topic'}"><span class="ph-title" id="${ph.id}-pt">${esc(title)}</span><svg class="caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span class="ph-side"></span><div class="topic-menu" id="${ph.id}-menu" role="menu" aria-label="${ph.org==='category'?'Categories':'Topics'}">${items.map(([v,n,name])=>`<button type="button" class="tm-item" role="menuitemradio" tabindex="-1" data-pick="${v}" aria-checked="${v===current}"><span class="tm-num">${n}</span><span class="tm-name">${name}</span>${check}</button>`).join('')}</div></div><div class="tabs" role="tablist">${pages.map(([l],i)=>`<button type="button" role="tab" class="tab" id="${ph.id}-t${i}" data-tab="${i}" aria-selected="${i===tab}" aria-controls="${ph.id}-p${i}">${l}</button>`).join('')}</div><div class="pager">${pages.map(([,html],i)=>`<div class="page" role="tabpanel" id="${ph.id}-p${i}" aria-labelledby="${ph.id}-t${i}">${html}</div>`).join('')}</div>`;
+ const pager=ph.pane.querySelector('.pager');
+ showPane(ph,opener);
+ pager.scrollLeft=tab*pager.clientWidth;markTab(ph,tab);
+ pager.addEventListener('scroll',()=>{if(ph.raf)return;ph.raf=requestAnimationFrame(()=>{ph.raf=0;const i=Math.round(pager.scrollLeft/pager.clientWidth);if(i!==ph.paneState?.tab)markTab(ph,i);});},{passive:true});
+}
+function openTopic(ph,gi,tab,opener,focusKey){
+ const g=groups[gi];
+ openTabs(ph,{kind:'topic',gi},g.title,TABS.map(([k,l])=>[l,PAGES[k](g)]),tab??ph.lastTab,opener);
+ if(focusKey)revealInPane(ph,ph.paneState.tab,focusKey);
+}
+function openCategory(ph,cat,opener,focusKey){
+ const label=catLabel(cat);
+ openTabs(ph,{kind:'category',cat},label,[[label,CPAGE[cat]()]],0,opener);
+ if(focusKey)revealInPane(ph,0,focusKey);
+}
+function markTab(ph,i){
+ if(!ph.paneState)return;ph.paneState.tab=i;if(ph.paneState.kind==='topic')ph.lastTab=i;if(ph.paneState.kind==='starred')ph.starTab=i;
+ ph.pane.querySelectorAll('.tabs [data-tab]').forEach(b=>b.setAttribute('aria-selected',String(Number(b.dataset.tab)===i)));
+ ph.pane.querySelectorAll('.pager>.page').forEach((p,n)=>{p.inert=n!==i;});
+ ph.pane.querySelector(`.tabs [data-tab="${i}"]`)?.scrollIntoView({block:'nearest',inline:'nearest'});
+}
+function revealInPane(ph,tab,key){
+ const page=ph.pane.querySelectorAll('.pager>.page')[tab];
+ const sel=key.startsWith('g:')?`[data-group="${CSS.escape(key.slice(2))}"]`:key.startsWith('x:')?`[data-xkey="${CSS.escape(key)}"]`:`[data-key="${CSS.escape(key)}"]`;
+ const el=page.querySelector(sel);if(!el)return;
+ page.scrollTop+=el.getBoundingClientRect().top-page.getBoundingClientRect().top-(key.startsWith('g:')?0:80);
+ if(key.startsWith('g:'))return;
+ el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
+}
+
+phones.forEach(ph=>{
+ ph.el.addEventListener('click',e=>{
+  if(e.target.closest('[data-star]'))return;
+  const t=e.target.closest('[data-open],[data-close],[data-tab],[data-menu],[data-pick]');
+  if(ph.menuOpen&&!e.target.closest('.topic-menu,[data-menu]'))closeMenu(ph,false);
+  if(!t)return;
+  if(t.hasAttribute('data-menu'))return ph.menuOpen?closeMenu(ph,true):openMenu(ph);
+  if(t.dataset.pick)return pickTopic(ph,t.dataset.pick);
+  if(t.hasAttribute('data-close'))return closePane(ph);
+  if(t.dataset.tab&&ph.paneState&&t.closest('.pane')){const pager=ph.pane.querySelector('.pager');markTab(ph,Number(t.dataset.tab));pager.scrollTo({left:Number(t.dataset.tab)*pager.clientWidth,behavior:motion()});return;}
+  const kind=t.dataset.open;
+  if(kind==='topic')return openTopic(ph,Number(t.dataset.gi),t.dataset.tab!=null?Number(t.dataset.tab):undefined,t,t.dataset.focus);
+  if(kind==='category')return openCategory(ph,t.dataset.cat,t,t.dataset.focus);
+  if(kind==='starred')return openTabs(ph,{kind:'starred'},'Starred',starredPages(),t.dataset.tab!=null?Number(t.dataset.tab):ph.starTab??0,t);
+  if(kind==='ctx'){const it=index.get(t.dataset.key).item;const opener=ph.paneOpener,back=opener?.isConnected?opener:t;closePane(ph);if(ph.org==='category')openCategory(ph,SEC_CAT[it.sec],back,it.key);else openTopic(ph,it.gi,SEC_TAB[it.sec],back,it.key);}
+ });
+ ph.el.addEventListener('pointerdown',e=>{if(e.target===ph.scrim)closePane(ph);});
+ new ResizeObserver(()=>{const pager=ph.pane?.querySelector('.pager');if(!ph.paneState||!pager)return;pager.scrollLeft=ph.paneState.tab*pager.clientWidth;}).observe(ph.el);
+});
+
+/* ---------- Stars (shared) ---------- */
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-star]');if(!b)return;
+ const k=b.dataset.star,on=!stars.has(k);on?stars.add(k):stars.delete(k);
+ const scr=b.closest('.screen'),before=b.getBoundingClientRect().top;
+ document.querySelectorAll(`[data-star="${CSS.escape(k)}"]`).forEach(el=>{
+  el.setAttribute('aria-pressed',String(on));
+  const it=index.get(k).item;
+  el.setAttribute('aria-label',el.classList.contains('xstar')?`${on?'Remove saved exchange':'Save whole exchange'}: ${it.title}`:`${on?'Unstar':'Star'}: ${it.en}`);
+  if(!el.classList.contains('xstar'))el.closest('.card,.alt')?.classList.toggle('on',on);
+ });
+ phones.forEach(refresh);
+ if(scr&&b.isConnected)scr.scrollTop+=b.getBoundingClientRect().top-before;
+ status();
+});
+function status(){const n=starredItems().length;$('status').textContent=`${n} starred item${n===1?'':'s'}`;}
+
+/* ---------- Accent theming ---------- */
+const ACCENTS=[['Surf green','#3c7740'],['Ocean','#1f6aa5'],['Coral','#b5452f'],['Plum','#7b3f8f'],['Ochre','#8a6512'],['Slate','#3f5566']];
+const ART_HUE=120; // dominant hue of the surf illustration, in degrees
+const hexRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);
+const lum=h=>{const [r,g,b]=hexRgb(h).map(c=>c<=.03928?c/12.92:((c+.055)/1.055)**2.4);return .2126*r+.7152*g+.0722*b;};
+const hue=h=>{const [r,g,b]=hexRgb(h),mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;if(!d)return null;let x=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;return (x*60+360)%360;};
+let accent=ACCENTS[0][1];
+function renderSwatches(){
+ const box=document.querySelector('.swatches');
+ box.innerHTML=ACCENTS.map(([n,c])=>`<button type="button" class="swatch" style="background:${c}" data-accent="${c}" aria-label="${n} ${c}" aria-pressed="${c===accent}" title="${n}"></button>`).join('')+`<input type="color" id="accent-custom" value="${accent}" aria-label="Custom accent">`;
+}
+function applyAccent(c){
+ accent=c;document.documentElement.style.setProperty('--accent',c);
+ document.querySelectorAll('.swatch').forEach(s=>s.setAttribute('aria-pressed',String(s.dataset.accent===c)));
+ const ratio=1.05/(lum(c)+.05),el=$('contrast');
+ el.textContent=`${c} · ${ratio.toFixed(1)}:1 on white${ratio<4.5?' · below 4.5:1 for 14 px labels':' · passes AA for labels'}`;
+ el.classList.toggle('warn',ratio<4.5);
+ const h=hue(c);
+ document.documentElement.style.setProperty('--art-filter',$('tintart').checked&&h!=null?`hue-rotate(${Math.round(h-ART_HUE)}deg)`:'none');
+}
+document.querySelector('.swatches').addEventListener('click',e=>{const s=e.target.closest('[data-accent]');if(s){$('accent-custom').value=s.dataset.accent;applyAccent(s.dataset.accent);}});
+document.querySelector('.swatches').addEventListener('input',e=>{if(e.target.id==='accent-custom')applyAccent(e.target.value);});
+
+/* ---------- Mouse drag for horizontal scrollers (touch and trackpad are native) ---------- */
+let drag=null,suppress=false;
+document.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0||e.target.closest('.star,.xstar,.inctx'))return;const el=e.target.closest('.phone .hrow,.phone .pager');if(!el)return;drag={el,x:e.clientX,left:el.scrollLeft,moved:false,id:e.pointerId};});
+document.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const dx=e.clientX-drag.x;if(!drag.moved&&Math.abs(dx)>6){drag.moved=true;drag.el.classList.add('dragging');}if(drag.moved){drag.el.scrollLeft=drag.left-dx;e.preventDefault();}});
+document.addEventListener('pointerup',e=>{if(!drag||e.pointerId!==drag.id)return;const d=drag;drag=null;if(!d.moved)return;suppress=true;setTimeout(()=>{suppress=false;},0);
+ if(d.el.matches('.pager')){d.el.classList.remove('dragging');const w=d.el.clientWidth,dx=e.clientX-d.x,from=Math.round(d.left/w),to=Math.abs(dx)>45?from+(dx<0?1:-1):from;d.el.scrollTo({left:Math.max(0,Math.min(to,d.el.children.length-1))*w,behavior:motion()});return;}
+ const pad=10,x=d.el.scrollLeft,box=d.el.getBoundingClientRect().left;const stops=d.el.querySelectorAll('.dcard').length?[...d.el.querySelectorAll('.dcard')]:[...d.el.children];let best=0,bd=Infinity;stops.forEach(c=>{const t=c.getBoundingClientRect().left-box+x-pad,dd=Math.abs(t-x);if(dd<bd){bd=dd;best=t;}});d.el.scrollTo({left:best,behavior:motion()});setTimeout(()=>d.el.classList.remove('dragging'),reduced()?0:350);});
+document.addEventListener('click',e=>{if(suppress){e.preventDefault();e.stopPropagation();suppress=false;}},true);
+document.addEventListener('keydown',e=>{
+ const ph=phones.find(p=>p.el.contains(document.activeElement));if(!ph)return;
+ if(ph.menuOpen&&['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();const items=[...ph.pane.querySelectorAll('.tm-item')],i=items.indexOf(document.activeElement);const n=e.key==='Home'?0:e.key==='End'?items.length-1:Math.max(0,Math.min(items.length-1,i+(e.key==='ArrowDown'?1:-1)));items[n].focus();return;}
+ if(e.key!=='Escape')return;
+ if(ph.menuOpen)return closeMenu(ph,true);
+ closePane(ph);
+});
+/* Topic switcher in the pane header */
+function openMenu(ph){const m=ph.pane.querySelector('.topic-menu'),b=ph.pane.querySelector('[data-menu]');m.classList.add('open');b.setAttribute('aria-expanded','true');ph.menuOpen=true;(m.querySelector('[aria-checked=true]')||m.querySelector('.tm-item')).focus({preventScroll:false});}
+function closeMenu(ph,refocus){if(!ph.menuOpen)return;ph.menuOpen=false;const m=ph.pane.querySelector('.topic-menu'),b=ph.pane.querySelector('[data-menu]');m?.classList.remove('open');b?.setAttribute('aria-expanded','false');if(refocus)b?.focus({preventScroll:true});}
+function pickTopic(ph,v){
+ const opener=ph.paneOpener;closeMenu(ph,false);
+ if(v==='starred')openTabs(ph,{kind:'starred'},'Starred',starredPages(),ph.starTab??0,opener);
+ else if(v.startsWith('c:'))openCategory(ph,v.slice(2),opener);
+ else openTopic(ph,Number(v),undefined,opener);
+ ph.pane.querySelector('[data-menu]').focus({preventScroll:true});
+}
+
+/* ---------- Controls ---------- */
+function renderAll(){
+ document.documentElement.style.setProperty('--w',$('width').value+'px');
+ document.documentElement.style.setProperty('--s',$('scale').value);
+ document.querySelector('.studies').classList.toggle('hide-en',!$('english').checked);
+ phones.forEach(mount);status();
+}
+$('controls').addEventListener('change',e=>{
+ if(e.target.closest('.swatches'))return;
+ if(e.target.id==='english')return document.querySelector('.studies').classList.toggle('hide-en',!$('english').checked);
+ if(e.target.id==='tintart')return applyAccent(accent);
+ build();if(e.target.id==='visit'||e.target.id==='content')applyVisit();renderAll();
+});
+$('controls').addEventListener('reset',()=>setTimeout(()=>{phones.forEach(p=>{p.lastTab=0;p.starTab=0;});renderSwatches();applyAccent(ACCENTS[0][1]);build();applyVisit();renderAll();},0));
+renderSwatches();applyAccent(accent);build();applyVisit();renderAll();
+})();
+</script>
+</body>
+</html>

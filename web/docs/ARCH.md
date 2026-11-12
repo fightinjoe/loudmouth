@@ -28,8 +28,8 @@ Production source lives under `web/app/src/`:
 
 Named state transitions coordinate panes through a typed host. Stable pane roots use delegated
 events; mounted panels manage their own listeners. CSS data attributes express display state.
-Content gestures own shell reveal, topic paging, and section-local reorder. Details uses geometric
-expansion and modal focus management rather than a fifth pane layer.
+Content gestures own shell reveal, landing-row and Starred-pager mouse dragging, and section-local
+reorder. Details uses geometric expansion and modal focus management rather than a fifth pane layer.
 
 ## Service boundary
 
