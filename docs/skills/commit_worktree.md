@@ -33,7 +33,7 @@ Accept an optional registered worktree path, branch, or unambiguous XYZ identifi
 
 Follow [the wiki conventions](../wiki.md).
 
-1. **Todos.** For each todo in `docs/todo/*.md` that this commit completes, set its status to `done` with today's date, per the [todo lifecycle](../wiki.md#todo-lifecycle). Mark partially done work `in-progress` only if that row exists. Do not close milestones here; `/finalize_worktree` does. Add a todo row only for planned follow-up the user asked to track.
+1. **Todos.** For each todo in `docs/todo/*.md` that this commit completes, set its status to `done` with today's date, per the [todo lifecycle](../wiki.md#todo-lifecycle). Mark partially done work `in-progress` only if that row exists. Do not close milestones here; `/finalize_worktree` does. Add a todo only for planned follow-up the user asked to track, using [`/ajw_log_todo`](ajw_log_todo.md).
 2. **Ingest.** For every fact this work changed (behavior, contracts, commands, limits, paths), update the page that owns it, and set its `verified` date to today once you have re-read the page against the code. Pages whose `sources` include changed files are the starting list; a change usually touches a few pages. Record evaluation or test runs worth keeping as ledger rows, not paragraphs.
 3. Run `node scripts/check-docs.mjs --fix`, then `node scripts/check-docs.mjs`. Errors block the commit: fix them. Report remaining warnings; resolve staleness warnings for pages whose sources this commit changed.
 

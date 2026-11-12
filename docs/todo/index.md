@@ -13,5 +13,6 @@ Decided work that is not done yet, grouped into milestones. Each milestone page 
 | Date       | Status  | Description                                                                                                 | Details                              |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | 2026-11-12 | active  | v4 release: deploy the v4 API, gateway and web together, including the adopted English prompt               | [details](v4-release.md)             |
+| 2026-11-12 | planned | Public launch: launch plan, API protection, business model, iOS port, privacy, durability, monitoring, accessibility, naming | [details](public-launch.md)          |
 | 2026-11-12 | planned | Generation reliability: valid JSON, overrun tolerance, latency and DeepSeek capacity for English generation | [details](generation-reliability.md) |
 | 2026-11-12 | planned | Backlog: decided work without a milestone                                                                   | [details](backlog.md)                |

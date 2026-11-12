@@ -1,0 +1,5 @@
+interface:
+  display_name: "Log a todo"
+  short_description: "Add, move or group todos in docs/todo with scripts/todo.mjs."
+policy:
+  allow_implicit_invocation: true

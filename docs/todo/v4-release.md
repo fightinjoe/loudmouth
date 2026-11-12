@@ -15,7 +15,7 @@ This page owns release and deployment status; other pages link here instead of r
 
 - **API, gateway and web:** the v4 phrasebook API, its gateway configuration (`api/config/api-gateway.yaml`) and the web client are implemented and were verified locally on 2026-10-29 (see the [results ledger](../evals/results.md)). None of them has been deployed.
 - **English-generation prompt:** prompt candidate 4 is adopted in `api/src/phrasebook/prompt.txt` but ships only with the API deployment.
-- **Native iOS:** unchanged by v4 and outside this milestone. It still calls the retired `/generate-cards` and `/translate` routes (`ios/Loudmouth/Screens/GenerateCards/GenerateCardsView.swift`, `ios/Loudmouth/Screens/Translation/TranslationView.swift`), which neither the API nor the gateway configuration serves.
+- **Native iOS:** unchanged by v4 and outside this milestone. It still calls the retired `/generate-cards` and `/translate` routes (`ios/Loudmouth/Screens/GenerateCards/GenerateCardsView.swift`, `ios/Loudmouth/Screens/Translation/TranslationView.swift`), which neither the API nor the gateway configuration serves. The port is tracked in [public launch](public-launch/ios-port.md).
 
 Deployment mechanics are in [API operations](../api/operations.md#deployment-reference).
 

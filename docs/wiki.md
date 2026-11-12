@@ -2,7 +2,7 @@
 kind: rules
 status: current
 summary: How the wiki is organized, page header fields, ledgers, todo lifecycle and maintenance operations.
-sources: [scripts/check-docs.mjs]
+sources: [scripts/check-docs.mjs, scripts/todo.mjs]
 verified: 2026-11-12
 ---
 
@@ -77,8 +77,9 @@ Decisions, todos, evaluation results and exploration status are ledgers: one tab
 
 1. [`todo/index.md`](todo/index.md) lists milestones (`planned`, `active`, `done`), each linking to its page.
 2. A milestone page lists its todos (`open`, `in-progress`, `blocked`, `done`).
-3. Finishing a todo: set it to `done` with the date. `/commit_worktree` does this for work in the commit.
-4. Finishing a milestone: when every row is `done`, set the milestone to `done` in the index, remove its link, and delete the milestone page and its record folder. `/finalize_worktree` does this. Decisions worth keeping move to [decisions](decisions.md) first.
+3. Adding todos, moving them between ledgers and creating milestones: `scripts/todo.mjs`, following [log a todo](skills/ajw_log_todo.md).
+4. Finishing a todo: set it to `done` with the date. `/commit_worktree` does this for work in the commit.
+5. Finishing a milestone: when every row is `done`, set the milestone to `done` in the index, remove its link, and delete the milestone page and its record folder. `/finalize_worktree` does this. Decisions worth keeping move to [decisions](decisions.md) first.
 
 ## Maintenance operations
 

@@ -8,7 +8,7 @@ Catchphrase is a language-preparation app: a TypeScript PWA (`web/app`), a state
 
 - Start at [`docs/index.md`](docs/index.md), the generated catalog of every page with a one-line summary, and load only the pages relevant to the task.
 - Before creating or editing any page, follow [`docs/wiki.md`](docs/wiki.md): page header block, current state only, one owner per fact, ledgers for todos, decisions and results.
-- After a change lands, update the pages that own the affected facts and their `verified` dates. Planned work goes in [`docs/todo/`](docs/todo/index.md); future designs in `docs/proposals/`.
+- After a change lands, update the pages that own the affected facts and their `verified` dates. Planned work goes in [`docs/todo/`](docs/todo/index.md), logged with the `ajw_log_todo` skill; future designs in `docs/proposals/`.
 - `node scripts/check-docs.mjs` must pass before committing (`--fix` regenerates the index).
 
 Frequently needed pages:
