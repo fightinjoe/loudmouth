@@ -141,9 +141,9 @@ directory available when building the web package: its local package dependency
 is linked using the checked-in `.npmrc` (`install-links=false`). No separately
 checked-in compiled schema is needed.
 
-Unit tests run with `npm test`. On Node 25 and 26, use
-`NODE_OPTIONS=--no-experimental-webstorage npm test` so happy-dom owns the isolated browser storage
-instead of Node's unrelated native Web Storage implementation.
+Unit tests run with `npm test`. On Node 25+, `vitest.config.js` starts test workers with
+`--no-experimental-webstorage` so happy-dom owns the isolated browser storage instead of Node's
+unrelated native Web Storage implementation.
 
 ## Component workbench (Storybook)
 
