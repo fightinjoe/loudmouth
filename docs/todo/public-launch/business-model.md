@@ -1,7 +1,7 @@
 ---
 kind: record
 status: current
-summary: Brainstorm the business model: who pays, for what, and whether it covers per-phrasebook model cost.
+summary: "Brainstorm the business model: who pays, for what, and whether it covers per-phrasebook model cost."
 verified: 2026-11-12
 ---
 

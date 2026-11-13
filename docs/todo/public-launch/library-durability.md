@@ -1,7 +1,7 @@
 ---
 kind: record
 status: current
-summary: Reduce the risk of browsers evicting the IndexedDB library: persistent storage, home-screen install, backup reminders.
+summary: "Reduce the risk of browsers evicting the IndexedDB library: persistent storage, home-screen install, backup reminders."
 verified: 2026-11-12
 ---
 

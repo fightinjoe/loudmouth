@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: Commit the current work in a feature worktree after cleanup, todo and wiki ingest, docs check and fast tests; appends to worktree.md.
 sources: [scripts/check-docs.mjs, scripts/worktree/add_worktree.py]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # Commit a worktree

@@ -1,9 +1,13 @@
 ---
 kind: ledger
 status: current
-summary: Backlog of decided work without a milestone: creation-flow redesign, phrasebook artwork, breakdown improvements, preset packs, placeholders, diagnostics mode, changing a remembered ability, dependency upkeep and prompt follow-ups.
-verified: 2026-11-12
-statuses: [open, in-progress, blocked, done]
+summary: "Backlog of decided work without a milestone: creation-flow redesign, phrasebook artwork, breakdown improvements, preset packs, placeholders, diagnostics mode, changing a remembered ability, dependency upkeep and prompt follow-ups; future work holds usage-based suggestions."
+verified: 2026-11-13
+statuses:
+  - open
+  - in-progress
+  - blocked
+  - done
 ---
 
 # Backlog
@@ -23,3 +27,9 @@ Decided work not yet assigned to a milestone.
 | 2026-11-12 | open   | **Content: placeholders**<br>Placeholder support for learner-supplied proper nouns                               | [details](backlog/proper-noun-placeholders.md)   |
 | 2026-11-12 | open   | **Content: streamline prompts**<br>Evaluate moving deterministic shaping out of the translation prompt           | [details](backlog/translation-prompt-shaping.md) |
 | 2026-11-12 | open   | **Eval: show API response flags**<br>Developer diagnostics mode showing API response flags                       | [details](backlog/developer-diagnostics.md)      |
+
+## Future work
+
+| Date       | Status | Description                                                                                          | Details                                       |
+| ---------- | ------ | ---------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 2026-11-13 | open   | **UX: Personalized suggestions**<br>Tailor suggested situations and phrasebooks to the learner's use | [details](backlog/usage-based-suggestions.md) |

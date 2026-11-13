@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 // Todo ledger tool for docs/todo. Run from anywhere inside the repository.
 //
-//   node scripts/todo.mjs add --ledger <ledger> --slug <slug> --title <title> --description <row>
+//   node scripts/todo.mjs add --ledger <ledger> [--section <heading>] --slug <slug> --title <title> --description <row>
 //        --summary <line> --what <text> --why <text> --done <text> [--open <text>] [--status open] [--date YYYY-MM-DD]
-//   node scripts/todo.mjs move --from <ledger> --slug <slug> --to <ledger>
+//   node scripts/todo.mjs move --from <ledger> --slug <slug> --to <ledger> [--section <heading>]
 //   node scripts/todo.mjs milestone --slug <slug> --title <title> --summary <line> --description <text after the bold title>
 //        --intro <text> [--status planned] [--date YYYY-MM-DD]
 //
 // <ledger> is a ledger page under docs/todo without `.md`, for example `backlog` or `v4-release`.
+// --section names a `## <heading>` on the ledger page whose table receives the row, for example `Future work` in the backlog;
+// without it the row goes into the page's first table.
 // Every command finishes by running `node scripts/check-docs.mjs --fix` and exits non-zero if it fails.
 // Conventions are in docs/wiki.md; the procedure that uses this tool is docs/skills/ajw_log_todo.md.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { parseFrontmatter, scalar } from './lib/frontmatter.mjs';
 
 const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const TODO = join(ROOT, 'docs/todo');
@@ -45,18 +48,7 @@ function slugArg(name, value) {
   return value;
 }
 
-function frontmatter(text) {
-  const end = text.startsWith('---\n') ? text.indexOf('\n---', 4) : -1;
-  if (end < 0) return {};
-  const data = {};
-  for (const l of text.slice(4, end).split('\n')) {
-    const m = l.match(/^([A-Za-z][\w-]*):\s*(.*)$/);
-    if (!m) continue;
-    const v = m[2].trim();
-    data[m[1]] = v.startsWith('[') && v.endsWith(']') ? v.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean) : v;
-  }
-  return data;
-}
+const frontmatter = text => parseFrontmatter(text)?.data ?? {};
 
 function ledger(name) {
   const path = join(TODO, `${slugArg('ledger', name)}.md`);
@@ -76,10 +68,18 @@ const partOf = l => (l.name === 'backlog'
   ? `Part of the [${proseTitle(l.title)}](../${l.name}.md).`
   : `Part of the [${proseTitle(l.title)}](../${l.name}.md) milestone.`);
 
-// Insert a row as the first data row of the page's first ledger table (newest first).
-function insertRow(text, row, file) {
+// Insert a row as the first data row (newest first) of the page's first ledger table, or of the table
+// directly under the `## <section>` heading when a section is given.
+function insertRow(text, row, file, section) {
   const lines = text.split('\n');
-  const header = lines.findIndex(l => LEDGER_HEADER.test(l));
+  let from = 0;
+  if (section !== undefined) {
+    from = lines.findIndex(l => l.trim() === `## ${section}`);
+    if (from < 0) fail(`${file} has no "## ${section}" section`);
+  }
+  const header = lines.findIndex((l, i) => i > from && LEDGER_HEADER.test(l));
+  const nextHeading = lines.findIndex((l, i) => i > from && /^#{1,2} /.test(l));
+  if (section !== undefined && header >= 0 && nextHeading >= 0 && nextHeading < header) fail(`${file}: "## ${section}" has no ledger table`);
   if (header < 0 || !/^\|[\s:|-]+\|?\s*$/.test(lines[header + 1] ?? '')) fail(`${file} has no ledger table`);
   lines.splice(header + 2, 0, row);
   return lines.join('\n');
@@ -139,7 +139,7 @@ const COMMON = { date: { type: 'string' }, status: { type: 'string' } };
 function add(argv) {
   const { values: v } = parseArgs({
     args: argv,
-    options: { ...COMMON, ledger: { type: 'string' }, slug: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, summary: { type: 'string' }, what: { type: 'string' }, why: { type: 'string' }, done: { type: 'string' }, open: { type: 'string' } },
+    options: { ...COMMON, ledger: { type: 'string' }, section: { type: 'string' }, slug: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, summary: { type: 'string' }, what: { type: 'string' }, why: { type: 'string' }, done: { type: 'string' }, open: { type: 'string' } },
   });
   const l = ledger(v.ledger);
   const slug = slugArg('slug', v.slug);
@@ -156,13 +156,13 @@ function add(argv) {
   if (existsSync(record)) fail(`${rel(record)} already exists`);
 
   const body = [
-    '---', 'kind: record', 'status: current', `summary: ${fields.summary}`, `verified: ${date}`, '---', '',
+    '---', 'kind: record', 'status: current', `summary: ${scalar(fields.summary)}`, `verified: ${date}`, '---', '',
     `# ${fields.title}`, '', partOf(l), '',
     `- **What:** ${fields.what}`, `- **Why:** ${fields.why}`,
     ...(fields.open ? [`- **Open questions:** ${fields.open}`] : []),
     `- **Done when:** ${fields.done}`, '',
   ].join('\n');
-  const updated = insertRow(l.text, `| ${date} | ${status} | ${fields.description} | [details](${l.name}/${slug}.md) |`, rel(l.path));
+  const updated = insertRow(l.text, `| ${date} | ${status} | ${fields.description} | [details](${l.name}/${slug}.md) |`, rel(l.path), v.section);
 
   mkdirSync(dirname(record), { recursive: true });
   writeFileSync(record, body);
@@ -172,7 +172,7 @@ function add(argv) {
 }
 
 function move(argv) {
-  const { values: v } = parseArgs({ args: argv, options: { from: { type: 'string' }, to: { type: 'string' }, slug: { type: 'string' } } });
+  const { values: v } = parseArgs({ args: argv, options: { from: { type: 'string' }, to: { type: 'string' }, section: { type: 'string' }, slug: { type: 'string' } } });
   const from = ledger(v.from);
   const to = ledger(v.to);
   if (from.name === to.name) fail('--from and --to are the same ledger');
@@ -208,7 +208,7 @@ function move(argv) {
   renameSync(oldAbs, newAbs);
   writeFileSync(newAbs, record);
   writeFileSync(from.path, retarget(fromText, dirname(from.path), oldAbs, newAbs));
-  writeFileSync(to.path, insertRow(retarget(to.text, dirname(to.path), oldAbs, newAbs), movedRow, rel(to.path)));
+  writeFileSync(to.path, insertRow(retarget(to.text, dirname(to.path), oldAbs, newAbs), movedRow, rel(to.path), v.section));
   for (const [f, text] of rewrites) writeFileSync(f, text);
   if (!readdirSync(dirname(oldAbs)).length) rmdirSync(dirname(oldAbs));
 
@@ -237,7 +237,7 @@ function milestone(argv) {
   };
 
   const page = [
-    '---', 'kind: ledger', 'status: current', `summary: ${f.summary}`, `verified: ${date}`, 'statuses: [open, in-progress, blocked, done]', '---', '',
+    '---', 'kind: ledger', 'status: current', `summary: ${scalar(f.summary)}`, `verified: ${date}`, 'statuses: [open, in-progress, blocked, done]', '---', '',
     `# ${f.title}`, '', f.intro, '',
     '| Date | Status | Description | Details |', '|---|---|---|---|', '',
   ].join('\n');

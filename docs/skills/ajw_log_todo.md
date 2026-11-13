@@ -1,9 +1,9 @@
 ---
 kind: skill
 status: current
-summary: Log planned work in docs/todo: add todos with records, move them between ledgers, create milestones, using scripts/todo.mjs.
+summary: "Log planned work in docs/todo: add todos with records, move them between ledgers, create milestones, using scripts/todo.mjs."
 sources: [scripts/todo.mjs]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # Log a todo
@@ -25,6 +25,7 @@ For each requested item, search the existing records (`docs/todo/**/*.md`) for o
 - **Existing milestone** when the item is part of that milestone's stated scope or a gate for it.
 - **New milestone** (`milestone`) when several items share a goal and depend on each other. Write an intro saying what the milestone covers and which page owns related state.
 - **Backlog** otherwise. Do not ask the user where an item goes unless two placements would change what ships; state the choice in the report.
+- **Backlog, Future work section** (`--section "Future work"`) when the user flags the item as future work: an idea to pursue later rather than work ready to pick up.
 
 ## 4. Gather evidence
 
@@ -42,6 +43,7 @@ A record must make sense months later without this conversation. Before writing:
 node scripts/todo.mjs add --ledger backlog --slug short-name --title "Record title" \
   --description "Ledger row text" --summary "One-line index summary." \
   --what "..." --why "..." --done "..." [--open "..."]
+node scripts/todo.mjs add --ledger backlog --section "Future work" --slug short-name ...
 node scripts/todo.mjs move --from backlog --slug short-name --to public-launch
 node scripts/todo.mjs milestone --slug public-launch --title "Public launch" \
   --summary "..." --description "launch plan, API protection, ..." --intro "..."

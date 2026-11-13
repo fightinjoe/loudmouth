@@ -5,6 +5,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, normalize, relative, resolve, sep } from 'node:path';
+import { parseFrontmatter as frontmatter, quoteFrontmatter } from './lib/frontmatter.mjs';
 
 const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const FIX = process.argv.includes('--fix');
@@ -29,20 +30,6 @@ const exists = f => existsSync(join(ROOT, f));
 const isIgnored = f => { try { execFileSync('git', ['check-ignore', '-q', f], { cwd: ROOT, stdio: 'ignore' }); return true; } catch { return false; } };
 
 // ---------- parsing helpers ----------
-function frontmatter(text) {
-  if (!text.startsWith('---\n')) return null;
-  const end = text.indexOf('\n---', 4);
-  if (end < 0) return null;
-  const data = {};
-  for (const line of text.slice(4, end).split('\n')) {
-    const m = line.match(/^([A-Za-z][\w-]*):\s*(.*)$/);
-    if (!m) continue;
-    let v = m[2].trim();
-    if (v.startsWith('[') && v.endsWith(']')) v = v.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean);
-    data[m[1]] = v;
-  }
-  return { data, body: text.slice(text.indexOf('\n', end + 1) + 1), bodyLine: text.slice(0, end).split('\n').length + 2 };
-}
 
 // Strip fenced code blocks, keeping line numbers stable.
 const stripFences = text => text.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, block => block.replace(/[^\n]/g, ''));
@@ -123,7 +110,10 @@ function unwrap(text) {
 }
 const prose = files.filter(f => f.endsWith('.md') && (f.startsWith('docs/') || MD_OUTSIDE_DOCS.some(r => r.test(f))));
 for (const f of prose) {
-  const text = read(f);
+  let text = read(f);
+  const quoted = quoteFrontmatter(text);
+  if (quoted !== text && FIX) { writeFileSync(join(ROOT, f), quoted); console.log(`quoted header values in ${f}`); text = quoted; }
+  for (const p of frontmatter(text)?.problems ?? []) err(f, p);
   const fixed = unwrap(text);
   if (fixed === text) continue;
   if (FIX) { writeFileSync(join(ROOT, f), fixed); console.log(`unwrapped ${f}`); continue; }
@@ -159,8 +149,8 @@ for (const f of docs) {
   const inProposals = f.startsWith('docs/proposals/');
   if (inProposals !== (d.status === 'proposal')) err(f, 'status: proposal is required in, and only allowed in, docs/proposals/');
   if (d.status === 'disabled' && !f.startsWith('docs/skills/')) err(f, 'status: disabled is only for docs/skills/');
-  if (d.kind === 'ledger' && !Array.isArray(d.statuses)) err(f, 'frontmatter: ledgers need statuses: [..]');
-  if (d.sources !== undefined && !Array.isArray(d.sources)) err(f, 'frontmatter: sources must be a [list]');
+  if (d.kind === 'ledger' && !Array.isArray(d.statuses)) err(f, 'frontmatter: ledgers need a statuses list');
+  if (d.sources !== undefined && !Array.isArray(d.sources)) err(f, 'frontmatter: sources must be a list');
   for (const s of Array.isArray(d.sources) ? d.sources : []) if (!exists(s)) err(f, `frontmatter: source "${s}" does not exist`);
 }
 

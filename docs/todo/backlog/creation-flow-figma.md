@@ -1,7 +1,7 @@
 ---
 kind: record
 status: current
-summary: Implement the updated phrasebook creation flow from Figma: suggestions, thinking state, ability question and topic checklist.
+summary: "Implement the updated phrasebook creation flow from Figma: suggestions, thinking state, ability question and topic checklist."
 verified: 2026-11-12
 ---
 

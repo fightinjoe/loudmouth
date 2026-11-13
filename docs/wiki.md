@@ -2,8 +2,8 @@
 kind: rules
 status: current
 summary: How the wiki is organized, page header fields, ledgers, todo lifecycle and maintenance operations.
-sources: [scripts/check-docs.mjs, scripts/todo.mjs]
-verified: 2026-11-12
+sources: [scripts/check-docs.mjs, scripts/todo.mjs, scripts/lib/frontmatter.mjs]
+verified: 2026-11-13
 ---
 
 # Wiki conventions
@@ -50,6 +50,7 @@ statuses: [open, in-progress, blocked, done]                # ledgers only
 - `kind`: `spec` is normative current behavior; `guide` is how to run or develop something; `rules` are conventions to follow; `ledger` is a dated table; `record` is the detail behind one ledger row.
 - `sources`: when a listed file changes after `verified`, the checker warns. Re-read the page against the code, fix it, then update `verified`.
 - The index is generated from `summary`. Run `node scripts/check-docs.mjs --fix` after adding, renaming or re-summarizing a page.
+- The block is YAML. Wrap a value in double quotes when it contains `: ` or ` #`, ends with `:`, or starts with a YAML indicator such as `` ` ``, `[`, `-` or `*`: `summary: "POST /context contract: questions and checklist."`. The checker reports unquoted values and `--fix` quotes them; `scripts/todo.mjs` quotes what it writes. Lists may be flow (`[a, b]`) or block (`key:` followed by indented `- item` lines).
 
 ## Writing rules
 
@@ -72,6 +73,7 @@ Decisions, todos, evaluation results and exploration status are ledgers: one tab
 - **Date:** when the row last changed status. **Status:** one of the page's `statuses`.
 - **Records** live in a folder named after the ledger, beside it: `decisions.md` → `decisions/`, `evals/results.md` → `evals/results/`, `todo/backlog.md` → `todo/backlog/`. A record is `kind: record`, starts with the context needed to understand it later, and must be linked from its ledger.
 - Newest rows first.
+- A ledger page may split its rows into `##` sections, each with its own table. The [backlog](todo/backlog.md)'s Future work section holds ideas the owner flagged for later, apart from work ready to pick up.
 
 ## Todo lifecycle
 

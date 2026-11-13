@@ -1,7 +1,7 @@
 ---
 kind: record
 status: current
-summary: Write the production launch plan: platforms, audience, gates, rollout, monitoring and rollback.
+summary: "Write the production launch plan: platforms, audience, gates, rollout, monitoring and rollback."
 verified: 2026-11-12
 ---
 

@@ -1,9 +1,9 @@
 ---
 kind: skill
 status: current
-summary: Prepare a feature worktree for human review: cleanup, todo and milestone lifecycle, docs ingest, verification and server shutdown; never commits.
+summary: "Prepare a feature worktree for human review: cleanup, todo and milestone lifecycle, docs ingest, verification and server shutdown; never commits."
 sources: [scripts/check-docs.mjs, scripts/worktree/add_worktree.py]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # Finalize a worktree for human review

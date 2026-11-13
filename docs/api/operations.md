@@ -1,7 +1,7 @@
 ---
 kind: guide
 status: current
-summary: Catchphrase API operations: model selection, implementation map, local development, tests, evals and deployment.
+summary: "Catchphrase API operations: model selection, implementation map, local development, tests, evals and deployment."
 sources: [api/src/index.js, api/src/llm-config.js, api/src/dev.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js]
 verified: 2026-11-12
 ---

@@ -1,7 +1,7 @@
 ---
 kind: ledger
 status: current
-summary: Public-launch milestone: launch plan, API protection, business model, iOS port, privacy, library durability, monitoring, accessibility and naming.
+summary: "Public-launch milestone: launch plan, API protection, business model, iOS port, privacy, library durability, monitoring, accessibility and naming."
 verified: 2026-11-12
 statuses: [open, in-progress, blocked, done]
 ---

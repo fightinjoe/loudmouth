@@ -1,7 +1,7 @@
 ---
 kind: skill
 status: disabled
-summary: Disabled pending review: keep precise user-directed work faithful to scope, sources and requested artifacts.
+summary: "Disabled pending review: keep precise user-directed work faithful to scope, sources and requested artifacts."
 description: Keep precise, user-directed work faithful to its scope, source data, and requested artifacts. Use when the user asks for exact inputs, representative fixtures, API audits, controlled comparisons, minimal changes, or explicitly wants less invention and fewer assumptions. Applies beyond evaluations; combine with relevant domain skills.
 verified: 2026-11-12
 ---

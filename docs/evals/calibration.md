@@ -1,7 +1,7 @@
 ---
 kind: guide
 status: current
-summary: Offline calibration preparation in evals/calibration: inspect the request plan and materialize native Prompt Romp inputs without dispatch.
+summary: "Offline calibration preparation in evals/calibration: inspect the request plan and materialize native Prompt Romp inputs without dispatch."
 sources: [evals/calibration/prepare.mjs, evals/calibration/adapter.mjs]
 verified: 2026-11-12
 ---

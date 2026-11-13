@@ -1,7 +1,7 @@
 ---
 kind: spec
 status: current
-summary: POST /phrase-breakdown contract: exact-source contextual chunks, dictionary Words and Word/Chunk save targets.
+summary: "POST /phrase-breakdown contract: exact-source contextual chunks, dictionary Words and Word/Chunk save targets."
 sources: [api/src/phrase-breakdown/index.js, api/src/phrase-breakdown/prompt.js, api/src/phrase-breakdown/prompt.txt, api/src/schema/index.ts, api/src/reading.js]
 verified: 2026-11-12
 ---

@@ -1,7 +1,7 @@
 ---
 kind: record
 status: current
-summary: Local integration smoke for the v4 four-section /phrasebook promotion: real-provider requests, browser save/star/backup and test suites.
+summary: "Local integration smoke for the v4 four-section /phrasebook promotion: real-provider requests, browser save/star/backup and test suites."
 verified: 2026-10-29
 ---
 

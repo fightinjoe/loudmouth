@@ -1,7 +1,7 @@
 ---
 kind: skill
 status: disabled
-summary: Disabled pending review: propose or review phrasebook content-quality evaluations with cited evidence.
+summary: "Disabled pending review: propose or review phrasebook content-quality evaluations with cited evidence."
 description: Propose or independently review phrasebook evaluation scenarios, English generation, translation, and optional detection/repair using canonical contexts, cited evidence, and calibrated uncertainty. Use for subjective content-quality evaluation, not production prompt editing or paid execution.
 verified: 2026-11-12
 ---

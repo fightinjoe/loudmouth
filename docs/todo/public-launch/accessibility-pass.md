@@ -1,7 +1,7 @@
 ---
 kind: record
 status: current
-summary: Run the physical-device accessibility checks the design page lists as outstanding: VoiceOver, thumb reach, iOS Safari gestures.
+summary: "Run the physical-device accessibility checks the design page lists as outstanding: VoiceOver, thumb reach, iOS Safari gestures."
 verified: 2026-11-12
 ---
 

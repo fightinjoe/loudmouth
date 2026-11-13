@@ -1,7 +1,7 @@
 ---
 kind: rules
 status: current
-summary: Content-quality rubric for phrasebook evaluations: scale, dimensions, outcome classes, English and translation rules, review records and decision log.
+summary: "Content-quality rubric for phrasebook evaluations: scale, dimensions, outcome classes, English and translation rules, review records and decision log."
 sources: [evals/rubric.json]
 verified: 2026-11-12
 ---

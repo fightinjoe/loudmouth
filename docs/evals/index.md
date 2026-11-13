@@ -1,7 +1,7 @@
 ---
 kind: guide
 status: current
-summary: Evaluation section entry: offline Bun lanes in evals/ versus paid Node runners in api/evals/, how to run them, outcome criteria and data boundaries.
+summary: "Evaluation section entry: offline Bun lanes in evals/ versus paid Node runners in api/evals/, how to run them, outcome criteria and data boundaries."
 sources: [evals/pipelines/cli.mjs, evals/pipelines/runner.mjs, evals/rubric.json]
 verified: 2026-11-12
 ---

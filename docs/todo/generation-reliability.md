@@ -1,7 +1,7 @@
 ---
 kind: ledger
 status: current
-summary: Generation-reliability milestone: valid JSON, overrun tolerance, latency and DeepSeek capacity for English generation, verified in production.
+summary: "Generation-reliability milestone: valid JSON, overrun tolerance, latency and DeepSeek capacity for English generation, verified in production."
 verified: 2026-11-12
 statuses: [open, in-progress, blocked, done]
 ---

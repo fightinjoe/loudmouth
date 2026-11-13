@@ -1,7 +1,7 @@
 ---
 kind: guide
 status: current
-summary: Phrase-breakdown prompt evaluation: the paid Node runner in api/evals, its fixtures, review workflow and priorities.
+summary: "Phrase-breakdown prompt evaluation: the paid Node runner in api/evals, its fixtures, review workflow and priorities."
 sources: [api/evals/scripts/eval-phrase-breakdown.js, api/evals/fixtures/phrase-breakdown.json, api/src/phrase-breakdown/prompt.txt]
 verified: 2026-11-12
 ---

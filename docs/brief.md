@@ -1,7 +1,7 @@
 ---
 kind: brief
 status: current
-summary: Catchphrase product intent: users, principles, current experience, goals, scope and quality priorities.
+summary: "Catchphrase product intent: users, principles, current experience, goals, scope and quality priorities."
 verified: 2026-11-12
 ---
 

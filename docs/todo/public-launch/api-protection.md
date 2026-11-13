@@ -1,7 +1,7 @@
 ---
 kind: record
 status: current
-summary: Protect the public API for anonymous callers: gateway admission, quotas, concurrency and spend limits, attestation and abuse-resistant robustness.
+summary: "Protect the public API for anonymous callers: gateway admission, quotas, concurrency and spend limits, attestation and abuse-resistant robustness."
 verified: 2026-11-12
 ---
 
