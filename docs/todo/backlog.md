@@ -18,8 +18,8 @@ Decided work not yet assigned to a milestone.
 | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | 2026-11-13 | open | **Content: Spanish variants**<br>Offer Spanish (Latin America) and Spanish (Spain) as separate languages | [details](backlog/spanish-variants.md) |
 | 2026-11-13 | done   | **UI: Phrasebook creation flow**<br>Implement the updated phrasebook creation flow from Figma                    | [details](backlog/creation-flow-figma.md)        |
-| 2026-11-12 | open   | **NPM install scripts**<br>Decide which blocked npm install scripts to allow and commit the setting              | [details](backlog/npm-install-scripts.md)        |
-| 2026-11-12 | open   | **NPM cleanup**<br>Update web development tooling flagged by npm audit and deprecation warnings                  | [details](backlog/web-dev-dependencies.md)       |
+| 2026-11-13 | done   | **NPM install scripts**<br>Decide which blocked npm install scripts to allow and commit the setting              | [details](backlog/npm-install-scripts.md)        |
+| 2026-11-13 | done   | **NPM cleanup**<br>Update web development tooling flagged by npm audit and deprecation warnings                  | [details](backlog/web-dev-dependencies.md)       |
 | 2026-11-12 | open   | **UI: Phrasebook tiles**<br>Tile generator and color picker for phrasebook background artwork                    | [details](backlog/phrasebook-artwork.md)         |
 | 2026-11-12 | open   | **UX: phrase breakdown**<br>Review and improve phrase breakdown design and content, and extend it to Words       | [details](backlog/breakdown-review.md)           |
 | 2026-11-12 | open   | **UX: Language ability**<br>Let learners change the ability remembered for a language                            | [details](backlog/update-ability.md)             |

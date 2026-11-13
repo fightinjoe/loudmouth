@@ -24,13 +24,13 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "@types/node": "25.9.1",
-    "storybook": "10.6.5",
-    "@storybook/html-vite": "10.6.5",
-    "@storybook/addon-docs": "10.6.5",
     "@storybook/addon-a11y": "10.6.5",
+    "@storybook/addon-docs": "10.6.5",
+    "@storybook/html-vite": "10.6.5",
+    "@types/node": "25.9.1",
     "fake-indexeddb": "^6.2.5",
-    "happy-dom": "^20.9.0",
+    "happy-dom": "^21.0.4",
+    "storybook": "10.6.5",
     "typescript": "5.9.3",
     "vite": "^6.4.1",
     "vite-plugin-pwa": "^1.2.0",
@@ -39,5 +39,10 @@
   "dependencies": {
     "@catchphrase/card-schema": "file:../../api/src/schema",
     "dexie": "^4.3.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true,
+    "fsevents": false
   }
 }

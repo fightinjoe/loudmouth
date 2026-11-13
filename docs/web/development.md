@@ -18,6 +18,8 @@ How to run, test, build and deploy the Catchphrase web client in `web/app/`. Arc
 
 Run package commands from `web/app/`, not `web/`. Use `api/src/` for API commands. After pulling dependency changes, run `npm ci` in both package directories.
 
+npm blocks dependency install scripts that the `allowScripts` field of each `package.json` does not cover. `web/app` approves `esbuild` pinned to its installed versions and denies `fsevents`; `api/src` denies `protobufjs` (reasons in the [install scripts record](../todo/backlog/npm-install-scripts.md)). When an upgrade changes an approved package's version, `npm ci` warns that its script was blocked: review the new version and run `npm approve-scripts <pkg>` in that package. `npm approve-scripts --allow-scripts-pending` lists anything unreviewed.
+
 ```bash
 npm install
 ```
