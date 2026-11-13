@@ -3,7 +3,7 @@ kind: rules
 status: current
 summary: Coding rules for the web app — architecture constraints, source layout, CSS, rendering, gestures, panes and tests.
 sources: [web/app/src/styles, web/app/src/panes/app.ts, web/app/src/panes/content-pane-actions.ts, web/app/src/components/bottom-sheet.ts, web/app/e2e/action-panes.smoke.spec.js]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # Web app coding rules

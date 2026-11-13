@@ -11,7 +11,7 @@ import { requests, setOutcome, setResponseFactory } from '../support/transport';
 
 export type CreationArgs = { lang?: Lang; seed?: string };
 const seed = 'Ordering at a café';
-const description = 'Source: src/components/creation-panel.ts — openCreationPanel, mounted through the real action owner. Screens are reached with public actions and DOM controls; no private creation state or copied templates. API fixtures pass the unchanged client validators, and committing keeps the real 1000 ms minimum. Reset scenario opens a fresh controller; Resolve/Fail settle pending transport. Other retains the current placeholder wording, whitespace topic submission is a no-op, and action sheets currently lack the details pane’s Escape/focus trap.';
+const description = 'Source: src/components/creation-panel.ts — openCreationPanel, mounted through the real action owner. Screens are reached with public actions and DOM controls; no private creation state or copied templates. One white backdrop moves behind the current area of focus: the situation, then the status, then each question. API fixtures pass the unchanged client validators, and committing keeps the real 1000 ms minimum. Reset scenario opens a fresh controller; Resolve/Fail settle pending transport. Whitespace topic submission is a no-op.';
 
 const meta = {
   title: 'Components/Creation',
@@ -19,7 +19,7 @@ const meta = {
   excludeStories: /^creation/,
   parameters: { layout: 'fullscreen', docs: { description: { component: description }, story: { inline: false } } },
   argTypes: {
-    lang: { control: 'select', options: [undefined, ...FIXTURE_LANGUAGES], description: 'Optional initial content language. Unset performs the real saved-library lookup.' },
+    lang: { control: 'select', options: [undefined, ...FIXTURE_LANGUAGES], description: 'Optional initial content language. Unset uses the remembered language, else the real saved-library lookup.' },
     seed: { control: 'text', description: 'Initial situation text; editing or changing language uses the production invalidation rules.' },
   },
 } satisfies Meta<CreationArgs>;
@@ -83,7 +83,7 @@ export async function creationReachChecklist(): Promise<void> {
   for (let question = 0; question < 6; question += 1) {
     if (getScenario().root.querySelector('.creation-checklist')) return;
     const label = getScenario().root.querySelector('.creation-question-label')?.textContent;
-    await creationAnswer(label === ABILITY_QUESTION ? 'Basics' : undefined);
+    await creationAnswer(label === ABILITY_QUESTION ? 'Basic' : undefined);
   }
   await creationElement('.creation-checklist');
 }
@@ -109,8 +109,8 @@ const docs = (text: string) => ({ docs: { description: { story: text } } });
 
 export const FirstLanguage: Story = {
   ...creationScenario({}, {}),
-  parameters: docs('First-use language choice. All five supported languages remain on this screen until explicit Next; no generation request occurs on selection.'),
-  play: async () => { await creationElement('[data-action="creation/language"]'); },
+  parameters: docs('First run: no remembered language and an empty library. The dropdown opens expanded on Japanese over the situation; choosing a language closes it and is remembered. No request starts on selection.'),
+  play: async () => { await creationElement('.creation-panel-inner[data-language-open="true"]'); },
 };
 
 let releaseLibrary: (() => void) | undefined;
@@ -137,24 +137,33 @@ export const Initializing: Story = {
     },
   }, {}),
   parameters: docs('The real initializing screen, held by a genuine sandbox Dexie transaction—not a private state override. Use Release library read in the workbench tools to continue. Owner cleanup releases the transaction.'),
-  play: async () => { await creationElement('.creation-wait-body'); },
+  play: async () => { await creationElement('.creation-status'); },
 };
 
 export const ReturningTopic: Story = {
   ...creationScenario({ library: 'single', setup: () => { setLastCreationLanguage('ja'); setLastAbility('ja', 'basics'); } }, {}),
-  parameters: docs('Saved library lookup remembers Japanese and Basics. Initial situation and language are semantic Controls; changing either remounts only this sandbox scene.'),
+  parameters: docs('Remembered Japanese and Basic start at the situation with Suggestions. Initial situation and language are semantic Controls; changing either remounts only this sandbox scene.'),
   play: async () => { await creationElement('.creation-input-field'); },
 };
 
 export const LanguageEdit: Story = {
   ...creationScenario(),
-  parameters: docs('Language editing retains the situation. Back cancels a pending language; Next confirms it and invalidates the previous context.'),
-  play: async () => { await creationClick('edit-language'); },
+  parameters: docs('The language dropdown grows out of the header pill. Choosing a language closes it, keeps the situation and invalidates previous context; an outside tap or Escape closes it unchanged.'),
+  play: async () => { await creationClick('toggle-language'); },
+};
+
+export const Suggestion: Story = {
+  ...creationScenario({ outcomes: { '/context': 'pending' } }, { lang: 'ja' }),
+  parameters: docs('Choosing a suggestion enters it as the situation and submits it.'),
+  play: async () => {
+    await userEvent.click(await creationElement('[data-action="creation/suggestion"]'));
+    await creationElement('.creation-generating');
+  },
 };
 
 export const ContextWait: Story = {
   ...creationScenario({ outcomes: { '/context': 'pending' } }),
-  parameters: docs('Pending context request. Resolve/Fail uses the real HTTP and validation path; Cancel aborts the request.'),
+  parameters: docs('Pending context request. Resolve/Fail uses the real HTTP and validation path; Back aborts it and returns to the editable situation.'),
   play: async () => { await creationSubmitTopic(); await creationElement('.creation-generating'); },
 };
 
@@ -166,7 +175,7 @@ export const ContextError: Story = {
 
 export const AbilityQuestion: Story = {
   ...creationScenario(),
-  parameters: docs('Client-owned None/Basics/Conversational question; ability is not remembered until successful atomic persistence.'),
+  parameters: docs('Client-owned None/Basic/Conversational question; ability is not remembered until successful atomic persistence.'),
   play: async () => { await creationSubmitTopic(); await creationElement('[data-action="creation/answer"]'); },
 };
 
@@ -178,7 +187,7 @@ export const GeneratedQuestions: Story = {
 
 export const OtherAnswer: Story = {
   ...creationScenario({ setup: () => { setLastAbility('ja', 'basics'); } }),
-  parameters: docs('Other is a real radio/input choice. Typing stores a trimmed answer; Enter advances only when nonblank. Existing placeholder wording is retained.'),
+  parameters: docs('Other is a real radio/input choice. Typing stores a trimmed answer; Enter advances only when nonblank.'),
   play: async () => {
     await creationSubmitTopic();
     await userEvent.type(await creationElement('.creation-other-input'), '  Colleagues after work  ');
@@ -187,13 +196,13 @@ export const OtherAnswer: Story = {
 
 export const ChecklistPending: Story = {
   ...creationScenario({ outcomes: { '/phrasebook': 'pending' } }),
-  parameters: docs('Checklist stays editable while speculative generation is pending. Toggle choices without another request; Continue waits for Resolve plus the real minimum delay.'),
+  parameters: docs('The topics checklist stays editable while speculative generation is pending. Toggle choices without another request; Create waits for Resolve plus the real minimum delay.'),
   play: async () => { await creationReachChecklist(); },
 };
 
 export const ChecklistReady: Story = {
   ...creationScenario(),
-  parameters: docs('Speculative response is ready but nothing is saved until Continue. All generated topics are requested once; only selected topics are committed.'),
+  parameters: docs('Speculative response is ready but nothing is saved until Create. All generated topics are requested once; only selected topics are committed.'),
   play: async () => {
     await creationReachChecklist();
     await waitFor(() => expect(requests.find((request) => request.endpoint === '/phrasebook')?.status).toBe('success'));
@@ -203,13 +212,13 @@ export const ChecklistReady: Story = {
 
 export const GenerationWait: Story = {
   ...creationScenario({ outcomes: { '/phrasebook': 'pending' } }),
-  parameters: docs('Explicit Continue enters the cancellable generation wait. Resolve does not bypass the real 1000 ms minimum or atomic commit.'),
+  parameters: docs('Create enters the generation wait; Back or dismissal cancels it. Resolve does not bypass the real 1000 ms minimum or atomic commit.'),
   play: async () => { await creationReachChecklist(); await creationClick('submit-context'); await creationElement('.creation-generating'); },
 };
 
 export const GenerationErrorAndRetry: Story = {
   ...creationScenario({ outcomes: { '/phrasebook': 'error' } }),
-  parameters: docs('Background generation failure is deferred until Continue. Try again starts fresh generation and restores the retained checklist choices; the next fixture response succeeds.'),
+  parameters: docs('Background generation failure is deferred until Create. Try again starts fresh generation and restores the retained checklist choices; the next fixture response succeeds.'),
   play: async () => {
     await creationReachChecklist();
     await waitFor(() => expect(requests.find((request) => request.endpoint === '/phrasebook')?.status).toBe('error'));

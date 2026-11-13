@@ -3,7 +3,7 @@ kind: ledger
 status: current
 summary: Status of every HTML study in explorations/ — open, adopted into the app, or superseded.
 sources: [explorations]
-verified: 2026-11-12
+verified: 2026-11-13
 statuses: [open, adopted, superseded]
 ---
 
@@ -14,7 +14,7 @@ One row per study in `explorations/`; the study itself is the record. Status liv
 | Date | Status | Description | Details |
 |---|---|---|---|
 | 2026-11-12 | adopted | Phrasebook organization: category landing with chapter sheets (iteration 6). Live reference for the web [phrasebook view](../design.md#phrasebook-view); whole-exchange saving in it is an unimplemented proposal. | [study](../../explorations/phrasebook-organization/PHRASEBOOK_ORGANIZATION.html) |
-| 2026-11-12 | open | Phrasebook creation: visual direction for guided creation inside the action pane (iteration 2, B/C/D treatments). | [study](../../explorations/phrasebook-creation/PHRASEBOOK_CREATION.html) |
+| 2026-11-13 | superseded | Phrasebook creation: visual direction for guided creation inside the action pane (iteration 2, B/C/D treatments). Replaced by the Figma design of [guided creation](../design.md#guided-creation). | [study](../../explorations/phrasebook-creation/PHRASEBOOK_CREATION.html) |
 | 2026-10-20 | open | Mascot: three pixel-art character candidates (iteration 4). | [study](../../explorations/mascot/MASCOT_EXPLORATION.html) |
 | 2026-09-26 | superseded | Starred access: a Starred tab among a phrasebook's conversation tabs. Replaced by the Starred card and chapter in the phrasebook view. | [study](../../explorations/starred-access/STARRED_ACCESS.html) |
 | 2026-09-24 | superseded | Card styling: compact cards for conversation groups, vocabulary and starred cards. Historical; current card styling follows the phrasebook view. | [study](../../explorations/card-styling/CARD_EXPLORATION.html) |

@@ -1,37 +1,45 @@
 import { icon } from "./icon";
 import { escapeHTML } from "../js/utils";
 
-/** One situation field per creation surface; IDs connect its label and help text. */
+export const SITUATION_PROMPT = "What are you preparing for?";
+
+/** The situation field and its submit control; the clear control lives in the pane header. */
 export function renderCreationTextArea(value: string): string {
-  return `<label class="creation-question-label" for="creation-situation">What are you getting ready for?</label>
-    <p class="creation-supporting-copy" id="creation-situation-help">Tell us about an upcoming situation. We’ll prepare the language you’ll want to say and understand.</p>
-    <div class="creation-input-wrap" data-has-value="${value.length > 0}">
-      <div class="creation-input-field-row">
-        <textarea
-          id="creation-situation"
-          class="creation-input-field"
-          rows="3"
-          placeholder="Dinner with my partner’s parents, a surf trip, my first dance class…"
-          aria-describedby="creation-situation-help"
-          autocomplete="off"
-          autocapitalize="sentences"
-          spellcheck="true"
-        >${escapeHTML(value)}</textarea>
-        <button class="icon-button creation-input-clear" data-action="creation/clear" aria-label="Clear situation">${icon("close", { size: "sm" })}</button>
-      </div>
-    </div>`;
+  return `<textarea
+      id="creation-situation"
+      class="creation-input-field"
+      rows="1"
+      placeholder="${SITUATION_PROMPT}"
+      aria-label="${SITUATION_PROMPT}"
+      enterkeyhint="go"
+      autocomplete="off"
+      autocapitalize="sentences"
+      spellcheck="true"
+    >${escapeHTML(value)}</textarea>
+    <button class="creation-submit tappable" data-action="creation/submit-topic" aria-label="Prepare my phrasebook" ${value.length > 0 ? "" : "disabled"}>${icon("next", { size: "sm" })}</button>`;
 }
 
-/** Owns only field behavior. The creation controller owns requests and submission. */
+/**
+ * Owns only field behavior: auto-height, the `data-has-value` state on `root`,
+ * the clear and submit controls, and Enter to submit. The creation controller
+ * owns requests and submission.
+ */
 export function bindCreationTextArea(
   root: HTMLElement,
-  { value, onInput, onClear }: { value: string; onInput: (value: string) => void; onClear: () => void },
+  { value, onInput, onClear, onSubmit }: {
+    value: string;
+    onInput: (value: string) => void;
+    onClear: () => void;
+    onSubmit: (value: string) => void;
+  },
 ): () => void {
   const input = root.querySelector<HTMLTextAreaElement>(".creation-input-field")!;
-  const wrap = root.querySelector<HTMLElement>(".creation-input-wrap")!;
-  const clear = root.querySelector<HTMLButtonElement>('[data-action="creation/clear"]')!;
+  const submit = root.querySelector<HTMLButtonElement>('[data-action="creation/submit-topic"]')!;
+  const clear = root.querySelector<HTMLButtonElement>('[data-action="creation/clear"]');
   function update(): void {
-    wrap.dataset.hasValue = String(input.value.length > 0);
+    const hasValue = input.value.length > 0;
+    root.dataset.hasValue = String(hasValue);
+    submit.disabled = !hasValue;
     input.style.height = "auto";
     input.style.height = `${input.scrollHeight}px`;
   }
@@ -45,12 +53,24 @@ export function bindCreationTextArea(
     input.focus();
     onClear();
   }
+  function submitInput(): void {
+    onSubmit(input.value);
+  }
+  function keydown(event: KeyboardEvent): void {
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    submitInput();
+  }
   input.value = value;
   update();
   input.addEventListener("input", inputChanged);
-  clear.addEventListener("click", clearInput);
+  input.addEventListener("keydown", keydown);
+  submit.addEventListener("click", submitInput);
+  clear?.addEventListener("click", clearInput);
   return () => {
     input.removeEventListener("input", inputChanged);
-    clear.removeEventListener("click", clearInput);
+    input.removeEventListener("keydown", keydown);
+    submit.removeEventListener("click", submitInput);
+    clear?.removeEventListener("click", clearInput);
   };
 }

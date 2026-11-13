@@ -92,8 +92,8 @@ test.describe('action panes open without runtime errors', () => {
       const paneRoot = page.locator('#action-layer > *')
       await expect(paneRoot.first()).toBeVisible()
       if (spec.kind === 'creation' && !spec.payload.lang) {
-        await expect(paneRoot.getByRole('radio').first()).toBeVisible()
-        await expect(paneRoot.locator('textarea')).toHaveCount(0)
+        await expect(paneRoot.locator('.creation-panel-inner[data-language-open="true"]')).toHaveCount(1)
+        await expect(paneRoot.getByRole('button', { name: /Japanese/ }).first()).toBeVisible()
       }
 
       // Close it the way a dismissal does, and confirm it tears down.

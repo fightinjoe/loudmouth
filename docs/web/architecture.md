@@ -3,7 +3,7 @@ kind: spec
 status: current
 summary: Web app architecture — client-only TypeScript PWA, source areas, pane coordination, and where storage and service contracts are owned.
 sources: [web/app/src/js, web/app/src/panes, web/app/src/components, web/app/src/styles]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # Web app architecture

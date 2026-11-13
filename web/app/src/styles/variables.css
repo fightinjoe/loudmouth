@@ -12,6 +12,8 @@
   --gray-50: 210 20 98.04;         /* Figma gray-50 #f9fafb */
   --gray-100: 218 29 96;           /* Figma gray-100 #f1f4f9 */
   --gray-900: 220 47.37 11.18;     /* Figma text/body #0f182a */
+  --gray-cool-300: 220.9 26.8 83.9; /* Figma gray-300 #cbd2e1 */
+  --gray-cool-400: 220 20.2 65.1;   /* Figma gray-400 #94a0b8 */
 
   --blue-500: 206.93 100 55.88;    /* Figma emphasis #1e9aff */
   --blue-300: 207 100 76;          /* Figma text/emphasis-secondary #85c8ff */
@@ -47,6 +49,14 @@
   --fg-reading: hsl(var(--blue-300));
   --bg-red: hsl(var(--red-500));
   --bg-yellow: hsl(var(--yellow-500));
+
+  /* Figma emphasis family; unlike --accent, not re-themed by textbook.css. */
+  --fg-emphasis: hsl(var(--blue-500));
+  --bg-emphasis: hsl(var(--blue-500));
+  --bg-emphasis-tint: hsl(var(--blue-100));
+  --bg-disabled: hsl(var(--gray-cool-300));
+  --fg-placeholder: hsl(var(--gray-cool-300));
+  --border-control: hsl(var(--gray-cool-400));
 
   --border-default: hsl(var(--gray-200));
 

@@ -1,261 +1,340 @@
-/* The guided creation flow shares the textbook paper, not review's surfaces. */
+/* Guided creation — Figma "Create phrasebook" (section 1304:33600).
+   One white backdrop sits behind the current area of focus (the situation,
+   then the status, then each question) and animates to its position and
+   height; the content itself never carries the white surface. */
 .bottom-sheet.creation-panel {
   z-index: 151;
-  isolation: isolate;
   overflow: hidden;
-  border-radius: 30px 30px 0 0;
-  padding-bottom: 0;
-  background-color: var(--textbook-paper);
-  background-image: linear-gradient(to bottom, transparent, var(--textbook-paper) 88%), url("/textbook/frogs.png");
-  background-size: 100% 100%, 420px auto;
+  border-radius: 40px 40px 0 0;
+  box-shadow: 0 -4px 14px rgb(0 0 0 / 0.25);
   color: var(--fg-body);
 }
 
+/* Swipe-down still starts from the pane header; the handle is not drawn. */
 .creation-panel .sheet-handle {
-  position: absolute;
-  z-index: 4;
-  top: 8px;
-  left: 50%;
-  margin: 0;
-  transform: translateX(-50%);
-  background: var(--textbook-green-soft);
+  display: none;
 }
 
-.creation-panel-inner,
-.creation-surface {
+.creation-panel-inner {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-}
-
-.creation-surface {
-  overflow: hidden;
-  background: transparent;
-  border-radius: 0;
-}
-
-.creation-heading {
-  position: relative;
-  z-index: 2;
-  flex: 0 0 auto;
-  padding-bottom: 3rem;
-  background: url("/textbook/header.svg") center bottom / 100% 100% no-repeat;
-}
-
-.creation-panel .pane-header {
-  gap: 8px;
-  padding: 16px 20px 6px;
-}
-
-.creation-panel .pane-header-title {
-  min-width: 0;
-  font-family: var(--font-family);
-  font-size: 0.875rem;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-.creation-header-right {
-  flex: 0 0 44px;
-}
-
-.creation-panel .creation-back {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  color: var(--textbook-green);
-}
-
-.creation-title-bubble {
-  padding: 0 28px 12px;
-}
-
-.creation-chapter-label {
-  display: table;
-  max-width: 100%;
-  margin: 0 0 10px;
-  border-radius: 7px;
-  padding: 4px 9px;
-  background: var(--textbook-green-soft);
-  color: var(--textbook-green);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  line-height: 1.5;
-  letter-spacing: 0.04em;
-  overflow-wrap: anywhere;
-}
-
-.creation-title {
-  margin: 0;
-  font-family: var(--textbook-heading);
-  font-size: clamp(1.625rem, 6vw, 2rem);
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.035em;
-  overflow-wrap: anywhere;
-}
-
-.creation-step-body {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 20px;
-  min-width: 0;
-  min-height: 0;
-  padding: 12px 20px 24px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  scrollbar-gutter: stable;
 }
 
-.creation-step-body > * {
-  flex-shrink: 0;
+.creation-focus-backdrop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--creation-focus-height, 0);
+  border-radius: 40px;
+  background: var(--bg-surface);
+  transform: translateY(var(--creation-focus-top, 0));
 }
 
-.creation-question,
-.creation-checklist,
-.creation-input-form {
+.creation-panel-inner[data-focus-ready] .creation-focus-backdrop {
+  transition:
+    transform 380ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.creation-step {
+  position: relative;
+  z-index: 1;
+  gap: 20px;
   min-width: 0;
+}
+
+/* ── Situation (header, language, seed) ── */
+
+.creation-lookup {
+  position: relative;
+  gap: 20px;
+  padding: 20px 0;
+}
+
+.creation-panel .pane-header {
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 13px;
+}
+
+.creation-panel .creation-back,
+.creation-panel .creation-clear {
+  color: var(--fg-emphasis);
+}
+
+.creation-back .icon {
+  width: 26px;
+  height: 26px;
+}
+
+.creation-clear .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.creation-lookup[data-has-value="false"] .creation-clear {
+  visibility: hidden;
+}
+
+.creation-language-toggle {
+  gap: 10px;
+  min-width: 0;
+  max-width: calc(100% - 104px);
   margin: 0;
-  padding: 0;
   border: 0;
-}
-
-.creation-question-label {
-  display: block;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  font-family: var(--font-family);
+  border-radius: 40px;
+  padding: 8px 16px;
+  background: hsl(var(--gray-100));
   color: var(--fg-body);
-  font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
+  font-family: var(--font-family-condensed);
+  font-size: 22px;
+  line-height: 28px;
+  white-space: nowrap;
 }
 
-.creation-supporting-copy,
-.creation-question-progress {
-  margin: 8px 0 16px;
-  color: var(--fg-secondary);
-  font-size: 0.875rem;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
+.creation-language-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.creation-language-chevron {
+  width: 15px;
+  height: 15px;
+  opacity: 0.9;
 }
 
 .creation-term {
-  flex-shrink: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 12px;
-  padding: 10px 14px;
-  background: var(--textbook-green-soft);
+  align-items: flex-end;
+  gap: 7px;
+  min-height: 82px;
+  padding: 0 20px 10px;
 }
 
+.creation-input-field,
 .creation-term-text {
+  flex: 1;
+  min-width: 0;
   margin: 0;
-  color: var(--textbook-green);
-  font-size: 0.875rem;
-  font-weight: 600;
-  line-height: 1.5;
+  color: var(--fg-body);
+  font-family: var(--font-family-manrope);
+  font-size: var(--text-size-entry);
+  font-weight: 400;
+  line-height: 40px;
+  letter-spacing: 2px;
   overflow-wrap: anywhere;
-}
-
-.creation-input-form {
-  gap: 12px;
-  margin-top: auto;
-}
-
-.creation-input-form .creation-supporting-copy {
-  margin: 0;
-}
-
-.creation-input-wrap {
-  padding: 0;
-}
-
-.creation-input-field-row {
-  position: relative;
-  min-height: 0;
-  border: 1px solid var(--textbook-green-soft);
-  border-radius: 18px;
-  padding: 16px 48px 16px 16px;
-  background: var(--bg-surface);
 }
 
 .creation-input-field {
   display: block;
-  width: 100%;
-  min-width: 0;
-  min-height: 5rem;
-  max-height: min(30vh, 14rem);
-  margin: 0;
+  max-height: 200px;
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--fg-body);
-  font: inherit;
-  font-size: 1rem;
-  line-height: 1.6;
   resize: none;
   overflow-y: auto;
-  overflow-wrap: anywhere;
 }
 
-.creation-input-field::placeholder,
-.creation-other-input::placeholder {
-  color: var(--fg-secondary);
+.creation-lookup[data-has-value="false"] .creation-input-field {
+  min-height: 80px;
+}
+
+.creation-input-field::placeholder {
+  color: var(--fg-placeholder);
   opacity: 1;
 }
 
-.creation-input-clear {
+.creation-input-field:focus,
+.creation-input-field:focus-visible {
+  outline: none;
+}
+
+.creation-submit {
+  display: flex;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 0 4px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0 0 0 2px;
+  background: var(--bg-emphasis);
+  color: var(--bg-surface);
+}
+
+.creation-lookup[data-has-value="false"] .creation-submit {
+  visibility: hidden;
+}
+
+/* ── Language picker: grows out of the dropdown's own footprint ── */
+
+.creation-language-popover {
   position: absolute;
-  top: 7px;
-  right: 4px;
-  width: 44px;
-  height: 44px;
-  color: var(--textbook-green);
+  z-index: 3;
+  top: 20px;
+  left: 50%;
+  width: min(324px, calc(100% - 40px));
+  filter: drop-shadow(0 4px 5px rgb(0 0 0 / 0.25));
+  transform: translateX(-50%);
+  visibility: hidden;
+  transition: visibility 0s linear 320ms;
 }
 
-.creation-input-wrap[data-has-value="false"] .creation-input-clear {
-  display: none;
-}
-
-.creation-language-choice {
-  align-self: stretch;
-  gap: 8px;
-  min-height: 48px;
-  margin: 0;
-  border: 1px solid var(--textbook-green-soft);
-  border-radius: 12px;
-  padding: 10px 14px;
+.creation-language-picker {
+  align-items: flex-start;
+  border-radius: 40px;
+  padding: 18px 24px;
   background: var(--bg-surface);
+  opacity: 0;
+  clip-path: inset(
+    0 calc(50% - var(--creation-pill-width, 168px) / 2) calc(100% - 44px)
+    round 22px
+  );
+  transition:
+    clip-path 320ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 180ms ease;
+}
+
+.creation-panel-inner[data-language-open="true"] .creation-language-popover {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.creation-panel-inner[data-language-open="true"] .creation-language-picker {
+  opacity: 1;
+  clip-path: inset(0 round 40px);
+}
+
+.creation-language-option {
+  gap: 16px;
+  max-width: 100%;
+  margin: 0;
+  border: 0;
+  padding: 10px 0;
+  background: none;
   color: var(--fg-body);
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-family: var(--font-family-condensed);
+  font-size: 22px;
+  line-height: 28px;
   text-align: left;
 }
 
-.creation-language-choice > :first-child {
-  flex: 1;
-  min-width: 0;
+.creation-language-check {
+  color: var(--fg-body);
+}
+
+.creation-language-option[aria-pressed="false"] .creation-language-check {
+  visibility: hidden;
+}
+
+/* ── Suggestions ── */
+
+.creation-suggestions {
+  padding: 0 20px;
+}
+
+.creation-suggestions-title {
+  margin: 0;
+  padding: 8px 0;
+  color: var(--fg-caption);
+  font-family: var(--font-family-condensed);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+.creation-suggestion-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.creation-suggestion {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  padding: 14px 0;
+  background: none;
+  color: var(--fg-caption);
+  font-family: var(--font-family-manrope);
+  font-size: var(--text-size-body1);
+  line-height: 18px;
+  text-align: center;
   overflow-wrap: anywhere;
 }
 
-.creation-language-change {
-  color: var(--textbook-blue);
+/* ── Cards: questions, topics, status, error ── */
+
+/* The card's box starts 29px above its content, overlapping the situation's
+   bottom padding, so the backdrop matches the Figma geometry exactly. */
+.creation-card {
+  gap: 20px;
+  min-width: 0;
+  margin-top: -29px;
+  padding: 29px 20px 0;
+}
+
+.creation-status {
+  align-items: center;
+  padding-bottom: 32px;
+  text-align: center;
+}
+
+.creation-status-copy {
+  margin: 0;
+  color: var(--fg-caption);
+  font-family: var(--font-family-manrope);
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.creation-card > *,
+.creation-suggestions {
+  animation: creation-content-in 220ms ease-out 140ms both;
+}
+
+.creation-question {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.creation-question-label {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: var(--fg-body);
+  font-family: var(--font-family-condensed);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 28px;
+  overflow-wrap: anywhere;
+}
+
+legend.creation-question-label {
+  margin-bottom: 20px;
+}
+
+.creation-question-label:focus {
+  outline: none;
 }
 
 .creation-radio-items,
 .creation-checklist-items {
-  gap: 8px;
-  margin-top: 12px;
-  border-radius: 0;
-  background: transparent;
-  overflow: visible;
+  gap: 4px;
 }
 
 .creation-radio-item,
@@ -263,271 +342,173 @@
   gap: 12px;
   width: 100%;
   min-width: 0;
-  min-height: 58px;
-  border: 1px solid var(--textbook-green-soft);
-  border-radius: 14px;
-  padding: 16px;
-  background: var(--bg-surface);
+  min-height: 50px;
+  margin: 0;
+  border: 0;
+  border-radius: 20px;
+  padding: 4px 8px 4px 16px;
+  background: transparent;
   color: var(--fg-body);
   text-align: left;
   cursor: pointer;
 }
 
-.creation-radio-item:last-child,
-.creation-checklist-item:last-child {
-  border-bottom: 1px solid var(--textbook-green-soft);
-}
-
 .creation-radio-item > span,
 .creation-checklist-item > span:last-child {
+  flex: 1;
   min-width: 0;
-  font-size: 1rem;
-  line-height: 1.5;
+  padding: 10px 0;
+  font-family: var(--font-family-manrope);
+  font-size: 18px;
+  line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .creation-radio-item:has(:checked),
 .creation-checklist-item[data-checked="true"] {
-  border-color: var(--textbook-blue);
-  background: var(--textbook-blue-soft);
+  background: var(--bg-emphasis-tint);
 }
 
 .creation-radio-item input[type="radio"] {
   appearance: none;
-  flex: 0 0 22px;
-  width: 22px;
-  height: 22px;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
   margin: 0;
-  border: 2px solid var(--textbook-green);
+  border: 1px solid var(--border-control);
   border-radius: 50%;
-  background: var(--bg-surface);
+  background: transparent;
   cursor: pointer;
 }
 
 .creation-radio-item input[type="radio"]:checked {
-  border-color: var(--textbook-blue);
-  background: radial-gradient(circle, var(--textbook-blue) 0 5px, var(--bg-surface) 5px);
-}
-
-.creation-other-label {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  border-color: var(--bg-emphasis);
+  background: radial-gradient(circle at center, var(--bg-emphasis) 0 8.5px, transparent 9px);
 }
 
 .creation-other-input {
-  display: block;
-  width: 100%;
+  flex: 1;
   min-width: 0;
-  min-height: 44px;
-  margin-top: 4px;
+  margin: 0;
   border: 0;
-  border-bottom: 1px solid var(--textbook-green);
-  border-radius: 0;
-  padding: 4px 0;
+  padding: 10px 0;
   background: transparent;
   color: var(--fg-body);
-  font: inherit;
-  font-size: 1rem;
-  line-height: 1.5;
+  font-family: var(--font-family-manrope);
+  font-size: 18px;
+  line-height: 22px;
 }
 
-.creation-checklist {
-  gap: 0;
+.creation-other-input::placeholder {
+  color: var(--fg-caption);
+  opacity: 1;
 }
 
-.creation-selection-count {
-  align-self: flex-start;
-  margin: 0;
-  border-radius: 8px;
-  padding: 4px 9px;
-  background: var(--textbook-green-soft);
-  color: var(--textbook-green);
-  font-size: 0.75rem;
-  line-height: 1.5;
+.creation-other-input:focus-visible {
+  outline: none;
 }
 
 .creation-checklist-check {
   flex: 0 0 24px;
   width: 24px;
   height: 24px;
-  border: 1.5px solid var(--textbook-green);
-  border-radius: 6px;
+  border: 1px solid var(--border-control);
+  border-radius: 50%;
   color: var(--bg-surface);
 }
 
-.creation-checklist-item[data-checked="true"] .creation-checklist-check {
-  border-color: var(--textbook-blue);
-  background: var(--textbook-blue);
+.creation-checklist-check .icon {
+  width: 17.5px;
+  height: 17.5px;
 }
 
-.creation-context-footer {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex: 0 0 auto;
+.creation-checklist-item[data-checked="false"] .creation-checklist-check .icon {
+  visibility: hidden;
+}
+
+.creation-checklist-item[data-checked="true"] .creation-checklist-check {
+  border-color: var(--bg-emphasis);
+  background: var(--bg-emphasis);
+}
+
+.creation-card-footer {
+  justify-content: space-between;
   gap: 12px;
-  padding: 12px 20px max(16px, env(safe-area-inset-bottom, 0px));
-  background: var(--textbook-paper);
+  padding: 20px 0;
 }
 
 .creation-primary,
 .creation-secondary {
-  display: flex;
-  flex: 1 1 0;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 0;
-  min-height: 54px;
   margin: 0;
-  border: 1px solid transparent;
-  border-radius: 16px;
-  padding: 14px 16px;
-  font-family: var(--font-family);
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.5;
-  text-align: center;
-  overflow-wrap: anywhere;
+  border: 0;
+  border-radius: 28px;
+  font-family: var(--font-family-condensed);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 28px;
 }
 
 .creation-primary {
-  background: var(--textbook-blue);
+  padding: 8px 24px;
+  background: var(--bg-emphasis);
   color: var(--bg-surface);
 }
 
-.creation-secondary {
-  border-color: var(--textbook-green-soft);
-  background: var(--bg-surface);
-  color: var(--textbook-blue);
-}
-
-.creation-primary > span,
-.creation-secondary > span {
-  min-width: 0;
-}
-
-.creation-primary svg,
-.creation-secondary svg,
-.creation-language-choice svg {
-  flex-shrink: 0;
-}
-
-.creation-panel button:disabled {
-  opacity: 0.5;
+.creation-primary:disabled {
+  background: var(--bg-disabled);
   cursor: default;
 }
 
-.creation-panel :is(button, input, textarea):focus-visible {
-  outline: 3px solid var(--textbook-blue);
-  outline-offset: 3px;
-}
-
-.creation-radio-item:focus-within,
-.creation-input-field-row:focus-within {
-  outline: 2px solid var(--textbook-blue);
-  outline-offset: 2px;
-}
-
-.creation-title:focus,
-.creation-question-label:focus {
-  outline: none;
-}
-
-.creation-wait-body {
-  align-items: center;
-  justify-content: safe center;
-  gap: 16px;
-  text-align: center;
-}
-
-.creation-wait-body .creation-term {
-  align-self: stretch;
-}
-
-.creation-status-copy {
-  margin: 0;
-  font-family: var(--textbook-heading);
-  font-size: 1.25rem;
-  font-weight: 600;
-  line-height: 1.5;
-}
-
-.creation-wait-body .creation-supporting-copy {
-  max-width: 28rem;
-  margin: 0;
-}
-
-.creation-loading-mark {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 5px;
-  width: 76px;
-  height: 76px;
-  border: 2px solid var(--textbook-green);
-  border-radius: 15px 15px 22px 15px;
-  padding: 20px 12px;
-  background: var(--textbook-green-soft);
-  transform: rotate(-6deg);
-}
-
-.creation-loading-mark span {
-  width: 10px;
-  height: 24px;
-  border-radius: 3px;
-  background: var(--textbook-green);
-  animation: creation-preparing 1.5s ease-in-out infinite;
-}
-
-.creation-loading-mark span:nth-child(2) {
-  height: 34px;
-  animation-delay: 0.15s;
-}
-
-.creation-loading-mark span:nth-child(3) {
-  height: 28px;
-  animation-delay: 0.3s;
+.creation-secondary {
+  padding: 8px 16px;
+  background: none;
+  color: var(--fg-caption);
 }
 
 .creation-error-message {
-  border: 1px solid var(--textbook-green-soft);
-  border-radius: 18px;
-  padding: 20px;
-  background: var(--bg-surface);
   overflow-wrap: anywhere;
 }
 
-.creation-error-message > p + p {
-  margin-top: 12px;
+.creation-error-detail {
+  margin: 8px 0 0;
+  color: var(--fg-caption);
+  font-family: var(--font-family-manrope);
+  font-size: var(--text-size-body1);
+  line-height: 22px;
 }
 
-.creation-error-message .creation-supporting-copy {
-  margin-bottom: 0;
+.creation-panel :is(button, input):focus-visible {
+  outline: 3px solid var(--fg-emphasis);
+  outline-offset: 2px;
 }
 
-@keyframes creation-preparing {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
+.creation-radio-item:has(input:focus-visible) {
+  outline: 2px solid var(--fg-emphasis);
+  outline-offset: 0;
 }
 
-@media (max-height: 650px) {
-  .creation-heading { padding-bottom: 2rem; }
-  .creation-title-bubble { padding-bottom: 4px; }
-  .creation-chapter-label { margin-bottom: 6px; }
-  .creation-step-body { padding-top: 6px; }
+.creation-radio-item input:focus-visible {
+  outline: none;
+}
+
+@keyframes creation-content-in {
+  from { opacity: 0; }
 }
 
 @media (max-width: 350px) {
-  .creation-panel .pane-header { padding-inline: 12px; }
-  .creation-title-bubble { padding-inline: 22px; }
-  .creation-step-body { padding-inline: 14px; }
-  .creation-context-footer { gap: 8px; padding-inline: 14px; }
-  .creation-primary, .creation-secondary { padding-inline: 10px; }
+  .creation-term { padding-inline: 14px; }
+  .creation-suggestions { padding-inline: 14px; }
+  .creation-card { padding-inline: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .creation-loading-mark span { animation: none; }
+  .creation-panel-inner[data-focus-ready] .creation-focus-backdrop,
+  .creation-language-popover,
+  .creation-language-picker {
+    transition: none;
+  }
+  .creation-card > *,
+  .creation-suggestions {
+    animation: none;
+  }
 }

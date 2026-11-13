@@ -32,7 +32,7 @@ export function renderRadioList<T extends string>(
 export function renderChecklistItem(item: ContextResponse["checklist"][number], index: number): string {
   return `
     <button class="creation-checklist-item flex items-center tappable" data-action="creation/toggle-checklist-item" data-index="${index}" data-checked="${item.checked}" aria-pressed="${item.checked}">
-      <span class="creation-checklist-check flex items-center justify-center" aria-hidden="true">${item.checked ? icon("check", { size: "sm" }) : ""}</span>
+      <span class="creation-checklist-check flex items-center justify-center" aria-hidden="true">${icon("check")}</span>
       <span>${escapeHTML(item.label)}</span>
     </button>
   `;

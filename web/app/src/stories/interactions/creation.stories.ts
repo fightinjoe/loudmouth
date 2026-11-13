@@ -33,16 +33,16 @@ const finished = (name: string) => logScenarioEvent('Journey complete', name);
 
 export const FirstTimeAtomicSave: Story = {
   ...creationScenario({}, {}),
-  parameters: docs('Choose language without auto-advance, enter a topic, answer ability and generated questions, trim Other with Enter, retain Previous/Next answers, select only desired chapters, and double-Continue. No deck or remembered ability exists before commit. The real atomic commit stores only selected groups, exactly once.'),
+  parameters: docs('First run opens the language dropdown expanded on Japanese; choose a language, enter a topic, answer ability and generated questions, trim Other with Enter, retain Back/Next answers, select only desired topics, and double-Create. No deck or remembered ability exists before commit. The real atomic commit stores only selected groups, exactly once.'),
   play: async () => {
+    await creationElement('.creation-panel-inner[data-language-open="true"]');
     await userEvent.click(await creationElement('[data-action="creation/language"][value="ja"]'));
-    expect(getScenario().root.querySelector('.creation-input-field')).toBeNull();
+    expect(getScenario().root.querySelector('.creation-panel-inner')).toHaveAttribute('data-language-open', 'false');
     expect(count('/context')).toBe(0);
-    await creationClick('next-language');
     await creationSubmitTopic('Ordering at a café');
     await creationElement('[data-action="creation/answer"]');
     expect(getScenario().root.querySelector('.creation-question-label')).toHaveTextContent(ABILITY_QUESTION);
-    await creationAnswer('Basics');
+    await creationAnswer('Basic');
     const other = await creationElement<HTMLInputElement>('.creation-other-input');
     await userEvent.type(other, '   ');
     expect(await creationElement('[data-action="creation/next-question"]')).toBeDisabled();
@@ -74,7 +74,7 @@ export const FirstTimeAtomicSave: Story = {
 
 export const ReturningLanguageEdit: Story = {
   ...creationScenario({ library: 'single', outcomes: { '/phrasebook': 'pending' }, setup: () => { setLastCreationLanguage('ja'); setLastAbility('ja', 'conversational'); } }, { seed: 'Dinner with friends' }),
-  parameters: docs('Remembered language/ability, known-ability omission, prompt preservation, Back cancelling a tentative language, and confirming another language. Back to the topic invalidates obsolete speculative work before the new language request. Zero-question success is not fabricated: the unchanged API validator requires 1–5 questions; see ZeroQuestionContractBoundary.'),
+  parameters: docs('Remembered language/ability, known-ability omission, prompt preservation, Escape closing the language dropdown unchanged, and choosing another language. Back to the topic and a new language invalidate obsolete speculative work before the new language request. Zero-question success is not fabricated: the unchanged API validator requires 1–5 questions; see ZeroQuestionContractBoundary.'),
   play: async () => {
     expect(await creationElement('.creation-input-field')).toHaveValue('Dinner with friends');
     await creationSubmitTopic();
@@ -86,14 +86,13 @@ export const ReturningLanguageEdit: Story = {
     await creationClick('back');
     await creationClick('previous-question');
     await creationClick('previous-question');
-    await creationClick('edit-language');
-    await userEvent.click(await creationElement('[data-action="creation/language"][value="cs"]'));
-    await creationClick('back');
+    await creationClick('toggle-language');
+    await userEvent.keyboard('{Escape}');
+    expect(getScenario().root.querySelector('.creation-panel-inner')).toHaveAttribute('data-language-open', 'false');
     expect(await creationElement('.creation-input-field')).toHaveValue('Dinner with friends');
     expect(getLastCreationLanguage()).toBe('ja');
-    await creationClick('edit-language');
+    await creationClick('toggle-language');
     await userEvent.click(await creationElement('[data-action="creation/language"][value="cs"]'));
-    await creationClick('next-language');
     await request('/phrasebook', 'aborted');
     expect(getLastCreationLanguage()).toBe('cs');
     expect(await creationElement('.creation-input-field')).toHaveValue('Dinner with friends');
@@ -194,28 +193,30 @@ export const ContextFailureAndRetry: Story = {
   },
 };
 
-async function dismiss(method: 'button' | 'scrim' | 'swipe'): Promise<void> {
-  if (method === 'button') await creationClick('cancel');
+async function dismiss(method: 'back' | 'scrim' | 'swipe'): Promise<void> {
+  if (method === 'back') await creationClick('back');
   else if (method === 'scrim') await userEvent.click(await creationElement('.creation-scrim'));
   else {
-    const handle = await creationElement('.creation-panel .sheet-handle');
+    const handle = await creationElement('.creation-panel .pane-header');
     const point = (y: number) => new Touch({ identifier: 1, target: handle, clientX: 120, clientY: y });
     fireEvent.touchStart(handle, { touches: [point(20)], changedTouches: [point(20)] });
     fireEvent.touchMove(handle, { touches: [point(140)], changedTouches: [point(140)] });
     fireEvent.touchEnd(handle, { touches: [], changedTouches: [point(140)] });
   }
-  await closed();
 }
 
-function cancellation(endpoint: '/context' | '/phrasebook', method: 'button' | 'scrim' | 'swipe'): Story {
+function cancellation(endpoint: '/context' | '/phrasebook', method: 'back' | 'scrim' | 'swipe'): Story {
+  const returnsToTopic = endpoint === '/context' && method === 'back';
   return {
     ...creationScenario({ outcomes: { [endpoint]: 'pending', '/phrasebook-image': 'pending' } }),
-    parameters: docs(`Cancel ${endpoint === '/context' ? 'context' : 'generation'} through the real ${method} dismissal path. Transport observes the AbortSignal, unbound illustration is cancelled, and no book is persisted. Swipe dispatches touch events at the production header threshold; physical-device/native scrolling acceptance is separate.`),
+    parameters: docs(`Cancel ${endpoint === '/context' ? 'context' : 'generation'} through the real ${method} path. ${returnsToTopic ? 'Back keeps the pane open on the editable situation.' : 'The pane is dismissed.'} Transport observes the AbortSignal, unbound illustration is cancelled, and no book is persisted. Swipe dispatches touch events on the pane header at the production threshold; physical-device/native scrolling acceptance is separate.`),
     play: async () => {
       if (endpoint === '/context') await creationSubmitTopic();
       else { await creationReachChecklist(); await creationClick('submit-context'); }
       await request(endpoint, 'pending');
       await dismiss(method);
+      if (returnsToTopic) expect(await creationElement('.creation-input-field')).toHaveValue('Ordering at a café');
+      else await closed();
       await request(endpoint, 'aborted');
       if (endpoint === '/phrasebook') await request('/phrasebook-image', 'aborted');
       await noBook();
@@ -224,10 +225,10 @@ function cancellation(endpoint: '/context' | '/phrasebook', method: 'button' | '
   };
 }
 
-export const CancelContextButton: Story = cancellation('/context', 'button');
+export const CancelContextBack: Story = cancellation('/context', 'back');
 export const CancelContextScrim: Story = cancellation('/context', 'scrim');
 export const CancelContextSwipe: Story = cancellation('/context', 'swipe');
-export const CancelGenerationButton: Story = cancellation('/phrasebook', 'button');
+export const CancelGenerationBack: Story = cancellation('/phrasebook', 'back');
 export const CancelGenerationScrim: Story = cancellation('/phrasebook', 'scrim');
 export const CancelGenerationSwipe: Story = cancellation('/phrasebook', 'swipe');
 
@@ -239,7 +240,8 @@ function lateCancellation(endpoint: '/context' | '/phrasebook'): Story {
       if (endpoint === '/context') await creationSubmitTopic();
       else { await creationReachChecklist(); await creationClick('submit-context'); }
       await request(endpoint, 'pending');
-      await dismiss('button');
+      await dismiss('scrim');
+      await closed();
       getScenario().app.ui.transition('action/open', { kind: 'creation', payload: { lang: 'cs', seed: 'New owner' } });
       const input = await creationElement('.creation-input-field');
       resolvePending(endpoint);

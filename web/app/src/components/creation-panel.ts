@@ -11,14 +11,30 @@ import { createIllustrationTask } from "../js/phrasebook-illustration";
 import type { IllustrationTask } from "../js/phrasebook-illustration";
 import { CONTENT_LANGUAGES, LANG_FLAGS, LANG_NAMES } from "../js/lang";
 import { icon } from "./icon";
-import { renderPaneHeader, headerIconButton, headerTitle } from "./pane-header";
+import { renderPaneHeader, headerIconButton, headerSpacer } from "./pane-header";
 import { escapeHTML } from "../js/utils";
 import { getLastAbility, setLastAbility, getLastCreationLanguage, setLastCreationLanguage } from "../js/preferences";
 import { ABILITIES, ABILITY_LABELS, ABILITY_QUESTION } from "../js/ability";
 
 const PHRASEBOOK_MIN_LOADING_MS = 1000;
 
-type CreationStep = "initializing" | "language" | "topic" | "questions" | "checklist" | "generating" | "error";
+/** First-run language when neither a preference nor a saved phrasebook exists. */
+const DEFAULT_LANGUAGE: Lang = "ja";
+
+const PICKER_LANGUAGES: readonly Lang[] = [...CONTENT_LANGUAGES]
+  .sort((a, b) => LANG_NAMES[a].localeCompare(LANG_NAMES[b]));
+
+export const CREATION_SUGGESTIONS = [
+  "Vegan dining in Tokyo",
+  "Salsa dancing in Austin",
+  "Help with medical issue",
+  "Arguing with fascist uncle",
+  "Surf vacation in Costa Rica",
+] as const;
+
+export const CHECKLIST_QUESTION = "Which topics should be included?";
+
+type CreationStep = "initializing" | "topic" | "questions" | "checklist" | "generating" | "error";
 type ResumeStep = "initializing" | "topic" | "checklist";
 type PhrasebookRequestOutcome =
   | { status: "pending" }
@@ -53,7 +69,8 @@ interface CommitRequest {
 
 interface CreationState {
   step: CreationStep;
-  pendingLanguage: Lang | undefined;
+  /** The language dropdown is expanded; only meaningful on the topic step. */
+  languageOpen: boolean;
   topic: string;
   contextSeed: string | null;
   questions: ContextQuestion[];
@@ -91,11 +108,11 @@ export function openCreationPanel(
   onDismiss?: () => void,
   onIllustrationUpdated: (deckId: string, illustration: DeckIllustration) => void = () => {},
 ): BottomSheetHandle {
-  let lang = initialLanguage;
+  let lang = initialLanguage ?? getLastCreationLanguage();
   let rememberedAbility = lang ? initialAbility ?? getLastAbility(lang) : undefined;
   const state: CreationState = {
     step: lang ? "topic" : "initializing",
-    pendingLanguage: lang,
+    languageOpen: false,
     topic: initialSeed,
     contextSeed: null,
     questions: [],
@@ -117,16 +134,29 @@ export function openCreationPanel(
   let committingText = false;
   let ownerDisposed = false;
   let disposeTextArea: (() => void) | undefined;
+  let disposePanelListeners: (() => void) | undefined;
+  // Assigned in onMount, which runs before openBottomSheet returns `sheet`.
+  let inner!: HTMLElement;
+  let stepElement!: HTMLElement;
+  let focusObserver: ResizeObserver | undefined;
 
   const sheet = openBottomSheet(appElement, {
     kind: "creation",
     size: "full",
-    bodyHTML: `<div class="creation-panel-inner flex-col flex-1">${renderStep(state, lang)}</div>`,
+    bodyHTML: `<div class="creation-panel-inner" data-language-open="false" data-step="${state.step}">
+      <div class="creation-focus-backdrop" aria-hidden="true"></div>
+      <div class="creation-step flex-col">${renderStep(state, lang)}</div>
+    </div>`,
     onDispose: dispose,
     onClose: onDismiss,
     onMount: (panel) => {
-      bind(panel);
-      focusInputIfPresent(panel);
+      inner = panel.querySelector<HTMLElement>(".creation-panel-inner")!;
+      stepElement = inner.querySelector<HTMLElement>(".creation-step")!;
+      disposePanelListeners = bindPanel(panel);
+      if (typeof ResizeObserver !== "undefined") focusObserver = new ResizeObserver(syncFocusBackdrop);
+      afterRender({ focusInput: true });
+      // Place the backdrop without animation, then let later moves transition.
+      requestAnimationFrame(() => { inner.dataset.focusReady = ""; });
     },
   });
 
@@ -152,10 +182,11 @@ export function openCreationPanel(
       if (dismissed) return;
       const newest = decks.reduce<Deck | undefined>((latest, deck) =>
         !latest || deck.createdAt > latest.createdAt ? deck : latest, undefined);
-      lang = newest ? getLastCreationLanguage() ?? newest.lang : undefined;
-      rememberedAbility = lang ? initialAbility ?? getLastAbility(lang) : undefined;
-      state.pendingLanguage = lang;
-      state.step = lang ? "topic" : "language";
+      lang = newest?.lang ?? DEFAULT_LANGUAGE;
+      rememberedAbility = initialAbility ?? getLastAbility(lang);
+      // First run: no remembered language and no library to infer one from.
+      state.languageOpen = !newest;
+      state.step = "topic";
       state.resumeStep = "topic";
     } catch (error) {
       if (dismissed) return;
@@ -165,9 +196,8 @@ export function openCreationPanel(
     rerender({ focusInput: state.step === "topic" });
   }
 
-  function confirmLanguage(): void {
-    const selected = state.pendingLanguage;
-    if (!selected || dismissed) return;
+  function selectLanguage(selected: Lang): void {
+    if (dismissed) return;
     if (selected !== lang) {
       resetContext();
       abortTitleRequest();
@@ -178,15 +208,46 @@ export function openCreationPanel(
         : getLastAbility(selected);
     }
     setLastCreationLanguage(selected);
-    state.step = "topic";
-    state.resumeStep = "topic";
-    state.error = null;
-    rerender({ focusInput: true });
+    const label = languageLabel(selected);
+    const toggle = stepElement.querySelector<HTMLElement>('[data-action="creation/toggle-language"]');
+    toggle?.setAttribute("aria-label", `Language: ${LANG_NAMES[selected]}`);
+    const toggleLabel = toggle?.querySelector(".creation-language-label");
+    if (toggleLabel) toggleLabel.textContent = label;
+    stepElement.querySelectorAll<HTMLElement>('[data-action="creation/language"]').forEach((option) => {
+      option.setAttribute("aria-pressed", String(option.getAttribute("value") === selected));
+    });
+    closeLanguagePicker({ focusToggle: true });
+  }
+
+  function openLanguagePicker(): void {
+    const picker = stepElement.querySelector<HTMLElement>(".creation-language-popover");
+    const toggle = stepElement.querySelector<HTMLElement>('[data-action="creation/toggle-language"]');
+    if (!picker || !toggle || dismissed) return;
+    state.languageOpen = true;
+    // The picker reveals itself from the dropdown's own footprint.
+    picker.style.setProperty("--creation-pill-width", `${toggle.offsetWidth}px`);
+    void picker.offsetWidth;
+    inner.dataset.languageOpen = "true";
+    toggle.setAttribute("aria-expanded", "true");
+    const selected = picker.querySelector<HTMLElement>('[aria-pressed="true"]')
+      ?? picker.querySelector<HTMLElement>('[data-action="creation/language"]');
+    selected?.focus();
+  }
+
+  function closeLanguagePicker({ focusToggle = false }: { focusToggle?: boolean } = {}): void {
+    state.languageOpen = false;
+    inner.dataset.languageOpen = "false";
+    const toggle = stepElement.querySelector<HTMLElement>('[data-action="creation/toggle-language"]');
+    toggle?.setAttribute("aria-expanded", "false");
+    if (focusToggle) toggle?.focus();
   }
 
   function dispose(): void {
     disposeTextArea?.();
     disposeTextArea = undefined;
+    disposePanelListeners?.();
+    disposePanelListeners = undefined;
+    focusObserver?.disconnect();
     if (dismissed || completed) return;
     dismissed = true;
     abortContextRequest();
@@ -252,30 +313,83 @@ export function openCreationPanel(
   }
 
   function rerender({ focusInput = false }: { focusInput?: boolean } = {}): void {
-    if (dismissed) return;
-    const inner = sheet.panel.querySelector<HTMLElement>(".creation-panel-inner");
-    if (!inner) return;
+    if (dismissed || !stepElement) return;
     disposeTextArea?.();
     disposeTextArea = undefined;
-    inner.innerHTML = renderStep(state, lang);
-    bind(sheet.panel);
-    if (focusInput) focusInputIfPresent(sheet.panel);
-    if (state.step === "questions" || state.step === "language") {
-      sheet.panel.querySelector<HTMLElement>(".creation-question-label")?.focus();
-    } else if (!focusInput) {
-      sheet.panel.querySelector<HTMLElement>("[data-creation-focus]")?.focus();
+    stepElement.innerHTML = renderStep(state, lang);
+    afterRender({ focusInput });
+  }
+
+  function afterRender({ focusInput }: { focusInput: boolean }): void {
+    inner.dataset.step = state.step;
+    inner.dataset.languageOpen = "false";
+    bind();
+    syncFocusBackdrop();
+    if (focusObserver) {
+      focusObserver.disconnect();
+      focusObserver.observe(stepElement);
+      const region = stepElement.querySelector<HTMLElement>("[data-focus-region]");
+      if (region) focusObserver.observe(region);
+    }
+    if (state.step === "topic" && state.languageOpen) {
+      openLanguagePicker();
+    } else if (state.step === "topic") {
+      if (focusInput) stepElement.querySelector<HTMLTextAreaElement>(".creation-input-field")?.focus();
+    } else if (state.step === "questions" || state.step === "checklist") {
+      stepElement.querySelector<HTMLElement>(".creation-question-label")?.focus();
+    } else {
+      stepElement.querySelector<HTMLElement>("[data-creation-focus]")?.focus();
     }
   }
 
-  function focusInputIfPresent(panel: HTMLElement): void {
-    panel.querySelector<HTMLTextAreaElement>(".creation-input-field")?.focus();
+  /** Moves the shared white backdrop behind the current area of focus. */
+  function syncFocusBackdrop(): void {
+    const region = stepElement?.querySelector<HTMLElement>("[data-focus-region]");
+    if (!region) return;
+    const regionBox = region.getBoundingClientRect();
+    const innerBox = inner.getBoundingClientRect();
+    inner.style.setProperty("--creation-focus-top", `${regionBox.top - innerBox.top + inner.scrollTop}px`);
+    inner.style.setProperty("--creation-focus-height", `${regionBox.height}px`);
   }
 
+  /** Panel-lifetime listeners: dismissing the language picker from outside or with Escape. */
+  function bindPanel(panel: HTMLElement): () => void {
+    let suppressClickUntil = 0;
+    const pointerDown = (event: PointerEvent): void => {
+      suppressClickUntil = 0;
+      if (state.step !== "topic" || !state.languageOpen) return;
+      if (event.target instanceof Element && event.target.closest(".creation-language-picker")) return;
+      closeLanguagePicker();
+      // The tap that dismisses the picker does not also activate what it landed on.
+      suppressClickUntil = event.timeStamp + 1000;
+    };
+    const clickCapture = (event: MouseEvent): void => {
+      if (event.timeStamp > suppressClickUntil) return;
+      suppressClickUntil = 0;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const keydown = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape" || state.step !== "topic" || !state.languageOpen) return;
+      event.stopPropagation();
+      closeLanguagePicker({ focusToggle: true });
+    };
+    panel.addEventListener("pointerdown", pointerDown, true);
+    panel.addEventListener("click", clickCapture, true);
+    panel.addEventListener("keydown", keydown);
+    return () => {
+      panel.removeEventListener("pointerdown", pointerDown, true);
+      panel.removeEventListener("click", clickCapture, true);
+      panel.removeEventListener("keydown", keydown);
+    };
+  }
 
   async function submitTopic(rawTopic: string): Promise<void> {
     const topic = rawTopic.trim();
     if (!topic || !lang || dismissed) return;
 
+    setLastCreationLanguage(lang);
+    state.languageOpen = false;
     state.topic = topic;
     ensureTitleRequest(topic);
     state.resumeStep = "topic";
@@ -479,13 +593,10 @@ export function openCreationPanel(
     rerender();
   }
 
-  // Back walks each question in reverse before returning to the topic.
+  // Back walks the checklist and each question in reverse before returning to
+  // the topic; Back while context is pending returns to the topic.
   function goBack(): void {
-    if (state.step === "language" && lang) {
-      state.pendingLanguage = lang;
-      state.step = "topic";
-      rerender({ focusInput: true });
-    } else if (state.step === "checklist") {
+    if (state.step === "checklist") {
       state.questionIndex = Math.max(0, state.questions.length - 1);
       state.step = state.questions.length > 0 ? "questions" : "topic";
       rerender({ focusInput: state.step === "topic" });
@@ -497,72 +608,71 @@ export function openCreationPanel(
         state.step = "topic";
         rerender({ focusInput: true });
       }
+    } else if (state.step === "generating" && state.resumeStep === "topic") {
+      abortContextRequest();
+      state.step = "topic";
+      rerender({ focusInput: true });
     } else {
       sheet.close();
     }
   }
 
-  function bind(panel: HTMLElement): void {
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/back"]')
+  function bind(): void {
+    stepElement.querySelector<HTMLButtonElement>('[data-action="creation/back"]')
       ?.addEventListener("click", goBack);
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/cancel"]')
+    stepElement.querySelector<HTMLButtonElement>('[data-action="creation/previous-question"]')
+      ?.addEventListener("click", goBack);
+    stepElement.querySelector<HTMLButtonElement>('[data-action="creation/cancel"]')
       ?.addEventListener("click", () => sheet.close());
 
-    if (state.step === "language") bindLanguageStep(panel);
-    if (state.step === "topic") bindTopicStep(panel);
-    if (state.step === "questions") bindQuestionsStep(panel);
-    if (state.step === "checklist") bindChecklistStep(panel);
-    if (state.step === "error") bindErrorStep(panel);
+    if (state.step === "topic") bindTopicStep();
+    if (state.step === "questions") bindQuestionsStep();
+    if (state.step === "checklist") bindChecklistStep();
+    if (state.step === "error") bindErrorStep();
   }
 
-  function bindLanguageStep(panel: HTMLElement): void {
-    panel.querySelectorAll<HTMLInputElement>('[data-action="creation/language"]')
-      .forEach((radio) => {
-        radio.addEventListener("change", () => {
-          state.pendingLanguage = CONTENT_LANGUAGES.find((language) => language === radio.value);
-          const next = panel.querySelector<HTMLButtonElement>('[data-action="creation/next-language"]');
-          if (next) next.disabled = !state.pendingLanguage;
+  function bindTopicStep(): void {
+    stepElement.querySelector<HTMLButtonElement>('[data-action="creation/toggle-language"]')
+      ?.addEventListener("click", openLanguagePicker);
+    stepElement.querySelectorAll<HTMLButtonElement>('[data-action="creation/language"]')
+      .forEach((option) => {
+        option.addEventListener("click", () => {
+          const selected = CONTENT_LANGUAGES.find((language) => language === option.value);
+          if (selected) selectLanguage(selected);
         });
       });
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/next-language"]')
-      ?.addEventListener("click", confirmLanguage);
-  }
 
-  function bindTopicStep(panel: HTMLElement): void {
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/edit-language"]')
-      ?.addEventListener("click", () => {
-        state.pendingLanguage = lang;
-        state.step = "language";
-        rerender();
-      });
-
-    disposeTextArea = bindCreationTextArea(panel, {
+    const lookup = stepElement.querySelector<HTMLElement>(".creation-lookup")!;
+    disposeTextArea = bindCreationTextArea(lookup, {
       value: state.topic,
       onInput(nextTopic) {
         if (state.contextSeed !== null && nextTopic.trim() !== state.contextSeed) {
           invalidatePhrasebook();
         }
         state.topic = nextTopic;
-        const submitButton = panel.querySelector<HTMLButtonElement>(
-          '[data-action="creation/submit-topic"]',
-        );
-        if (submitButton) submitButton.disabled = state.topic.length === 0;
       },
       onClear() {
         if (state.contextSeed !== null) invalidatePhrasebook();
         state.topic = "";
-        rerender({ focusInput: true });
+      },
+      onSubmit(topic) {
+        void submitTopic(topic);
       },
     });
 
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/submit-topic"]')
-      ?.addEventListener("click", () => {
-        const topic = panel.querySelector<HTMLTextAreaElement>(".creation-input-field")?.value ?? "";
-        void submitTopic(topic);
+    stepElement.querySelectorAll<HTMLButtonElement>('[data-action="creation/suggestion"]')
+      .forEach((suggestion) => {
+        suggestion.addEventListener("click", () => {
+          const seed = suggestion.dataset.seed ?? "";
+          const input = stepElement.querySelector<HTMLTextAreaElement>(".creation-input-field");
+          if (input) input.value = seed;
+          state.topic = seed;
+          void submitTopic(seed);
+        });
       });
   }
 
-  function bindQuestionsStep(panel: HTMLElement): void {
+  function bindQuestionsStep(): void {
     const question = state.questions[state.questionIndex];
     if (!question) return;
     const setAnswer = (value: string): void => {
@@ -570,11 +680,11 @@ export function openCreationPanel(
         state.answers[question.label] = value;
         invalidatePhrasebook();
       }
-      const next = panel.querySelector<HTMLButtonElement>('[data-action="creation/next-question"]');
+      const next = stepElement.querySelector<HTMLButtonElement>('[data-action="creation/next-question"]');
       if (next) next.disabled = !value.trim();
     };
 
-    panel.querySelectorAll<HTMLInputElement>('[data-action="creation/answer"]')
+    stepElement.querySelectorAll<HTMLInputElement>('[data-action="creation/answer"]')
       .forEach((radio) => {
         radio.addEventListener("change", () => {
           state.otherQuestions.delete(state.questionIndex);
@@ -582,8 +692,8 @@ export function openCreationPanel(
         });
       });
 
-    const otherRadio = panel.querySelector<HTMLInputElement>('[data-action="creation/other"]');
-    const otherInput = panel.querySelector<HTMLInputElement>(".creation-other-input");
+    const otherRadio = stepElement.querySelector<HTMLInputElement>('[data-action="creation/other"]');
+    const otherInput = stepElement.querySelector<HTMLInputElement>(".creation-other-input");
     const selectOther = (): void => {
       if (!otherRadio || !otherInput) return;
       otherRadio.checked = true;
@@ -603,14 +713,12 @@ export function openCreationPanel(
       }
     });
 
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/next-question"]')
+    stepElement.querySelector<HTMLButtonElement>('[data-action="creation/next-question"]')
       ?.addEventListener("click", nextQuestion);
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/previous-question"]')
-      ?.addEventListener("click", goBack);
   }
 
-  function bindChecklistStep(panel: HTMLElement): void {
-    panel.querySelectorAll<HTMLButtonElement>('[data-action="creation/toggle-checklist-item"]')
+  function bindChecklistStep(): void {
+    stepElement.querySelectorAll<HTMLButtonElement>('[data-action="creation/toggle-checklist-item"]')
       .forEach((row) => {
         row.addEventListener("click", () => {
           const index = Number(row.dataset.index);
@@ -619,17 +727,17 @@ export function openCreationPanel(
           const checkedCount = state.checklist.filter((candidate) => candidate.checked).length;
           if ((item.checked && checkedCount === 1) || (!item.checked && checkedCount === 8)) return;
           item.checked = !item.checked;
-          rerender();
-          panel.querySelector<HTMLButtonElement>(`[data-action="creation/toggle-checklist-item"][data-index="${index}"]`)?.focus();
+          row.dataset.checked = String(item.checked);
+          row.setAttribute("aria-pressed", String(item.checked));
         });
       });
 
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/submit-context"]')
+    stepElement.querySelector<HTMLButtonElement>('[data-action="creation/submit-context"]')
       ?.addEventListener("click", () => { void submitContext(); });
   }
 
-  function bindErrorStep(panel: HTMLElement): void {
-    panel.querySelector<HTMLButtonElement>('[data-action="creation/retry"]')
+  function bindErrorStep(): void {
+    stepElement.querySelector<HTMLButtonElement>('[data-action="creation/retry"]')
       ?.addEventListener("click", () => {
         if (state.resumeStep === "initializing") {
           void initializeLanguage();
@@ -653,199 +761,137 @@ function errorMessage(error: unknown): string {
 }
 
 // ── Render ───────────────────────────────────────────────────────────────
-const CREATION_LOADING_MARK = `<div class="creation-loading-mark" aria-hidden="true"><span></span><span></span><span></span></div>`;
-const CREATION_CANCEL_FOOTER = `<div class="creation-context-footer"><button class="creation-secondary tappable" data-action="creation/cancel">Cancel</button></div>`;
-
 
 function renderStep(state: Readonly<CreationState>, lang: Lang | undefined): string {
-  if (state.step === "initializing") {
-    return renderSurface(`
-      ${renderHeader(undefined, { chapter: "Getting started", title: "A little preparation.", backLabel: "Cancel creation" })}
-      <div class="creation-step-body creation-wait-body flex-col" role="status">
-        ${CREATION_LOADING_MARK}
-        <p class="creation-status-copy">Opening your library…</p>
-        <p class="creation-supporting-copy">We’ll pick up with the language you last used.</p>
-      </div>
-      ${CREATION_CANCEL_FOOTER}
-    `);
-  }
-  if (state.step === "language") return renderLanguageStep(state);
-  if (state.step === "error") return renderErrorStep(state, lang);
-  if (!lang) throw new Error("Choose a language before continuing.");
   switch (state.step) {
-    case "topic": return renderTopicStep(state, lang);
-    case "questions": return renderQuestionsStep(state, lang);
-    case "checklist": return renderChecklistStep(state, lang);
-    case "generating": return renderGeneratingStep(state, lang);
+    case "initializing":
+      return renderLookup(state, lang) + renderStatusCard("Opening your library…");
+    case "topic":
+      if (!lang) throw new Error("Choose a language before continuing.");
+      return renderLookup(state, lang) + renderSuggestions();
+    case "questions":
+      return renderLookup(state, lang) + renderQuestionCard(state);
+    case "checklist":
+      return renderLookup(state, lang) + renderChecklistCard(state);
+    case "generating":
+      return renderLookup(state, lang) + renderStatusCard(
+        state.resumeStep === "checklist" ? "Building your phrasebook…" : "Thinking about the situation…",
+        "creation-generating",
+      );
+    case "error":
+      return renderLookup(state, lang) + renderErrorCard(state);
   }
-}
-
-function renderSurface(inner: string): string {
-  return `<div class="creation-surface flex-col">${inner}</div>`;
 }
 
 function languageLabel(lang: Lang): string {
   return `${LANG_FLAGS[lang]} ${LANG_NAMES[lang]}`.trim();
 }
 
-function renderHeader(
-  lang?: Lang,
-  {
-    chapter = "Your own little textbook",
-    title = "Your next chapter.",
-    backLabel = "Back",
-  }: { chapter?: string; title?: string; backLabel?: string } = {},
-): string {
-  return `<header class="creation-heading">
+/**
+ * The header and situation. On the topic step it is the editable area of
+ * focus with the language dropdown; afterwards the situation is fixed text.
+ */
+function renderLookup(state: Readonly<CreationState>, lang: Lang | undefined): string {
+  const editable = state.step === "topic" && lang !== undefined;
+  const language = !lang
+    ? `<span class="creation-language-toggle"></span>`
+    : editable
+      ? `<button class="creation-language-toggle tappable flex items-center" data-action="creation/toggle-language" aria-label="Language: ${escapeHTML(LANG_NAMES[lang])}" aria-haspopup="true" aria-expanded="false" aria-controls="creation-language-picker">
+          <span class="creation-language-label">${escapeHTML(languageLabel(lang))}</span>${icon("chevron-down", { className: "creation-language-chevron" })}
+        </button>`
+      : `<span class="creation-language-toggle flex items-center"><span class="creation-language-label">${escapeHTML(languageLabel(lang))}</span></span>`;
+  return `<section class="creation-lookup flex-col" ${editable ? "data-focus-region" : ""} data-has-value="${state.topic.length > 0}">
     ${renderPaneHeader({
-      leading: headerIconButton("back", {
-        action: "creation/back",
-        label: backLabel,
-        className: "creation-back",
-      }),
-      title: headerTitle(lang ? languageLabel(lang) : "New phrasebook"),
-      trailing: `<div class="creation-header-right"></div>`,
+      leading: headerIconButton("back", { action: "creation/back", label: "Back", className: "creation-back" }),
+      title: language,
+      trailing: editable
+        ? headerIconButton("close", { action: "creation/clear", label: "Clear situation", className: "creation-clear" })
+        : headerSpacer(),
     })}
-    <div class="creation-title-bubble">
-      <p class="creation-chapter-label">${escapeHTML(chapter)}</p>
-      <h1 class="creation-title" tabindex="-1" data-creation-focus>${escapeHTML(title)}</h1>
+    ${editable ? renderLanguagePicker(lang) : ""}
+    <div class="creation-term flex">
+      ${editable ? renderCreationTextArea(state.topic) : `<p class="creation-term-text">${escapeHTML(state.topic)}</p>`}
     </div>
-  </header>`;
+  </section>`;
 }
 
-function renderTermLine(topic: string): string {
-  return `<div class="creation-term"><p class="creation-term-text">${escapeHTML(topic)}</p></div>`;
+function renderLanguagePicker(lang: Lang): string {
+  return `<div class="creation-language-popover">
+    <div class="creation-language-picker flex-col" id="creation-language-picker" role="group" aria-label="Choose a language">
+      ${PICKER_LANGUAGES.map((option) => `
+        <button type="button" class="creation-language-option tappable flex items-center" data-action="creation/language" value="${option}" aria-pressed="${option === lang}">
+          ${icon("check", { className: "creation-language-check" })}<span>${escapeHTML(languageLabel(option))}</span>
+        </button>`).join("")}
+    </div>
+  </div>`;
 }
 
-function renderLanguageStep(state: Readonly<CreationState>): string {
-  return renderSurface(`
-    ${renderHeader(undefined, { chapter: "First, the language", title: "Where shall we begin?" })}
-    <div class="creation-step-body flex-col">
-      <fieldset class="creation-question creation-language-question">
-        <legend class="creation-question-label" tabindex="-1">Which language would you like to learn?</legend>
-        <p class="creation-supporting-copy">Choose a language for this phrasebook. You can change it before you begin.</p>
-        ${renderRadioList(CONTENT_LANGUAGES, {
-          name: "creation-language",
-          action: "creation/language",
-          selected: state.pendingLanguage,
-          label: languageLabel,
-        })}
-      </fieldset>
-    </div>
-    <div class="creation-context-footer">
-      <button class="creation-primary creation-question-nav tappable" data-action="creation/next-language" ${state.pendingLanguage ? "" : "disabled"}><span>Next</span>${icon("next")}</button>
-    </div>
-  `);
+function renderSuggestions(): string {
+  return `<section class="creation-suggestions flex-col" aria-labelledby="creation-suggestions-title">
+    <h2 class="creation-suggestions-title" id="creation-suggestions-title">Suggestions</h2>
+    <ul class="creation-suggestion-list flex-col">
+      ${CREATION_SUGGESTIONS.map((seed) => `<li><button type="button" class="creation-suggestion tappable" data-action="creation/suggestion" data-seed="${escapeHTML(seed)}">${escapeHTML(seed)}</button></li>`).join("")}
+    </ul>
+  </section>`;
 }
 
-function renderTopicStep(state: Readonly<CreationState>, lang: Lang): string {
-  const hasValue = state.topic.length > 0;
-  return renderSurface(`
-    ${renderHeader()}
-    <div class="creation-step-body creation-topic-body flex-col">
-      <div class="creation-input-form flex-col">
-        ${renderCreationTextArea(state.topic)}
-        <button class="creation-language-choice tappable flex items-center" data-action="creation/edit-language" aria-label="Change language: ${escapeHTML(LANG_NAMES[lang])}">
-          <span>${escapeHTML(languageLabel(lang))}</span><span class="creation-language-change">Change</span>${icon("next", { size: "sm" })}
-        </button>
-      </div>
-    </div>
-    <div class="creation-context-footer">
-      <button class="creation-primary creation-submit tappable" data-action="creation/submit-topic" ${hasValue ? "" : "disabled"}><span>Prepare my phrasebook</span>${icon("next")}</button>
-    </div>
-  `);
+function renderCardFooter(previous: string, primary: string): string {
+  return `<div class="creation-card-footer flex items-center">${previous}${primary}</div>`;
 }
 
-function renderQuestionsStep(state: Readonly<CreationState>, lang: Lang): string {
+const BACK_BUTTON = `<button class="creation-secondary tappable" data-action="creation/previous-question">Back</button>`;
+
+function renderQuestionCard(state: Readonly<CreationState>): string {
   const question = state.questions[state.questionIndex]!;
   const value = state.answers[question.label];
   const isOther = state.otherQuestions.has(state.questionIndex);
-  return renderSurface(`
-    ${renderHeader(lang, { chapter: "A little about you", title: "Make it yours." })}
-    <div class="creation-step-body flex-col">
-      ${renderTermLine(state.topic)}
-      <fieldset class="creation-question">
-        <legend class="creation-question-label" tabindex="-1">${escapeHTML(question.label)}</legend>
-        <p class="creation-question-progress">Question ${state.questionIndex + 1} of ${state.questions.length}</p>
-        ${renderRadioList(question.options, {
-          name: "creation-answer",
-          action: "creation/answer",
-          selected: isOther ? undefined : value,
-          extra: question.label === ABILITY_QUESTION ? "" : `
-            <div class="creation-radio-item creation-other-item flex items-center">
-              <input type="radio" name="creation-answer" data-action="creation/other" aria-label="Other" ${isOther ? "checked" : ""}>
-              <label class="creation-other-label" for="creation-other-answer">Other
-                <input id="creation-other-answer" class="creation-other-input" type="text" placeholder="Tell us a little more…" aria-label="Other answer" value="${isOther ? escapeHTML(value ?? "") : ""}" autocomplete="off">
-              </label>
-            </div>
-          `,
-        })}
-      </fieldset>
-    </div>
-    <div class="creation-context-footer creation-question-footer">
-      <button class="creation-secondary creation-question-nav tappable" data-action="creation/previous-question">${icon("back")}<span>Previous</span></button>
-      <button class="creation-primary creation-question-nav tappable" data-action="creation/next-question" ${value?.trim() ? "" : "disabled"}><span>Next</span>${icon("next")}</button>
-    </div>
-  `);
+  return `<section class="creation-card flex-col" data-focus-region>
+    <fieldset class="creation-question">
+      <legend class="creation-question-label" tabindex="-1">${escapeHTML(question.label)}</legend>
+      ${renderRadioList(question.options, {
+        name: "creation-answer",
+        action: "creation/answer",
+        selected: isOther ? undefined : value,
+        extra: question.label === ABILITY_QUESTION ? "" : `
+          <div class="creation-radio-item creation-other-item flex items-center">
+            <input type="radio" name="creation-answer" data-action="creation/other" aria-label="Other" ${isOther ? "checked" : ""}>
+            <input id="creation-other-answer" class="creation-other-input" type="text" placeholder="Other" aria-label="Other answer" value="${isOther ? escapeHTML(value ?? "") : ""}" autocomplete="off">
+          </div>
+        `,
+      })}
+    </fieldset>
+    ${renderCardFooter(BACK_BUTTON, `<button class="creation-primary tappable" data-action="creation/next-question" ${value?.trim() ? "" : "disabled"}>Next</button>`)}
+  </section>`;
 }
 
-function renderChecklistStep(state: Readonly<CreationState>, lang: Lang): string {
+function renderChecklistCard(state: Readonly<CreationState>): string {
   const checklistHTML = state.checklist
     .map((item, index) => renderChecklistItem(item, index))
     .join("");
-  const selectedCount = state.checklist.filter((item) => item.checked).length;
-  return renderSurface(`
-    ${renderHeader(lang, { chapter: "Your table of contents", title: "What matters to you?" })}
-    <div class="creation-step-body flex-col">
-      ${renderTermLine(state.topic)}
-      <section class="creation-checklist flex-col" aria-labelledby="creation-checklist-title">
-        <h2 id="creation-checklist-title" class="creation-question-label">Choose the conversations to prepare.</h2>
-        <p class="creation-supporting-copy">Select 1–8 chapters. Each brings together useful phrases, words, and both sides of a conversation.</p>
-        <p class="creation-selection-count" role="status">${selectedCount} selected</p>
-        <div class="creation-checklist-items flex-col">${checklistHTML}</div>
-      </section>
-    </div>
-    <div class="creation-context-footer">
-      <button class="creation-primary creation-submit tappable" data-action="creation/submit-context"><span>Create my phrasebook</span>${icon("next")}</button>
-    </div>
-  `);
+  return `<section class="creation-card creation-checklist flex-col" data-focus-region aria-labelledby="creation-checklist-title">
+    <h2 id="creation-checklist-title" class="creation-question-label" tabindex="-1">${CHECKLIST_QUESTION}</h2>
+    <div class="creation-checklist-items flex-col">${checklistHTML}</div>
+    ${renderCardFooter(BACK_BUTTON, `<button class="creation-primary tappable" data-action="creation/submit-context">Create</button>`)}
+  </section>`;
 }
 
-function renderGeneratingStep(state: Readonly<CreationState>, lang: Lang): string {
-  const preparingChapters = state.resumeStep === "checklist";
-  return renderSurface(`
-    ${renderHeader(lang, {
-      chapter: preparingChapters ? "Putting it all together" : "Finding your starting point",
-      title: preparingChapters ? "A textbook, just for you." : "Let’s set the scene.",
-      backLabel: "Cancel creation",
-    })}
-    <div class="creation-step-body creation-generating creation-wait-body flex-col" role="status" aria-live="polite">
-      ${renderTermLine(state.topic)}
-      ${CREATION_LOADING_MARK}
-      <p class="creation-status-copy">${preparingChapters ? "Preparing your phrasebook…" : "Finding the right questions…"}</p>
-      <p class="creation-supporting-copy">${preparingChapters ? "Gathering the phrases, words, and conversations for your selected chapters." : "A few details will help make the language useful to you."}</p>
-    </div>
-    ${CREATION_CANCEL_FOOTER}
-  `);
+function renderStatusCard(message: string, className = ""): string {
+  return `<section class="creation-card creation-status ${className}" data-focus-region role="status" aria-live="polite">
+    <p class="creation-status-copy" tabindex="-1" data-creation-focus>${escapeHTML(message)}</p>
+  </section>`;
 }
 
-
-function renderErrorStep(state: Readonly<CreationState>, lang: Lang | undefined): string {
-  return renderSurface(`
-    ${renderHeader(lang, { chapter: "A pause in preparation", title: "Let’s try that again." })}
-    <div class="creation-step-body creation-error flex-col">
-      ${state.topic ? renderTermLine(state.topic) : ""}
-      <div class="creation-error-message" role="alert">
-        <p class="creation-question-label">We couldn’t finish this step.</p>
-        <p>${escapeHTML(state.error)}</p>
-        <p class="creation-supporting-copy">Your situation and choices are still here.</p>
-      </div>
+function renderErrorCard(state: Readonly<CreationState>): string {
+  return `<section class="creation-card creation-error flex-col" data-focus-region>
+    <div class="creation-error-message" role="alert">
+      <p class="creation-question-label" tabindex="-1" data-creation-focus>We couldn’t finish this step.</p>
+      <p class="creation-error-detail">${escapeHTML(state.error)}</p>
     </div>
-    <div class="creation-context-footer creation-question-footer">
-      <button class="creation-secondary tappable" data-action="creation/cancel">Cancel</button>
-      <button class="creation-primary creation-retry tappable" data-action="creation/retry">Try again</button>
-    </div>
-  `);
+    ${renderCardFooter(
+      `<button class="creation-secondary tappable" data-action="creation/cancel">Cancel</button>`,
+      `<button class="creation-primary tappable" data-action="creation/retry">Try again</button>`,
+    )}
+  </section>`;
 }
 
 function normalizeChecklist(checklist: ContextResponse["checklist"]): ChecklistItem[] {

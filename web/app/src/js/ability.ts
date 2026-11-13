@@ -5,7 +5,7 @@ export type Ability = typeof ABILITIES[number];
 
 export const ABILITY_LABELS = {
   none: "None",
-  basics: "Basics",
+  basics: "Basic",
   conversational: "Conversational",
 } as const satisfies Record<Ability, string>;
 
