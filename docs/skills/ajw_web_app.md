@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: Rules, references and verification for any work under web/app.
 sources: [web/app/package.json, .github/workflows/web-app-ci.yml]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # Web app work

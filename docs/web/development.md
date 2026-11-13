@@ -2,8 +2,8 @@
 kind: guide
 status: current
 summary: Web app development — setup, local API, build, Storybook, deployment, and the module map.
-sources: [web/app/package.json, web/app/vite.config.js, web/app/src/panes, web/app/src/components, web/app/src/stories/support]
-verified: 2026-11-12
+sources: [.nvmrc, web/app/package.json, web/app/vite.config.js, web/app/src/panes, web/app/src/components, web/app/src/stories/support]
+verified: 2026-11-13
 ---
 
 # Web app development
@@ -12,8 +12,7 @@ How to run, test, build and deploy the Catchphrase web client in `web/app/`. Arc
 
 ## Prerequisites
 
-- Node.js 20.19+ (below 22), or 22.12+; Node 22 is used in CI
-- npm 9+
+- Node.js 24 with its bundled npm. The repository root `.nvmrc` pins it; `engines` in `web/app/package.json` and `api/src/package.json` and the CI workflows follow it.
 
 ## Setup
 

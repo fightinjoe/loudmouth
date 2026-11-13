@@ -3,9 +3,9 @@ name: web-app CI
 on:
   push:
     branches: [main]
-    paths: ['web/app/**', 'api/src/schema/**', '.github/workflows/web-app-ci.yml']
+    paths: ['web/app/**', 'api/src/schema/**', '.nvmrc', '.github/workflows/web-app-ci.yml']
   pull_request:
-    paths: ['web/app/**', 'api/src/schema/**', '.github/workflows/web-app-ci.yml']
+    paths: ['web/app/**', 'api/src/schema/**', '.nvmrc', '.github/workflows/web-app-ci.yml']
 
 defaults:
   run:
@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: web/app/package-lock.json
 

@@ -3,7 +3,7 @@ kind: guide
 status: current
 summary: "Catchphrase API operations: model selection, implementation map, local development, tests, evals and deployment."
 sources: [api/src/index.js, api/src/llm-config.js, api/src/dev.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # Catchphrase API operations
@@ -140,7 +140,9 @@ export GCP_PROJECT_ID=YOUR_PROJECT_ID
 ./deploy.sh
 ```
 
-`deploy.sh` enables APIs, prepares Secret Manager secrets/service identity, deploys Cloud Run, and updates API Gateway. Set both backend selectors intentionally. Secret bindings include `openrouter-api-key`; provision its value privately before an authorized deployment. Gateway and Cloud Run deadlines must exceed the complete phrasebook pipeline and retry budget. Deploying requires explicit owner authorization.
+`deploy.sh` enables APIs, prepares Secret Manager secrets/service identity, deploys Cloud Run, and updates API Gateway. The Cloud Run function runs on the Node.js 24 base image (`--base-image="nodejs24"`), matching the `engines` pin in `src/package.json` and the repository `.nvmrc`. Set both backend selectors intentionally. Secret bindings include `openrouter-api-key`; provision its value privately before an authorized deployment. Gateway and Cloud Run deadlines must exceed the complete phrasebook pipeline and retry budget. Deploying requires explicit owner authorization.
+
+Secrets bind as `:latest`, and Secret Manager shows only that a version exists, not that the key is valid. After every deployment, confirm with a live `/phrasebook` request (OpenRouter) and a live `/context` request (Vertex AI). To replace a key, add a version privately with the `read -rs … gcloud secrets versions add` command that `deploy.sh` prints. Then roll a revision so it reads the new version: `gcloud run services update translation-api --update-secrets=OPENROUTER_API_KEY=openrouter-api-key:latest --region=us-central1 --project=<project>`.
 
 The checked-in gateway configuration does not define caller authentication or rate quotas. `deploy.sh` configures authenticated gateway-to-Cloud-Run invocation; that is not caller admission control. Verify the actual deployed access boundary before public release. Provider quotas are separate: one phrasebook request produces multiple model calls.
 

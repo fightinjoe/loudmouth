@@ -1,8 +1,8 @@
 ---
 kind: ledger
 status: current
-summary: "Public-launch milestone: launch plan, API protection, business model, iOS port, privacy, library durability, monitoring, accessibility and naming."
-verified: 2026-11-12
+summary: "Public-launch milestone: launch plan, API protection, staging environment, business model, iOS port, privacy, library durability, monitoring, accessibility and naming."
+verified: 2026-11-13
 statuses: [open, in-progress, blocked, done]
 ---
 
@@ -12,6 +12,7 @@ Work needed before Catchphrase is open to the public. Deployment status stays on
 
 | Date | Status | Description | Details |
 |---|---|---|---|
+| 2026-11-13 | open | Hosted staging environment for testing API, gateway and web changes before production | [details](public-launch/staging-environment.md) |
 | 2026-11-12 | open | Privacy policy and data-handling disclosures for web and the App Store | [details](public-launch/privacy.md) |
 | 2026-11-12 | open | Keep learners' browser-only libraries from being silently lost | [details](public-launch/library-durability.md) |
 | 2026-11-12 | open | Production monitoring, alerting and provider spend alerts | [details](public-launch/monitoring.md) |

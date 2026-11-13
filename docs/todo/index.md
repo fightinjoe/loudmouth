@@ -2,7 +2,7 @@
 kind: ledger
 status: current
 summary: Milestone ledger for decided work that is not done yet; each row links to its milestone page.
-verified: 2026-11-12
+verified: 2026-11-13
 statuses: [planned, active, done]
 ---
 
@@ -13,6 +13,6 @@ Decided work that is not done yet, grouped into milestones. Each milestone page 
 | Date       | Status  | Description                                                                                                                        | Details                              |
 | ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | 2026-11-12 | active  | **v4 release**<br>deploy the v4 API, gateway and web together, with the adopted English prompt and dependency fixes                | [details](v4-release.md)             |
-| 2026-11-12 | planned | **Public launch**<br>launch plan, API protection, business model, iOS port, privacy, durability, monitoring, accessibility, naming | [details](public-launch.md)          |
+| 2026-11-12 | planned | **Public launch**<br>launch plan, API protection, staging environment, business model, iOS port, privacy, durability, monitoring, accessibility, naming | [details](public-launch.md)          |
 | 2026-11-12 | planned | **Generation reliability**<br>valid JSON, overrun tolerance, latency and DeepSeek capacity for English generation                  | [details](generation-reliability.md) |
 | 2026-11-12 | planned | **Backlog**<br>decided work without a milestone                                                                                    | [details](backlog.md)                |

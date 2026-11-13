@@ -107,6 +107,7 @@ echo "==> Deploying Cloud Run function..."
 gcloud run deploy "${SERVICE_NAME}" \
   --source="./src" \
   --function="translate" \
+  --base-image="nodejs24" \
   --region="${REGION}" \
   --no-allow-unauthenticated \
   --timeout="300s" \
