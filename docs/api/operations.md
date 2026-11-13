@@ -8,7 +8,7 @@ verified: 2026-11-13
 
 # Catchphrase API operations
 
-Stateless Node.js Cloud Run service for guided phrasebook creation and on-demand phrase analysis. The [API design](../api-design.md) owns the endpoint table, shared conventions and trust boundaries; each endpoint page owns its contract, pipeline, bounds and recovery policy. This page owns configuration, the implementation map, local development, tests, evals and deployment. Release state is tracked in [v4 release](../todo/v4-release.md).
+Stateless Node.js Cloud Run service for guided phrasebook creation and on-demand phrase analysis. The [API design](../api-design.md) owns the endpoint table, shared conventions and trust boundaries; each endpoint page owns its contract, pipeline, bounds and recovery policy. This page owns configuration, the implementation map, local development, tests, evals and deployment. Production deployment state is in [Production](#production).
 
 ## Structured diagnostics
 
@@ -128,6 +128,19 @@ Artifacts default to ignored `api/evals/artifacts/`. Use synthetic canaries only
 Content-quality workflows and fixtures are documented in [evaluation guidance](../evals/index.md); results are recorded in the [results ledger](../evals/results.md).
 
 Active attack coverage includes schema-preserving extraction, encoded disclosure, instruction overrides in seed, answer, and checklist fields, generated translation source, and the complete `/context`-to-`/phrasebook` pipeline.
+
+## Production
+
+This section owns production deployment state. v4 has been live since 2026-11-13; revision and gateway config IDs, the rollback targets and the live checks are in the [release record](../evals/results/2026-11-13-v4-live-release.md).
+
+| Component | Production | Deployed by |
+|---|---|---|
+| API | Cloud Run service `translation-api` (`us-central1`, Node.js 24 base image) in the project named by `GCP_PROJECT_ID` | `api/deploy.sh` |
+| Gateway | `translation-api-gateway`, `https://translation-api-gateway-2qqw247r.uc.gateway.dev`, the web build's default `GATEWAY_URL` | `api/deploy.sh` |
+| Web | Vercel, `https://loudmouth-gilt.vercel.app` | push to the `prod` branch ([web deployment](../web/development.md#deployment)) |
+| iOS | Not released from this repository's current code; it calls retired routes ([iOS architecture](../ios/architecture.md)) | — |
+
+An API/web contract change makes the live web and API incompatible until both are deployed: deploy the API, then push the web immediately. There is no pre-production environment yet ([staging todo](../todo/public-launch/staging-environment.md)).
 
 ## Deployment reference
 

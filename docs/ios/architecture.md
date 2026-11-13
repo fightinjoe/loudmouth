@@ -10,7 +10,7 @@ verified: 2026-11-12
 
 ## Current state
 
-The native iOS app (`ios/Loudmouth/`) is a deck-and-card client from before the phrasebook redesign. It translates and generates cards through retired API routes (`/translate` in `ios/Loudmouth/Screens/Translation/TranslationView.swift`, `/generate-cards` in `ios/Loudmouth/Screens/GenerateCards/GenerateCardsView.swift`) and has none of the web client's guided creation, phrasebook view, phrase breakdown, or starred Review; the web [design](../design.md) does not describe it. Release status is tracked in [v4 release](../todo/v4-release.md); the port to the web experience is tracked in [iOS port](../todo/public-launch/ios-port.md).
+The native iOS app (`ios/Loudmouth/`) is a deck-and-card client from before the phrasebook redesign. It translates and generates cards through retired API routes (`/translate` in `ios/Loudmouth/Screens/Translation/TranslationView.swift`, `/generate-cards` in `ios/Loudmouth/Screens/GenerateCards/GenerateCardsView.swift`) and has none of the web client's guided creation, phrasebook view, phrase breakdown, or starred Review; the web [design](../design.md) does not describe it. Production state is in [API operations](../api/operations.md#production); the port to the web experience is tracked in [iOS port](../todo/public-launch/ios-port.md).
 
 ## Pane Protocol mapping
 

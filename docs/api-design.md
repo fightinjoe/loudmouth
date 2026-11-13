@@ -61,7 +61,7 @@ Adversarial evaluations distinguish synthetic-canary leakage, invalid output and
 
 ## References
 
-Release and deployment state is tracked in [v4 release](todo/v4-release.md). Endpoint limitations, including known quality warnings, live on their endpoint page.
+Production deployment state is in [API operations](api/operations.md#production). Endpoint limitations, including known quality warnings, live on their endpoint page.
 
 - [API operations](api/operations.md): configuration, implementation map, local development, tests and deployment.
 - [Evaluation guidance](evals/index.md) and [rubric](evals/rubric.md): current workflows, scoped reporting and quality assessment.

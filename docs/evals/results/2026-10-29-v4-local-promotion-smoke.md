@@ -7,7 +7,7 @@ verified: 2026-10-29
 
 # v4 local promotion smoke (2026-10-29)
 
-**Context.** The v4 promotion changed `/phrasebook` to four sections per topic (Things to say, Likely exchanges with explicit response options, titled Word families, linear Example conversation) and moved web to the fresh seven-table `loudmouth-topic-v4` library. This smoke checked that the API and web integrate end to end on a local machine with the checked-in default providers (`api/src/llm-config.js`). It is integration evidence, not a linguistic baseline, a reliability measurement or deployed behavior. Release state is tracked in [v4 release](../../todo/v4-release.md).
+**Context.** The v4 promotion changed `/phrasebook` to four sections per topic (Things to say, Likely exchanges with explicit response options, titled Word families, linear Example conversation) and moved web to the fresh seven-table `loudmouth-topic-v4` library. This smoke checked that the API and web integrate end to end on a local machine with the checked-in default providers (`api/src/llm-config.js`). It is integration evidence, not a linguistic baseline, a reliability measurement or deployed behavior. v4 went live on 2026-11-13 ([live release record](2026-11-13-v4-live-release.md)).
 
 ## Real-provider requests
 

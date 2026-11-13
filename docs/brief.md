@@ -65,7 +65,7 @@ Web Phrase cards support on-demand semantic breakdowns in the details layer. Ope
 
 ## Platform and architecture
 
-- **Clients:** mobile-first PWA and native iOS app in one monorepo. The web app is strict TypeScript and shares runtime validation with the JavaScript API through `@catchphrase/card-schema`. Release state is tracked in [v4 release](todo/v4-release.md).
+- **Clients:** mobile-first PWA and native iOS app in one monorepo. The web app is strict TypeScript and shares runtime validation with the JavaScript API through `@catchphrase/card-schema`. Production state is in [API operations](api/operations.md#production).
 - **Storage:** the library lives only in the browser (IndexedDB); there are no accounts, sync or server-held library. Tables, versions and lifecycle are in the [card schema](card-schema.md).
 - **API:** a stateless Cloud Run service in `api/`. Guided creation uses `/context` → `/phrasebook`, with independent `/phrasebook-title` naming and nonblocking `/phrasebook-image` covers; `/phrase-breakdown` analyzes an existing Phrase on demand. Missing or failed cover art leaves text usable. Contracts are indexed in the [API design](api-design.md).
 - **LLMs:** server-owned; clients cannot select models. Defaults live in `api/src/llm-config.js`; selectors are described in [API operations](api/operations.md#server-owned-model-selection).

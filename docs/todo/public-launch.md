@@ -8,7 +8,7 @@ statuses: [open, in-progress, blocked, done]
 
 # Public launch
 
-Work needed before Catchphrase is open to the public. Deployment status stays on the [v4 release](v4-release.md) page; this milestone covers what makes a deployed service fit for anonymous users. The [launch plan](public-launch/launch-plan.md) decides which other todos gate the launch.
+Work needed before Catchphrase is open to the public. Production deployment state is owned by [API operations](../api/operations.md#production); this milestone covers what makes a deployed service fit for anonymous users. The [launch plan](public-launch/launch-plan.md) decides which other todos gate the launch.
 
 | Date | Status | Description | Details |
 |---|---|---|---|

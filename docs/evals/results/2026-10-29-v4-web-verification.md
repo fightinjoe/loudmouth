@@ -9,7 +9,7 @@ verified: 2026-10-29
 
 ## Context
 
-On 2026-10-29 the four-section v4 phrasebook schema (`loudmouth-topic-v4` library, v4 phrasebook responses and backups, v2 CardBatch and breakdown exchange; see [card schema](../../card-schema.md)) was integrated into the web client and API locally. This run checked that integration before any release. At the time the phrasebook view was still the continuous textbook; the topic-decks view and then the current category landing ([design](../../design.md#phrasebook-view)) replaced it later, so this run does not cover the current phrasebook view. Release state is tracked in [v4 release](../../todo/v4-release.md).
+On 2026-10-29 the four-section v4 phrasebook schema (`loudmouth-topic-v4` library, v4 phrasebook responses and backups, v2 CardBatch and breakdown exchange; see [card schema](../../card-schema.md)) was integrated into the web client and API locally. This run checked that integration before any release. At the time the phrasebook view was still the continuous textbook; the topic-decks view and then the current category landing ([design](../../design.md#phrasebook-view)) replaced it later, so this run does not cover the current phrasebook view. v4 went live on 2026-11-13 ([live release record](2026-11-13-v4-live-release.md)).
 
 ## What ran
 

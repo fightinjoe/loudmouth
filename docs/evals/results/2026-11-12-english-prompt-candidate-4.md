@@ -9,7 +9,7 @@ verified: 2026-11-12
 
 From 2026-11-02 to 2026-11-12 the `/phrasebook` English-generation stage (lane A) was evaluated with the Spanish `basics` requests in [baseline inputs](../baseline.md): DeepSeek v4.1 Flash through OpenRouter, pinned to Relace, reasoning off, as in production at the time. All runs used single attempts, no retries and no paid judging; reviews were by the owner and the assistant against the [rubric](../rubric.md). Raw replies, plans and findings were local and have been deleted; they are not replayable. Rules learned from the reviews are in the [rubric decision log](../rubric.md#decision-log); follow-up work is in [to-do](../../todo/index.md).
 
-**Outcome:** prompt candidate 4 was adopted in `api/src/phrasebook/prompt.txt` on 2026-11-12. Its deployment is tracked in [v4 release](../../todo/v4-release.md).
+**Outcome:** prompt candidate 4 was adopted in `api/src/phrasebook/prompt.txt` on 2026-11-12. It went live with the API on 2026-11-13 ([live release record](2026-11-13-v4-live-release.md)).
 
 ## Studies
 

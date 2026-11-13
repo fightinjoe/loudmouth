@@ -98,11 +98,9 @@ Storybook uses `.storybook/vite.config.ts`, not the app's PWA build configuratio
 
 ## Deployment
 
-- **Web:** run `npm ci` and `npm run build` in `web/app/`, then deploy `dist/` to the static host. Set `VITE_API_URL` to the intended API before building if overriding the default gateway; Vite embeds it at build time.
+- **Web:** Vercel's Git integration builds and publishes production (`https://loudmouth-gilt.vercel.app`) from the `prod` branch; release with `git push origin main:prod` (fast-forward only) after any API change the web depends on is live. A local build is `npm ci` and `npm run build` in `web/app/`. Set `VITE_API_URL` to the intended API before building if overriding the default gateway; Vite embeds it at build time.
 - **API via `api/deploy.sh`:** run the existing deployment script from `api/`. No manual local compilation is required. Google's Node buildpack runs the `gcp-build` hook in `api/src/package.json`, compiling `schema/dist/` before pruning development dependencies. Do not disable this hook with an empty `GOOGLE_NODE_RUN_SCRIPTS`. See [API deployment documentation](../api/operations.md#deployment-reference) for credentials and configuration.
 - **Custom API deployment:** run `npm ci && npm run schema:build` in `api/src/` during the build stage and include `schema/dist/` in the deployed artifact. Compile before pruning development dependencies. Raw Functions Framework or Node startup bypasses `predev` and requires this compiled output; production startup deliberately does not require the TypeScript compiler.
-
-Release coordination for the v4 contract is tracked in [v4 release](../todo/v4-release.md).
 
 ## Preview production build
 

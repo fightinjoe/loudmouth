@@ -23,7 +23,7 @@ The [endpoint baseline inputs](baseline.md) document the proposed Spanish-first 
 
 Current adapters and authored fixtures use **v4 four-section phrasebooks**: Things to say, Likely exchanges with explicit response options, titled Word families and a linear Example conversation. Translation uses flat phrase/Word arrays; code restores nesting. The [endpoint contract](../api/phrasebook.md) owns bounds, recovery and production behavior.
 
-**No accepted linguistic baseline exists. C is optional and deferred.** Current workflows and fixtures are reusable development tools, not native-speaker gold labels, model rankings or broad reliability certification. Local integration results are in the [results ledger](results.md), not treated as a language-quality acceptance seal; release state is in [v4 release](../todo/v4-release.md).
+**No accepted linguistic baseline exists. C is optional and deferred.** Current workflows and fixtures are reusable development tools, not native-speaker gold labels, model rankings or broad reliability certification. Local integration results are in the [results ledger](results.md), not treated as a language-quality acceptance seal; production state is in [API operations](../api/operations.md#production).
 
 ## Independent workflows
 

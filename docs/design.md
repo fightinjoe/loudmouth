@@ -55,7 +55,7 @@ Context completion starts independent seed-based cover work. Answer/checklist ch
 
 Ability is saved as phrasebook metadata and remembered per language only after generation and import succeed on final Continue. Failed saves and abandoned speculative results do not remember it. Future creation skips this question and sends the remembered value to both endpoints. Updating it is deferred. Historical setup preferences are not inferred or migrated to the new scale.
 
-Speculation hides generation behind checklist interaction but does not guarantee lower latency: English generation uses bounded per-topic concurrency, and the response waits for every translation, including topics later discarded. Usage includes all generated topics, so the meaningful measures are final Continue-to-usable-phrasebook time and cost per saved phrasebook. Durable transaction and cancellation boundaries remain authoritative in [the shared card schema](card-schema.md#atomic-lifecycle). Release state is tracked in [v4 release](todo/v4-release.md).
+Speculation hides generation behind checklist interaction but does not guarantee lower latency: English generation uses bounded per-topic concurrency, and the response waits for every translation, including topics later discarded. Usage includes all generated topics, so the meaningful measures are final Continue-to-usable-phrasebook time and cost per saved phrasebook. Durable transaction and cancellation boundaries remain authoritative in [the shared card schema](card-schema.md#atomic-lifecycle). Production state is in [API operations](api/operations.md#production).
 
 ## Phrasebook view
 
