@@ -1,10 +1,28 @@
 'use strict';
 
 const DEEPSEEK_MODEL = 'deepseek/deepseek-v4.1-flash';
+// Last-resort cap: OpenRouter retries failed or timed-out providers, but a slow, still-streaming one only loses later traffic.
 const DEEPSEEK_TIMEOUT_MS = 120000;
+// OpenRouter routes across every DeepSeek provider: require_parameters keeps only those that support the
+// strict response schema, the throughput preference (tokens/s over a rolling 5-minute window) moves slow
+// providers to the back, and data_collection excludes providers that may store prompts. Providers that keep
+// failing validation or quality are ignored (2026-11-13 live samples): Wafer and Novita write the schema's
+// properties in alphabetical order, generating the example conversation first; Wafer then left required
+// sections empty (3 of 8 calls failed) and Novita ran away to the 6,000-token limit. OpenInference wrote the
+// English source in the target language and 14–35-turn exchanges in 3 of 4 replies.
+const DEEPSEEK_PROVIDER_ROUTING = Object.freeze({
+  allow_fallbacks: true,
+  require_parameters: true,
+  data_collection: 'deny',
+  ignore: ['wafer', 'novita', 'open-inference'],
+  preferred_min_throughput: { p90: 150 },
+});
 
-/** One provider attempt; orchestration owns validation and rate-limit retries. */
-async function callDeepSeek(prompt, { maxOutputTokens = 6000, signal } = {}) {
+/**
+ * One provider attempt; orchestration owns validation and retries. A strict schema fixes the reply's
+ * structure; JSON mode alone still let providers misplace brackets inside strings (2026-11-13 live sample).
+ */
+async function callDeepSeek(prompt, { maxOutputTokens = 6000, signal, responseJsonSchema } = {}) {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) throw new Error('OPENROUTER_API_KEY environment variable is not set');
   const timeout = AbortSignal.timeout(DEEPSEEK_TIMEOUT_MS);
@@ -21,7 +39,10 @@ async function callDeepSeek(prompt, { maxOutputTokens = 6000, signal } = {}) {
       ],
       max_tokens: maxOutputTokens,
       reasoning: { enabled: false },
-      provider: { only: ['relace'], allow_fallbacks: false, require_parameters: true },
+      provider: DEEPSEEK_PROVIDER_ROUTING,
+      ...(responseJsonSchema ? {
+        response_format: { type: 'json_schema', json_schema: { name: 'response', strict: true, schema: responseJsonSchema } },
+      } : {}),
       stream: false,
     }),
   });
@@ -54,6 +75,8 @@ async function callDeepSeek(prompt, { maxOutputTokens = 6000, signal } = {}) {
       : 'OpenRouter returned an empty, truncated, or incomplete completion');
     error.status = response.ok ? 502 : response.status;
     if (upstreamError?.code !== undefined) error.code = upstreamError.code;
+    // A completed request whose text is unusable (for example cut off at max_tokens) is a bad reply, not a provider failure.
+    if (response.ok && !upstreamError) error.incomplete = true;
     error.reply = reply;
     throw error;
   }

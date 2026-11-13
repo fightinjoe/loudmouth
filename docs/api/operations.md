@@ -2,7 +2,7 @@
 kind: guide
 status: current
 summary: "Catchphrase API operations: model selection, implementation map, local development, tests, evals and deployment."
-sources: [api/src/index.js, api/src/llm-config.js, api/src/dev.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js]
+sources: [api/src/index.js, api/src/log.js, api/src/llm-config.js, api/src/llms/openrouter.js, api/src/dev.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js, scripts/generation-report.mjs]
 verified: 2026-11-13
 ---
 
@@ -14,6 +14,10 @@ Stateless Node.js Cloud Run service for guided phrasebook creation and on-demand
 
 API diagnostics use [runtime failure levels](../api-design.md#runtime-failure-levels), not fields added to strict response envelopes. Count final outcomes rather than log lines. The image route logs `usage` on success and `request_invalid`/`request_failed` on rejection, with `route: 'phrasebook-image'` and a failure level. Usage contains cost, model and duration, not image bytes or credentials. Endpoint designs distinguish implemented warnings from intended recovery.
 
+Every structured event goes through `api/src/log.js` as one JSON line with a Cloud Logging `severity`, so Cloud Run stores it as a queryable `jsonPayload` (for example `jsonPayload.event="llm_call"`). Events also carry the request's `requestId`: Cloud Run's trace ID, or a fresh UUID locally. Production logs are kept 30 days. `/phrasebook` logs one `llm_call` per provider attempt (`route` `phrasebook:generate` or `phrasebook:translate`, `topicIndex`, `attempt`, `outcome` `ok`/`incomplete`/`rate_limited`/`timeout`/`cancelled`/`error`, `durationMs`, `provider`, `outputTokens`, `outputTokensPerSecond`), `validation_error` and retry events, and one `phrasebook_flag` event per response flag (count overruns, English repairs, missing sections, unresolved word sources).
+
+`node scripts/generation-report.mjs [--since 7d] [--project <id>]` summarizes production logs as Markdown: request outcomes and failure levels, per-topic English latency (p50/p90/p95, share under 3/6/10 s), attempts by provider, invalid replies by kind, retries and response flags by code and section. `--file <log>` reads local dev-server output instead (one JSON event per line; other lines are skipped).
+
 ## Server-owned model selection
 
 Clients cannot choose a backend; there is no request override or testing header. Two independent environment selectors are read by `api/src/llm-config.js` (`getBackendName`, `getPhrasebookGenerationBackendName`); defaults and accepted values live there, and invalid values fail startup. Neither selector enables an automatic fallback.
@@ -21,7 +25,7 @@ Clients cannot choose a backend; there is no request override or testing header.
 | Selector | Drives | Values → adapter model constant |
 |---|---|---|
 | `LLM_BACKEND` | Translation and every other text endpoint | `gemini-3.5-flash-lite` (default) → `GENAI_MODEL`, `g-flash` → `GENAI_FLASH_MODEL` in `api/src/llms/genai.js`; `claude` → `ANTHROPIC_MODEL` in `api/src/llms/anthropic.js`; `chatgpt` → `OPENAI_MODEL` in `api/src/llms/openai.js` |
-| `PHRASEBOOK_GENERATION_BACKEND` | `/phrasebook` English generation | `deepseek-v4.1-flash` (default) → `DEEPSEEK_MODEL` in `api/src/llms/openrouter.js` (Relace only, reasoning disabled); `gemini-3.5-flash-lite` |
+| `PHRASEBOOK_GENERATION_BACKEND` | `/phrasebook` English generation | `deepseek-v4.1-flash` (default) → `DEEPSEEK_MODEL` in `api/src/llms/openrouter.js` (OpenRouter performance routing across DeepSeek providers, reasoning disabled; see [POST /phrasebook](phrasebook.md#english-generation)); `gemini-3.5-flash-lite` |
 
 Image generation separately requires server-side `OPENROUTER_API_KEY`; its fixed routing and output contract are on the [image page](phrasebook-image.md). To compare text providers, restart the local API with another `LLM_BACKEND` and repeat the same request.
 
@@ -131,7 +135,7 @@ Active attack coverage includes schema-preserving extraction, encoded disclosure
 
 ## Production
 
-This section owns production deployment state. v4 has been live since 2026-11-13; revision and gateway config IDs, the rollback targets and the live checks are in the [release record](../evals/results/2026-11-13-v4-live-release.md).
+This section owns production deployment state. v4 has been live since 2026-11-13 ([release record](../evals/results/2026-11-13-v4-live-release.md)). The API was redeployed the same day with generation reliability (revision `translation-api-00018-2js`); its gateway config, rollback targets and live checks are in the [deployment record](../evals/results/2026-11-13-generation-reliability-deploy.md). The live web still runs the v4 build and rejects most of the new responses until it is redeployed (owner decision 2026-11-13).
 
 | Component | Production | Deployed by |
 |---|---|---|

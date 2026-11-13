@@ -3,7 +3,7 @@ kind: spec
 status: current
 summary: Normative v2 common card/exchange contract and v4 four-section phrasebook, library, identity, star and backup lifecycle.
 sources: [api/src/schema/index.ts, web/app/src/js/db.ts, web/app/src/js/library-types.ts, web/app/src/js/storage-config.ts, web/app/src/js/preferences.ts]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # Card schema and lifecycle
@@ -66,10 +66,12 @@ Saved content is never overwritten by identity reuse. `eat` and `to eat` with th
 
 `PHRASEBOOK_SCHEMA_VERSION = 4`. `/phrasebook` returns `{schemaVersion:4,title,groups,flags,usage}`. Each of 1–8 groups is `{id,title,thingsToSay,likelyExchanges,words,exampleConversation}`:
 
-- `thingsToSay`: 1–8 `{id,card:Phrase}` items without speaker.
-- `likelyExchanges`: 1–4 `{id,title,lines}` exchanges. Each has 2–4 alternating-speaker turns `{speaker:'you'|'partner',responses:[{id,card:Phrase}]}`, with 1–3 explicit alternatives per turn.
-- `words`: `{id,title,items:Candidate[]}` families of Word candidates, at least two per family and at most ten across the topic; an empty family list is allowed.
-- `exampleConversation`: 2–10 `{id,card:Phrase,speaker:'you'|'partner'}` lines with alternating speakers. Either speaker may start an exchange or example.
+- `thingsToSay`: `{id,card:Phrase}` items without speaker.
+- `likelyExchanges`: `{id,title,lines}` exchanges. Each has at least two turns `{speaker:'you'|'partner',responses:[{id,card:Phrase}]}`, with at least one explicit alternative per turn.
+- `words`: `{id,title,items:Candidate[]}` families of Word candidates, at least two per family; an empty family list is allowed.
+- `exampleConversation`: empty, or at least two `{id,card:Phrase,speaker:'you'|'partner'}` lines.
+
+Either speaker may start an exchange or example, and consecutive turns or lines may share a speaker (a speaker can say two things in a row). In a `/phrasebook` response, Things to say, Likely exchanges and Example conversation are empty only with a `{code:'section-missing',groupIndex,section}` flag; stored groups are validated by the group rules alone, so the library accepts them. Section counts have no maximum: counts above `PHRASEBOOK_COUNT_LIMITS` (8 Things to say, 4 exchanges, 6 turns per exchange, 3 alternatives per turn, 12 conversation lines, 10 Words per topic) are kept with `count-overrun` flags. English repairs add `content-dropped`, `word-family-merged` and `speaker-repeated` flags. Flag shapes and the rules that tie them to content are in [POST /phrasebook](api/phrasebook.md#wire-response-and-source-evidence).
 
 The user-facing order is **Things to say**, **Likely exchanges**, **Words** with family titles, **Example conversation**. No `alternative` flag or adjacency-derived alternative exists. Legacy `essentials`, `vocab`, `dialogue`, `phrases`, `featuredPhraseIds` and line scores are rejected. Server UUIDs are draft handles for groups, exchanges, families and occurrences; phrase IDs are globally distinct. Evidence refs address any phrase occurrence within their owning group and match its exact snapshot. Omitted Word evidence is normal and has no flag; unresolved supplied hints produce `{code:'vocab-source-missing',groupIndex,wordIndex,reason:'unresolved'}`, with `wordIndex` in flat family/item order. Group order follows checklist index, even when titles repeat. Commit remaps selected draft refs to fresh local IDs. `/context` returns required seed-based `imagePrompt` alongside questions, checklist and usage; `/phrasebook-title` remains an unversioned title envelope.
 

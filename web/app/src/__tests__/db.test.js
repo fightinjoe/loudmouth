@@ -300,21 +300,18 @@ describe("commitPhrasebook", () => {
     ["old phrases", (group) => { group.phrases = []; }],
     ["old featured ids", (group) => { group.featuredPhraseIds = []; }],
     ["missing essentials", (group) => { delete group.thingsToSay; }],
-    ["empty essentials", (group) => { group.thingsToSay = []; }],
-    ["too many essentials", (group) => { group.thingsToSay = Array.from({length:9}, (_, i) => phrase(`e-${i}`, "Hola", "Hello")); }],
     ["missing title", (group) => { delete group.title; }],
     ["missing dialogue", (group) => { delete group.exampleConversation; }],
     ["missing words", (group) => { delete group.words; }],
     ["wrong essential speaker", (group) => { group.thingsToSay[0].speaker = "you"; }],
     ["missing dialogue speaker", (group) => { delete group.exampleConversation[0].speaker; }],
-    ["single speaker", (group) => { group.exampleConversation[1].speaker = "you"; }],
+    ["one-line dialogue", (group) => { group.exampleConversation = group.exampleConversation.slice(0, 1); }],
     ["invalid alternative", (group) => { group.exampleConversation[1].alternative = true; }],
     ["missing exchanges", (group) => { delete group.likelyExchanges; }],
     ["empty response turn", (group) => { group.likelyExchanges[0].lines[0].responses = []; }],
     ["duplicate exchange ID", (group) => { group.likelyExchanges[0].id = group.id; }],
     ["singleton family", (group) => { group.words = [{id:fixtureId("single"),title:"Single",items:[word("pan","bread","bread")]}]; }],
     ["duplicate section ID", (group) => { group.exampleConversation[0].id = group.thingsToSay[0].id; }],
-    ["overflow vocab", (group) => { group.words = [{ id: fixtureId(`${group.id}-family`), title: "Words", items: Array.from({length:11}, () => word("pan", "bread", "bread")) }]; }],
     ["cross-topic evidence", (group) => {
       group.words = [{ id: fixtureId(`${group.id}-family`), title: "Words", items: [word("hola", "hello", "greeting", [evidence("Hola", "Hello", 0, 4, "kept-essential")])] }];
       group.words[0].items.push(word("saludo", "greeting", "greeting"));

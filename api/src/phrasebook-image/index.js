@@ -1,6 +1,7 @@
 'use strict';
 
 const sharp = require('sharp');
+const log = require('../log');
 
 const IMAGE_MODEL = 'black-forest-labs/flux.2-klein-4b';
 const MAX_FILE_BYTES = 6 * 1024 * 1024;
@@ -153,14 +154,14 @@ async function handlePhrasebookImage(req, res) {
   if (req.aborted || res.destroyed) disconnect();
   try {
     const response = await performPhrasebookImage(req.body, { signal: controller.signal });
-    console.log({ event: 'usage', route: 'phrasebook-image', ...response.usage, failureLevel: 0 });
+    log.info({ event: 'usage', route: 'phrasebook-image', ...response.usage, failureLevel: 0 });
     if (!controller.signal.aborted) return res.status(200).json(response);
   } catch (error) {
     const status = error.status || 502;
     if (status === 400) {
-      console.warn({ event: 'request_invalid', route: 'phrasebook-image', failureLevel: 2, status, error: error.message });
+      log.warn({ event: 'request_invalid', route: 'phrasebook-image', failureLevel: 2, status, error: error.message });
     } else {
-      console.error({ event: 'request_failed', route: 'phrasebook-image', failureLevel: 2, status });
+      log.error({ event: 'request_failed', route: 'phrasebook-image', failureLevel: 2, status });
     }
     if (!controller.signal.aborted) return res.status(status).json({ error: error.message });
   } finally {

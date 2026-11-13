@@ -138,25 +138,137 @@ test('invalid generation and translation retry only their logical topic', async 
   assert.equal(result.usage.inputTokens, 60);
 });
 
-test('valid independent overflow clamps family order without singletons, while malformed tails reject', () => {
+test('a truncated English reply spends the validation retry; a provider failure does not', async () => {
+  const truncated = () => Object.assign(new Error('OpenRouter returned an empty, truncated, or incomplete completion'), {
+    status: 502, incomplete: true, reply: { model: 'deepseek/deepseek-v4.1-flash', usage: { inputTokens: 1, outputTokens: 6000 } },
+  });
+  let calls = 0;
+  const result = await run(async () => {
+    if (++calls === 1) throw truncated();
+    return reply({ topics: [second] });
+  }, async () => reply(secondTranslation), {}, { ...input, checklist: [second.title] });
+  assert.equal(calls, 2);
+  assert.equal(result.groups.length, 1);
+  calls = 0;
+  await assert.rejects(run(async () => { calls++; throw truncated(); }, async () => reply(secondTranslation), {}, { ...input, checklist: [second.title] }), error => error.status === 502);
+  assert.equal(calls, 2);
+  calls = 0;
+  await assert.rejects(run(async () => { calls++; throw Object.assign(new Error('OpenRouter request failed'), { status: 500 }); }, async () => reply(secondTranslation), {}, { ...input, checklist: [second.title] }));
+  assert.equal(calls, 1);
+});
+
+test('count overruns keep every item and flag each section above its limit', async (t) => {
+  const warnings = [];
+  t.mock.method(console, 'warn', line => warnings.push(JSON.parse(line)));
+  const turns = count => Array.from({ length: count }, (_, turn) => ({ speaker: turn % 2 ? 'partner' : 'you', text: [`Turn ${turn}`] }));
   const family = (count, title) => ({ title, items: Array.from({ length: count }, (_, i) => `${title} ${i}`) });
-  const topic = { ...first, thingsToSay: Array.from({ length: 9 }, (_, i) => `Need ${i}`), words: [family(6, 'A'), family(3, 'B'), family(4, 'C')] };
-  const generated = validateGenerationResponse(JSON.stringify({ topics: [topic] }), [first.title]);
-  assert.equal(generated.failureLevel, 1);
-  assert.deepEqual(generated.topics[0].thingsToSay, topic.thingsToSay.slice(0, 8));
-  assert.deepEqual(generated.topics[0].words, topic.words.slice(0, 2));
-  assert.deepEqual(normalized({ ...topic, words: [family(6, 'A'), family(7, 'B')] }).words, [family(6, 'A'), family(4, 'B')]);
-  for (const invalid of [
-    { ...topic, thingsToSay: [...topic.thingsToSay, ''] },
-    { ...topic, words: [...topic.words, { title: 'Bad', items: ['valid', 1] }] },
-    { ...topic, words: [...topic.words, { title: 'Bad', items: ['single'] }] },
-    { ...first, thingsToSay: [] }, { ...first, words: undefined },
-    { ...first, exampleConversation: Array(11).fill(first.exampleConversation[0]) },
-    { ...first, exampleConversation: [first.exampleConversation[0], first.exampleConversation[0]] },
-    { ...first, likelyExchanges: [{ ...first.likelyExchanges[0], lines: [{ speaker: 'you', text: ['A'] }, { speaker: 'you', text: ['B'] }] }] },
-    { ...first, likelyExchanges: [{ ...first.likelyExchanges[0], lines: [{ speaker: 'you', text: ['A', 'B', 'C', 'D'] }, { speaker: 'partner', text: ['E'] }] }] },
-    { ...first, title: 'Other' }, { ...first, featuredPhraseIds: [] },
-  ]) assert.throws(() => validateGenerationResponse(JSON.stringify({ topics: [invalid] }), [first.title]));
+  const topic = {
+    title: 'Prepare',
+    thingsToSay: Array.from({ length: 9 }, (_, i) => `Need ${i}`),
+    likelyExchanges: [
+      { title: 'Long', lines: turns(7) },
+      { title: 'Options', lines: [{ speaker: 'you', text: ['A', 'B', 'C', 'D'] }, { speaker: 'partner', text: ['E'] }] },
+      { title: 'Tolerated', lines: turns(6) },
+      { title: 'Short', lines: turns(2) },
+      { title: 'Extra', lines: turns(2) },
+    ],
+    words: [family(6, 'A'), family(5, 'B')],
+    exampleConversation: turns(13).map(line => ({ speaker: line.speaker, text: line.text[0] })),
+  };
+  const source = flattenTopic(normalized(topic));
+  const translation = { phrases: source.phrases.map((_, i) => `Frase ${i}`), words: source.words.map((_, i) => ({ target: `palabra ${i}`, partOfSpeech: 'noun', senseKey: `word-${i}` })) };
+  const result = await run(async () => reply({ topics: [topic] }), async () => reply(translation), {}, { ...input, checklist: [topic.title] });
+  const group = result.groups[0];
+  assert.equal(group.thingsToSay.length, 9);
+  assert.deepEqual(group.likelyExchanges.map(exchange => exchange.lines.length), [7, 2, 6, 2, 2]);
+  assert.equal(group.likelyExchanges[1].lines[0].responses.length, 4);
+  assert.equal(group.exampleConversation.length, 13);
+  assert.deepEqual(group.words.map(item => item.items.length), [6, 5]);
+  const overrun = (section, received, limit, location = {}) => ({ code: 'count-overrun', groupIndex: 0, section, received, limit, ...location });
+  assert.deepEqual(result.flags, [
+    overrun('thingsToSay', 9, 8),
+    overrun('likelyExchanges', 5, 4),
+    overrun('exchangeTurns', 7, 6, { exchangeIndex: 0 }),
+    overrun('responses', 4, 3, { exchangeIndex: 1, lineIndex: 0 }),
+    overrun('exampleConversation', 13, 12),
+    overrun('words', 11, 10),
+  ]);
+  assert.deepEqual(warnings.filter(entry => entry.event === 'phrasebook_flag' && entry.code === 'count-overrun').map(entry => entry.section),
+    ['thingsToSay', 'likelyExchanges', 'exchangeTurns', 'responses', 'exampleConversation', 'words']);
+});
+
+test('English repair drops empty items, merges lone words, keeps repeated speakers and flags each change', () => {
+  const repair = topic => {
+    const result = validateGenerationResponse(JSON.stringify({ topics: [topic] }), [first.title]);
+    return { topic: result.topics[0], flags: result.flags[0] };
+  };
+  const dropped = (section, reason = 'invalid-entry') => ({ code: 'content-dropped', section, reason });
+  let result = repair({ ...first, thingsToSay: [...first.thingsToSay, '', 7] });
+  assert.deepEqual(result.topic.thingsToSay, first.thingsToSay);
+  assert.deepEqual(result.flags, [dropped('thingsToSay'), dropped('thingsToSay')]);
+
+  const family = (title, ...items) => ({ title, items });
+  const words = list => repair({ ...first, words: list });
+  result = words([family('A', 'a1', 'a2'), family('B', 'b1'), family('C', 'c1', '')]);
+  assert.deepEqual(result.topic.words, [family('A', 'a1', 'a2', 'b1', 'c1')]);
+  assert.deepEqual(result.flags, [dropped('words'), { code: 'word-family-merged', section: 'words', familyIndex: 0 }, { code: 'word-family-merged', section: 'words', familyIndex: 0 }]);
+  assert.deepEqual(words([family('B', 'b1'), family('A', 'a1', 'a2')]).topic.words, [family('A', 'a1', 'a2', 'b1')]);
+  assert.deepEqual(words([family('A', 'a1'), family('B', 'b1')]).topic.words, [family('A', 'a1', 'b1')]);
+  result = words([family('A', 'a1')]);
+  assert.deepEqual(result.topic.words, []);
+  assert.deepEqual(result.flags, [dropped('words', 'single-word-family')]);
+
+  const repeated = [{ speaker: 'you', text: ['A'] }, { speaker: 'you', text: ['B'] }, { speaker: 'partner', text: ['C'] }];
+  result = repair({
+    ...first,
+    likelyExchanges: [
+      { title: 'Broken', lines: [{ speaker: 'you', text: [''] }, { speaker: 'partner', text: ['E'] }] },
+      { title: 'Twice', lines: repeated },
+    ],
+    exampleConversation: [...first.exampleConversation, { speaker: 'partner', text: 'Again.' }, { speaker: 'nobody', text: 'Bad.' }],
+  });
+  assert.deepEqual(result.topic.likelyExchanges, [{ title: 'Twice', lines: repeated }]);
+  assert.equal(result.topic.exampleConversation.length, 3);
+  assert.deepEqual(result.flags, [
+    dropped('likelyExchanges'), dropped('likelyExchanges', 'too-few-turns'),
+    { code: 'speaker-repeated', section: 'likelyExchanges', exchangeIndex: 0, lineIndex: 1 },
+    dropped('exampleConversation'),
+    { code: 'speaker-repeated', section: 'exampleConversation', lineIndex: 2 },
+  ]);
+
+  result = repair({ ...first, likelyExchanges: [], exampleConversation: [first.exampleConversation[0]] });
+  assert.deepEqual([result.topic.likelyExchanges, result.topic.exampleConversation], [[], []]);
+  assert.deepEqual(result.flags.slice(-2), [
+    { code: 'section-missing', section: 'likelyExchanges' }, { code: 'section-missing', section: 'exampleConversation' },
+  ]);
+  for (const unreadable of [{ ...first, title: 'Other' }, { ...first, featuredPhraseIds: [] }]) {
+    assert.throws(() => repair(unreadable));
+  }
+  assert.throws(() => validateGenerationResponse('{bad', [first.title]));
+});
+
+test('an unusable section is retried, merged from the next attempt, and otherwise left missing instead of failing', async () => {
+  const translate = async prompt => {
+    const source = flattenTopic(data(prompt).topic);
+    return reply({ phrases: source.phrases.map(phrase => `ES ${phrase}`), words: source.words.map((_, i) => ({ target: `palabra ${i}`, partOfSpeech: 'noun', senseKey: `word-${i}` })) });
+  };
+  const request = { ...input, checklist: [second.title] };
+  const retried = { ...second, thingsToSay: ['Second attempt.'] };
+  let calls = 0;
+  let result = await run(async () => reply({ topics: [++calls === 1 ? { ...second, likelyExchanges: [] } : retried] }), translate, {}, request);
+  assert.equal(calls, 2);
+  assert.deepEqual(result.groups[0].thingsToSay.map(item => item.card.translation), second.thingsToSay, 'valid sections stay from the first attempt');
+  assert.deepEqual(result.groups[0].likelyExchanges.map(exchange => exchange.title), second.likelyExchanges.map(exchange => exchange.title));
+  assert.deepEqual(result.flags, []);
+
+  calls = 0;
+  result = await run(async () => { calls++; return reply({ topics: [{ ...second, likelyExchanges: [] }] }); }, translate, {}, request);
+  assert.equal(calls, 2);
+  assert.deepEqual(result.groups[0].likelyExchanges, []);
+  assert.deepEqual(result.flags, [{ code: 'section-missing', groupIndex: 0, section: 'likelyExchanges' }]);
+
+  const empty = { ...second, thingsToSay: [], likelyExchanges: [], exampleConversation: [] };
+  await assert.rejects(run(async () => reply({ topics: [empty] }), translate, {}, request), error => error.status === 502);
 });
 
 test('continuations with semantic branch mismatches remain non-blocking', () => {
@@ -302,7 +414,7 @@ test('client disconnect cancels the generation queue and removes response listen
 
 test('the overall deadline aborts work and unknown timeout charges are not reported as zero', async (t) => {
   const logs = [];
-  t.mock.method(console, 'log', entry => logs.push(entry));
+  t.mock.method(console, 'log', line => logs.push(JSON.parse(line)));
   let cancelled = 0;
   await assert.rejects(run(async (_prompt, { signal }) => new Promise((_resolve, reject) => signal.addEventListener('abort', () => { cancelled++; reject(signal.reason); }, { once: true })), healthyTranslation, { deadlineMs: 10 }), error => error.status === 502);
   assert.equal(cancelled, 2);

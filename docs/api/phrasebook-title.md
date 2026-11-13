@@ -3,7 +3,7 @@ kind: spec
 status: current
 summary: "POST /phrasebook-title contract: independent single-call English UI naming from the seed."
 sources: [api/src/phrasebook-title/index.js, api/src/phrasebook-title/prompt.js, api/src/phrasebook-title/prompt.txt, api/src/llms/timeout.js]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # POST /phrasebook-title

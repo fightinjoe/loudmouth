@@ -4,6 +4,7 @@ const { buildPhraseBreakdownPrompt } = require('./prompt');
 const { buildUsageReport } = require('../pricing');
 const { getBackendName } = require('../llm-config');
 const { callWithTimeout } = require('../llms/timeout');
+const log = require('../log');
 const {
   SCHEMA_VERSION,
   normalizeIdentityText,
@@ -358,7 +359,7 @@ async function performPhraseBreakdown(
     );
   } catch (error) {
     const event = error instanceof PhraseBreakdownTimeoutError ? 'llm_timeout' : 'llm_error';
-    console.error({
+    log.error({
       event,
       failureLevel: 2,
       route: 'phrase-breakdown',
@@ -377,10 +378,10 @@ async function performPhraseBreakdown(
     const usage = buildUsageReport(reply.model, reply.usage, durationMs);
     const response = { ...result, usage };
     validateBreakdownResponse(response, parsedRequest);
-    console.log({ event: 'usage', route: 'phrase-breakdown', llm: backendName, ...usage, failureLevel: response.flags.length > 0 ? 1 : 0 });
+    log.info({ event: 'usage', route: 'phrase-breakdown', llm: backendName, ...usage, failureLevel: response.flags.length > 0 ? 1 : 0 });
     return response;
   } catch (error) {
-    console.error({
+    log.error({
       event: 'validation_error',
       failureLevel: 2,
       route: 'phrase-breakdown',
@@ -397,7 +398,7 @@ async function performPhraseBreakdown(
 async function handlePhraseBreakdown(req, res, registry, opts = {}) {
   const parsed = parsePhraseBreakdownRequest(req.body || {});
   if (parsed.error) {
-    console.warn({ event: 'request_invalid', route: 'phrase-breakdown', failureLevel: 2, error: parsed.error });
+    log.warn({ event: 'request_invalid', route: 'phrase-breakdown', failureLevel: 2, error: parsed.error });
     return res.status(400).json({ error: parsed.error });
   }
 
@@ -405,7 +406,7 @@ async function handlePhraseBreakdown(req, res, registry, opts = {}) {
     const response = await performPhraseBreakdown(parsed.value, registry, opts);
     return res.status(200).json(response);
   } catch (error) {
-    console.error({ event: 'request_failed', route: 'phrase-breakdown', failureLevel: 2, status: error.status || 500 });
+    log.error({ event: 'request_failed', route: 'phrase-breakdown', failureLevel: 2, status: error.status || 500 });
     return res.status(error.status || 500).json({ error: error.message });
   }
 }

@@ -151,6 +151,28 @@ test('DeepSeek preserves reported cost and never double counts reasoning tokens'
   assert.equal(reply.usage.costUsd, 0);
 });
 
+test('DeepSeek routes by provider performance, enforces a supplied schema and marks truncated replies incomplete', async (t) => {
+  const { callDeepSeek } = require('../llms/openrouter');
+  setTestEnvironment(t, 'OPENROUTER_API_KEY', 'test-key');
+  const bodies = [];
+  let finish = 'stop';
+  t.mock.method(globalThis, 'fetch', async (_url, { body }) => {
+    bodies.push(JSON.parse(body));
+    return new Response(JSON.stringify({
+      model: 'deepseek/deepseek-v4.1-flash', provider: 'Together',
+      choices: [{ finish_reason: finish, message: { content: '{}' } }],
+    }), { status: 200 });
+  });
+  const schema = { type: 'object', additionalProperties: false, required: [], properties: {} };
+  await callDeepSeek(PROMPT, { responseJsonSchema: schema });
+  assert.deepEqual(bodies[0].provider, {
+    allow_fallbacks: true, require_parameters: true, data_collection: 'deny', ignore: ['wafer', 'novita', 'open-inference'], preferred_min_throughput: { p90: 150 },
+  });
+  assert.deepEqual(bodies[0].response_format, { type: 'json_schema', json_schema: { name: 'response', strict: true, schema } });
+  finish = 'length';
+  await assert.rejects(callDeepSeek(PROMPT), error => error.incomplete === true && error.status === 502);
+});
+
 test('generation and translation selectors reject unsupported backend roles', (t) => {
   const { getBackendName, getPhrasebookGenerationBackendName } = require('../llm-config');
   setTestEnvironment(t, 'PHRASEBOOK_GENERATION_BACKEND', 'deepseek-v4.1-flash');

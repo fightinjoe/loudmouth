@@ -1,7 +1,7 @@
 ---
 kind: ledger
 status: current
-summary: "Backlog of decided work without a milestone: creation-flow redesign, Spanish variants, phrasebook artwork, breakdown improvements, preset packs, placeholders, diagnostics mode, changing a remembered ability, dependency upkeep and prompt follow-ups; future work holds usage-based suggestions."
+summary: "Backlog of decided work without a milestone: creation-flow redesign, Spanish variants, phrasebook artwork, breakdown improvements, preset packs, placeholders, diagnostics mode, changing a remembered ability, dependency upkeep, DeepSeek load testing and prompt follow-ups; future work holds usage-based suggestions and partial retry of English sections."
 verified: 2026-11-13
 statuses:
   - open
@@ -16,6 +16,7 @@ Decided work not yet assigned to a milestone.
 
 | Date       | Status | Description                                                                                                      | Details                                          |
 | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 2026-11-13 | open | **API: DeepSeek load testing**<br>Load-test English generation and plan provider capacity and concurrency limits | [details](backlog/deepseek-load-testing.md) |
 | 2026-11-13 | open | **Content: Spanish variants**<br>Offer Spanish (Latin America) and Spanish (Spain) as separate languages | [details](backlog/spanish-variants.md) |
 | 2026-11-13 | done   | **UI: Phrasebook creation flow**<br>Implement the updated phrasebook creation flow from Figma                    | [details](backlog/creation-flow-figma.md)        |
 | 2026-11-13 | done   | **NPM install scripts**<br>Decide which blocked npm install scripts to allow and commit the setting              | [details](backlog/npm-install-scripts.md)        |
@@ -33,4 +34,5 @@ Decided work not yet assigned to a milestone.
 
 | Date       | Status | Description                                                                                          | Details                                       |
 | ---------- | ------ | ---------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 2026-11-13 | open | **API: partial retry**<br>Regenerate only a failed section of an English reply, compared with the merging approach | [details](backlog/partial-retry.md) |
 | 2026-11-13 | open   | **UX: Personalized suggestions**<br>Tailor suggested situations and phrasebooks to the learner's use | [details](backlog/usage-based-suggestions.md) |

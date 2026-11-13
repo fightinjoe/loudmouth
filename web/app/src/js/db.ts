@@ -1351,11 +1351,6 @@ function validateBackupGraph(backup: LibraryBackup): void {
             throw new Error(`Turn ${turnIndex} in exchange ${exchange.id} must have one speaker.`);
           }
         }
-        const first = rows[0];
-        if (first && rows.some((row) =>
-          (row.speaker === first.speaker) !== ((row.turnIndex! - first.turnIndex!) % 2 === 0))) {
-          throw new Error(`Exchange ${exchange.id} speakers must alternate between original turns.`);
-        }
       }
       for (const family of group.wordFamilies) {
         assertContiguousPositions(

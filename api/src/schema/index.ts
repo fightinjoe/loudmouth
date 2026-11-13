@@ -119,12 +119,48 @@ export type PhrasebookGroup = {
   exampleConversation: PhrasebookConversationLine[];
 };
 
-export type PhrasebookFlag = {
-  code: 'vocab-source-missing';
-  groupIndex: number;
-  wordIndex: number;
-  reason: 'unresolved';
+export type PhrasebookCountSection =
+  | 'thingsToSay'
+  | 'likelyExchanges'
+  | 'exchangeTurns'
+  | 'responses'
+  | 'exampleConversation'
+  | 'words';
+
+/** Counts above these limits are kept and reported with a `count-overrun` flag; they are never rejected. */
+export const PHRASEBOOK_COUNT_LIMITS: Readonly<Record<PhrasebookCountSection, number>> = Object.freeze({
+  thingsToSay: 8,
+  likelyExchanges: 4,
+  exchangeTurns: 6,
+  responses: 3,
+  exampleConversation: 12,
+  words: 10,
+});
+
+/** `exchangeIndex` locates `exchangeTurns` and `responses`; `lineIndex` locates `responses`. */
+export type PhrasebookCountOverrun = {
+  section: PhrasebookCountSection;
+  received: number;
+  limit: number;
+  exchangeIndex?: number;
+  lineIndex?: number;
 };
+
+export type PhrasebookSection = 'thingsToSay' | 'likelyExchanges' | 'words' | 'exampleConversation';
+
+/**
+ * Flags describe recoveries in an accepted response. English repairs: `content-dropped` (an invalid entry,
+ * an exchange with fewer than two usable turns, or a lone word with no family to join), `word-family-merged`
+ * (a one-word family's word moved into `familyIndex`), `speaker-repeated` (a kept turn by the same speaker as
+ * the turn before it) and `section-missing` (no attempt produced a usable section; it is empty).
+ */
+export type PhrasebookFlag =
+  | { code: 'vocab-source-missing'; groupIndex: number; wordIndex: number; reason: 'unresolved' }
+  | ({ code: 'count-overrun'; groupIndex: number } & PhrasebookCountOverrun)
+  | { code: 'content-dropped'; groupIndex: number; section: PhrasebookSection; reason: 'invalid-entry' | 'too-few-turns' | 'single-word-family' }
+  | { code: 'word-family-merged'; groupIndex: number; section: 'words'; familyIndex: number }
+  | { code: 'speaker-repeated'; groupIndex: number; section: 'likelyExchanges' | 'exampleConversation'; exchangeIndex?: number; lineIndex: number }
+  | { code: 'section-missing'; groupIndex: number; section: PhrasebookSection };
 
 export type PhrasebookResponse = {
   schemaVersion: typeof PHRASEBOOK_SCHEMA_VERSION;
@@ -250,9 +286,8 @@ const MAX_SENSE_KEY = 120;
 const MAX_GROUP_TITLE = 120;
 const MAX_PHRASEBOOK_TITLE = 200;
 const MAX_GROUPS = 8;
-const MAX_THINGS_TO_SAY = 8;
-const MAX_EXAMPLE_TURNS = 10;
-const MAX_PHRASEBOOK_WORDS = 10;
+const COUNT_SECTIONS = Object.keys(PHRASEBOOK_COUNT_LIMITS) as PhrasebookCountSection[];
+const PHRASEBOOK_SECTIONS: readonly PhrasebookSection[] = ['thingsToSay', 'likelyExchanges', 'words', 'exampleConversation'];
 const MAX_CHUNKS = 32;
 const MAX_WORDS_PER_CHUNK = 32;
 const SENSE_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -634,9 +669,9 @@ function validatePhrasebookGroups(groups: unknown[], prefix: string): Set<string
     uniqueId(group.id, `${groupPrefix}.id`);
     requiredString(group.title, `${groupPrefix}.title`, MAX_GROUP_TITLE);
     const phrases = new Map<string, Phrase>();
-    const array = (value: unknown, minimum: number, maximum: number, field: string): unknown[] => {
-      if (!Array.isArray(value) || value.length < minimum || value.length > maximum) {
-        throw new Error(`${field} must contain ${minimum} to ${maximum} items`);
+    const array = (value: unknown, minimum: number, field: string): unknown[] => {
+      if (!Array.isArray(value) || value.length < minimum) {
+        throw new Error(`${field} must contain at least ${minimum} items`);
       }
       return value;
     };
@@ -649,47 +684,47 @@ function validatePhrasebookGroups(groups: unknown[], prefix: string): Set<string
       checkLanguage(card, `${field}.card`);
       phrases.set(id, card);
     };
-    const turns = (value: unknown, maximum: number, field: string, options: boolean): void => {
-      const entries = array(value, 2, maximum, field);
-      let previousSpeaker: string | undefined;
-      entries.forEach((value, index) => {
+    const turns = (value: unknown, minimum: number, field: string, options: boolean): void => {
+      // Consecutive turns may share a speaker: a speaker can say two things in a row (flagged `speaker-repeated`).
+      array(value, minimum, field).forEach((value, index) => {
         const linePrefix = `${field}[${index}]`;
         const line = objectValue(value, linePrefix);
-        const speaker = enumValue(line.speaker, SPEAKERS, `${linePrefix}.speaker`);
-        if (speaker === previousSpeaker) throw new Error(`${field} must alternate speakers`);
-        previousSpeaker = speaker;
+        enumValue(line.speaker, SPEAKERS, `${linePrefix}.speaker`);
         if (options) {
           assertExactFields(line, ['speaker', 'responses'], linePrefix);
-          array(line.responses, 1, 3, `${linePrefix}.responses`).forEach((entry, option) => {
+          array(line.responses, 1, `${linePrefix}.responses`).forEach((entry, option) => {
             phrase(entry, `${linePrefix}.responses[${option}]`);
           });
         } else phrase(line, linePrefix, true);
       });
     };
-    array(group.thingsToSay, 1, MAX_THINGS_TO_SAY, `${groupPrefix}.thingsToSay`).forEach((entry, index) => {
+    // Things to say, Likely exchanges and Example conversation may be empty only when flagged `section-missing`.
+    array(group.thingsToSay, 0, `${groupPrefix}.thingsToSay`).forEach((entry, index) => {
       phrase(entry, `${groupPrefix}.thingsToSay[${index}]`);
     });
-    array(group.likelyExchanges, 1, 4, `${groupPrefix}.likelyExchanges`).forEach((value, index) => {
+    array(group.likelyExchanges, 0, `${groupPrefix}.likelyExchanges`).forEach((value, index) => {
       const field = `${groupPrefix}.likelyExchanges[${index}]`;
       const exchange = objectValue(value, field);
       assertExactFields(exchange, ['id', 'title', 'lines'], field);
       uniqueId(exchange.id, `${field}.id`);
       requiredString(exchange.title, `${field}.title`, MAX_GROUP_TITLE);
-      turns(exchange.lines, 4, `${field}.lines`, true);
+      turns(exchange.lines, 2, `${field}.lines`, true);
     });
-    turns(group.exampleConversation, MAX_EXAMPLE_TURNS, `${groupPrefix}.exampleConversation`, false);
+    turns(group.exampleConversation, 0, `${groupPrefix}.exampleConversation`, false);
+    if ((group.exampleConversation as unknown[]).length === 1) {
+      throw new Error(`${groupPrefix}.exampleConversation must be empty or contain at least 2 lines`);
+    }
     const candidates: { value: unknown; prefix: string }[] = [];
-    array(group.words, 0, Math.floor(MAX_PHRASEBOOK_WORDS / 2), `${groupPrefix}.words`).forEach((value, index) => {
+    array(group.words, 0, `${groupPrefix}.words`).forEach((value, index) => {
       const field = `${groupPrefix}.words[${index}]`;
       const family = objectValue(value, field);
       assertExactFields(family, ['id', 'title', 'items'], field);
       uniqueId(family.id, `${field}.id`);
       requiredString(family.title, `${field}.title`, MAX_GROUP_TITLE);
-      array(family.items, 2, MAX_PHRASEBOOK_WORDS, `${field}.items`).forEach((item, itemIndex) => {
+      array(family.items, 2, `${field}.items`).forEach((item, itemIndex) => {
         candidates.push({ value: item, prefix: `${field}.items[${itemIndex}]` });
       });
     });
-    if (candidates.length > MAX_PHRASEBOOK_WORDS) throw new Error(`${groupPrefix}.words must contain at most ${MAX_PHRASEBOOK_WORDS} words total`);
     for (let wordIndex = 0; wordIndex < candidates.length; wordIndex += 1) {
       const { value, prefix } = candidates[wordIndex]!;
       const candidate = validateCandidate(value, prefix);
@@ -728,6 +763,27 @@ export function validatePhrasebookGroup(value: unknown, prefix = 'group'): Phras
   return value as PhrasebookGroup;
 }
 
+/** Every count in one group above PHRASEBOOK_COUNT_LIMITS, in display order. */
+export function phrasebookCountOverruns(group: PhrasebookGroup): PhrasebookCountOverrun[] {
+  const overruns: PhrasebookCountOverrun[] = [];
+  const check = (section: PhrasebookCountSection, received: number, location: { exchangeIndex?: number; lineIndex?: number } = {}): void => {
+    const limit = PHRASEBOOK_COUNT_LIMITS[section];
+    if (received > limit) overruns.push({ section, received, limit, ...location });
+  };
+  check('thingsToSay', group.thingsToSay.length);
+  check('likelyExchanges', group.likelyExchanges.length);
+  group.likelyExchanges.forEach((exchange, exchangeIndex) => {
+    check('exchangeTurns', exchange.lines.length, { exchangeIndex });
+    exchange.lines.forEach((line, lineIndex) => check('responses', line.responses.length, { exchangeIndex, lineIndex }));
+  });
+  check('exampleConversation', group.exampleConversation.length);
+  check('words', group.words.reduce((sum, family) => sum + family.items.length, 0));
+  return overruns;
+}
+
+const overrunIdentity = (groupIndex: number, overrun: { section: string; exchangeIndex?: unknown; lineIndex?: unknown }): string =>
+  JSON.stringify([groupIndex, overrun.section, overrun.exchangeIndex ?? null, overrun.lineIndex ?? null]);
+
 export function validatePhrasebookResponse(value: unknown): PhrasebookResponse {
   const response = objectValue(value, 'response');
   assertExactFields(response, ['schemaVersion', 'title', 'groups', 'flags', 'usage'], 'response');
@@ -740,20 +796,82 @@ export function validatePhrasebookResponse(value: unknown): PhrasebookResponse {
   }
   const missingSourceCandidates = validatePhrasebookGroups(response.groups, 'response.groups');
   if (!Array.isArray(response.flags)) throw new Error('response.flags must be an array');
+  const groups = response.groups as PhrasebookGroup[];
+  const overruns = new Map<string, PhrasebookCountOverrun>();
+  groups.forEach((group, groupIndex) => {
+    for (const overrun of phrasebookCountOverruns(group)) overruns.set(overrunIdentity(groupIndex, overrun), overrun);
+  });
+  const sectionMissing = (groupIndex: number, section: string): string => JSON.stringify(['section-missing', groupIndex, section]);
   const seenFlags = new Set<string>();
   for (let index = 0; index < response.flags.length; index += 1) {
     const prefix = `response.flags[${index}]`;
     const flag = objectValue(response.flags[index], prefix);
-    assertExactFields(flag, ['code', 'groupIndex', 'wordIndex', 'reason'], prefix);
-    if (flag.code !== 'vocab-source-missing') throw new Error(`${prefix}.code must be "vocab-source-missing"`);
+    const code = enumValue(flag.code, [
+      'vocab-source-missing', 'count-overrun', 'content-dropped', 'word-family-merged', 'speaker-repeated', 'section-missing',
+    ], `${prefix}.code`);
     const groupIndex = nonnegativeInteger(flag.groupIndex, `${prefix}.groupIndex`);
-    const wordIndex = nonnegativeInteger(flag.wordIndex, `${prefix}.wordIndex`);
-    enumValue(flag.reason, ['unresolved'], `${prefix}.reason`);
-    const identity = `${groupIndex}:${wordIndex}`;
-    if (seenFlags.has(identity)) throw new Error(`${prefix} duplicates an earlier flag`);
-    seenFlags.add(identity);
-    if (!missingSourceCandidates.has(identity)) throw new Error(`${prefix} must reference vocabulary without source evidence`);
+    const group = groups[groupIndex];
+    if (group === undefined) throw new Error(`${prefix}.groupIndex must reference a group`);
+    // Flags with an identity may appear once; drops and merges can repeat.
+    let identity: string | undefined;
+    if (code === 'vocab-source-missing') {
+      assertExactFields(flag, ['code', 'groupIndex', 'wordIndex', 'reason'], prefix);
+      const wordIndex = nonnegativeInteger(flag.wordIndex, `${prefix}.wordIndex`);
+      enumValue(flag.reason, ['unresolved'], `${prefix}.reason`);
+      identity = `${groupIndex}:${wordIndex}`;
+      if (!missingSourceCandidates.has(identity)) throw new Error(`${prefix} must reference vocabulary without source evidence`);
+    } else if (code === 'count-overrun') {
+      const section = enumValue(flag.section, COUNT_SECTIONS, `${prefix}.section`);
+      const location = section === 'responses' ? ['exchangeIndex', 'lineIndex'] : section === 'exchangeTurns' ? ['exchangeIndex'] : [];
+      assertExactFields(flag, ['code', 'groupIndex', 'section', 'received', 'limit', ...location], prefix);
+      location.forEach((field) => nonnegativeInteger(flag[field], `${prefix}.${field}`));
+      const received = nonnegativeInteger(flag.received, `${prefix}.received`);
+      const limit = nonnegativeInteger(flag.limit, `${prefix}.limit`);
+      identity = overrunIdentity(groupIndex, { ...flag, section });
+      const expected = overruns.get(identity);
+      if (expected === undefined || expected.received !== received || expected.limit !== limit) {
+        throw new Error(`${prefix} must report a count above its limit`);
+      }
+    } else if (code === 'content-dropped') {
+      assertExactFields(flag, ['code', 'groupIndex', 'section', 'reason'], prefix);
+      enumValue(flag.section, PHRASEBOOK_SECTIONS, `${prefix}.section`);
+      enumValue(flag.reason, ['invalid-entry', 'too-few-turns', 'single-word-family'], `${prefix}.reason`);
+    } else if (code === 'word-family-merged') {
+      assertExactFields(flag, ['code', 'groupIndex', 'section', 'familyIndex'], prefix);
+      enumValue(flag.section, ['words'], `${prefix}.section`);
+      if (nonnegativeInteger(flag.familyIndex, `${prefix}.familyIndex`) >= group.words.length) {
+        throw new Error(`${prefix}.familyIndex must reference a word family`);
+      }
+    } else if (code === 'speaker-repeated') {
+      const section = enumValue(flag.section, ['likelyExchanges', 'exampleConversation'], `${prefix}.section`);
+      const exchange = section === 'likelyExchanges';
+      assertExactFields(flag, ['code', 'groupIndex', 'section', ...(exchange ? ['exchangeIndex'] : []), 'lineIndex'], prefix);
+      const lines: { speaker: string }[] | undefined = exchange
+        ? group.likelyExchanges[nonnegativeInteger(flag.exchangeIndex, `${prefix}.exchangeIndex`)]?.lines
+        : group.exampleConversation;
+      const lineIndex = nonnegativeInteger(flag.lineIndex, `${prefix}.lineIndex`);
+      if (lines === undefined || lineIndex < 1 || lineIndex >= lines.length || lines[lineIndex]!.speaker !== lines[lineIndex - 1]!.speaker) {
+        throw new Error(`${prefix} must reference a turn that repeats the previous speaker`);
+      }
+      identity = JSON.stringify(['speaker-repeated', groupIndex, section, flag.exchangeIndex ?? null, lineIndex]);
+    } else {
+      assertExactFields(flag, ['code', 'groupIndex', 'section'], prefix);
+      const section = enumValue(flag.section, PHRASEBOOK_SECTIONS, `${prefix}.section`);
+      if (group[section].length !== 0) throw new Error(`${prefix} must reference an empty section`);
+      identity = sectionMissing(groupIndex, section);
+    }
+    if (identity !== undefined) {
+      if (seenFlags.has(identity)) throw new Error(`${prefix} duplicates an earlier flag`);
+      seenFlags.add(identity);
+    }
   }
+  groups.forEach((group, groupIndex) => {
+    for (const section of ['thingsToSay', 'likelyExchanges', 'exampleConversation'] as const) {
+      if (group[section].length === 0 && !seenFlags.has(sectionMissing(groupIndex, section))) {
+        throw new Error(`response.groups[${groupIndex}].${section} is empty without a section-missing flag`);
+      }
+    }
+  });
   validateUsage(response.usage, 'response.usage');
   return value as PhrasebookResponse;
 }

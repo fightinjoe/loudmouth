@@ -3,7 +3,7 @@ kind: spec
 status: current
 summary: "POST /phrasebook-image contract: one nonblocking 16:9 PNG cover via OpenRouter, with PNG acceptance bounds."
 sources: [api/src/phrasebook-image/index.js]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # POST /phrasebook-image

@@ -133,12 +133,10 @@ test('v4 phrasebook evidence stays in its topic across options and examples, wit
     value => { value.groups[0].thingsToSay = []; },
     value => { value.groups[0].thingsToSay[0].speaker = 'you'; },
     value => { value.groups[0].exampleConversation[0].alternative = true; },
-    value => { value.groups[0].exampleConversation[1].speaker = 'you'; },
-    value => { value.groups[0].likelyExchanges[0].lines[1].speaker = 'partner'; },
+    value => { value.groups[0].exampleConversation = [value.groups[0].exampleConversation[0]]; },
+    value => { value.groups[0].likelyExchanges = []; },
     value => { value.groups[0].likelyExchanges[0].lines[0].responses = []; },
-    value => { value.groups[0].likelyExchanges[0].lines[0].responses.push(phrase(10),phrase(11)); },
     value => { value.groups[0].words[0].items.pop(); },
-    value => { value.groups[0].words[0].items = Array(11).fill(value.groups[0].words[0].items[1]); },
     value => { value.groups[0].likelyExchanges[0].id = uuid(2); },
     value => { value.groups[0].words[0].id = uuid(3); },
     value => { value.groups[0].exampleConversation[0].id = uuid(4); },
@@ -148,6 +146,13 @@ test('v4 phrasebook evidence stays in its topic across options and examples, wit
     value => { value.groups[0].exampleConversation[1].card.lang = 'es'; },
     value => { value.flags = [{code:'vocab-source-missing',groupIndex:0,wordIndex:1,reason:'omitted'}]; },
     value => { value.flags = [{code:'vocab-source-missing',groupIndex:0,wordIndex:0,reason:'unresolved'}]; },
+    value => { value.flags = [{code:'count-overrun',groupIndex:0,section:'responses',received:2,limit:3,exchangeIndex:0,lineIndex:0}]; },
+    value => { value.flags = [{code:'count-overrun',groupIndex:0,section:'thingsToSay',received:9,limit:8}]; },
+    value => { value.flags = [{code:'section-missing',groupIndex:0,section:'thingsToSay'}]; },
+    value => { value.flags = [{code:'speaker-repeated',groupIndex:0,section:'exampleConversation',lineIndex:1}]; },
+    value => { value.flags = [{code:'word-family-merged',groupIndex:0,section:'words',familyIndex:1}]; },
+    value => { value.flags = [{code:'content-dropped',groupIndex:0,section:'words',reason:'unknown'}]; },
+    value => { value.flags = [{code:'content-dropped',groupIndex:1,section:'words',reason:'invalid-entry'}]; },
   ]) {
     const invalid = structuredClone(response);
     mutate(invalid);
@@ -156,6 +161,30 @@ test('v4 phrasebook evidence stays in its topic across options and examples, wit
   const flagged = structuredClone(response);
   flagged.flags = [{code:'vocab-source-missing',groupIndex:0,wordIndex:1,reason:'unresolved'}];
   assert.equal(validatePhrasebookResponse(flagged).flags[0].reason,'unresolved');
+  const overrun = structuredClone(response);
+  overrun.groups[0].likelyExchanges[0].lines[0].responses.push(phrase(10),phrase(11));
+  const overrunFlag = {code:'count-overrun',groupIndex:0,section:'responses',received:4,limit:3,exchangeIndex:0,lineIndex:0};
+  overrun.flags = [overrunFlag];
+  assert.deepEqual(validatePhrasebookResponse(overrun).flags,[overrunFlag]);
+  for (const flags of [
+    [{...overrunFlag,received:5}],
+    [{...overrunFlag,limit:4}],
+    [{...overrunFlag,lineIndex:1}],
+    [{code:'count-overrun',groupIndex:0,section:'responses',received:4,limit:3,exchangeIndex:0}],
+    [overrunFlag,overrunFlag],
+  ]) assert.throws(() => validatePhrasebookResponse({...structuredClone(overrun),flags}));
+  const repaired = structuredClone(response);
+  repaired.groups[0].exampleConversation[1].speaker = 'you';
+  repaired.groups[0].likelyExchanges = [];
+  repaired.flags = [
+    {code:'speaker-repeated',groupIndex:0,section:'exampleConversation',lineIndex:1},
+    {code:'section-missing',groupIndex:0,section:'likelyExchanges'},
+    {code:'word-family-merged',groupIndex:0,section:'words',familyIndex:0},
+    {code:'content-dropped',groupIndex:0,section:'thingsToSay',reason:'invalid-entry'},
+    {code:'content-dropped',groupIndex:0,section:'thingsToSay',reason:'invalid-entry'},
+  ];
+  assert.equal(validatePhrasebookResponse(repaired).flags.length,5);
+  assert.throws(() => validatePhrasebookResponse({...structuredClone(repaired),flags:repaired.flags.slice(0,1)}), /section-missing/);
   const foreign = structuredClone(response);
   const other = {
     id:uuid(20),title:'Other',thingsToSay:[phrase(21)],

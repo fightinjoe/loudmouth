@@ -3,7 +3,7 @@ kind: spec
 status: current
 summary: "POST /context contract: clarifying questions, conversation checklist and seed-based image prompt from one model call."
 sources: [api/src/context/index.js, api/src/context/prompt.js, api/src/context/prompt.txt, api/src/ability.js, api/src/llms/timeout.js]
-verified: 2026-11-12
+verified: 2026-11-13
 ---
 
 # POST /context

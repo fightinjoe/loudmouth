@@ -24,6 +24,7 @@ const { buildContextPrompt } = require('./prompt');
 const { buildUsageReport } = require('../pricing');
 const { getBackendName } = require('../llm-config');
 const { callWithTimeout } = require('../llms/timeout');
+const log = require('../log');
 
 const { sanitizeAbility } = require('../ability');
 
@@ -171,9 +172,9 @@ async function performContext(
     );
   } catch (err) {
     if (err instanceof ContextTimeoutError) {
-      console.error({ event: 'llm_timeout', route: 'context', llm: backendName, error: err.message, failureLevel: 2 });
+      log.error({ event: 'llm_timeout', route: 'context', llm: backendName, error: err.message, failureLevel: 2 });
     } else {
-      console.error({ event: 'llm_error', route: 'context', llm: backendName, error: err.message, stack: err.stack, failureLevel: 2 });
+      log.error({ event: 'llm_error', route: 'context', llm: backendName, error: err.message, stack: err.stack, failureLevel: 2 });
     }
     const wrapped = new Error('LLM request failed');
     wrapped.status = 502;
@@ -185,21 +186,21 @@ async function performContext(
   try {
     result = validateContextResponse(reply.text);
   } catch (err) {
-    console.error({ event: 'validation_error', route: 'context', llm: backendName, raw: reply.text, error: err.message, failureLevel: 2 });
+    log.error({ event: 'validation_error', route: 'context', llm: backendName, raw: reply.text, error: err.message, failureLevel: 2 });
     const wrapped = new Error('Invalid response from LLM');
     wrapped.status = 502;
     throw wrapped;
   }
 
   if (result.warnings.length > 0) {
-    console.warn({ event: 'context_clamped', llm: backendName, seed, warnings: result.warnings, failureLevel: 1 });
+    log.warn({ event: 'context_clamped', llm: backendName, seed, warnings: result.warnings, failureLevel: 1 });
   }
 
   const usageReport = buildUsageReport(reply.model, reply.usage, durationMs);
   const { questions, checklist, imagePrompt } = result.response;
   const failureLevel = result.warnings.length > 0 ? 1 : 0;
-  console.log({ event: 'context_ok', llm: backendName, language, questions: questions.length, checklist: checklist.length, seed, failureLevel });
-  console.log({ event: 'usage', route: 'context', llm: backendName, ...usageReport, failureLevel });
+  log.info({ event: 'context_ok', llm: backendName, language, questions: questions.length, checklist: checklist.length, seed, failureLevel });
+  log.info({ event: 'usage', route: 'context', llm: backendName, ...usageReport, failureLevel });
 
   return { questions, checklist, imagePrompt, usage: usageReport };
 }
@@ -213,7 +214,7 @@ async function performContext(
 async function handleContext(req, res, registry, opts = {}) {
   const parsed = parseContextRequest(req.body || {});
   if (parsed.error) {
-    console.warn({ event: 'request_invalid', route: 'context', failureLevel: 2, error: parsed.error });
+    log.warn({ event: 'request_invalid', route: 'context', failureLevel: 2, error: parsed.error });
     return res.status(400).json({
       error: parsed.error,
       ...(parsed.supported ? { supported: parsed.supported } : {}),
@@ -225,7 +226,7 @@ async function handleContext(req, res, registry, opts = {}) {
     return res.status(200).json(response);
   } catch (err) {
     const status = err.status || 500;
-    console.error({ event: 'request_failed', route: 'context', failureLevel: 2, status });
+    log.error({ event: 'request_failed', route: 'context', failureLevel: 2, status });
     return res.status(status).json({ error: err.message });
   }
 }

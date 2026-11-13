@@ -4,6 +4,7 @@ const { randomUUID } = require('node:crypto');
 const {
   PARTS_OF_SPEECH,
   PHRASEBOOK_SCHEMA_VERSION,
+  phrasebookCountOverruns,
   validateCard,
   validateCandidate,
 } = require('../schema');
@@ -15,6 +16,7 @@ const {
 
 const LANGUAGES = Object.freeze(['zh', 'ja', 'es', 'cs', 'uk']);
 const { ABILITIES, DEFAULT_ABILITY, sanitizeAbility } = require('../ability');
+const log = require('../log');
 
 const MAX_SEED_LENGTH = 200;
 const MAX_ANSWERS = 5;
@@ -23,8 +25,6 @@ const MAX_ANSWER_VALUE_LENGTH = 500;
 const MIN_CHECKLIST_ITEMS = 1;
 const MAX_CHECKLIST_ITEMS = 8;
 const MAX_CHECKLIST_ITEM_LENGTH = 120;
-const MAX_THINGS_TO_SAY = 8;
-const MAX_WORDS = 10;
 
 function isObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -125,7 +125,117 @@ function parseModelJson(raw) {
   return parsed;
 }
 
-function validateGenerationResponse(raw, checklist) {
+const GENERATION_SECTIONS = Object.freeze(['thingsToSay', 'likelyExchanges', 'words', 'exampleConversation']);
+const isBoundedString = value => typeof value === 'string' && value.trim() !== '' && value.length <= 2000;
+const isBoundedTitle = value => isBoundedString(value) && value.length <= MAX_CHECKLIST_ITEM_LENGTH;
+const hasOnlyFields = (value, allowed) => isObject(value) && Object.keys(value).every(field => allowed.includes(field));
+
+/** Keeps alternating or repeated turns; returns the kept turns and a flag for each repeated speaker. */
+function readTurns(lines, section, options, dropped, exchangeIndex) {
+  const kept = [];
+  for (const line of lines) {
+    const usable = hasOnlyFields(line, ['speaker', 'text']) && (line.speaker === 'you' || line.speaker === 'partner');
+    if (usable && options && Array.isArray(line.text)) {
+      const text = line.text.filter(isBoundedString);
+      // A turn with no usable response is one dropped entry; otherwise each invalid response is.
+      const drops = text.length > 0 ? line.text.length - text.length : 1;
+      for (let index = 0; index < drops; index++) dropped(section, 'invalid-entry');
+      if (text.length > 0) kept.push({ speaker: line.speaker, text });
+    } else if (usable && !options && isBoundedString(line.text)) {
+      kept.push({ speaker: line.speaker, text: line.text });
+    } else dropped(section, 'invalid-entry');
+  }
+  const repeats = [];
+  kept.forEach((line, lineIndex) => {
+    if (lineIndex > 0 && line.speaker === kept[lineIndex - 1].speaker) {
+      repeats.push({ code: 'speaker-repeated', section, ...(exchangeIndex === undefined ? {} : { exchangeIndex }), lineIndex });
+    }
+  });
+  return { lines: kept, repeats };
+}
+
+function readThingsToSay(value) {
+  if (!Array.isArray(value)) return null;
+  const flags = [];
+  const kept = value.filter(isBoundedString);
+  for (let index = kept.length; index < value.length; index++) flags.push({ code: 'content-dropped', section: 'thingsToSay', reason: 'invalid-entry' });
+  return kept.length > 0 ? { value: kept, flags } : null;
+}
+
+function readLikelyExchanges(value) {
+  if (!Array.isArray(value)) return null;
+  const flags = [];
+  const dropped = (section, reason) => flags.push({ code: 'content-dropped', section, reason });
+  const kept = [];
+  for (const exchange of value) {
+    if (!hasOnlyFields(exchange, ['title', 'lines']) || !isBoundedTitle(exchange.title) || !Array.isArray(exchange.lines)) {
+      dropped('likelyExchanges', 'invalid-entry');
+      continue;
+    }
+    const { lines, repeats } = readTurns(exchange.lines, 'likelyExchanges', true, dropped, kept.length);
+    if (lines.length < 2) {
+      dropped('likelyExchanges', 'too-few-turns');
+      continue;
+    }
+    kept.push({ title: exchange.title, lines });
+    flags.push(...repeats);
+  }
+  return kept.length > 0 ? { value: kept, flags } : null;
+}
+
+/** Invalid words are dropped; a family left with one word gives it to another family, or is dropped when none remains. */
+function readWords(value) {
+  if (!Array.isArray(value)) return null;
+  const flags = [];
+  const dropped = reason => flags.push({ code: 'content-dropped', section: 'words', reason });
+  const families = [];
+  for (const family of value) {
+    if (!hasOnlyFields(family, ['title', 'items']) || !isBoundedTitle(family.title) || !Array.isArray(family.items)) {
+      dropped('invalid-entry');
+      continue;
+    }
+    const items = family.items.filter(isBoundedString);
+    for (let index = items.length; index < family.items.length; index++) dropped('invalid-entry');
+    if (items.length > 0) families.push({ title: family.title, items });
+  }
+  const singles = families.filter(family => family.items.length === 1);
+  let kept = families.filter(family => family.items.length > 1);
+  if (kept.length === 0 && singles.length > 1) kept = [singles.shift()];
+  for (const single of singles) {
+    if (kept.length === 0) {
+      dropped('single-word-family');
+      continue;
+    }
+    // The nearest earlier kept family in reply order, else the first later one.
+    const position = families.indexOf(single);
+    const target = [...kept].reverse().find(family => families.indexOf(family) < position) ?? kept[0];
+    target.items.push(single.items[0]);
+    flags.push({ code: 'word-family-merged', section: 'words', target });
+  }
+  kept.sort((a, b) => families.indexOf(a) - families.indexOf(b));
+  for (const flag of flags) {
+    if (flag.code === 'word-family-merged') {
+      flag.familyIndex = kept.indexOf(flag.target);
+      delete flag.target;
+    }
+  }
+  return { value: kept, flags };
+}
+
+function readExampleConversation(value) {
+  if (!Array.isArray(value)) return null;
+  const flags = [];
+  const { lines, repeats } = readTurns(value, 'exampleConversation', false, (section, reason) => flags.push({ code: 'content-dropped', section, reason }));
+  return lines.length >= 2 ? { value: lines, flags: [...flags, ...repeats] } : null;
+}
+
+/**
+ * Reads English replies item by item. Throws only when a reply cannot be used at all: invalid JSON, a wrong
+ * envelope, topic count, topic fields or title. Otherwise each section is its repaired content with flags, or
+ * null when it is unusable (missing, wrong type, or below its minimum after drops) and needs another attempt.
+ * Counts have minimums only: overruns are kept and flagged during assembly (PHRASEBOOK_COUNT_LIMITS).
+ */
+function readGenerationReply(raw, checklist) {
   if (!Array.isArray(checklist) || checklist.length < MIN_CHECKLIST_ITEMS || checklist.length > MAX_CHECKLIST_ITEMS
     || checklist.some(title => typeof title !== 'string' || !title.trim() || title.length > MAX_CHECKLIST_ITEM_LENGTH)) {
     throw new Error('checklist must contain 1 to 8 bounded, nonblank topic titles');
@@ -135,79 +245,48 @@ function validateGenerationResponse(raw, checklist) {
   if (!Array.isArray(parsed.topics) || parsed.topics.length !== checklist.length) {
     throw new Error('"topics" count must match checklist count');
   }
-  let failureLevel = 0;
-  const topics = parsed.topics.map((topic, topicIndex) => {
+  return parsed.topics.map((topic, topicIndex) => {
     const prefix = `topics[${topicIndex}]`;
-    assertExactFields(topic, ['title', 'thingsToSay', 'likelyExchanges', 'words', 'exampleConversation'], prefix);
+    assertExactFields(topic, ['title', ...GENERATION_SECTIONS], prefix);
     if (topic.title !== checklist[topicIndex]) {
       throw new Error(`${prefix}.title must exactly match checklist[${topicIndex}]`);
     }
-    const clampWarning = (section, received, retained) => {
-      failureLevel = 1;
-      console.warn({ event: 'phrasebook_independent_list_clamped', failureLevel: 1, topicIndex, section, received, retained });
+    return {
+      title: topic.title,
+      sections: {
+        thingsToSay: readThingsToSay(topic.thingsToSay),
+        likelyExchanges: readLikelyExchanges(topic.likelyExchanges),
+        words: readWords(topic.words),
+        exampleConversation: readExampleConversation(topic.exampleConversation),
+      },
     };
-    if (!Array.isArray(topic.thingsToSay) || topic.thingsToSay.length < 1) {
-      throw new Error(`${prefix}.thingsToSay must contain at least 1 item`);
-    }
-    topic.thingsToSay.forEach((value, index) => boundedString(value, `${prefix}.thingsToSay[${index}]`));
-    const thingsToSay = topic.thingsToSay.slice(0, MAX_THINGS_TO_SAY);
-    if (thingsToSay.length < topic.thingsToSay.length) clampWarning('thingsToSay', topic.thingsToSay.length, thingsToSay.length);
-    const validateTurns = (lines, field, maximum, options) => {
-      if (!Array.isArray(lines) || lines.length < 2 || lines.length > maximum) {
-        throw new Error(`${field} must contain 2 to ${maximum} turns`);
-      }
-      return lines.map((line, index) => {
-        const linePrefix = `${field}[${index}]`;
-        assertExactFields(line, ['speaker', 'text'], linePrefix);
-        if (line.speaker !== 'you' && line.speaker !== 'partner') throw new Error(`${linePrefix}.speaker must be you or partner`);
-        if (index > 0 && line.speaker === lines[index - 1].speaker) throw new Error(`${field} must alternate speakers`);
-        if (options) {
-          if (!Array.isArray(line.text) || line.text.length < 1 || line.text.length > 3) {
-            throw new Error(`${linePrefix}.text must contain 1 to 3 responses`);
-          }
-          line.text.forEach((text, option) => boundedString(text, `${linePrefix}.text[${option}]`));
-        } else boundedString(line.text, `${linePrefix}.text`);
-        return { speaker: line.speaker, text: line.text };
-      });
-    };
-    if (!Array.isArray(topic.likelyExchanges) || topic.likelyExchanges.length < 1 || topic.likelyExchanges.length > 4) {
-      throw new Error(`${prefix}.likelyExchanges must contain 1 to 4 exchanges`);
-    }
-    const likelyExchanges = topic.likelyExchanges.map((exchange, index) => {
-      const field = `${prefix}.likelyExchanges[${index}]`;
-      assertExactFields(exchange, ['title', 'lines'], field);
-      boundedTitle(exchange.title, `${field}.title`);
-      return { title: exchange.title, lines: validateTurns(exchange.lines, `${field}.lines`, 4, true) };
-    });
-    if (!Array.isArray(topic.words)) throw new Error(`${prefix}.words must be an array`);
-    // Validate all families, including overflow, before dropping any independent items.
-    let received = 0;
-    for (const [index, family] of topic.words.entries()) {
-      const field = `${prefix}.words[${index}]`;
-      assertExactFields(family, ['title', 'items'], field);
-      boundedTitle(family.title, `${field}.title`);
-      if (!Array.isArray(family.items) || family.items.length < 2) throw new Error(`${field}.items must contain at least 2 words`);
-      family.items.forEach((word, item) => boundedString(word, `${field}.items[${item}]`));
-      received += family.items.length;
-    }
-    const words = [];
-    let remaining = MAX_WORDS;
-    for (const family of topic.words) {
-      if (remaining < 2) break;
-      const items = family.items.slice(0, remaining);
-      words.push({ title: family.title, items });
-      remaining -= items.length;
-    }
-    if (received > MAX_WORDS) clampWarning('words', received, MAX_WORDS - remaining);
-    const exampleConversation = validateTurns(topic.exampleConversation, `${prefix}.exampleConversation`, 10, false);
-    return { title: topic.title, thingsToSay, likelyExchanges, words, exampleConversation };
   });
-  return { topics, failureLevel };
 }
 
-function boundedTitle(value, prefix) {
-  boundedString(value, prefix);
-  if (value.length > MAX_CHECKLIST_ITEM_LENGTH) throw new Error(`${prefix} must be at most ${MAX_CHECKLIST_ITEM_LENGTH} characters`);
+/** Sections no attempt could use; another attempt can fill them. */
+function unusableSections(attempts) {
+  return GENERATION_SECTIONS.filter(section => attempts.every(attempt => attempt.sections[section] === null));
+}
+
+/**
+ * Builds one topic from read attempts of the same topic: each section comes from the earliest attempt that
+ * could use it, with that attempt's flags. A section no attempt could use is left empty with `section-missing`.
+ */
+function combineGenerationAttempts(attempts) {
+  const topic = { title: attempts[0].title };
+  const flags = [];
+  for (const section of GENERATION_SECTIONS) {
+    const found = attempts.map(attempt => attempt.sections[section]).find(Boolean);
+    topic[section] = found ? found.value : [];
+    flags.push(...(found ? found.flags : [{ code: 'section-missing', section }]));
+  }
+  return { topic, flags };
+}
+
+/** One attempt per topic: the repaired topics and, per topic, their flags (without group indexes). */
+function validateGenerationResponse(raw, checklist) {
+  const combined = readGenerationReply(raw, checklist).map(topic => combineGenerationAttempts([topic]));
+  return { topics: combined.map(entry => entry.topic), flags: combined.map(entry => entry.flags) };
 }
 
 // One shared traversal defines translation indexes and assembly indexes.
@@ -323,7 +402,7 @@ function validateTranslationResponse(raw, topic, language) {
         if (normalized) return normalized;
         const fallback = japanesePronunciation(parseInlineReading(target).reading, undefined, { capitalize });
         result.failureLevel = 1;
-        console.warn({
+        log.warn({
           event: 'phrasebook_romanization_fallback', failureLevel: 1, field, index,
           reason: aligned ? 'invalid_entry' : 'unaligned_array', available: !!fallback,
         });
@@ -401,7 +480,8 @@ function locateSurface(text, source, prefix) {
   return { start, end };
 }
 
-function assemblePhrasebook({ seed, language, topics, translations }) {
+/** `generationFlags[i]` holds topic i's English repair flags from combineGenerationAttempts. */
+function assemblePhrasebook({ seed, language, topics, generationFlags = [], translations }) {
   if (translations.length !== topics.length) throw new Error('Translation result count does not match topic count');
   const flags = [];
   const groups = topics.map((topic, topicIndex) => {
@@ -448,14 +528,20 @@ function assemblePhrasebook({ seed, language, topics, translations }) {
         }, `group[${topicIndex}].words[${index}]`);
       }),
     }));
+    for (const { code, ...flag } of generationFlags[topicIndex] ?? []) flags.push({ code, groupIndex: topicIndex, ...flag });
     for (const flag of translated.flags || []) flags.push({ ...flag, groupIndex: topicIndex });
-    return { id: randomUUID(), title: topic.title, thingsToSay, likelyExchanges, words, exampleConversation };
+    const group = { id: randomUUID(), title: topic.title, thingsToSay, likelyExchanges, words, exampleConversation };
+    for (const overrun of phrasebookCountOverruns(group)) flags.push({ code: 'count-overrun', groupIndex: topicIndex, ...overrun });
+    return group;
   });
   return { schemaVersion: PHRASEBOOK_SCHEMA_VERSION, title: seed, groups, flags };
 }
 
 module.exports = {
   parsePhrasebookRequest,
+  readGenerationReply,
+  unusableSections,
+  combineGenerationAttempts,
   validateGenerationResponse,
   validateTranslationResponse,
   assemblePhrasebook,
@@ -469,6 +555,4 @@ module.exports = {
   MIN_CHECKLIST_ITEMS,
   MAX_CHECKLIST_ITEMS,
   MAX_CHECKLIST_ITEM_LENGTH,
-  MAX_THINGS_TO_SAY,
-  MAX_WORDS,
 };
