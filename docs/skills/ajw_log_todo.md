@@ -3,14 +3,14 @@ kind: skill
 status: current
 summary: "Log planned work in docs/todo: add todos with records, move them between ledgers, create milestones, using scripts/todo.mjs."
 sources: [scripts/todo.mjs]
-verified: 2026-11-13
+verified: 2026-11-14
 ---
 
 # Log a todo
 
 Use when the user asks to log, track or capture planned work, to move a todo to another milestone or the backlog, or to create a milestone. Marking todos done and retiring milestones are not part of this skill; [`/commit_worktree`](commit_worktree.md) and [`/finalize_worktree`](finalize_worktree.md) own that ([todo lifecycle](../wiki.md#todo-lifecycle)).
 
-Supporting script: `scripts/todo.mjs` (`add`, `move`, `milestone`). It writes the record header and body, inserts or moves ledger rows newest-first, rewrites every wiki link to a moved record, and finishes with `node scripts/check-docs.mjs --fix`. Its header comment lists every option. Text options are single lines; descriptions cannot contain `|`.
+Supporting script: `scripts/todo.mjs` (`add`, `move`, `milestone`). It writes the record header and body, inserts or moves ledger rows newest-first, creates missing sections with `--create`, rewrites every wiki link to a moved record, and finishes with `node scripts/check-docs.mjs --fix`, which strikes through and sinks done rows and regenerates milestone progress tables. Its header comment lists every option. Text options are single lines; descriptions cannot contain `|`.
 
 ## 1. Load
 
@@ -22,10 +22,13 @@ For each requested item, search the existing records (`docs/todo/**/*.md`) for o
 
 ## 3. Place
 
-- **Existing milestone** when the item is part of that milestone's stated scope or a gate for it.
-- **New milestone** (`milestone`) when several items share a goal and depend on each other. Write an intro saying what the milestone covers and which page owns related state.
+- **Existing milestone** when the item is part of that milestone's stated scope or a gate for it. On a [launch milestone](../wiki.md#launch-milestones) every row blocks the launch: work that can ship after the launch goes to the backlog instead.
+- **Section:** on a launch milestone, pick the `##` section that produces the work (`Client/Web`, `Client/iOS`, `API + Server`, `Launch`, `Product + legal`) and the `###` subsection that groups it. Pass `--create` only for a deliberately new section or subsection, never to work around a typo.
+- **Shared record:** a subsection's rows are concrete tasks. If the subsection already has a record that covers the new task's why and done-when, add a row with `--record <slug>` and extend that record's What instead of writing a new record.
+- **New milestone** (`milestone`) when several items share a goal and depend on each other. Write an intro saying what the milestone covers and which page owns related state. A new public launch uses `--launch "<Adjective Insect>"` with the next letter.
 - **Backlog** otherwise. Do not ask the user where an item goes unless two placements would change what ships; state the choice in the report.
 - **Backlog, Future work section** (`--section "Future work"`) when the user flags the item as future work: an idea to pursue later rather than work ready to pick up.
+- **Notes:** a change of direction on a launch milestone (business model, launch plan, scope) that is not itself work is a dated bullet at the top of its `## Notes`, edited by hand.
 
 ## 4. Gather evidence
 
@@ -44,9 +47,12 @@ node scripts/todo.mjs add --ledger backlog --slug short-name --title "Record tit
   --description "Ledger row text" --summary "One-line index summary." \
   --what "..." --why "..." --done "..." [--open "..."]
 node scripts/todo.mjs add --ledger backlog --section "Future work" --slug short-name ...
-node scripts/todo.mjs move --from backlog --slug short-name --to public-launch
-node scripts/todo.mjs milestone --slug public-launch --title "Public launch" \
-  --summary "..." --description "launch plan, API protection, ..." --intro "..."
+node scripts/todo.mjs add --ledger antsy-aphid --section "API + Server/Monitoring" --record monitoring \
+  --description "Task row text"
+node scripts/todo.mjs move --from backlog --slug short-name --to antsy-aphid --section "Client/Web"
+node scripts/todo.mjs milestone --launch "Busy Beetle" --summary "..." --description "..." --intro "..."
+node scripts/todo.mjs milestone --slug topic-name --title "Topic name" \
+  --summary "..." --description "first item, second item, ..." --intro "..."
 ```
 
 Create a milestone before adding its todos. Its index row reads `**<title>**<br><description>`, so `--description` omits the title; the script keeps the index table aligned. Exit code 2 is a usage error with a message; exit code 1 means the docs check failed after writing: fix the reported errors.

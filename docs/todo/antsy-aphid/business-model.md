@@ -8,7 +8,7 @@ verified: 2026-11-14
 
 # Brainstorm the business model
 
-Part of the [public launch](../public-launch.md) milestone.
+Part of [Launch: Antsy Aphid](../antsy-aphid.md).
 
 - **What:** brainstorm and compare business models (for example free with limits, one-time purchase, subscription, per-phrasebook credits), checked against the [product principles](../../brief.md#product-principles) (no pressure, no bookkeeping) and against actual cost per phrasebook.
 - **Why:** owner request, 2026-11-12. Every phrasebook makes several paid model calls plus an image call, and the free-usage limits in [API protection](api-protection.md) depend on what the model allows anonymous users to do.

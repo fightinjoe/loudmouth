@@ -64,12 +64,12 @@ Keep these separate from quality scores. A response can be technically valid and
 
 | Situation | Class | How to report |
 |---|---|---|
-| Invalid JSON from the model | **Not the prompt** (fix planned in code; see [valid JSON](../todo/generation-reliability/valid-json.md)) | Report the count and likely cause (for example a one-item array closed with the wrong bracket). Do not count it against the prompt. |
+| Invalid JSON from the model | **Not the prompt** (fix planned in code; see [valid JSON](../todo/antsy-aphid/valid-json.md)) | Report the count and likely cause (for example a one-item array closed with the wrong bracket). Do not count it against the prompt. |
 | More items than a limit allows (turns, options, Words, phrases) | **Warning** | Report the count against the limit. Score the content. |
 | Output about 10× a limit or more (for example 40 turns where 4 are allowed) | **Failure** | Report and score as a material failure. |
 | Wrong types, missing sections, wrong title | **Contract issue** | Report the exact path and value; content may still be reviewed if readable. |
 | Provider errors (HTTP 429, timeouts) with no output | **Not assessed** | Coverage gap, not a content failure. |
-| Latency and cost | **Not a prompt criterion** | Report separately for information. Latency is a production problem tracked in [generation reliability](../todo/generation-reliability.md). |
+| Latency and cost | **Not a prompt criterion** | Report separately for information. Latency is a production problem tracked in [generation reliability](../todo/antsy-aphid.md#generation-reliability). |
 | Placeholders such as `[name]` | **Not scored** | Neither required nor penalized until the [placeholder feature](../todo/backlog/proper-noun-placeholders.md) exists; note them as observations. |
 
 Severity follows learner impact: **minor** leaves the task usable; **material** changes important meaning or blocks the task; **critical** requires a concrete, serious safety consequence. Meaning errors, harmful assurances and violations of supplied learner facts are explicit risk findings and never disappear inside a favorable score.

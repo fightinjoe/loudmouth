@@ -7,7 +7,7 @@ verified: 2026-11-13
 
 # Route English generation by provider performance
 
-Part of [generation reliability](../generation-reliability.md).
+Part of [Launch: Antsy Aphid](../antsy-aphid.md).
 
 - **What:** replace the Relace-only pin in `callDeepSeek` (`api/src/llms/openrouter.js`) with OpenRouter's performance-based routing: no `only` list, `allow_fallbacks: true`, `require_parameters: true` (kept, so only providers that support the [JSON schema](valid-json.md) are used), `preferred_min_throughput: {p90: 150}`, `data_collection: 'deny'`, and `ignore: ['wafer', 'novita', 'open-inference']` for providers that kept failing validation or quality in the 2026-11-13 live samples. Every provider attempt logs an `llm_call` event (provider, duration, output tokens, tokens per second, attempt, outcome, `topicIndex`, `requestId`). `DEEPSEEK_TIMEOUT_MS` (120 s) stays as it is, a last-resort cap. Target: under 10 s per topic (3 s ideal, 6 s acceptable). Tracking (owner approval 2026-11-13): every API route writes structured logs as single-line JSON so Cloud Logging can query them, and `scripts/generation-report.mjs` summarizes them for a time window.
 - **Why (logging):** before this change the API logged objects with `console.log({...})`, which Node prints over several lines, and Cloud Run stored each line as a separate text entry (production read 2026-11-13), so no event could be filtered or counted. Production logs are kept for 30 days.

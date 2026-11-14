@@ -1,15 +1,24 @@
 #!/usr/bin/env node
 // Todo ledger tool for docs/todo. Run from anywhere inside the repository.
 //
-//   node scripts/todo.mjs add --ledger <ledger> [--section <heading>] --slug <slug> --title <title> --description <row>
+//   node scripts/todo.mjs add --ledger <ledger> [--section <path> [--create]] --slug <slug> --title <title> --description <row>
 //        --summary <line> --what <text> --why <text> --done <text> [--open <text>] [--status open] [--date YYYY-MM-DD]
-//   node scripts/todo.mjs move --from <ledger> --slug <slug> --to <ledger> [--section <heading>]
+//   node scripts/todo.mjs add --ledger <ledger> [--section <path> [--create]] --record <slug> --description <row>
+//        [--status open] [--date YYYY-MM-DD]
+//   node scripts/todo.mjs move --from <ledger> --slug <slug> --to <ledger> [--section <path> [--create]]
 //   node scripts/todo.mjs milestone --slug <slug> --title <title> --summary <line> --description <text after the bold title>
 //        --intro <text> [--status planned] [--date YYYY-MM-DD]
+//   node scripts/todo.mjs milestone --launch "<Adjective Insect>" [--slug <slug>] --summary <line> --description <text>
+//        --intro <text> [--status planned] [--date YYYY-MM-DD]
 //
-// <ledger> is a ledger page under docs/todo without `.md`, for example `backlog` or `v4-release`.
-// --section names a `## <heading>` on the ledger page whose table receives the row, for example `Future work` in the backlog;
-// without it the row goes into the page's first table.
+// <ledger> is a ledger page under docs/todo without `.md`, for example `backlog` or `antsy-aphid`.
+// --section names a heading on the ledger page whose table receives the row: `Future work` is `## Future work`,
+// `Client/Web` is `### Web` inside `## Client`. --create adds missing headings and their table (a new `##` goes
+// before `## Notes`). Without --section the row goes into the table above the page's first section.
+// --record adds a task row linking an existing record of the ledger, for subsections whose rows share one record.
+// move carries every row linking the record. --launch names a launch milestone `Launch: <name>` (slug from the
+// name), checks that the name alliterates and takes the next letter after the index's last launch, and scaffolds
+// the standard launch sections.
 // Every command finishes by running `node scripts/check-docs.mjs --fix` and exits non-zero if it fails.
 // Conventions are in docs/wiki.md; the procedure that uses this tool is docs/skills/ajw_log_todo.md.
 import { execFileSync } from 'node:child_process';
@@ -64,23 +73,76 @@ function ledger(name) {
 // Prose form of a page title: "Public launch" -> "public launch", acronyms kept ("API protection").
 const proseTitle = t => (/^[A-Z][a-z]/.test(t) ? t[0].toLowerCase() + t.slice(1) : t);
 
-const partOf = l => (l.name === 'backlog'
-  ? `Part of the [${proseTitle(l.title)}](../${l.name}.md).`
-  : `Part of the [${proseTitle(l.title)}](../${l.name}.md) milestone.`);
+const isLaunch = title => title.startsWith('Launch: ');
+const partOf = l => {
+  if (l.name === 'backlog') return `Part of the [${proseTitle(l.title)}](../${l.name}.md).`;
+  if (isLaunch(l.title)) return `Part of [${l.title}](../${l.name}.md).`;
+  return `Part of the [${proseTitle(l.title)}](../${l.name}.md) milestone.`;
+};
 
-// Insert a row as the first data row (newest first) of the page's first ledger table, or of the table
-// directly under the `## <section>` heading when a section is given.
-function insertRow(text, row, file, section) {
-  const lines = text.split('\n');
-  let from = 0;
-  if (section !== undefined) {
-    from = lines.findIndex(l => l.trim() === `## ${section}`);
-    if (from < 0) fail(`${file} has no "## ${section}" section`);
+const TABLE_HEAD = ['| Date | Status | Description | Details |', '|---|---|---|---|'];
+// Standard sections of a launch milestone page, in order; `## Notes` (no table) always comes last.
+const LAUNCH_SECTIONS = ['Client/Web', 'Client/iOS', 'API + Server', 'Launch', 'Product + legal'];
+
+const headingLevel = l => /^(#{1,6}) /.exec(l)?.[1].length;
+
+// Line range [lo, hi) of the heading named by `parts` (`## parts[0]`, then `### parts[1]` inside it);
+// `missing` is the index of the first part that does not exist, with the range of its parent.
+function locate(lines, parts) {
+  let lo = 0;
+  let hi = lines.length;
+  for (const [n, name] of parts.entries()) {
+    const level = n + 2;
+    const at = lines.findIndex((l, i) => i >= lo && i < hi && l.trim() === `${'#'.repeat(level)} ${name}`);
+    if (at < 0) return { missing: n, lo, hi };
+    const end = lines.findIndex((l, i) => i > at && i < hi && (headingLevel(l) ?? 9) <= level);
+    lo = at;
+    hi = end < 0 ? hi : end;
   }
-  const header = lines.findIndex((l, i) => i > from && LEDGER_HEADER.test(l));
-  const nextHeading = lines.findIndex((l, i) => i > from && /^#{1,2} /.test(l));
-  if (section !== undefined && header >= 0 && nextHeading >= 0 && nextHeading < header) fail(`${file}: "## ${section}" has no ledger table`);
-  if (header < 0 || !/^\|[\s:|-]+\|?\s*$/.test(lines[header + 1] ?? '')) fail(`${file} has no ledger table`);
+  return { lo, hi };
+}
+
+function sectionParts(section) {
+  if (section === undefined) return [];
+  const parts = section.split('/').map(p => p.trim());
+  if (parts.some(p => !p) || parts.length > 2) fail('--section is "Section" or "Section/Subsection"');
+  return parts;
+}
+
+// Add headings (and a table under the last one) for the parts of `section` from `missing` on, at the end of the
+// parent's range; a new `##` section goes before `## Notes`.
+function createSection(lines, parts, { missing, hi }) {
+  let pos = hi;
+  const notes = lines.findIndex(l => l.trim() === '## Notes');
+  if (missing === 0 && notes >= 0) pos = notes;
+  while (pos > 0 && !lines[pos - 1].trim()) pos--;
+  const block = parts.slice(missing).flatMap((p, k) => ['', `${'#'.repeat(missing + k + 2)} ${p}`]);
+  const added = [...block, '', ...TABLE_HEAD];
+  lines.splice(pos, 0, ...added);
+  const after = pos + added.length;
+  if (after < lines.length && lines[after].trim()) lines.splice(after, 0, '');
+}
+
+// Insert a row as the first data row (newest first) of the table directly under the section heading, or of the
+// table above the page's first section when no section is given.
+function insertRow(text, row, file, section, create = false) {
+  const lines = text.split('\n');
+  const parts = sectionParts(section);
+  const found = locate(lines, parts);
+  if (found.missing !== undefined) {
+    const name = `"${parts.slice(0, found.missing + 1).join('/')}"`;
+    if (!create) fail(`${file} has no ${name} section; pass --create to add it`);
+    createSection(lines, parts, found);
+    console.log(`created section ${name} in ${file}`);
+    return insertRow(lines.join('\n'), row, file, section);
+  }
+  const start = parts.length ? found.lo + 1 : lines.findIndex(l => /^# /.test(l)) + 1;
+  let stop = lines.findIndex((l, i) => i >= start && headingLevel(l));
+  if (stop < 0) stop = lines.length;
+  const header = lines.findIndex((l, i) => i >= start && i < stop && LEDGER_HEADER.test(l));
+  if (header < 0 || !/^\|[\s:|-]+\|?\s*$/.test(lines[header + 1] ?? '')) {
+    fail(parts.length ? `${file}: "${section}" has no ledger table directly under it` : `${file} has no ledger table above its first section; pass --section`);
+  }
   lines.splice(header + 2, 0, row);
   return lines.join('\n');
 }
@@ -98,12 +160,12 @@ function alignTable(text) {
   return lines.join('\n');
 }
 
-function removeRow(text, detailsTarget, file) {
+// Remove every row linking `detailsTarget`, in page order.
+function removeRows(text, detailsTarget, file) {
   const lines = text.split('\n');
-  const hits = lines.flatMap((l, i) => (l.startsWith('|') && l.includes(`](${detailsTarget})`) ? [i] : []));
-  if (hits.length !== 1) fail(`${file}: expected one row linking ${detailsTarget}, found ${hits.length}`);
-  const [row] = lines.splice(hits[0], 1);
-  return { text: lines.join('\n'), row };
+  const rows = lines.filter(l => l.startsWith('|') && l.includes(`](${detailsTarget})`));
+  if (!rows.length) fail(`${file}: no row links ${detailsTarget}`);
+  return { text: lines.filter(l => !rows.includes(l)).join('\n'), rows };
 }
 
 function markdownFiles(dir) {
@@ -135,20 +197,36 @@ function checkDocs() {
 }
 
 const COMMON = { date: { type: 'string' }, status: { type: 'string' } };
+const SECTION = { section: { type: 'string' }, create: { type: 'boolean' } };
+const RECORD_FIELDS = ['slug', 'title', 'summary', 'what', 'why', 'done', 'open'];
 
 function add(argv) {
   const { values: v } = parseArgs({
     args: argv,
-    options: { ...COMMON, ledger: { type: 'string' }, section: { type: 'string' }, slug: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, summary: { type: 'string' }, what: { type: 'string' }, why: { type: 'string' }, done: { type: 'string' }, open: { type: 'string' } },
+    options: { ...COMMON, ...SECTION, ledger: { type: 'string' }, record: { type: 'string' }, slug: { type: 'string' }, title: { type: 'string' }, description: { type: 'string' }, summary: { type: 'string' }, what: { type: 'string' }, why: { type: 'string' }, done: { type: 'string' }, open: { type: 'string' } },
   });
   const l = ledger(v.ledger);
-  const slug = slugArg('slug', v.slug);
   const status = v.status ?? 'open';
   const date = v.date ?? localDate();
   if (!l.statuses.includes(status)) fail(`--status must be one of ${l.statuses.join(', ')}`);
   if (!DATE.test(date)) fail('--date must be YYYY-MM-DD');
+  const description = line('description', v.description, { cell: true });
+
+  if (v.record !== undefined) {
+    const given = RECORD_FIELDS.filter(k => v[k] !== undefined);
+    if (given.length) fail(`--record links an existing record; drop ${given.map(k => `--${k}`).join(', ')}`);
+    const slug = slugArg('record', v.record);
+    const record = join(TODO, l.name, `${slug}.md`);
+    if (!existsSync(record)) fail(`${rel(record)} does not exist`);
+    writeFileSync(l.path, insertRow(l.text, `| ${date} | ${status} | ${description} | [details](${l.name}/${slug}.md) |`, rel(l.path), v.section, v.create));
+    console.log(`added a row linking ${rel(record)} in ${rel(l.path)}`);
+    checkDocs();
+    return;
+  }
+
+  const slug = slugArg('slug', v.slug);
   const fields = {
-    title: line('title', v.title), description: line('description', v.description, { cell: true }), summary: line('summary', v.summary),
+    title: line('title', v.title), summary: line('summary', v.summary),
     what: line('what', v.what), why: line('why', v.why), done: line('done', v.done),
     open: v.open === undefined ? undefined : line('open', v.open),
   };
@@ -162,7 +240,7 @@ function add(argv) {
     ...(fields.open ? [`- **Open questions:** ${fields.open}`] : []),
     `- **Done when:** ${fields.done}`, '',
   ].join('\n');
-  const updated = insertRow(l.text, `| ${date} | ${status} | ${fields.description} | [details](${l.name}/${slug}.md) |`, rel(l.path), v.section);
+  const updated = insertRow(l.text, `| ${date} | ${status} | ${description} | [details](${l.name}/${slug}.md) |`, rel(l.path), v.section, v.create);
 
   mkdirSync(dirname(record), { recursive: true });
   writeFileSync(record, body);
@@ -172,7 +250,7 @@ function add(argv) {
 }
 
 function move(argv) {
-  const { values: v } = parseArgs({ args: argv, options: { from: { type: 'string' }, to: { type: 'string' }, section: { type: 'string' }, slug: { type: 'string' } } });
+  const { values: v } = parseArgs({ args: argv, options: { ...SECTION, from: { type: 'string' }, to: { type: 'string' }, slug: { type: 'string' } } });
   const from = ledger(v.from);
   const to = ledger(v.to);
   if (from.name === to.name) fail('--from and --to are the same ledger');
@@ -182,13 +260,15 @@ function move(argv) {
   if (!existsSync(oldAbs)) fail(`${rel(oldAbs)} does not exist`);
   if (existsSync(newAbs)) fail(`${rel(newAbs)} already exists`);
 
-  const { text: fromText, row } = removeRow(from.text, `${from.name}/${slug}.md`, rel(from.path));
-  const cells = row.slice(1, row.trimEnd().length - 1).split('|').map(c => c.trim());
-  if (!to.statuses.includes(cells[1])) fail(`status "${cells[1]}" is not valid in ${rel(to.path)} (${to.statuses.join(', ')})`);
-  const movedRow = `| ${cells[0]} | ${cells[1]} | ${cells[2]} | [details](${to.name}/${slug}.md) |`;
+  const { text: fromText, rows } = removeRows(from.text, `${from.name}/${slug}.md`, rel(from.path));
+  const movedRows = rows.map(row => {
+    const cells = row.slice(1, row.trimEnd().length - 1).split('|').map(c => c.trim());
+    if (!to.statuses.includes(cells[1])) fail(`status "${cells[1]}" is not valid in ${rel(to.path)} (${to.statuses.join(', ')})`);
+    return `| ${cells[0]} | ${cells[1]} | ${cells[2]} | [details](${to.name}/${slug}.md) |`;
+  });
 
   // The record's own links: the source ledger becomes the destination ledger; everything else is re-relativized.
-  let record = read(oldAbs).replace(new RegExp(`\\[[^\\]]*\\]\\(\\.\\./${from.name}\\.md\\)( milestone)?`), partOf(to).slice('Part of the '.length, -1));
+  let record = read(oldAbs).replace(new RegExp(`Part of (?:the )?\\[[^\\]]*\\]\\(\\.\\./${from.name}\\.md\\)(?: milestone)?\\.`), partOf(to));
   record = record.replace(LINK, (whole, target) => {
     if (!isLocal(target)) return whole;
     const [path, anchor] = target.split(/(?=#)/);
@@ -208,7 +288,10 @@ function move(argv) {
   renameSync(oldAbs, newAbs);
   writeFileSync(newAbs, record);
   writeFileSync(from.path, retarget(fromText, dirname(from.path), oldAbs, newAbs));
-  writeFileSync(to.path, insertRow(retarget(to.text, dirname(to.path), oldAbs, newAbs), movedRow, rel(to.path), v.section));
+  // Inserting each row at the top, last first, keeps the rows in their original order.
+  let toText = retarget(to.text, dirname(to.path), oldAbs, newAbs);
+  for (const row of movedRows.toReversed()) toText = insertRow(toText, row, rel(to.path), v.section, v.create);
+  writeFileSync(to.path, toText);
   for (const [f, text] of rewrites) writeFileSync(f, text);
   if (!readdirSync(dirname(oldAbs)).length) rmdirSync(dirname(oldAbs));
 
@@ -220,31 +303,51 @@ function move(argv) {
 function milestone(argv) {
   const { values: v } = parseArgs({
     args: argv,
-    options: { ...COMMON, slug: { type: 'string' }, title: { type: 'string' }, summary: { type: 'string' }, description: { type: 'string' }, intro: { type: 'string' } },
+    options: { ...COMMON, slug: { type: 'string' }, title: { type: 'string' }, launch: { type: 'string' }, summary: { type: 'string' }, description: { type: 'string' }, intro: { type: 'string' } },
   });
-  const slug = slugArg('slug', v.slug);
+  const index = read(INDEX);
+  let title;
+  let slug;
+  if (v.launch !== undefined) {
+    if (v.title !== undefined) fail('--launch sets the title; omit --title');
+    const name = line('launch', v.launch, { cell: true });
+    const words = name.split(/\s+/);
+    if (words.length !== 2 || words.some(w => !/^[A-Z][a-z]+$/.test(w)) || words[0][0] !== words[1][0]) {
+      fail('--launch is an alliterative adjective and insect, two capitalized words with the same initial, for example "Antsy Aphid"');
+    }
+    const used = [...index.matchAll(/\*\*Launch: ([A-Z])[a-z]+ [A-Z][a-z]+\*\*/g)].map(m => m[1].charCodeAt(0));
+    const next = String.fromCharCode(used.length ? Math.max(...used) + 1 : 'A'.charCodeAt(0));
+    if (words[0][0] !== next) fail(`the next launch name starts with "${next}"`);
+    title = `Launch: ${name}`;
+    slug = slugArg('slug', v.slug ?? name.toLowerCase().replace(/\s+/, '-'));
+  } else {
+    title = line('title', v.title, { cell: true });
+    if (isLaunch(title)) fail('name launch milestones with --launch');
+    slug = slugArg('slug', v.slug);
+  }
   const path = join(TODO, `${slug}.md`);
   if (slug === 'index' || existsSync(path)) fail(`${rel(path)} already exists`);
-  const index = read(INDEX);
   const statuses = frontmatter(index).statuses ?? [];
   const status = v.status ?? 'planned';
   const date = v.date ?? localDate();
   if (!statuses.includes(status)) fail(`--status must be one of ${statuses.join(', ')}`);
   if (!DATE.test(date)) fail('--date must be YYYY-MM-DD');
-  const f = {
-    title: line('title', v.title, { cell: true }), summary: line('summary', v.summary),
-    description: line('description', v.description, { cell: true }), intro: line('intro', v.intro),
-  };
+  const f = { summary: line('summary', v.summary), description: line('description', v.description, { cell: true }), intro: line('intro', v.intro) };
 
-  const page = [
+  const lines = [
     '---', 'kind: ledger', 'status: current', `summary: ${scalar(f.summary)}`, `verified: ${date}`, 'statuses: [open, in-progress, blocked, done]', '---', '',
-    `# ${f.title}`, '', f.intro, '',
-    '| Date | Status | Description | Details |', '|---|---|---|---|', '',
-  ].join('\n');
-  const row = `| ${date} | ${status} | **${f.title}**<br>${f.description} | [details](${slug}.md) |`;
+    `# ${title}`, '', f.intro, '',
+    ...(v.launch !== undefined ? ['## Notes', ''] : [...TABLE_HEAD, '']),
+  ];
+  if (v.launch !== undefined) for (const s of LAUNCH_SECTIONS) {
+    const parts = sectionParts(s);
+    const found = locate(lines, parts);
+    if (found.missing !== undefined) createSection(lines, parts, found);
+  }
+  const row = `| ${date} | ${status} | **${title}**<br>${f.description} | [details](${slug}.md) |`;
   const updatedIndex = alignTable(insertRow(index, row, rel(INDEX)));
 
-  writeFileSync(path, page);
+  writeFileSync(path, lines.join('\n'));
   writeFileSync(INDEX, updatedIndex);
   console.log(`created ${rel(path)} and its row in ${rel(INDEX)}`);
   checkDocs();

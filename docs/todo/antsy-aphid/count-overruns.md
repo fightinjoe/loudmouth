@@ -7,7 +7,7 @@ verified: 2026-11-13
 
 # Tolerate and flag count overruns in English generation
 
-Part of [generation reliability](../generation-reliability.md).
+Part of [Launch: Antsy Aphid](../antsy-aphid.md).
 
 - **What:** English generation never trims or rejects content for being too long. Every item is kept, and anything over the limit for its section is flagged with section, topic, received count and limit: a `count-overrun` entry in the response's `flags`, logged as a `phrasebook_flag` event (owner approval 2026-11-13). The parser (`readGenerationReply` in `api/src/phrasebook/parse.js`) and the final response check (`validatePhrasebookResponse` in `api/src/schema/index.ts`, which the web app installs as `@catchphrase/card-schema`) both drop these maximums. Minimum counts and types are still enforced, with defects repaired as in [reply repair](reply-repair.md). `prompt.txt` keeps its current targets (changing it needs owner approval). Flag limits, approved by the owner 2026-11-13:
 

@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: "Prepare a feature worktree for human review: cleanup, todo and milestone lifecycle, docs ingest, verification and server shutdown; never commits."
 sources: [scripts/check-docs.mjs, scripts/worktree/add_worktree.py]
-verified: 2026-11-13
+verified: 2026-11-14
 ---
 
 # Finalize a worktree for human review
@@ -33,7 +33,7 @@ Accept an optional registered worktree path, branch, or unambiguous XYZ identifi
 Follow the [todo lifecycle](../wiki.md#todo-lifecycle).
 
 1. Todos in `docs/todo/*.md` completed by this branch are `done` with their completion date (set any that `/commit_worktree` missed).
-2. For each milestone whose rows are now all `done`: move decisions worth keeping to [decisions](../decisions.md) as ledger rows (with records where context is needed), set the milestone to `done` with today's date in [`docs/todo/index.md`](../todo/index.md) and remove its link, then delete the milestone page and its record folder. Remove links to them elsewhere.
+2. For each milestone whose rows are now all `done`: if it is a [launch milestone](../wiki.md#launch-milestones), first write its release notes, a record in `docs/releases/` named after the milestone slug plus a row in [release notes](../releases.md), from its rows, records and notes. Then move decisions worth keeping to [decisions](../decisions.md) as ledger rows (with records where context is needed), set the milestone to `done` with today's date in [`docs/todo/index.md`](../todo/index.md) and remove its link, then delete the milestone page and its record folder. Remove links to them elsewhere.
 
 ## 4. Make the docs current
 

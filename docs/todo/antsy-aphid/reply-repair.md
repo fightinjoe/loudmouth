@@ -7,7 +7,7 @@ verified: 2026-11-13
 
 # Repair partially invalid English replies
 
-Part of the [generation reliability](../generation-reliability.md) milestone.
+Part of [Launch: Antsy Aphid](../antsy-aphid.md).
 
 - **What:** Validate English replies item by item instead of rejecting the whole reply at the first error. Empty or invalid items are dropped and flagged. A single-word family's word is merged into another family, or dropped when there is no other family. Two consecutive turns by the same speaker are kept and flagged. A section left empty or below its minimum is retried with one more full-topic call whose usable sections fill the gaps. A section that is still unusable leaves the topic without that section, flagged, instead of failing the request with 502. Replies that cannot be read at all (invalid JSON, wrong topic) still spend the retry as before.
 - **Why:** Owner decisions 2026-11-13. Before this, any defect rejected the whole reply and spent the single validation retry, and two failures failed the whole phrasebook request with 502. In the 2026-11-13 local sample 4 of 48 English attempts were invalid; three were single items (a blank Things to say entry, a one-word family, an exchange with the same speaker twice) and one was an empty section ([live samples](../../evals/results/2026-11-13-generation-reliability-local.md)). Repeated speakers are legitimate: a speaker can have two consecutive things to say that should not be grouped into one response. Retrying only the failed section is tracked as [partial retry](../backlog/partial-retry.md).

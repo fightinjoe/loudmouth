@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: Squash a clean feature worktree into local main with a message from worktree.md, verify the result, then remove the worktree and branch; never pushes.
 sources: [scripts/worktree/add_worktree.py, scripts/check-docs.mjs]
-verified: 2026-11-13
+verified: 2026-11-14
 ---
 
 # Merge and retire a worktree
@@ -31,7 +31,7 @@ Accept a worktree directory, branch, or unambiguous XYZ identifier, for example 
    - `web/app`: `npm test` and `npm run build` for web changes.
    - For UI changes, launch and exercise the actual merged surface with a browser, including the changed interaction. Use an available explicit port, strict startup, and a dedicated browser origin; no paid provider calls without authorization. If a relevant Playwright scenario is usable, run it on a free `PLAYWRIGHT_PORT`, never against a reused server. Do not run multiple builds/Playwright runs simultaneously inside the same checkout.
    - `bun test evals/pipelines` for evaluation pipeline changes.
-   - Always: `node scripts/check-docs.mjs` on the integrated tree; errors block the commit (fix conflicts in docs, including regenerating the wiki index with `node scripts/check-docs.mjs --fix`, as part of conflict resolution).
+   - Always: `node scripts/check-docs.mjs` on the integrated tree; errors block the commit (fix conflicts in docs, including regenerating the wiki index and todo progress tables with `node scripts/check-docs.mjs --fix`, as part of conflict resolution).
    - For tooling-only changes, exercise the changed command in a disposable repository or other safe fixture. For docs-only changes, the docs check plus a read of the changed pages is enough. Record exactly what passed. Failed or unavailable required verification blocks commit/removal; preserve the source branch and worktree. Do not weaken checks to finish the merge.
 5. Recheck SOURCE_SHA, main's HEAD against MAIN_BEFORE, and the staged changes. If either branch moved or unrelated files appeared, stop. Stage only reviewed integration/conflict resolutions, never `git add .` over unknown work. Commit with a squash message composed from `worktree.md`: a concise subject stating the branch intent's outcome, and a body summarizing the intent and the changelog entries (consolidated, not pasted line by line), reconciled with the actual integrated diff and any breaking contract or storage change. End with a provenance trailer `Squashed-from: SOURCE_BRANCH SOURCE_SHA`. Pass the message through a file or argument array, never shell interpolation. Capture the new main commit. Do not use `git commit --amend` or create a two-parent merge.
 

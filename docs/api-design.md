@@ -57,7 +57,7 @@ The public contract accepts bounded free text; answers/topics do not prove a pri
 
 Role separation is defense in depth, not confidentiality. Prompts may be extracted; credentials stay in provider authentication, never messages. Models have no configured file/secret/user-data tools. Clients render user/model/persisted strings as text; web escapes text and quoted attributes at sinks, including independent ruby base/annotation escaping. Storage is not pre-escaped. Native text views are not HTML; future rich text, links or action integrations need explicit boundaries.
 
-Adversarial evaluations distinguish synthetic-canary leakage, invalid output and provider failure; no detected leakage is not proof of confidentiality. Deterministic boundary/rendering checks and commands belong to [API operations](api/operations.md#tests-and-model-evals). The checked-in gateway configuration defines no caller authentication, anonymous quotas, global concurrency/spend controls or attestation ([deployment reference](api/operations.md#deployment-reference)); adding them is tracked in [API protection](todo/public-launch/api-protection.md).
+Adversarial evaluations distinguish synthetic-canary leakage, invalid output and provider failure; no detected leakage is not proof of confidentiality. Deterministic boundary/rendering checks and commands belong to [API operations](api/operations.md#tests-and-model-evals). The checked-in gateway configuration defines no caller authentication, anonymous quotas, global concurrency/spend controls or attestation ([deployment reference](api/operations.md#deployment-reference)); adding them is tracked in [API protection](todo/antsy-aphid/api-protection.md).
 
 ## References
 

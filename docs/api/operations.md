@@ -18,7 +18,7 @@ Every structured event goes through `api/src/log.js` as one JSON line with a Clo
 
 `node scripts/generation-report.mjs [--since 7d] [--project <id>]` summarizes production logs as Markdown: request outcomes and failure levels, per-topic English latency (p50/p90/p95, share under 3/6/10 s), attempts by provider, invalid replies by kind, retries and response flags by code and section. `--file <log>` reads local dev-server output instead (one JSON event per line; other lines are skipped).
 
-`node scripts/cost-report.mjs [--since 30d] [--project <id>]` reads the same events. It reports mean, p50, p90 and maximum cost per call by route; `/phrasebook` cost by language with cost per topic and mean card count; and the per-phrasebook and per-user cost model. The model's assumption flags and their current values are on the [business model](../todo/public-launch/business-model.md#cost-to-serve) page. It accepts `--file` like the generation report.
+`node scripts/cost-report.mjs [--since 30d] [--project <id>]` reads the same events. It reports mean, p50, p90 and maximum cost per call by route; `/phrasebook` cost by language with cost per topic and mean card count; and the per-phrasebook and per-user cost model. The model's assumption flags and their current values are on the [business model](../todo/antsy-aphid/business-model.md#cost-to-serve) page. It accepts `--file` like the generation report.
 
 ## Server-owned model selection
 
@@ -146,7 +146,7 @@ This section owns production deployment state. v4 has been live since 2026-11-13
 | Web | Vercel, `https://loudmouth-gilt.vercel.app` | push to the `prod` branch ([web deployment](../web/development.md#deployment)) |
 | iOS | Not released from this repository's current code; it calls retired routes ([iOS architecture](../ios/architecture.md)) | — |
 
-An API/web contract change makes the live web and API incompatible until both are deployed: deploy the API, then push the web immediately. There is no pre-production environment yet ([staging todo](../todo/public-launch/staging-environment.md)).
+An API/web contract change makes the live web and API incompatible until both are deployed: deploy the API, then push the web immediately. There is no pre-production environment yet ([staging todo](../todo/antsy-aphid/staging-environment.md)).
 
 ## Deployment reference
 

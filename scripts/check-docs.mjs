@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Wiki health check. Run from anywhere: `node scripts/check-docs.mjs [--fix]`.
-// Errors fail the run; warnings (stale `verified` dates) do not. `--fix` regenerates docs/index.md.
+// Errors fail the run; warnings (stale `verified` dates) do not. `--fix` regenerates docs/index.md and repairs what it can: hard wraps, header quoting and generated parts of docs/todo pages.
 // Conventions checked here are documented in docs/wiki.md.
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync, statSync, writeFileSync } from 'node:fs';
@@ -194,8 +194,72 @@ for (const f of [...docs, 'AGENTS.md', 'README.md'].filter(exists)) {
   }
 }
 
-// ---------- 5. ledgers ----------
+// ---------- 5. todo pages ----------
+// On docs/todo pages other than the milestone index, a done row's description is struck through and done rows
+// sink to the bottom of their table, newest first; other rows keep their order. Milestone pages (all but the
+// backlog) also carry a generated progress table, one row per ledger table, above their first section.
 const LEDGER_HEADER = /^\|\s*Date\s*\|\s*Status\s*\|\s*Description\s*\|(\s*Details\s*\|)?\s*$/;
+const PROGRESS_HEADER = /^\|\s*Section\s*\|/;
+const statusLabel = s => s[0].toUpperCase() + s.slice(1).replace(/-/g, ' ');
+function tidyTodo(text, statuses, milestone) {
+  const lines = text.split('\n');
+  const tables = [];
+  let h2 = '';
+  let h3 = '';
+  for (let i = 0; i < lines.length; i++) {
+    const h = /^(#{2,3}) (.+?)\s*$/.exec(lines[i]);
+    if (h) { if (h[1] === '##') { h2 = h[2]; h3 = ''; } else h3 = h[2]; continue; }
+    if (!LEDGER_HEADER.test(lines[i])) continue;
+    let end = i + 2;
+    while (end < lines.length && lines[end].startsWith('|')) end++;
+    const rows = lines.slice(i + 2, end).map(line => {
+      const c = line.split('|');
+      if (c.length < 5) return { status: '', date: '', line };
+      const status = c[2].trim();
+      const description = c[3].trim().replace(/^~~(.*)~~$/, '$1');
+      const wanted = status === 'done' ? `~~${description}~~` : description;
+      if (c[3].trim() !== wanted) c[3] = ` ${wanted} `;
+      return { status, date: c[1].trim(), line: c.join('|') };
+    });
+    const done = rows.filter(r => r.status === 'done').sort((a, b) => b.date.localeCompare(a.date));
+    lines.splice(i + 2, rows.length, ...rows.filter(r => r.status !== 'done').map(r => r.line), ...done.map(r => r.line));
+    tables.push({ label: [h2, h3].filter(Boolean).join(' › ') || 'All', rows });
+    i = end - 1;
+  }
+  if (!milestone) return lines.join('\n');
+
+  const old = lines.findIndex(l => PROGRESS_HEADER.test(l));
+  if (old >= 0) {
+    let end = old;
+    while (end < lines.length && lines[end].startsWith('|')) end++;
+    if (end < lines.length && !lines[end].trim()) end++;
+    lines.splice(old, end - old);
+  }
+  const counted = tables.filter(t => t.rows.length);
+  if (!counted.length) return lines.join('\n');
+  const count = (rows, s) => rows.filter(r => r.status === s).length;
+  const all = counted.flatMap(t => t.rows);
+  const progress = [
+    `| Section | ${statuses.map(statusLabel).join(' | ')} |`,
+    `|---|${statuses.map(() => '---|').join('')}`,
+    ...counted.map(t => `| ${t.label} | ${statuses.map(s => count(t.rows, s)).join(' | ')} |`),
+    `| **Total** | ${statuses.map(s => `**${count(all, s)}**`).join(' | ')} |`,
+    '',
+  ];
+  let at = lines.findIndex(l => /^## /.test(l));
+  if (at < 0) at = lines.findIndex(l => LEDGER_HEADER.test(l));
+  lines.splice(at, 0, ...progress);
+  return lines.join('\n');
+}
+for (const f of docs.filter(f => /^docs\/todo\/[^/]+\.md$/.test(f) && f !== 'docs/todo/index.md' && meta.get(f)?.kind === 'ledger')) {
+  const text = read(f);
+  const tidy = tidyTodo(text, meta.get(f).statuses ?? [], f !== 'docs/todo/backlog.md');
+  if (tidy === text) continue;
+  if (FIX) { writeFileSync(join(ROOT, f), tidy); console.log(`tidied ${f}`); continue; }
+  err(f, 'done rows must be struck through and last in their table, and the progress table current (`--fix` updates them)');
+}
+
+// ---------- 6. ledgers ----------
 for (const f of docs.filter(f => meta.get(f)?.kind === 'ledger')) {
   const lines = read(f).split('\n');
   const statuses = meta.get(f).statuses ?? [];
@@ -220,7 +284,7 @@ for (const f of docs.filter(f => meta.get(f)?.kind === 'record')) {
   if (!from.length) err(f, 'record is not linked from any ledger');
 }
 
-// ---------- 6. skills ----------
+// ---------- 7. skills ----------
 const shellDir = '.agents/skills';
 const shells = existsSync(join(ROOT, shellDir)) ? readdirSync(join(ROOT, shellDir)).filter(n => statSync(join(ROOT, shellDir, n)).isDirectory()) : [];
 for (const name of shells) {
@@ -257,7 +321,7 @@ for (const f of files.filter(f => /^\.agents\/commands\/[^/]+\.md$/.test(f))) {
   if (!shells.includes(name)) err(f, 'command has no enabled skill');
 }
 
-// ---------- 7. staleness (warning) ----------
+// ---------- 8. staleness (warning) ----------
 const dirty = new Set(git('status', '--porcelain').split('\n').filter(Boolean).map(l => l.slice(3).split(' -> ').pop()));
 const today = new Date().toISOString().slice(0, 10);
 // One pass over history: newest commit date per path.
@@ -282,7 +346,7 @@ for (const [f, d] of meta) {
   }
 }
 
-// ---------- 8. index ----------
+// ---------- 9. index ----------
 const SECTION_ORDER = ['', 'todo', 'api', 'web', 'ios', 'evals', 'explorations', 'skills', 'proposals', 'tooling'];
 const SECTION_LABELS = { '': 'Core', api: 'API', ios: 'iOS' };
 function title(f) {

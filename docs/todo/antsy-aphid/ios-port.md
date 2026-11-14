@@ -7,7 +7,7 @@ verified: 2026-11-12
 
 # Port the web experience to iOS
 
-Part of the [public launch](../public-launch.md) milestone.
+Part of [Launch: Antsy Aphid](../antsy-aphid.md).
 
 - **What:** bring the native iOS app (`ios/Loudmouth/`) to the web experience: guided creation through `/context` → `/phrasebook` with title and cover requests, the phrasebook landing and category sheets, phrase breakdown, stars and starred Review, and the v4 library and backup contracts in the [card schema](../../card-schema.md). Test it on physical devices against the v4 API. Inventory drift first, as the [convergence proposal](../../proposals/phrasebook-quality-plan.md#iosweb-convergence) describes.
 - **Why:** owner request, 2026-11-12. The iOS app is a pre-redesign deck-and-card client that calls the retired `/translate` and `/generate-cards` routes, which the v4 API does not serve ([iOS architecture](../../ios/architecture.md#current-state)), so it stops working once v4 deploys.

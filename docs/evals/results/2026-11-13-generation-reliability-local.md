@@ -7,7 +7,7 @@ verified: 2026-11-13
 
 # Generation reliability: local live samples
 
-Local API on 2026-11-13 against real OpenRouter (DeepSeek v4.1 Flash) and Gemini translation, using the four `evals/fixtures/baseline-phrasebook-english.json` requests (22 topics). This record covers [valid JSON](../../todo/generation-reliability/valid-json.md), [provider routing](../../todo/generation-reliability/provider-routing.md), [reply repair](../../todo/generation-reliability/reply-repair.md) and [count overruns](../../todo/generation-reliability/count-overruns.md). Raw outputs were inspected and then deleted. Production behavior is verified separately ([production verification](../../todo/generation-reliability/production-verification.md)). Total paid cost was about $0.50.
+Local API on 2026-11-13 against real OpenRouter (DeepSeek v4.1 Flash) and Gemini translation, using the four `evals/fixtures/baseline-phrasebook-english.json` requests (22 topics). This record covers [valid JSON](../../todo/antsy-aphid/valid-json.md), [provider routing](../../todo/antsy-aphid/provider-routing.md), [reply repair](../../todo/antsy-aphid/reply-repair.md) and [count overruns](../../todo/antsy-aphid/count-overruns.md). Raw outputs were inspected and then deleted. Production behavior is verified separately ([production verification](../../todo/antsy-aphid/production-verification.md)). Total paid cost was about $0.50.
 
 ## JSON enforcement: strict schema versus JSON mode
 
