@@ -2,8 +2,8 @@
 kind: guide
 status: current
 summary: "Catchphrase API operations: model selection, implementation map, local development, tests, evals and deployment."
-sources: [api/src/index.js, api/src/log.js, api/src/llm-config.js, api/src/llms/openrouter.js, api/src/dev.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js, scripts/generation-report.mjs]
-verified: 2026-11-13
+sources: [api/src/index.js, api/src/log.js, api/src/llm-config.js, api/src/llms/openrouter.js, api/src/dev.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js, scripts/generation-report.mjs, scripts/cost-report.mjs, scripts/lib/log-events.mjs]
+verified: 2026-11-14
 ---
 
 # Catchphrase API operations
@@ -17,6 +17,8 @@ API diagnostics use [runtime failure levels](../api-design.md#runtime-failure-le
 Every structured event goes through `api/src/log.js` as one JSON line with a Cloud Logging `severity`, so Cloud Run stores it as a queryable `jsonPayload` (for example `jsonPayload.event="llm_call"`). Events also carry the request's `requestId`: Cloud Run's trace ID, or a fresh UUID locally. Production logs are kept 30 days. `/phrasebook` logs one `llm_call` per provider attempt (`route` `phrasebook:generate` or `phrasebook:translate`, `topicIndex`, `attempt`, `outcome` `ok`/`incomplete`/`rate_limited`/`timeout`/`cancelled`/`error`, `durationMs`, `provider`, `outputTokens`, `outputTokensPerSecond`), `validation_error` and retry events, and one `phrasebook_flag` event per response flag (count overruns, English repairs, missing sections, unresolved word sources).
 
 `node scripts/generation-report.mjs [--since 7d] [--project <id>]` summarizes production logs as Markdown: request outcomes and failure levels, per-topic English latency (p50/p90/p95, share under 3/6/10 s), attempts by provider, invalid replies by kind, retries and response flags by code and section. `--file <log>` reads local dev-server output instead (one JSON event per line; other lines are skipped).
+
+`node scripts/cost-report.mjs [--since 30d] [--project <id>]` reads the same events. It reports mean, p50, p90 and maximum cost per call by route; `/phrasebook` cost by language with cost per topic and mean card count; and the per-phrasebook and per-user cost model. The model's assumption flags and their current values are on the [business model](../todo/public-launch/business-model.md#cost-to-serve) page. It accepts `--file` like the generation report.
 
 ## Server-owned model selection
 

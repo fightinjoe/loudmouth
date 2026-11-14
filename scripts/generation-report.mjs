@@ -10,51 +10,23 @@
 // GCP_PROJECT_ID); --since is a gcloud freshness such as 6h, 1d or 7d (logs are kept 30 days). --file reads
 // one JSON event per line, for example local dev-server output: lines that are not JSON objects are skipped.
 // Output is Markdown on stdout.
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
+import { logSourceOptions, percentile, readEvents, sourceLine, table } from './lib/log-events.mjs';
 
 const { values: args } = parseArgs({
   options: {
     since: { type: 'string', default: '7d' },
-    project: { type: 'string', default: process.env.GCP_PROJECT_ID },
-    service: { type: 'string', default: 'translation-api' },
-    file: { type: 'string' },
+    ...logSourceOptions,
   },
 });
 
-function readEvents() {
-  if (args.file) {
-    return readFileSync(args.file, 'utf8').split('\n').flatMap(line => {
-      try {
-        const value = JSON.parse(line);
-        return value && typeof value === 'object' && typeof value.event === 'string' ? [value] : [];
-      } catch {
-        return [];
-      }
-    });
-  }
-  if (!args.project) throw new Error('Set --project or GCP_PROJECT_ID, or pass --file');
-  const filter = `resource.type="cloud_run_revision" AND resource.labels.service_name="${args.service}" AND jsonPayload.event:*`;
-  const output = execFileSync('gcloud', [
-    'logging', 'read', filter, `--project=${args.project}`, `--freshness=${args.since}`, '--format=json', '--limit=100000',
-  ], { encoding: 'utf8', maxBuffer: 1024 * 1024 * 1024 });
-  return JSON.parse(output).map(entry => entry.jsonPayload).reverse();
-}
-
-const percentile = (values, p) => {
-  if (values.length === 0) return '–';
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p))];
-};
 const seconds = ms => (typeof ms === 'number' ? (ms / 1000).toFixed(1) : ms);
 const share = (part, total) => (total ? `${part} (${Math.round(100 * part / total)}%)` : '0');
 const countBy = (items, key) => items.reduce((counts, item) => counts.set(key(item), (counts.get(key(item)) ?? 0) + 1), new Map());
-const table = (header, rows) => [`| ${header.join(' | ')} |`, `|${header.map(() => '---').join('|')}|`, ...rows.map(row => `| ${row.join(' | ')} |`)].join('\n');
 
-const events = readEvents();
+const events = readEvents(args);
 const of = name => events.filter(event => event.event === name);
-const lines = [`# Generation report`, '', args.file ? `Source: \`${args.file}\`` : `Source: Cloud Logging, service \`${args.service}\`, last ${args.since}`, ''];
+const lines = [`# Generation report`, '', sourceLine(args), ''];
 
 // Requests: one usage event per finished /phrasebook request.
 const requests = of('usage').filter(event => event.route === 'phrasebook' || event.route === 'phrasebook:failed');
