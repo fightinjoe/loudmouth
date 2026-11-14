@@ -1,7 +1,7 @@
 ---
 kind: ledger
 status: current
-summary: "Backlog of decided work without a milestone: creation-flow redesign, Spanish variants, phrasebook artwork, breakdown improvements, preset packs, placeholders, diagnostics mode, changing a remembered ability, dependency upkeep, DeepSeek load testing and prompt follow-ups; future work holds usage-based suggestions and partial retry of English sections."
+summary: "Backlog of decided work without a milestone: creation-flow redesign, Spanish variants, phrasebook artwork, breakdown improvements, preset packs, placeholders, diagnostics mode, changing a remembered ability, dependency upkeep, DeepSeek load testing, prompt follow-ups, deck card headings, category markers, chapter-sheet swipe, Review entry point and Japanese romaji cards; future work holds usage-based suggestions and partial retry of English sections."
 verified: 2026-11-13
 statuses:
   - open
@@ -16,6 +16,11 @@ Decided work not yet assigned to a milestone.
 
 | Date       | Status | Description                                                                                                      | Details                                          |
 | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 2026-11-13 | open | **API: Japanese romaji cards**<br>One topic's Japanese Key phrases came back romanized instead of in kanji and kana | [details](backlog/japanese-romanized-text.md) |
+| 2026-11-13 | open | **UX: Review entry point**<br>Show the Review starred cards button only in the Starred chapter sheet | [details](backlog/review-in-starred.md) |
+| 2026-11-13 | open | **UX: Chapter sheet swipe**<br>Close the chapter sheet that lists cards (Words, Key phrases and so on) with a swipe down | [details](backlog/chapter-sheet-swipe.md) |
+| 2026-11-13 | open | **UI: Category markers**<br>Remove or tone down the Words, Key phrases, Exchanges and Conversation glyphs on the phrasebook landing | [details](backlog/category-markers.md) |
+| 2026-11-13 | open | **UI: Deck card headings**<br>Explore two-line headings or wider deck cards in Figma so topic and group titles stop truncating | [details](backlog/deck-card-headers.md) |
 | 2026-11-13 | open | **API: DeepSeek load testing**<br>Load-test English generation and plan provider capacity and concurrency limits | [details](backlog/deepseek-load-testing.md) |
 | 2026-11-13 | open | **Content: Spanish variants**<br>Offer Spanish (Latin America) and Spanish (Spain) as separate languages | [details](backlog/spanish-variants.md) |
 | 2026-11-13 | done   | **UI: Phrasebook creation flow**<br>Implement the updated phrasebook creation flow from Figma                    | [details](backlog/creation-flow-figma.md)        |
