@@ -328,6 +328,33 @@ describe("commitPhrasebook", () => {
     expect(await exportAllData(store)).toEqual(before);
   });
 
+  it("commits, reloads and restores a topic with 18 Words in three families", async () => {
+    const group = topic("wordy");
+    group.words = ["Food", "Drinks", "Table"].map((title, familyIndex) => ({
+      id: fixtureId(`wordy-${title}`), title,
+      items: Array.from({ length: 6 }, (_, index) =>
+        word(`palabra ${familyIndex}-${index}`, `word ${familyIndex}-${index}`, `word-${familyIndex}-${index}`)),
+    }));
+    const expected = group.words.flatMap((family) =>
+      family.items.map((item, position) => [family.title, item.card.text, position]));
+    expect(expected).toHaveLength(18);
+    const deck = await commitPhrasebook({ name: "Wordy", lang: "es", groups: [group], selectedIndexes: [0] }, { store });
+    const placements = async (target) => {
+      const [stored] = await target.groups.where("deckId").equals(deck.id).toArray();
+      const titles = new Map(stored.wordFamilies.map((family) => [family.id, family.title]));
+      return (await getCards(deck.id, target)).filter((entry) => entry.wordPlacement)
+        .map((entry) => [titles.get(entry.wordPlacement.familyId), entry.card.text, entry.wordPlacement.position]);
+    };
+    expect(await placements(store)).toEqual(expected);
+    const backup = await exportAllData(store);
+    expect(backup.topicWords).toHaveLength(18);
+    const fresh = createDb({ indexedDB: new IDBFactory(), IDBKeyRange });
+    await fresh.open();
+    await restoreAllData(backup, fresh);
+    expect(await exportAllData(fresh)).toEqual(backup);
+    expect(await placements(fresh)).toEqual(expected);
+  });
+
   it("retains independent essentials and equal-text meanings through reorder, reopen, and restore", async () => {
     const input = draftBook("Independent");
     input.groups[0].thingsToSay.push(phrase("essential-two", "Solo aquí", "Only here"));
@@ -645,6 +672,49 @@ describe("backup validation and atomic restore", () => {
     expect(await exportAllData(fresh)).toEqual(backup);
   });
 
+  it("keeps consecutive same-speaker turns separate through commit, reload and backup restore", async () => {
+    const group = topic("consecutive");
+    group.likelyExchanges[0].lines = [
+      { speaker: "you", responses: [phrase("consecutive-ask", "¿Hay mesa?", "Is there a table?")] },
+      { speaker: "partner", responses: [phrase("consecutive-wait", "Un momento.", "One moment.")] },
+      { speaker: "partner", responses: [
+        phrase("consecutive-ready", "Por aquí.", "This way."),
+        phrase("consecutive-follow", "Síganme.", "Follow me."),
+      ] },
+    ];
+    group.exampleConversation.push(phrase("consecutive-more", "¿Y tú?", "And you?", { speaker: "partner" }));
+    const deck = await commitPhrasebook({ name: "Consecutive", lang: "es", groups: [group], selectedIndexes: [0] }, { store });
+    const turns = async (target) => (await getCards(deck.id, target))
+      .filter((entry) => entry.occurrence?.section === "likelyExchanges")
+      .map((entry) => [entry.card.translation, entry.occurrence.speaker, entry.occurrence.turnIndex, entry.occurrence.position]);
+    const lines = async (target) => (await getCards(deck.id, target))
+      .filter((entry) => entry.occurrence?.section === "exampleConversation")
+      .map((entry) => [entry.card.translation, entry.occurrence.speaker, entry.occurrence.position]);
+    const expectedTurns = [
+      ["Is there a table?", "you", 0, 0],
+      ["One moment.", "partner", 1, 0],
+      ["This way.", "partner", 2, 0],
+      ["Follow me.", "partner", 2, 1],
+    ];
+    const expectedLines = [["How are you?", "you", 0], ["Well.", "partner", 1], ["And you?", "partner", 2]];
+    expect(await turns(store)).toEqual(expectedTurns);
+    expect(await lines(store)).toEqual(expectedLines);
+
+    const backup = await exportAllData(store);
+    const fresh = createDb({ indexedDB: new IDBFactory(), IDBKeyRange });
+    await fresh.open();
+    await restoreAllData(backup, fresh);
+    expect(await exportAllData(fresh)).toEqual(backup);
+    expect(await turns(fresh)).toEqual(expectedTurns);
+    expect(await lines(fresh)).toEqual(expectedLines);
+
+    // Removing the learner's opener leaves two partner turns with their original turnIndex values.
+    const opener = (await getCards(deck.id, fresh)).find((entry) => entry.card.translation === "Is there a table?");
+    await removeCardFromDeck(opener.cardId, deck.id, fresh);
+    await restoreAllData(await exportAllData(fresh), fresh);
+    expect(await turns(fresh)).toEqual(expectedTurns.slice(1));
+  });
+
   it("preserves Ukrainian cards and the existing library across a backup round trip", async () => {
     const existing = await createBook("Existing Spanish");
     const existingEntries = await getCards(existing.id, store);
@@ -730,6 +800,11 @@ describe("backup validation and atomic restore", () => {
     }],
     ["missing turn", (backup) => { delete backup.occurrences.find((row) => row.section === "likelyExchanges").turnIndex; }],
     ["exchange turn out of range", (backup) => { backup.occurrences.find((row) => row.section === "likelyExchanges").turnIndex = 4; }],
+    ["two speakers in one turn", (backup) => {
+      const reply = backup.occurrences.find((row) => row.section === "likelyExchanges" && row.turnIndex === 1);
+      reply.turnIndex = 0;
+      reply.position = 1;
+    }],
     ["old alternative field", (backup) => { backup.occurrences.find((row) => row.section === "exampleConversation").alternative = true; }],
     ["word missing membership", (backup) => {
       backup.memberships = backup.memberships.filter((row) => row.cardId !== backup.topicWords[0].cardId);

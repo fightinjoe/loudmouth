@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadFixtures, validateFixtures, prepareRequests, evaluateResponses, runMock, createReviewInput, evaluateReview } from './runner.mjs';
+import { normalizeEnglish } from './production.mjs';
 import { toReviewInput, fromReviewInput } from './topic-conversion.mjs';
 import { modelInput, applyLocalizedRepair } from './review-contract.mjs';
 
@@ -27,7 +28,7 @@ test('prepared review requests never disclose private answers or fixture judgmen
 test('composed B consumes changed A, rather than the fixed standalone English', () => {
   const fixtures = fixture();
   const saved = savedEnglish(fixtures);
-  saved.responses[0].english.topics[0].thingsToSay.push('Please bring a glass of water too.');
+  saved.responses[0].english.thingsToSay.push('Please bring a glass of water too.');
   const composed = evaluateResponses(fixtures, 'ab', saved, { contextId: 'tea-cs' });
   assert.equal(composed.results[0].stages[0].status, 'passed');
   assert.equal(composed.results[0].stages[1].status, 'failed');
@@ -39,6 +40,30 @@ test('composed B consumes changed A, rather than the fixed standalone English', 
   }
   const corrected = evaluateResponses(fixtures, 'ab', saved, { contextId: 'tea-cs' });
   assert.equal(corrected.structuralPass, true);
+});
+
+test('a reply with more than ten Words, within the warning bound, is kept whole', () => {
+  const fixtures = fixture();
+  const saved = savedEnglish(fixtures);
+  saved.responses[0].english.words.push(
+    { title: 'Paying', items: ['cash', 'receipt', 'change', 'crowns'] },
+    { title: 'Serving', items: ['cup', 'milk', 'honey'] },
+  );
+  const stage = evaluateResponses(fixtures, 'a', saved, { contextId: 'tea-cs' }).results[0].stages[0];
+  assert.equal(stage.status, 'passed');
+  assert.equal(stage.counts.words, 12);
+  assert.equal(stage.normalized.failureLevel, 0);
+  assert.equal(stage.normalized.changes.some(change => change.path === '/words'), false);
+});
+
+test('consecutive turns by one speaker in an exchange normalize with a warning, not a rejection', () => {
+  const fixtures = fixture();
+  const saved = savedEnglish(fixtures);
+  saved.responses[0].english.likelyExchanges[0].turns.push({ speaker: 'partner', say: 'Anything else?' });
+  const stage = evaluateResponses(fixtures, 'a', saved, { contextId: 'tea-cs' }).results[0].stages[0];
+  assert.equal(stage.status, 'passed');
+  assert.equal(stage.normalized.failureLevel, 1);
+  assert.equal(stage.normalized.changes.some(change => change.path === '/likelyExchanges'), false);
 });
 
 test('malformed translation fails as a whole, never reports assembled partial success', () => {
@@ -177,7 +202,7 @@ test('review conversion preserves exchange alternatives, family boundaries and s
   const fixtures = fixture();
   const original = createReviewInput(fixtures, 'tea-cs', 'tea-cs-correct');
   const group = fromReviewInput(original);
-  const english = structuredClone(fixtures.cases.cases.find(item => item.id === 'tea-cs').english.topics[0]);
+  const english = normalizeEnglish(fixtures.cases.cases.find(item => item.id === 'tea-cs').english, original.task).value.topic;
   const option = structuredClone(group.thingsToSay[0]);
   option.id = 'review-alternative';
   group.likelyExchanges[0].lines[0].responses.push(option);

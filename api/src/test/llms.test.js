@@ -79,6 +79,23 @@ test('Gemini variants send trusted systemInstruction and JSON-only contents', as
   assert.equal(requests.every(({ config }) => !config.systemInstruction.includes(SENTINEL)), true);
 });
 
+test('Gemini sets minimal thinking and the response schema only when a caller asks for them', async (t) => {
+  const requests = [];
+  t.mock.method(Models.prototype, 'generateContentInternal', async (params) => {
+    requests.push(params);
+    return { text: '{"ok":true}', usageMetadata: {} };
+  });
+  const schema = { type: 'object' };
+
+  await callGenAI(PROMPT);
+  await callGenAI(PROMPT, { reasoning: 'minimal', responseJsonSchema: schema });
+
+  assert.equal(Object.hasOwn(requests[0].config, 'thinkingConfig'), false);
+  assert.equal(Object.hasOwn(requests[0].config, 'responseJsonSchema'), false);
+  assert.deepEqual(requests[1].config.thinkingConfig, { thinkingLevel: 'MINIMAL' });
+  assert.deepEqual(requests[1].config.responseJsonSchema, schema);
+});
+
 function setTestEnvironment(t, key, value) {
   const previous = process.env[key];
   process.env[key] = value;
@@ -165,6 +182,9 @@ test('DeepSeek routes by provider performance, enforces a supplied schema and ma
   });
   const schema = { type: 'object', additionalProperties: false, required: [], properties: {} };
   await callDeepSeek(PROMPT, { responseJsonSchema: schema });
+  await callDeepSeek(PROMPT);
+  assert.equal(Object.hasOwn(bodies[1], 'response_format'), false);
+  assert.deepEqual(bodies[0].reasoning, { enabled: false });
   assert.deepEqual(bodies[0].provider, {
     allow_fallbacks: true, require_parameters: true, data_collection: 'deny', ignore: ['wafer', 'novita', 'open-inference'], preferred_min_throughput: { p90: 150 },
   });
@@ -187,4 +207,7 @@ test('generation and translation selectors reject unsupported backend roles', (t
   }
   process.env.LLM_BACKEND = 'deepseek-v4.1-flash';
   assert.throws(() => getBackendName(), /Invalid LLM_BACKEND/);
+  const { getPhrasebookGenerationFallbackBackendName } = require('../llm-config');
+  assert.equal(getPhrasebookGenerationFallbackBackendName('deepseek-v4.1-flash'), 'gemini-3.5-flash-lite');
+  assert.equal(getPhrasebookGenerationFallbackBackendName('gemini-3.5-flash-lite'), null);
 });

@@ -1,7 +1,7 @@
 ---
 kind: ledger
 status: current
-summary: "Backlog of decided work without a milestone: creation-flow redesign, Spanish variants, phrasebook artwork, breakdown improvements, preset packs, placeholders, diagnostics mode, changing a remembered ability, dependency upkeep, DeepSeek load testing, prompt follow-ups, deck card headings, category markers, chapter-sheet swipe, Review entry point and Japanese romaji cards; future work holds usage-based suggestions, partial retry of English sections and moving todos to an issue tracker after the launch."
+summary: "Backlog of decided work without a milestone: creation-flow redesign, Spanish variants, phrasebook artwork, breakdown improvements, preset packs, /context checklist topics, exchange titles, placeholders, diagnostics mode, changing a remembered ability, dependency upkeep, DeepSeek load testing, translation thinking level, the Flash Lite injection leak, prompt follow-ups, deck card headings, category markers, chapter-sheet swipe, Review entry point and Japanese romaji cards; future work holds usage-based suggestions, partial retry of English sections and moving todos to an issue tracker after the launch."
 verified: 2026-11-14
 statuses:
   - open
@@ -16,6 +16,11 @@ Decided work not yet assigned to a milestone.
 
 | Date       | Status | Description                                                                                                      | Details                                          |
 | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 2026-11-15 | open | **Security: injection leak on Flash Lite**<br>Stop Flash Lite English generation from copying instruction content into a chapter when the seed asks for it | [details](backlog/flash-lite-injection-leak.md) |
+| 2026-11-15 | open | **API: translation thinking level**<br>Set minimal reasoning on the Gemini Flash Lite translation call in `/phrasebook`, as English generation does | [details](backlog/translation-minimal-reasoning.md) |
+| 2026-11-14 | open | **Content: /context topics**<br>Review topic granularity for broad seeds such as directions, where narrow sibling topics overlap | [details](backlog/context-topic-granularity.md) |
+| 2026-11-14 | open | **Content: /context topics**<br>Adopt the checklist rule that keeps courtesy and repair topics out of `/context` | [details](backlog/context-checklist-specificity.md) |
+| 2026-11-14 | open | **Content: exchange titles**<br>Review DeepSeek exchange titles and try removing people-centred ones | [details](backlog/exchange-titles.md) |
 | 2026-11-13 | open | **API: Japanese romaji cards**<br>One topic's Japanese Key phrases came back romanized instead of in kanji and kana | [details](backlog/japanese-romanized-text.md) |
 | 2026-11-13 | open | **UX: Review entry point**<br>Show the Review starred cards button only in the Starred chapter sheet | [details](backlog/review-in-starred.md) |
 | 2026-11-13 | open | **UX: Chapter sheet swipe**<br>Close the chapter sheet that lists cards (Words, Key phrases and so on) with a swipe down | [details](backlog/chapter-sheet-swipe.md) |

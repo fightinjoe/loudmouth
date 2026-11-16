@@ -1,5 +1,5 @@
 {
-  "version": "2.0-proposed",
+  "version": "2.1-proposed",
   "source": "../docs/evals/rubric.md",
   "note": "Machine-readable fields only. Rules, outcome classes, priorities, examples and the decision log live in docs/evals/rubric.md.",
   "scale": [
@@ -11,10 +11,11 @@
   ],
   "missingAssessment": null,
   "dimensions": [
-    { "id": "coverage", "question": "Can the learner initiate and accomplish this contextual task?", "lanes": ["a", "b", "ab", "c"] },
+    { "id": "usefulness", "question": "Is every Things to say entry, exchange line, alternative and Word something this learner is likely to say or hear in this situation and would want on a card? Padding, alternatives that only reword another option, low-value Words and material that belongs to another topic lower it. A missing item counts against coverage, not usefulness. An empty Words list can be appropriate.", "lanes": ["a"] },
     { "id": "correctnessAndFit", "question": "Are meaning, supplied facts, register, learner level and teaching correct and contextually appropriate?", "lanes": ["a", "b", "ab", "c"] },
-    { "id": "vocabularyUsefulness", "question": "Are the dictionary words relevant, reusable, broad and unpadded, with truthful forms, meanings and evidence? An empty list can be appropriate.", "lanes": ["a", "b", "ab", "c"] },
+    { "id": "coverage", "question": "Can the learner initiate and accomplish this contextual task?", "lanes": ["a", "b", "ab", "c"] },
+    { "id": "naturalnessAndReusability", "question": "Does the English sound natural, and can each Things to say entry and exchange line be lifted and reused on its own?", "lanes": ["a"] },
     { "id": "conversationFlow", "question": "Are roles, alternatives and progression usable? Repetition alone is not a material failure.", "lanes": ["a", "b", "ab", "c"] },
-    { "id": "naturalnessAndReusability", "question": "Does the English sound natural, and can each Things to say entry and exchange line be lifted and reused on its own?", "lanes": ["a"] }
+    { "id": "vocabularyUsefulness", "question": "Are the dictionary words relevant, reusable, broad and unpadded, with truthful forms, meanings and evidence? An empty list can be appropriate.", "lanes": ["b", "ab", "c"] }
   ]
 }

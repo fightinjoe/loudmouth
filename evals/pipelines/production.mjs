@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
 const require = createRequire(import.meta.url);
 const { parsePhrasebookRequest, validateGenerationResponse, validateTranslationResponse } = require('../../api/src/phrasebook/parse');
 const { buildPhrasebookGenerationPrompt, buildPhrasebookTranslationPrompt } = require('../../api/src/phrasebook/prompt');
-const { buildGenerationResponseJsonSchema, buildTranslationResponseJsonSchema } = require('../../api/src/phrasebook');
+const { generationTasks, buildGenerationResponseJsonSchema, buildTranslationResponseJsonSchema } = require('../../api/src/phrasebook');
 const translationTemplate = readFileSync(new URL('../../api/src/phrasebook/translate-prompt.txt', import.meta.url), 'utf8');
 
 function validatedTask(input) {
@@ -15,27 +16,34 @@ function validatedTask(input) {
 }
 
 export function buildEnglishPrompt(input, variant) {
-  const task = validatedTask(input);
-  const prompt = buildPhrasebookGenerationPrompt(task);
+  const prompt = buildPhrasebookGenerationPrompt(generationTasks(validatedTask(input))[0]);
   assert.equal(variant.instructions, prompt.instructions, 'Use the unchanged production English prompt');
-  return { ...prompt, schema: buildGenerationResponseJsonSchema(task.checklist) };
+  return { ...prompt, schema: buildGenerationResponseJsonSchema() };
+}
+
+// Differences between a raw English reply and the parser's topic. Returning each turn
+// {speaker, say, or?} as a line {speaker, text: [say, ...or]} under the request title is the
+// parser's design, described once; a section is listed only when the parser repaired it.
+export function englishChanges(parsed, topic) {
+  if (parsed === null || typeof parsed !== 'object') return [{ path: '', reason: 'Production parser accepted raw content not parsed by the generic reader; raw findings and original text are distinct from normalized output. This normalizer does not persist them.' }];
+  const converted = {
+    ...parsed,
+    likelyExchanges: parsed.likelyExchanges.map(exchange => ({
+      title: exchange.title, lines: exchange.turns.map(turn => ({ speaker: turn.speaker, text: [turn.say, ...(turn.or ?? [])] })),
+    })),
+  };
+  return [
+    { path: '', reason: 'By design, the production parser adds the request topic title and returns each exchange turn {speaker, say, or?} as a line {speaker, text: [say, ...or]}. Raw response retention is controlled by the caller, not this normalizer.' },
+    ...['thingsToSay', 'likelyExchanges', 'words', 'exampleConversation'].filter(section => !isDeepStrictEqual(converted[section], topic[section])).map(section => ({
+      path: `/${section}`, reason: 'Production parser repaired this section (see flags).',
+    })),
+  ];
 }
 
 export function normalizeEnglish(parsed, input, context = {}) {
   const task = validatedTask(input);
-  // One topic per task: report its repair flags, and failure level 1 when there are any.
-  const result = validateGenerationResponse(context.raw ?? JSON.stringify(parsed), task.checklist);
-  const value = { topics: result.topics, flags: result.flags[0], failureLevel: result.flags[0].length > 0 ? 1 : 0 };
-  const changes = [];
-  const original = parsed?.topics?.[0];
-  if (original) {
-    for (const section of ['thingsToSay', 'likelyExchanges', 'words', 'exampleConversation']) {
-      if (JSON.stringify(original[section]) !== JSON.stringify(value.topics[0][section])) changes.push({
-        path: `/topics/0/${section}`, reason: 'Production parser repaired this section (see flags); raw response retention is controlled by the caller, not this normalizer.',
-      });
-    }
-  } else changes.push({ path: '', reason: 'Production parser accepted raw content not parsed by the generic reader; raw findings and original text are distinct from normalized output. This normalizer does not persist them.' });
-  return { value, changes };
+  const value = validateGenerationResponse(context.raw ?? JSON.stringify(parsed), task.checklist[0]);
+  return { value, changes: englishChanges(parsed, value.topic) };
 }
 
 export function buildTranslationPrompt(input, variant) {

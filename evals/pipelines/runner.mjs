@@ -32,7 +32,7 @@ function rawInfo(value) {
 function normalizeA(value, task) { const raw = rawInfo(value); return { ...normalizeEnglish(raw.parsed, task, { raw: raw.text }), raw: raw.summary }; }
 function normalizeB(value, task, topic) { const raw = rawInfo(value); return { ...normalizeTranslation(raw.parsed, { task, topic }, { raw: raw.text }), raw: raw.summary }; }
 function baseInput(context, fixture) {
-  const english = normalizeA(fixture.english, context.task).value.topics[0];
+  const english = normalizeA(fixture.english, context.task).value.topic;
   const translated = normalizeB(fixture.translation, context.task, english).value;
   const group = assemblePhrasebook({ seed: context.task.seed, language: context.task.language, topics: [english], translations: [translated] }).groups[0];
   return toReviewInput({ task: context.task, topic: english, group });
@@ -185,7 +185,7 @@ export function prepareRequests(fixtures, pipeline, { contextId } = {}) {
   const [{ context, fixture }] = select(fixtures, contextId);
   const requests = [];
   if (pipeline === 'a') requests.push(requestEntry('a', context.id, englishRequest(context)));
-  if (pipeline === 'b') requests.push(requestEntry('b', context.id, translationRequest(context, normalizeA(fixture.english, context.task).value.topics[0]), { englishSource: 'fixed-authored-fixture' }));
+  if (pipeline === 'b') requests.push(requestEntry('b', context.id, translationRequest(context, normalizeA(fixture.english, context.task).value.topic), { englishSource: 'fixed-authored-fixture' }));
   if (pipeline === 'c') for (const review of fixture.reviews) {
     const input = reviewInput(context, fixture, review);
     requests.push(requestEntry('c-detection', context.id, detectionRequest(input), { reviewId: review.id }));
@@ -202,8 +202,8 @@ export function prepareDetectedRepairs(input, detection) {
 export function prepareComposedTranslation(fixtures, contextId, englishResponse) {
   const [{ context }] = select(fixtures, contextId);
   const normalized = normalizeA(englishResponse, context.task);
-  return requestEntry('b', context.id, translationRequest(context, normalized.value.topics[0]), {
-    englishSource: 'actual-a-output', englishSha256: sha256(normalized.value.topics[0]),
+  return requestEntry('b', context.id, translationRequest(context, normalized.value.topic), {
+    englishSource: 'actual-a-output', englishSha256: sha256(normalized.value.topic),
   });
 }
 
@@ -348,11 +348,11 @@ export function evaluateResponses(fixtures, pipeline, saved, { contextId, proven
     const row = rows.get(context.id); assert(row, `Missing saved responses for ${context.id}`);
     const stages = []; let english;
     if (pipeline === 'a' || pipeline === 'ab') stages.push(stageResult('a', () => {
-      const normalized = normalizeA(row.english, context.task); english = normalized.value.topics[0];
-      return { ...normalizeSummary(normalized), counts: { thingsToSay: english.thingsToSay.length, likelyExchanges: english.likelyExchanges.length, words: english.words.reduce((sum, family) => sum + family.items.length, 0), exampleConversation: english.exampleConversation.length }, example: { path: '/topics/0/thingsToSay/0', english: quote(english.thingsToSay[0]) } };
+      const normalized = normalizeA(row.english, context.task); english = normalized.value.topic;
+      return { ...normalizeSummary(normalized), counts: { thingsToSay: english.thingsToSay.length, likelyExchanges: english.likelyExchanges.length, words: english.words.reduce((sum, family) => sum + family.items.length, 0), exampleConversation: english.exampleConversation.length }, example: { path: '/thingsToSay/0', english: quote(english.thingsToSay[0]) } };
     }));
     if (pipeline === 'b' || pipeline === 'ab') {
-      if (pipeline === 'b') english = normalizeA(fixture.english, context.task).value.topics[0];
+      if (pipeline === 'b') english = normalizeA(fixture.english, context.task).value.topic;
       stages.push(stageResult('b', () => {
         assert(english, 'A failed; B is blocked, not evaluated against a replacement fixture');
         const request = translationRequest(context, english);
@@ -395,7 +395,7 @@ export function calibrationPlan(fixtures) {
   const requests = [];
   for (const { context, fixture } of select(fixtures)) {
     requests.push(requestEntry('a', context.id, englishRequest(context)));
-    requests.push(requestEntry('b', context.id, translationRequest(context, normalizeA(fixture.english, context.task).value.topics[0])));
+    requests.push(requestEntry('b', context.id, translationRequest(context, normalizeA(fixture.english, context.task).value.topic)));
     for (const review of fixture.reviews) {
       const input = reviewInput(context, fixture, review);
       requests.push(requestEntry('c-detection', context.id, detectionRequest(input), { reviewId: review.id }));
@@ -417,7 +417,7 @@ export function calibrationPlan(fixtures) {
     version: 1, mode: 'proposed-single-baseline-freeze', approved: false, executionReady: false, dispatch: false,
     schemaVersion: 4, fixtureProvenance: structuredClone(fixtures.cases.provenance),
     destination: 'native Romp', model: null, provider: null,
-    schemaBinding: 'Per-request schema hashes; A uses production prompt-only JSON (schema=null).',
+    schemaBinding: 'Per-request schema hashes; A uses the production English response schema, B the production translation schema for its English topic.',
     promptHashes: { a: sha256(generationTemplate), bTemplate: sha256(translationTemplate), readingRulesJa: sha256(productionFile('reading-rules-ja.txt')), readingRulesZh: sha256(productionFile('reading-rules-zh.txt')), cDetection: sha256(detectionInstructions), cRepair: sha256(repairInstructions) },
     ...hashes, dependencyHashes: dependencies, rubric: rubricReference(),
     contextHashes: Object.fromEntries(fixtures.contexts.contexts.map(context => [context.id, sha256(context.task)])),

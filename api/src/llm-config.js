@@ -35,8 +35,19 @@ function getPhrasebookGenerationBackendName() {
   return name;
 }
 
+// English generation moves a topic to the fallback when its primary backend
+// reports a rate limit. A backend without an entry has no fallback.
+const PHRASEBOOK_GENERATION_FALLBACKS = Object.freeze({
+  'deepseek-v4.1-flash': DEFAULT_BACKEND,
+});
+
+function getPhrasebookGenerationFallbackBackendName(primary = getPhrasebookGenerationBackendName()) {
+  return PHRASEBOOK_GENERATION_FALLBACKS[primary] ?? null;
+}
+
 module.exports = {
   getBackendName,
   getPhrasebookGenerationBackendName,
+  getPhrasebookGenerationFallbackBackendName,
   LLM_REGISTRY,
 };

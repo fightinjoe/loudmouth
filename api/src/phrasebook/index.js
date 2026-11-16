@@ -2,10 +2,15 @@
 
 const {
   PARTS_OF_SPEECH,
+  PHRASEBOOK_COUNT_LIMITS,
   validatePhrasebookResponse,
 } = require('../schema');
 const { computeCostUsd } = require('../pricing');
-const { getBackendName, getPhrasebookGenerationBackendName } = require('../llm-config');
+const {
+  getBackendName,
+  getPhrasebookGenerationBackendName,
+  getPhrasebookGenerationFallbackBackendName,
+} = require('../llm-config');
 const log = require('../log');
 const {
   parsePhrasebookRequest,
@@ -140,6 +145,7 @@ async function callLlmWithRateLimitRetry({
   prompt,
   maxOutputTokens,
   responseJsonSchema,
+  reasoning,
   timeoutMs,
   signal,
   usageAccumulator,
@@ -192,6 +198,7 @@ async function callLlmWithRateLimitRetry({
           Promise.resolve().then(() => handler(prompt, {
             maxOutputTokens,
             ...(responseJsonSchema ? { responseJsonSchema } : {}),
+            ...(reasoning ? { reasoning } : {}),
             signal: callController.signal,
           })),
           aborted.promise,
@@ -233,23 +240,59 @@ async function callLlmWithRateLimitRetry({
 }
 
 /**
- * Strict structured-output schema for one English generation call. It fixes
- * fields, types, speakers and topic titles only: counts stay with the parser,
- * which keeps overruns and flags them (PHRASEBOOK_COUNT_LIMITS).
+ * One model request per checklist entry, in request order. Each names the
+ * phrasebook's other topics so the model leaves their material to them.
  */
-function buildGenerationResponseJsonSchema(checklist) {
-  const object = properties => ({ type: 'object', additionalProperties: false, required: Object.keys(properties), properties });
-  const array = items => ({ type: 'array', items });
+function generationTasks({ seed, language, ability, answers, checklist }) {
+  return checklist.map((topic, index) => ({
+    seed,
+    language,
+    ability,
+    answers,
+    topic,
+    otherTopics: checklist.filter((_, other) => other !== index),
+  }));
+}
+
+/**
+ * Strict structured-output schema for one English generation call (one untitled topic; code owns the
+ * title). Providers enforce its shape and the list sizes the prompt asks for. The parser stays the safety
+ * net for a provider that does not: it keeps overruns and flags them (PHRASEBOOK_COUNT_LIMITS), and it
+ * owns speaker order, which a schema cannot express.
+ */
+function buildGenerationResponseJsonSchema() {
   const text = { type: 'string' };
   const speaker = { type: 'string', enum: ['you', 'partner'] };
+  const object = (properties, required = Object.keys(properties)) => ({
+    type: 'object', additionalProperties: false, required, properties,
+  });
   return object({
-    topics: array(object({
-      title: { type: 'string', enum: [...new Set(checklist)] },
-      thingsToSay: array(text),
-      likelyExchanges: array(object({ title: text, lines: array(object({ speaker, text: array(text) })) })),
-      words: array(object({ title: text, items: array(text) })),
-      exampleConversation: array(object({ speaker, text })),
-    })),
+    thingsToSay: { type: 'array', minItems: 1, maxItems: PHRASEBOOK_COUNT_LIMITS.thingsToSay, items: text },
+    likelyExchanges: {
+      type: 'array',
+      minItems: 1,
+      maxItems: PHRASEBOOK_COUNT_LIMITS.likelyExchanges,
+      items: object({
+        title: text,
+        turns: {
+          type: 'array',
+          minItems: 2,
+          maxItems: 4,
+          items: object({
+            speaker,
+            say: text,
+            or: { type: 'array', minItems: 1, maxItems: 1, items: text },
+          }, ['speaker', 'say']),
+        },
+      }),
+    },
+    // Three families of six is the Words size the prompt asks for.
+    words: {
+      type: 'array',
+      maxItems: 3,
+      items: object({ title: text, items: { type: 'array', minItems: 2, maxItems: 6, items: text } }),
+    },
+    exampleConversation: { type: 'array', minItems: 2, maxItems: 10, items: object({ speaker, text }) },
   });
 }
 
@@ -257,41 +300,56 @@ function buildGenerationResponseJsonSchema(checklist) {
  * Generates one topic. A reply that cannot be read at all, or leaves a section unusable, earns one more
  * full-topic attempt; each section then comes from the earliest attempt that could use it. A section no
  * attempt could use leaves the topic without it (`section-missing`) rather than failing the request.
+ * `fallback`, when configured, takes over an attempt as soon as the primary backend reports a rate limit,
+ * instead of waiting out the primary's backoff; the next attempt starts at the primary again.
  */
 async function generateTopic({
-  parsedRequest,
+  task,
   topicIndex,
   handler,
   backendName,
   callTimeoutMs,
+  fallback,
   signal,
   usageAccumulator,
   retryDelaysMs,
   diagnostics,
 }) {
-  const prompt = buildPhrasebookGenerationPrompt(parsedRequest);
-  const responseJsonSchema = buildGenerationResponseJsonSchema(parsedRequest.checklist);
+  const prompt = buildPhrasebookGenerationPrompt(task);
+  const responseJsonSchema = buildGenerationResponseJsonSchema();
+  const call = (target, delays) => callLlmWithRateLimitRetry({
+    handler: target.handler,
+    prompt,
+    maxOutputTokens: PHRASEBOOK_GENERATION_MAX_TOKENS,
+    responseJsonSchema,
+    reasoning: 'minimal',
+    timeoutMs: target.callTimeoutMs,
+    signal,
+    usageAccumulator,
+    route: 'phrasebook:generate',
+    backendName: target.backendName,
+    topicIndex,
+    retryDelaysMs: delays,
+    diagnostics,
+  });
+  const primary = { handler, backendName, callTimeoutMs };
   const attempts = [];
   let lastError;
   for (let attempt = 0; attempt <= GENERATION_VALIDATION_RETRIES; attempt++) {
+    let llm = backendName;
     let reply;
     let problem;
     try {
-      reply = await callLlmWithRateLimitRetry({
-        handler,
-        prompt,
-        maxOutputTokens: PHRASEBOOK_GENERATION_MAX_TOKENS,
-        responseJsonSchema,
-        timeoutMs: callTimeoutMs,
-        signal,
-        usageAccumulator,
-        route: 'phrasebook:generate',
-        backendName,
-        topicIndex,
-        retryDelaysMs,
-        diagnostics,
-      });
-      attempts.push(readGenerationReply(reply.text, parsedRequest.checklist)[0]);
+      try {
+        reply = await call(primary, fallback ? [] : retryDelaysMs);
+      } catch (error) {
+        if (!fallback || !isRateLimitError(error)) throw error;
+        llm = fallback.backendName;
+        diagnostics.failureLevel = Math.max(diagnostics.failureLevel, 1);
+        log.warn({ event: 'phrasebook_generation_fallback', failureLevel: 1, from: backendName, to: llm, reason: 'rate_limit', topicIndex });
+        reply = await call(fallback, retryDelaysMs);
+      }
+      attempts.push(readGenerationReply(reply.text, task.topic));
       const unusable = unusableSections(attempts);
       if (unusable.length === 0) break;
       problem = `unusable sections: ${unusable.join(', ')}`;
@@ -307,14 +365,14 @@ async function generateTopic({
       event: 'validation_error',
       failureLevel: retrying || attempts.length > 0 ? 1 : 2,
       route: 'phrasebook:generate',
-      llm: backendName,
+      llm,
       topicIndex,
       attempt: attempt + 1,
       error: problem,
       ...(reply === undefined ? {} : { raw: reply.text }),
     });
     if (retrying) {
-      log.warn({ event: 'phrasebook_generation_retry', failureLevel: 1, llm: backendName, topicIndex, attempt: attempt + 1, error: problem });
+      log.warn({ event: 'phrasebook_generation_retry', failureLevel: 1, llm, topicIndex, attempt: attempt + 1, error: problem });
     }
   }
   if (attempts.length === 0) throw new PhrasebookValidationError('Invalid response from LLM', { cause: lastError });
@@ -329,7 +387,8 @@ async function generateTopic({
 async function generateTopics(args) {
   const controller = new AbortController();
   const unlink = linkAbortSignal(args.signal, controller);
-  const topics = new Array(args.parsedRequest.checklist.length);
+  const tasks = generationTasks(args.parsedRequest);
+  const topics = new Array(tasks.length);
   const flags = new Array(topics.length);
   let nextIndex = 0;
   const worker = async () => {
@@ -337,12 +396,7 @@ async function generateTopics(args) {
       while (nextIndex < topics.length) {
         if (controller.signal.aborted) throw reasonForAbort(controller.signal, 'Generation cancelled');
         const index = nextIndex++;
-        const generated = await generateTopic({
-          ...args,
-          parsedRequest: { ...args.parsedRequest, checklist: [args.parsedRequest.checklist[index]] },
-          topicIndex: index,
-          signal: controller.signal,
-        });
+        const generated = await generateTopic({ ...args, task: tasks[index], topicIndex: index, signal: controller.signal });
         topics[index] = generated.topic;
         flags[index] = generated.flags;
       }
@@ -508,6 +562,7 @@ async function performPhrasebook(
     deadlineMs = PHRASEBOOK_DEADLINE_MS,
     backendName = getBackendName(),
     generationBackendName = getPhrasebookGenerationBackendName(),
+    generationFallbackBackendName = getPhrasebookGenerationFallbackBackendName(generationBackendName),
     signal,
     retryDelaysMs = RATE_LIMIT_RETRY_DELAYS_MS,
   } = {},
@@ -519,6 +574,10 @@ async function performPhrasebook(
   const generationHandler = registry[generationBackendName];
   if (!generationHandler) {
     throw new Error(`Configured generation backend is not registered: ${generationBackendName}`);
+  }
+  const fallbackHandler = generationFallbackBackendName ? registry[generationFallbackBackendName] : null;
+  if (generationFallbackBackendName && !fallbackHandler) {
+    throw new Error(`Configured generation fallback backend is not registered: ${generationFallbackBackendName}`);
   }
   const callTimeoutMs = handler.timeoutMs || timeoutMs;
   const pipelineController = new AbortController();
@@ -538,6 +597,11 @@ async function performPhrasebook(
       handler: generationHandler,
       backendName: generationBackendName,
       callTimeoutMs: generationHandler.timeoutMs || timeoutMs,
+      fallback: fallbackHandler ? {
+        handler: fallbackHandler,
+        backendName: generationFallbackBackendName,
+        callTimeoutMs: fallbackHandler.timeoutMs || timeoutMs,
+      } : null,
       signal: pipelineController.signal,
       usageAccumulator,
       retryDelaysMs,
@@ -659,6 +723,7 @@ module.exports = {
   handlePhrasebook,
   performPhrasebook,
   callLlmWithRateLimitRetry,
+  generationTasks,
   buildGenerationResponseJsonSchema,
   buildTranslationResponseJsonSchema,
   isRateLimitError,

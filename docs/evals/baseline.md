@@ -2,8 +2,8 @@
 kind: spec
 status: current
 summary: Frozen Spanish-first /context and /phrasebook English-generation request inputs, their capture provenance and evaluation approach.
-sources: [evals/fixtures/baseline-context.json, evals/fixtures/baseline-phrasebook-english.json, evals/fixtures/captures/baseline-context.json]
-verified: 2026-11-12
+sources: [evals/fixtures/baseline-context.json, evals/fixtures/baseline-phrasebook-english.json, evals/fixtures/captures/baseline-context.json, evals/baseline/prepare-english.mjs]
+verified: 2026-11-15
 ---
 
 # Endpoint baseline inputs
@@ -18,7 +18,7 @@ verified: 2026-11-12
 
 Each input file is an array of `{ "id": "...", "request": { ... } }`. The ID identifies the case; only `request` is sent to the endpoint. Every request is self-contained. The phrasebook file's `english` name identifies the stage to evaluate, not a field containing authored English output.
 
-The inputs were reviewed and used for the 2026-11-02 to 2026-11-12 English-generation study ([record](results/2026-11-12-english-prompt-candidate-4.md)). There are no generated phrasebook outputs, expected answers, review notes or scoring criteria in the input files. The old combined fixture and its assistant-authored English have been removed. Existing evaluation CLI fixtures remain unchanged; these request files are not wired into that CLI. Studies used per-topic Prompt Romp suites built from them.
+The inputs were reviewed and used for the 2026-11-02 to 2026-11-12 English-generation study ([record](results/2026-11-12-english-prompt-candidate-4.md)). There are no generated phrasebook outputs, expected answers, review notes or scoring criteria in the input files. The old combined fixture and its assistant-authored English have been removed. Existing evaluation CLI fixtures remain unchanged; these request files are not wired into that CLI. Model comparisons build a Prompt Romp suite from them with `prepare-english.mjs` ([below](#prepare-an-english-generation-model-comparison)).
 
 ## Overlapping API input set
 
@@ -50,10 +50,28 @@ Three actual local HTTP `POST /context` calls returned 200 using `gemini-3.5-fla
 Start with this small set to compare models directionally and identify broad prompt shortcomings. Freeze the same inputs and settings across candidates. Keep endpoint/stage outcomes distinct:
 
 - **`/context`:** send the three context requests; inspect the actual returned questions and checklist.
-- **`/phrasebook` English generation (A):** use the four phrasebook requests, preserving all selected topics. If an evaluator calls A once per topic, derive singleton-topic calls without silently dropping topics. The full set contains 22 topic calls per candidate/repetition.
+- **`/phrasebook` English generation (A):** use the four phrasebook requests, preserving all selected topics. Production calls A once per topic; derive those calls with production `generationTasks` so each names its topic and the request's other topics, without silently dropping topics. The full set contains 22 topic calls per candidate/repetition.
 - **Translation (B):** separately capture and review actual A outputs before freezing translation inputs. These request files do not contain a B baseline or authorize authored substitutes.
 - **Integration:** pass actual upstream output downstream and retain its association with the input. Keep this separate from isolated A/B comparisons so upstream differences do not confound them.
 
 After choosing a promising model, broaden diagnosis with salsa dancing in Austin, joining a pottery class, ordering vegan food and feeling sick. Report severe peanut allergy as a separate safety challenge. Add targeted ability/language variants instead of a full combinatorial matrix; validate selected Japanese and Mandarin cases before making multilingual claims. Production Czech/Ukrainian support remains unchanged. Keep untouched cases for a final check rather than tuning against every case.
 
 [Evaluation guidance](index.md), the [rubric](rubric.md) and endpoint contracts ([context](../api/context.md), [phrasebook](../api/phrasebook.md)) own evaluation conventions and runtime behavior. They are not fields to inject into baseline requests. Further prompt edits and paid runs remain separately approved work; their results go in the [results ledger](results.md).
+
+## Prepare an English-generation model comparison
+
+`evals/baseline/prepare-english.mjs` turns the phrasebook requests into one native Prompt Romp suite without dispatching anything:
+
+```sh
+node evals/baseline/prepare-english.mjs \
+  --destination evals/.runs/NEW_DIR \
+  --bindings evals/.runs/BINDINGS.json \
+  [--topics-per-request N]
+```
+
+- Each case is one per-topic production model request (`<request id>--<topic number>`), split from the whole request by production `generationTasks` and built with the production prompt builder, so its input names one `topic` and the request's `otherTopics`. `--topics-per-request N` keeps the first N topics of each request, each still listing all the other topics of its request; omitted, all 22.
+- Bindings: `{"timeoutMs"?: number, "models": [{"model", "provider", "settings"?, "pricing": {"inputPerMillion", "outputPerMillion", "currency": "USD", "source", "date"}}]}`. `settings` carries per-model controls such as `reasoning`; the production generation output cap is fixed and cannot be overridden.
+- The suite adapter replays the frozen request with the production response schema (`buildGenerationResponseJsonSchema`), as production does, and runs production `validateGenerationResponse` on raw text with the case's topic title: a parser rejection is a `NORMALIZER_ERROR` finding; the by-design conversion of exchange turns to lines, a repaired section and the parser's repair flags are logged normalization changes; count overruns are flagged later, at assembly.
+- `materialization.json` lists the `romp init`, `note` and per-model `run --plan --save-plan` commands. Each model gets its own plan, because Prompt Romp pins one provider and one settings overlay per run. Run `romp` from the destination directory, with `OPENROUTER_API_KEY` in the environment.
+
+Execution still needs a human-approved brief and a separate approval of each exact prepared plan. A model whose ID is batch-only (for example an OpenRouter `:batch` variant) cannot run: Prompt Romp uses chat completions.

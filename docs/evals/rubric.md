@@ -3,12 +3,12 @@ kind: rules
 status: current
 summary: "Content-quality rubric for phrasebook evaluations: scale, dimensions, outcome classes, English and translation rules, review records and decision log."
 sources: [evals/rubric.json]
-verified: 2026-11-12
+verified: 2026-11-15
 ---
 
 # Content-quality rubric
 
-**Version 2.0-proposed.** This file is the human-readable source of truth for judging phrasebook content. Rules come from joint reviews with the project owner; the [decision log](#decision-log) records each change and why.
+**Version 2.1-proposed.** This file is the human-readable source of truth for judging phrasebook content. Rules come from joint reviews with the project owner; the [decision log](#decision-log) records each change and why.
 
 This is review guidance, not linguistic certification or a production acceptance gate. A model cannot certify its own output, and assistant, independent-model and human judgments stay attributable and separate.
 
@@ -43,11 +43,14 @@ Scores are ordinal (0–4, higher is better). Report each dimension separately w
 
 | Dimension | Question | Lanes |
 |---|---|---|
-| Coverage | Can the learner initiate and accomplish this contextual task? | A, B, C |
+| Usefulness | Is every Things to say entry, exchange line, alternative and Word something this learner is likely to say or hear in this situation and would want on a card? Padding, alternatives that only reword another option, low-value Words and material that belongs to another topic lower it. A missing item counts against coverage, not usefulness. An empty Words list can be appropriate. | A |
 | Correctness and fit | Are meaning, supplied facts, register, learner level and teaching correct and contextually appropriate? | A, B, C |
-| Vocabulary usefulness | Are the dictionary words relevant, reusable, broad and unpadded, with truthful forms, meanings and evidence? An empty list can be appropriate. | A, B, C |
-| Conversation flow | Are roles, alternatives and progression usable? Repetition alone is not a material failure. | A, B, C |
+| Coverage | Can the learner initiate and accomplish this contextual task? | A, B, C |
 | Naturalness and reusability | Does the English sound natural, and can each Things to say entry and exchange line be lifted and reused on its own? | A |
+| Conversation flow | Are roles, alternatives and progression usable? Repetition alone is not a material failure. | A, B, C |
+| Vocabulary usefulness | Are the dictionary words relevant, reusable, broad and unpadded, with truthful forms, meanings and evidence? An empty list can be appropriate. | B, C |
+
+For English generation (A) the first five rows are in priority order, and the first three are close in importance. Usefulness covers both phrases and vocabulary there, so lane A has no separate vocabulary dimension.
 
 ### Machine-readable copy
 
@@ -56,7 +59,7 @@ Scores are ordinal (0–4, higher is better). Report each dimension separately w
 - `rubricReference` in `evals/pipelines/runner.mjs` reads `version` and `source`, hashes the JSON together with this page, and attaches the reference to reports with all scores null.
 - `evals/calibration/prepare.mjs` reads `source` to embed this page in each suite goal, and picks the `dimensions` whose `lanes` include the suite's lane (`a`, `b` or `c`) as human-scored criteria.
 
-`rubric.json` also lists `ab` in the lanes of the first four dimensions. No tool reads that tag: calibration has no `ab` suite, and the CLI's `ab` lane is an integration smoke that checks structure and association only, so it is not scored on these dimensions. Keep this table and the JSON in step when a dimension changes.
+`rubric.json` also lists `ab` in the lanes of every dimension that applies to B. No tool reads that tag: calibration has no `ab` suite, and the CLI's `ab` lane is an integration smoke that checks structure and association only, so it is not scored on these dimensions. Keep this table and the JSON in step when a dimension changes.
 
 ## Outcome classes
 
@@ -78,14 +81,13 @@ Severity follows learner impact: **minor** leaves the task usable; **material** 
 
 **All lanes.** Speed, reliability, quality and cost are reported separately. A runtime reviewer is optional, not a required serial stage before content is useful.
 
-**English generation (A)**, in order:
+**English generation (A)**, in order; the first three are close:
 
-1. Natural, independently reusable phrases.
-2. Coverage of the selected topic.
-3. Alternatives that are genuinely different.
-4. Broad, useful vocabulary.
-5. Low overlap between sections and between topics.
-6. Continuation coherence (lowest, unless it teaches a wrong meaning).
+1. Usefulness: every phrase, alternative and Word earns its place. An extra phrase or exchange turn loses value much faster than an extra Word.
+2. Correctness and fit.
+3. Coverage of the selected topic. More content is not better coverage: high coverage that brings in items the learner will not use lowers the value.
+4. Natural, independently reusable phrases.
+5. Conversation flow, with continuation coherence lowest (unless it teaches a wrong meaning).
 
 **Translation (B).** Preserve the frozen English intent, negation, quantities, referents and register; check target-language naturalness, dictionary forms, readings and exact lexical evidence separately. Pronunciation matters: assess ruby readings and romanization explicitly. Incorrect ruby is a quality finding, not an automatic whole-topic failure; severity follows learner impact. Malformed, unrenderable reading data is a separate technical finding.
 
@@ -100,27 +102,28 @@ Each rule names the dimension it affects. Quotes are real outputs from evaluatio
 - **No generic language in Things to say or Words.** Greetings, thanks (including thanks to hosts), apologies, polite openers and generic requests usable in any conversation stay out: "Excuse me.", "Thank you.", "Thank you for inviting me to your home.", "Sorry to bother you.", "Could you help me?", "Could you repeat that?", "please". This applies at every ability level and in every topic, including topics whose title is itself generic such as "Get someone's attention"; those topics need situation-specific lines ("I'm looking for the cathedral."). Generic language is welcome in Likely exchanges and the Example conversation, where a beginner can star a line individually. *Naturalness and reusability.*
 - **No English fallback.** No "Do you speak English?" and no partner replies about speaking English, in any section. The phrasebook exists so the learner speaks the target language. *Correctness and fit.*
 - **No invented learner facts beyond illustration.** Illustrative statements are fine and adaptable ("I work as a teacher."). Over-specific or assumed facts are not: "I'm staying at the surf camp at Playa Jacó.", "I've been living in Madrid for three years.", "I've heard a lot about you from your son." (assumes the partner's gender). Contradictions within a topic are material ("I have one brother and one sister." next to "I'm an only child."). *Correctness and fit.*
-- **Low overlap.** Exchanges add material beyond Things to say and the example; adjacent topics avoid repeating each other's exchanges. The example conversation should not copy the exchanges line for line. *Coverage.*
+- **Every item earns its place.** Each phrase, alternative and Word costs the learner study time. A line the learner is unlikely to need is a finding even when it is correct: "There's a ding on the nose." for a beginner renting a surfboard. Be stricter with phrases and turns than with Words. *Usefulness.*
+- **Low overlap.** Exchanges add material beyond Things to say and the example; adjacent topics avoid repeating each other's exchanges, and a topic does not spend its space on another topic's subject. The example conversation should not copy the exchanges line for line. *Usefulness.*
 - **English surface form is not scored.** Contractions ("It is" versus "It's") do not count against naturalness: the English is translated and does not reach the learner in that form. Judge wording, length and what the learner would actually say. *Naturalness and reusability.*
-- **Natural titles.** Exchange and family titles are short and natural ("Arrival and introductions", not "Arriving and exchanging names"). Minor. *Naturalness and reusability.*
+- **Natural titles.** Exchange and family titles are short and natural, and name the moment or the choice rather than the people ("Arrival and introductions", not "Arriving and exchanging names"). Poor exchange titles: "Asking the person next to you", "The person can't help". Awkward family titles: "Who to ask", "Your situation". Minor. *Naturalness and reusability.*
 
 ### Things to say
 
 - **Short, stand-alone and reusable.** Each entry works on its own. Verbose or compound lines are weaker ("Excuse me, where is the landmark? I'm trying to find it."). *Naturalness and reusability.*
-- **On topic.** Every entry serves the selected topic. A supplied fact belongs only where it helps the task: "I'm staying at the surf camp." does not help rent a surfboard. *Coverage.*
+- **On topic.** Every entry serves the selected topic. A supplied fact belongs only where it helps the task: "I'm staying at the surf camp." does not help rent a surfboard. *Usefulness.*
 
 ### Likely exchanges
 
 - **One opening line.** The first turn of an exchange has exactly one option. *Conversation flow.*
-- **Alternatives must differ.** Add an option only when it changes the information, decision or next action. Wording variants fail ("Of course, what do you need?" / "No problem, how can I help?"), as do low-value pairs ("I'm glad you like it." / "Thank you, it's a family recipe.") and arbitrary number swaps. *Conversation flow.*
+- **Alternatives must differ.** Add an option only when it changes the information, decision or next action. The best alternatives show a different response, such as a yes and a no. Wording variants fail ("Of course, what do you need?" / "No problem, how can I help?", "Sorry, I'm not from here either." / "I'm a tourist too."), as do low-value pairs ("I'm glad you like it." / "Thank you, it's a family recipe.") and arbitrary number swaps. *Usefulness.*
 - **Short lines.** Exchange lines stay short and reusable. Judge length against short, memorable English, not ability: ability selects material, not grammar difficulty. A 14-word line such as "I'm looking for a landmark, but I'm not sure I'm going the right way." is too long. *Naturalness and reusability.*
 - **Continuations follow the first option.** Later turns continue only the first option of earlier turns. Incoherence is minor unless it teaches a wrong meaning, such as confirming a reversed route ("Go left, then right at the fountain." → "Right, then left at the light?"), which is material. *Conversation flow.*
 
 ### Words
 
-- **Dictionary items.** Words and short fixed items ("come in") are good. Never split a fixed item into a misleading fragment ("excuse" from "excuse me"). Whole set phrases ("make yourself at home") are borderline and usually belong in Things to say. Use base forms ("bring", not "brought"). *Vocabulary usefulness.*
-- **Broad, not repeated.** Prefer new, useful words over repeating the same family across topics (left/right/straight in every directions topic). Lower priority than naturalness and coverage. *Vocabulary usefulness.*
-- **Family size.** A family may grow beyond a few items when useful. The current prompt asks for small families and the parser trims topics to ten Words (a warning, see outcome classes). *Vocabulary usefulness.*
+- **Dictionary items.** Words and short fixed items ("come in") are good. Never split a fixed item into a misleading fragment ("excuse" from "excuse me"). Whole set phrases ("make yourself at home") are borderline and usually belong in Things to say. Use base forms ("bring", not "brought"). *Usefulness.*
+- **Broad, not repeated.** Prefer new, useful words over repeating the same family across topics (left/right/straight in every directions topic). *Usefulness.*
+- **Family size.** One to three families of two to six Words each. A useful family of four is better grown to six than cut to three: an extra Word loses value far more slowly than an extra phrase. An empty list is still right when a topic has no vocabulary of its own. The current prompt asks for small families and the parser trims topics to ten Words (a warning, see outcome classes). *Usefulness.*
 
 ### Example conversation
 
@@ -175,8 +178,9 @@ Rules:
 | Ambiguous word (B) | "Light" alone could mean weight or illumination; unrelated context does not decide it. | Unresolved, score null | Do not manufacture a definitive correction. |
 | Rejected repair (C) | A proposal fixes one word but has an invalid envelope; validation keeps the original topic. | 0 credited fixes | Count the delivered result; record the proposal failure separately. |
 | Generic opener (A) | "Excuse me, could you help me?" in Things to say; splitting it into "Excuse me." then repeated it in every topic. | Generic-language finding | Generic phrases displace situation-specific language. |
-| Paraphrase options (A) | "Of course, what do you need?" / "No problem, how can I help?" | Minor, alternatives | The second option adds no information or action. |
-| Off-topic fact (A) | "I'm staying at the surf camp." under "Rent a surfboard". | Minor, on-topic | A supplied fact is not useful for every topic. |
+| Paraphrase options (A) | "Of course, what do you need?" / "No problem, how can I help?" | Minor, usefulness | The second option adds no information or action. |
+| Off-topic fact (A) | "I'm staying at the surf camp." under "Rent a surfboard". | Minor, usefulness | A supplied fact is not useful for every topic. |
+| Padding (A) | Eight Things to say and four exchanges, two of which cover the next topic's subject. | Usefulness 2, coverage 4 | Coverage is complete, but a third of the cards will not be used here. |
 
 ## Decision log
 
@@ -184,6 +188,9 @@ Newest first. Dates are review dates; quotes in rules above come from the runs n
 
 | Date | Decision | Source |
 |---|---|---|
+| 2026-11-14 | Words: one to three families of two to six Words each; an extra phrase or turn loses value much faster than an extra Word. | Owner, after the usefulness-first re-review |
+| 2026-11-14 | English-generation dimensions reordered: usefulness (phrases and vocabulary) first, then correctness and fit, then coverage, these three close; then naturalness and reusability; then conversation flow. Usefulness replaces vocabulary usefulness for lane A, and paraphrase alternatives, off-topic lines and overlap now count against it. High coverage that brings in unused items lowers value. | Owner, after reviewing candidate R3 outputs |
+| 2026-11-14 | Titles name the moment or the choice, not the people; the best alternatives show different responses such as a yes and a no. | Owner, after reviewing candidate R3 outputs |
 | 2026-11-12 | Thanks to hosts ("Thank you for inviting me to your home.") count as generic language. | Owner, after the prompt candidate-4 comparison |
 | 2026-11-12 | Invalid JSON is reported with its likely cause but is not a prompt regression; it will be fixed outside the prompt. Count overruns are warnings; failure only at about 10× the limit. Latency is a production issue, not a prompt criterion. | Owner |
 | 2026-11-12 | Placeholders are neither avoided nor penalized until the placeholder feature exists; the no-placeholders rule is removed. Over-specific invented learner facts remain a finding. | Owner, after candidate-3 invented specifics |

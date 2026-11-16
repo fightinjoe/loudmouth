@@ -3,7 +3,7 @@ kind: guide
 status: current
 summary: "Evaluation section entry: offline Bun lanes in evals/ versus paid Node runners in api/evals/, how to run them, outcome criteria and data boundaries."
 sources: [evals/pipelines/cli.mjs, evals/pipelines/runner.mjs, evals/rubric.json]
-verified: 2026-11-13
+verified: 2026-11-15
 ---
 
 # Content-quality evaluation
@@ -21,7 +21,7 @@ The [rubric](rubric.md) judges content for every lane. Results of any run go in 
 
 The [endpoint baseline inputs](baseline.md) document the proposed Spanish-first context and phrasebook English-generation requests, their captured setup provenance and the staged comparison approach. The new request files are separate from the legacy CLI fixtures below.
 
-Current adapters and authored fixtures use **v4 four-section phrasebooks**: Things to say, Likely exchanges with explicit response options, titled Word families and a linear Example conversation. Translation uses flat phrase/Word arrays; code restores nesting. The [endpoint contract](../api/phrasebook.md) owns bounds, recovery and production behavior.
+Current adapters and authored fixtures use **v4 four-section phrasebooks**: Things to say, Likely exchanges with explicit response options, titled Word families and a linear Example conversation. An English reply is one topic object with no wrapper or title; each exchange turn carries `say` and an optional `or`, and the production parser adds the requested topic title and returns each turn as a line of response options. Translation uses flat phrase/Word arrays; code restores nesting. The [endpoint contract](../api/phrasebook.md) owns bounds, recovery and production behavior.
 
 **No accepted linguistic baseline exists. C is optional and deferred.** Current workflows and fixtures are reusable development tools, not native-speaker gold labels, model rankings or broad reliability certification. Local integration results are in the [results ledger](results.md), not treated as a language-quality acceptance seal; production state is in [API operations](../api/operations.md#production).
 
@@ -58,7 +58,7 @@ No credentials, network or default output files. Markdown goes to stdout; `--jso
 - [`fixtures/baseline-phrasebook-english.json`](../../evals/fixtures/baseline-phrasebook-english.json): four self-contained `/phrasebook` requests for English-generation evaluation. Answers and checklist labels come exclusively from the captured setup choices. No authored English or reviewer notes.
 - [`fixtures/captures/baseline-context.json`](../../evals/fixtures/captures/baseline-context.json): three real local HTTP `/context` captures, retained separately from model inputs. The existing CLI still uses the registry below; see [baseline inputs](baseline.md) for selection policy and review scope.
 - [`fixtures/contexts.json`](../../evals/fixtures/contexts.json): canonical request registry for `shoes-zh`, `allergy-ja`, `tea-cs`, `lost-bag-uk` and `pottery-es`. Each contains the exact singleton-topic `/phrasebook` request and ordinary/challenge label; all lanes use these IDs.
-- [`fixtures/pipeline-cases.json`](../../evals/fixtures/pipeline-cases.json): authored v4 English topics, flat translations, C controls/defects/unresolved cases, mock replies and expected checks. B freezes this English; C derives its bilingual input from the same normalized topic. The structural migration uses the first two authored example turns as one exchange and groups existing Words under `Topic vocabulary`. Provenance is `authored-structural-v4-migration`; `historicalReplay`, `modelGenerated` and `linguisticCertification` are false. This is not newly generated content or a fresh review of family quality.
+- [`fixtures/pipeline-cases.json`](../../evals/fixtures/pipeline-cases.json): authored v4 English replies stored in the production raw reply shape, flat translations, C controls/defects/unresolved cases, mock replies and expected checks. B freezes this English as the production parser normalizes it; C derives its bilingual input from the same normalized topic. The structural migration uses the first two authored example turns as one exchange and groups existing Words under `Topic vocabulary`. Provenance is `authored-structural-v4-migration`; `historicalReplay`, `modelGenerated` and `linguisticCertification` are false. This is not newly generated content or a fresh review of family quality.
 - [`fixtures/regressions.json`](../../evals/fixtures/regressions.json): six distilled regression lessons, including inflected evidence, wrong occurrence selection, ambiguous intent and output-contract errors. Selected examples retain provenance/caveats without retaining complete historical runs.
 
 All subjective expectations are assistant-proposed. Exposed development cases are not unseen holdouts; deliberate challenge frequencies cannot estimate production error prevalence. Meaning, pronunciation and evidence defects can survive schema validation. Broad topic-bucket families and paraphrase-like response options remain possible; continuation after every alternative is unvalidated.
@@ -72,7 +72,7 @@ bun evals/pipelines/cli.mjs prepare c --context shoes-zh
 bun evals/pipelines/cli.mjs calibration --plan
 ```
 
-A uses the production English prompt. B uses production translation instructions/schema and frozen English. C exposes detection and separate **known-location repair** requests; the latter measures oracle-assisted capability, not whether a detector finds those defects. Never feed fixture answers, mutation descriptions or proposed corrections into detector input.
+A uses the production English prompt, per-topic model request and response schema. B uses production translation instructions/schema and frozen English. C exposes detection and separate **known-location repair** requests; the latter measures oracle-assisted capability, not whether a detector finds those defects. Never feed fixture answers, mutation descriptions or proposed corrections into detector input.
 
 `calibration --plan` inventories current inputs: five A, five B, twelve C detection and seven known-location replies. It does not reproduce historical requests, dispatch work or grant execution approval. [Calibration preparation](calibration.md) documents reusable native-request preparation with new bindings and a new ignored destination; no frozen run package is retained.
 
@@ -89,7 +89,7 @@ bun evals/pipelines/cli.mjs evaluate c --input evals/.runs/selected.json --conte
 bun evals/pipelines/cli.mjs evaluate ab --input evals/.runs/selected.json --context shoes-zh
 ```
 
-Input is `{ "version": 1, "responses": [...] }`. Rows carry `contextId` and raw JSON values or original response strings: `english` for A, `translation` for B, both for AB. AB checks translation against **that row's actual English**, not a substituted fixture. C uses `reviews` rows shaped as `{id, detection, repairs: [{focus: {handle, field, category}, response}]}` for every selected C case. Never replace a missing saved response with a mock. Exports are disposable inputs, not a second ledger.
+Input is `{ "version": 1, "responses": [...] }`. Rows carry `contextId` and raw JSON values or original response strings: `english` for A, `translation` for B, both for AB. An `english` value is the raw reply `{thingsToSay, likelyExchanges: [{title, turns: [{speaker, say, or?}]}], words, exampleConversation}`; its topic title comes from the context's request. AB checks translation against **that row's actual English**, not a substituted fixture. C uses `reviews` rows shaped as `{id, detection, repairs: [{focus: {handle, field, category}, response}]}` for every selected C case. Never replace a missing saved response with a mock. Exports are disposable inputs, not a second ledger.
 
 ## Learning-quality assessment
 

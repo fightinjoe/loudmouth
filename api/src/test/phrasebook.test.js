@@ -3,7 +3,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
-const { performPhrasebook, handlePhrasebook } = require('../phrasebook');
+const { performPhrasebook, handlePhrasebook, buildGenerationResponseJsonSchema } = require('../phrasebook');
 const { parsePhrasebookRequest, validateGenerationResponse, validateTranslationResponse, assemblePhrasebook, flattenTopic } = require('../phrasebook/parse');
 const { cardIdentity } = require('../schema');
 const { computeCostUsd } = require('../pricing');
@@ -43,12 +43,21 @@ const run = (generate, translate, options = {}, request = input) => performPhras
   [generationBackendName]: generate,
   [backendName]: translate,
 }, { backendName, generationBackendName, ...options });
-const normalized = topic => validateGenerationResponse(JSON.stringify({ topics: [topic] }), [topic.title]).topics[0];
+// The model reply for a topic: no title, exchange turns as {speaker, say, or?}.
+const raw = ({ title, likelyExchanges, ...rest }) => ({
+  ...rest,
+  likelyExchanges: likelyExchanges.map(({ lines, ...exchange }) => ({
+    ...exchange,
+    turns: lines.map(({ text, ...turn }) => ({ ...turn, say: text[0], ...(text.length > 1 ? { or: text.slice(1) } : {}) })),
+  })),
+});
+const isGeneration = prompt => Array.isArray(data(prompt).otherTopics);
+const normalized = topic => validateGenerationResponse(JSON.stringify(raw(topic)), topic.title).topic;
 const assemble = (topic, translation, language = 'es') => assemblePhrasebook({ seed: input.seed, language, topics: [normalized(topic)], translations: [validateTranslationResponse(JSON.stringify(translation), topic, language)] });
 
 function healthyGeneration(topics = [first, second]) {
   let index = 0;
-  return async () => reply({ topics: [topics[index++]] }, 'deepseek/deepseek-v4.1-flash');
+  return async () => reply(raw(topics[index++]), 'deepseek/deepseek-v4.1-flash');
 }
 const healthyTranslation = async prompt => reply(data(prompt).topic.thingsToSay[0] === first.thingsToSay[0] ? firstTranslation : secondTranslation);
 
@@ -60,7 +69,7 @@ test('duplicate titles remain distinct and out-of-order topics retain all indepe
     const index = next++;
     await pause(index === 0 ? 15 : 1);
     completedGeneration++;
-    return reply({ topics: [[first, second][index]] }, 'deepseek/deepseek-v4.1-flash');
+    return reply(raw([first, second][index]), 'deepseek/deepseek-v4.1-flash');
   }, async prompt => {
     assert.equal(completedGeneration, 2, 'translation waits for the complete English stage');
     const isFirst = data(prompt).topic.thingsToSay[0] === first.thingsToSay[0];
@@ -91,13 +100,13 @@ test('eight topics use at most four indexed generation workers with no early tra
   const topics = Array.from({ length: 8 }, (_, index) => ({ ...second, title: `Topic ${index}` }));
   let active = 0, maximum = 0, finished = 0;
   const result = await run(async prompt => {
-    const title = data(prompt).checklist[0];
+    const title = data(prompt).topic;
     active++;
     maximum = Math.max(maximum, active);
     await pause(title === 'Topic 0' ? 15 : 1);
     active--;
     finished++;
-    return reply({ topics: [{ ...second, title }] });
+    return reply(raw(second));
   }, async () => {
     assert.equal(finished, 8);
     return reply(secondTranslation);
@@ -106,13 +115,12 @@ test('eight topics use at most four indexed generation workers with no early tra
   assert.deepEqual(result.groups.map(group => group.title), topics.map(topic => topic.title));
 });
 
-test('Gemini generation uses the same per-topic contract without a batch fallback', async () => {
+test('Gemini generation uses the same per-topic contract and has no fallback of its own', async () => {
   let generated = 0;
   const result = await performPhrasebook(input, { [backendName]: async prompt => {
-    const task = data(prompt);
-    if (task.checklist) {
-      assert.equal(task.checklist.length, 1);
-      return reply({ topics: [[first, second][generated++]] });
+    if (isGeneration(prompt)) {
+      assert.deepEqual(data(prompt).otherTopics, ['Prepare']);
+      return reply(raw([first, second][generated++]));
     }
     return healthyTranslation(prompt);
   } }, { backendName, generationBackendName: backendName });
@@ -124,9 +132,9 @@ test('invalid generation and translation retry only their logical topic', async 
   const request = { ...input, checklist: ['First', 'Second'] };
   const counts = { First: 0, Second: 0, firstTranslation: 0, secondTranslation: 0 };
   const result = await run(async prompt => {
-    const title = data(prompt).checklist[0];
+    const title = data(prompt).topic;
     if (++counts[title] === 1 && title === 'First') return reply('{bad');
-    return reply({ topics: [{ ...(title === 'First' ? first : second), title }] });
+    return reply(raw(title === 'First' ? first : second));
   }, async prompt => {
     if (data(prompt).topic.title === 'First') {
       return reply(++counts.firstTranslation === 1 ? { ...firstTranslation, phrases: [] } : firstTranslation);
@@ -145,7 +153,7 @@ test('a truncated English reply spends the validation retry; a provider failure 
   let calls = 0;
   const result = await run(async () => {
     if (++calls === 1) throw truncated();
-    return reply({ topics: [second] });
+    return reply(raw(second));
   }, async () => reply(secondTranslation), {}, { ...input, checklist: [second.title] });
   assert.equal(calls, 2);
   assert.equal(result.groups.length, 1);
@@ -172,18 +180,18 @@ test('count overruns keep every item and flag each section above its limit', asy
       { title: 'Short', lines: turns(2) },
       { title: 'Extra', lines: turns(2) },
     ],
-    words: [family(6, 'A'), family(5, 'B')],
+    words: [family(10, 'A'), family(9, 'B')],
     exampleConversation: turns(13).map(line => ({ speaker: line.speaker, text: line.text[0] })),
   };
   const source = flattenTopic(normalized(topic));
   const translation = { phrases: source.phrases.map((_, i) => `Frase ${i}`), words: source.words.map((_, i) => ({ target: `palabra ${i}`, partOfSpeech: 'noun', senseKey: `word-${i}` })) };
-  const result = await run(async () => reply({ topics: [topic] }), async () => reply(translation), {}, { ...input, checklist: [topic.title] });
+  const result = await run(async () => reply(raw(topic)), async () => reply(translation), {}, { ...input, checklist: [topic.title] });
   const group = result.groups[0];
   assert.equal(group.thingsToSay.length, 9);
   assert.deepEqual(group.likelyExchanges.map(exchange => exchange.lines.length), [7, 2, 6, 2, 2]);
   assert.equal(group.likelyExchanges[1].lines[0].responses.length, 4);
   assert.equal(group.exampleConversation.length, 13);
-  assert.deepEqual(group.words.map(item => item.items.length), [6, 5]);
+  assert.deepEqual(group.words.map(item => item.items.length), [10, 9]);
   const overrun = (section, received, limit, location = {}) => ({ code: 'count-overrun', groupIndex: 0, section, received, limit, ...location });
   assert.deepEqual(result.flags, [
     overrun('thingsToSay', 9, 8),
@@ -191,7 +199,7 @@ test('count overruns keep every item and flag each section above its limit', asy
     overrun('exchangeTurns', 7, 6, { exchangeIndex: 0 }),
     overrun('responses', 4, 3, { exchangeIndex: 1, lineIndex: 0 }),
     overrun('exampleConversation', 13, 12),
-    overrun('words', 11, 10),
+    overrun('words', 19, 18),
   ]);
   assert.deepEqual(warnings.filter(entry => entry.event === 'phrasebook_flag' && entry.code === 'count-overrun').map(entry => entry.section),
     ['thingsToSay', 'likelyExchanges', 'exchangeTurns', 'responses', 'exampleConversation', 'words']);
@@ -199,8 +207,9 @@ test('count overruns keep every item and flag each section above its limit', asy
 
 test('English repair drops empty items, merges lone words, keeps repeated speakers and flags each change', () => {
   const repair = topic => {
-    const result = validateGenerationResponse(JSON.stringify({ topics: [topic] }), [first.title]);
-    return { topic: result.topics[0], flags: result.flags[0] };
+    const result = validateGenerationResponse(JSON.stringify(raw(topic)), first.title);
+    assert.equal(result.failureLevel, result.flags.length > 0 ? 1 : 0);
+    return { topic: result.topic, flags: result.flags };
   };
   const dropped = (section, reason = 'invalid-entry') => ({ code: 'content-dropped', section, reason });
   let result = repair({ ...first, thingsToSay: [...first.thingsToSay, '', 7] });
@@ -241,10 +250,19 @@ test('English repair drops empty items, merges lone words, keeps repeated speake
   assert.deepEqual(result.flags.slice(-2), [
     { code: 'section-missing', section: 'likelyExchanges' }, { code: 'section-missing', section: 'exampleConversation' },
   ]);
-  for (const unreadable of [{ ...first, title: 'Other' }, { ...first, featuredPhraseIds: [] }]) {
-    assert.throws(() => repair(unreadable));
+  // An exchange turn's alternatives are checked one by one; an `or` that is not a list drops the turn.
+  const exchange = turns => validateGenerationResponse(JSON.stringify({
+    ...raw(first), likelyExchanges: [{ title: 'Options', turns }],
+  }), first.title);
+  result = exchange([{ speaker: 'you', say: 'A', or: [''] }, { speaker: 'partner', say: 'B' }, { speaker: 'you', say: 'C', or: 'D' }]);
+  assert.deepEqual(result.topic.likelyExchanges, [{ title: 'Options', lines: [{ speaker: 'you', text: ['A'] }, { speaker: 'partner', text: ['B'] }] }]);
+  assert.deepEqual(result.flags, [dropped('likelyExchanges'), dropped('likelyExchanges')]);
+
+  // The reply is one untitled topic: a title, the old topics envelope or an unknown field cannot be read.
+  for (const unreadable of [{ ...raw(first), title: first.title }, { topics: [raw(first)] }, raw({ ...first, featuredPhraseIds: [] })]) {
+    assert.throws(() => validateGenerationResponse(JSON.stringify(unreadable), first.title));
   }
-  assert.throws(() => validateGenerationResponse('{bad', [first.title]));
+  assert.throws(() => validateGenerationResponse('{bad', first.title));
 });
 
 test('an unusable section is retried, merged from the next attempt, and otherwise left missing instead of failing', async () => {
@@ -255,20 +273,33 @@ test('an unusable section is retried, merged from the next attempt, and otherwis
   const request = { ...input, checklist: [second.title] };
   const retried = { ...second, thingsToSay: ['Second attempt.'] };
   let calls = 0;
-  let result = await run(async () => reply({ topics: [++calls === 1 ? { ...second, likelyExchanges: [] } : retried] }), translate, {}, request);
+  let result = await run(async () => reply(raw(++calls === 1 ? { ...second, likelyExchanges: [] } : retried)), translate, {}, request);
   assert.equal(calls, 2);
   assert.deepEqual(result.groups[0].thingsToSay.map(item => item.card.translation), second.thingsToSay, 'valid sections stay from the first attempt');
   assert.deepEqual(result.groups[0].likelyExchanges.map(exchange => exchange.title), second.likelyExchanges.map(exchange => exchange.title));
   assert.deepEqual(result.flags, []);
 
   calls = 0;
-  result = await run(async () => { calls++; return reply({ topics: [{ ...second, likelyExchanges: [] }] }); }, translate, {}, request);
+  result = await run(async () => { calls++; return reply(raw({ ...second, likelyExchanges: [] })); }, translate, {}, request);
   assert.equal(calls, 2);
   assert.deepEqual(result.groups[0].likelyExchanges, []);
   assert.deepEqual(result.flags, [{ code: 'section-missing', groupIndex: 0, section: 'likelyExchanges' }]);
 
   const empty = { ...second, thingsToSay: [], likelyExchanges: [], exampleConversation: [] };
-  await assert.rejects(run(async () => reply({ topics: [empty] }), translate, {}, request), error => error.status === 502);
+  await assert.rejects(run(async () => reply(raw(empty)), translate, {}, request), error => error.status === 502);
+});
+
+test('consecutive turns by one speaker are kept and flagged through to the wire response', async () => {
+  const topic = structuredClone(second);
+  topic.likelyExchanges[0].lines = [{ speaker: 'partner', text: ['One moment.'] }, { speaker: 'partner', text: ['Here it is.'] }];
+  topic.exampleConversation = [{ speaker: 'you', text: 'Is this fish?' }, { speaker: 'you', text: 'I do not eat fish.' }];
+  const generated = validateGenerationResponse(JSON.stringify(raw(topic)), topic.title);
+  assert.equal(generated.failureLevel, 1);
+  assert.deepEqual(generated.topic.likelyExchanges, topic.likelyExchanges);
+  const result = await run(async () => reply(raw(topic)), async () => reply(secondTranslation), {}, { ...input, checklist: [topic.title] });
+  assert.deepEqual(result.groups[0].likelyExchanges[0].lines.map(line => line.speaker), ['partner', 'partner']);
+  assert.deepEqual(result.groups[0].exampleConversation.map(line => line.speaker), ['you', 'you']);
+  assert.deepEqual(result.flags.map(flag => flag.code), ['speaker-repeated', 'speaker-repeated']);
 });
 
 test('continuations with semantic branch mismatches remain non-blocking', () => {
@@ -280,7 +311,7 @@ test('continuations with semantic branch mismatches remain non-blocking', () => 
 test('maximum sections preserve every option and family member through translation', () => {
   const topic = {
     title: 'Maximum', thingsToSay: Array.from({ length: 8 }, (_, i) => `Need ${i}`),
-    words: [{ title: 'Choices', items: Array.from({ length: 10 }, (_, i) => `Word ${i}`) }],
+    words: Array.from({ length: 4 }, (_, family) => ({ title: `Choices ${family}`, items: Array.from({ length: 6 }, (_, i) => `Word ${family} ${i}`) })),
     likelyExchanges: Array.from({ length: 4 }, (_, exchange) => ({ title: `Exchange ${exchange}`, lines: Array.from({ length: 4 }, (_, turn) => ({ speaker: turn % 2 ? 'partner' : 'you', text: Array.from({ length: 3 }, (_, option) => `Response ${exchange} ${turn} ${option}`) })) })),
     exampleConversation: Array.from({ length: 10 }, (_, i) => ({ speaker: i % 2 ? 'partner' : 'you', text: `Line ${i}` })),
   };
@@ -290,7 +321,7 @@ test('maximum sections preserve every option and family member through translati
   const phrases = [...group.thingsToSay, ...group.likelyExchanges.flatMap(exchange => exchange.lines.flatMap(line => line.responses)), ...group.exampleConversation];
   assert.deepEqual(phrases.map(item => item.card.translation), source.phrases);
   assert.deepEqual(phrases.map(item => item.card.text), translated.phrases);
-  assert.deepEqual(group.words[0].items.map(item => item.card.text), translated.words.map(item => item.target));
+  assert.deepEqual(group.words.flatMap(family => family.items).map(item => item.card.text), translated.words.map(item => item.target));
 });
 
 test('invalid source indexes and surfaces drop only evidence and flag flattened word indexes', () => {
@@ -377,20 +408,20 @@ test('exhausted translation fails the whole request and cancels unfinished sibli
   assert.equal(cancelled, true);
 });
 
-test('429 backoff recovers without resetting the logical call deadline', async () => {
+test('without a fallback, 429 backoff recovers without resetting the logical call deadline', async () => {
   let attempts = 0;
   const request = { ...input, checklist: [second.title] };
   const result = await run(async () => {
     if (++attempts === 1) throw Object.assign(new Error('quota'), { status: 429 });
-    return reply({ topics: [second] });
-  }, async () => reply(secondTranslation), { retryDelaysMs: [1] }, request);
+    return reply(raw(second));
+  }, async () => reply(secondTranslation), { retryDelaysMs: [1], generationFallbackBackendName: null }, request);
   assert.equal(attempts, 2);
   assert.equal(result.groups[0].likelyExchanges[0].lines[1].responses[0].card.text, 'Sí.');
   attempts = 0;
   await assert.rejects(run(async () => {
     attempts++;
     throw Object.assign(new Error('quota'), { status: 429 });
-  }, healthyTranslation, { timeoutMs: 10, retryDelaysMs: [100] }, request), error => error.status === 502);
+  }, healthyTranslation, { timeoutMs: 10, retryDelaysMs: [100], generationFallbackBackendName: null }, request), error => error.status === 502);
   assert.equal(attempts, 1);
 });
 
@@ -422,12 +453,12 @@ test('the overall deadline aborts work and unknown timeout charges are not repor
 });
 
 test('mixed-model usage sums each reported or estimated price independently', async () => {
-  const result = await run(async () => reply({ topics: [second] }, 'deepseek/deepseek-v4.1-flash', { inputTokens: 100, outputTokens: 50, costUsd: 0.01 }), async () => reply(secondTranslation), {}, { ...input, checklist: [second.title] });
+  const result = await run(async () => reply(raw(second), 'deepseek/deepseek-v4.1-flash', { inputTokens: 100, outputTokens: 50, costUsd: 0.01 }), async () => reply(secondTranslation), {}, { ...input, checklist: [second.title] });
   assert.equal(result.usage.model, 'deepseek/deepseek-v4.1-flash + gemini-3.5-flash-lite');
   assert.equal(result.usage.inputTokens, 110);
   assert.equal(result.usage.outputTokens, 55);
   assert.equal(result.usage.costUsd, 0.01 + computeCostUsd(backendName, { inputTokens: 10, outputTokens: 5 }));
-  const unknown = await run(async () => reply({ topics: [second] }, 'unknown'), async () => reply(secondTranslation), {}, { ...input, checklist: [second.title] });
+  const unknown = await run(async () => reply(raw(second), 'unknown'), async () => reply(secondTranslation), {}, { ...input, checklist: [second.title] });
   assert.equal(unknown.usage.costUsd, null);
 });
 
@@ -435,10 +466,45 @@ test('failed replies retain their actual usage across bounded rate-limit retry',
   let calls = 0;
   const result = await run(async () => {
     if (++calls === 1) throw Object.assign(new Error('rate limited'), { status: 429, reply: { model: 'deepseek/deepseek-v4.1-flash', usage: { inputTokens: 3, outputTokens: 2, costUsd: 0.02 } } });
-    return reply({ topics: [second] }, 'deepseek/deepseek-v4.1-flash', { inputTokens: 10, outputTokens: 5, costUsd: 0.01 });
-  }, async () => reply(secondTranslation), { retryDelaysMs: [1] }, { ...input, checklist: [second.title] });
+    return reply(raw(second), 'deepseek/deepseek-v4.1-flash', { inputTokens: 10, outputTokens: 5, costUsd: 0.01 });
+  }, async () => reply(secondTranslation), { retryDelaysMs: [1], generationFallbackBackendName: null }, { ...input, checklist: [second.title] });
   assert.equal(result.usage.inputTokens, 23);
   assert.equal(result.usage.costUsd, 0.03 + computeCostUsd(backendName, { inputTokens: 10, outputTokens: 5 }));
+});
+
+test('a rate-limited primary hands only that topic to the fallback, with the same request, schema and reasoning', async (t) => {
+  t.mock.method(console, 'warn', () => {});
+  const request = { ...input, checklist: ['First', 'Second'] };
+  const primaryCalls = [];
+  const fallbackCalls = [];
+  const expectGenerationOptions = (options) => {
+    assert.deepEqual(options.responseJsonSchema, buildGenerationResponseJsonSchema());
+    assert.equal(options.reasoning, 'minimal');
+  };
+  const result = await run(async (prompt, options) => {
+    expectGenerationOptions(options);
+    primaryCalls.push(data(prompt).topic);
+    if (data(prompt).topic === 'First') throw Object.assign(new Error('quota'), { status: 429 });
+    return reply(raw(second), 'deepseek/deepseek-v4.1-flash');
+  }, async (prompt, options) => {
+    if (!isGeneration(prompt)) return healthyTranslation(prompt);
+    expectGenerationOptions(options);
+    fallbackCalls.push(data(prompt));
+    return reply(raw(first));
+  }, { retryDelaysMs: [60000] }, request);
+  // One primary attempt per topic: the 429 does not wait out the primary's backoff.
+  assert.deepEqual(primaryCalls.sort(), ['First', 'Second']);
+  assert.deepEqual(fallbackCalls, [{ seed: input.seed, language: 'es', ability: 'basics', answers: {}, topic: 'First', otherTopics: ['Second'] }]);
+  assert.deepEqual(result.groups.map(group => group.title), ['First', 'Second']);
+  assert.equal(result.groups[0].thingsToSay[0].card.text, firstTranslation.phrases[0]);
+  assert.equal(result.usage.model, 'deepseek/deepseek-v4.1-flash + gemini-3.5-flash-lite');
+
+  let fallbackGenerations = 0;
+  await assert.rejects(run(async () => { throw Object.assign(new Error('upstream down'), { status: 503 }); }, async (prompt) => {
+    if (isGeneration(prompt)) fallbackGenerations++;
+    return healthyTranslation(prompt);
+  }), error => error.status === 502);
+  assert.equal(fallbackGenerations, 0, 'only a rate limit moves a topic to the fallback');
 });
 
 test('request parsing bounds topics while preserving safe answer keys and ability normalization', () => {

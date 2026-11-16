@@ -34,8 +34,8 @@ Review the context and actual candidate artifact before opening answer expectati
 
 ### A — English generation
 
-- Prioritize natural, independently reusable phrases, then coverage of requested intents; check supplied facts, level and safety. A topic about explaining an allergy needs an allergy statement, not merely ingredient questions. Apply the English generation rules in `docs/evals/rubric.md`.
-- Score coverage, correctness/fit, vocabulary usefulness, conversation flow and naturalness/reusability separately on the existing 0–4 ordinal anchors. Prompt comparisons score every rule; model comparisons report rules the current prompt does not request separately (see the rubric). Ordinary repetition can be flow 3; first-option continuation incoherence is minor unless it teaches a wrong meaning. An illustrative statement is not automatically an invented fact about the learner.
+- Prioritize usefulness (every phrase, alternative and Word earns its place), then correctness and fit, then coverage of requested intents, these three close; check supplied facts, level and safety. A topic about explaining an allergy needs an allergy statement, not merely ingredient questions. Apply the English generation rules in `docs/evals/rubric.md`.
+- Score the lane A dimensions in the rubric (usefulness, correctness/fit, coverage, naturalness/reusability, conversation flow) separately on the existing 0–4 ordinal anchors. Prompt comparisons score every rule; model comparisons report rules the current prompt does not request separately (see the rubric). Ordinary repetition can be flow 3; first-option continuation incoherence is minor unless it teaches a wrong meaning. An illustrative statement is not automatically an invented fact about the learner.
 - A relevant conversation can pause or continue in many plausible ways. Not reaching a preferred ending is an improvement suggestion, not a material failure by itself. Cite a concrete unrelated reply, contradiction or misleading meaning/role for stronger claims. Evaluate a missing standalone essential separately from the example dialogue's ending; do not conflate them.
 
 ### B — translation

@@ -6,95 +6,86 @@
     "historicalReplay": false,
     "modelGenerated": false,
     "linguisticCertification": false,
-    "method": "Existing authored phrases and translations retained. The first two example turns are reused as one likely exchange; existing vocabulary is grouped without claiming certified word-family quality. Review e/d/v handles and authored defects are preserved."
+    "method": "Existing authored phrases and translations retained. The first two example turns are reused as one likely exchange; existing vocabulary is grouped without claiming certified word-family quality. Review e/d/v handles and authored defects are preserved. The stored English replies were converted to the current raw reply shape on 2026-11-14: no topics wrapper or title, and each exchange line became a turn with say and an optional or. Their content is unchanged."
   },
   "cases": [
     {
       "id": "shoes-zh",
       "english": {
-        "topics": [
+        "thingsToSay": [
+          "I usually wear European size 39.",
+          "Could I try on both shoes?",
+          "Do you have one size larger?",
+          "How much is this pair?",
+          "Can you keep these for me?"
+        ],
+        "likelyExchanges": [
           {
             "title": "Trying on walking shoes",
-            "thingsToSay": [
-              "I usually wear European size 39.",
-              "Could I try on both shoes?",
-              "Do you have one size larger?",
-              "How much is this pair?",
-              "Can you keep these for me?"
-            ],
-            "likelyExchanges": [
-              {
-                "title": "Trying on walking shoes",
-                "lines": [
-                  {
-                    "speaker": "you",
-                    "text": [
-                      "Hello, I need comfortable shoes for walking."
-                    ]
-                  },
-                  {
-                    "speaker": "partner",
-                    "text": [
-                      "What size do you usually wear?"
-                    ]
-                  }
-                ]
-              }
-            ],
-            "words": [
-              {
-                "title": "Topic vocabulary",
-                "items": [
-                  "shoes",
-                  "size",
-                  "comfortable",
-                  "try on",
-                  "price"
-                ]
-              }
-            ],
-            "exampleConversation": [
+            "turns": [
               {
                 "speaker": "you",
-                "text": "Hello, I need comfortable shoes for walking."
+                "say": "Hello, I need comfortable shoes for walking."
               },
               {
                 "speaker": "partner",
-                "text": "What size do you usually wear?"
-              },
-              {
-                "speaker": "you",
-                "text": "European size 39. Could I try on both shoes?"
-              },
-              {
-                "speaker": "partner",
-                "text": "Of course. How do they feel?"
-              },
-              {
-                "speaker": "you",
-                "text": "They are a little tight. Do you have one size larger?"
-              },
-              {
-                "speaker": "partner",
-                "text": "Yes, here is size 40."
-              },
-              {
-                "speaker": "you",
-                "text": "These are comfortable. How much is this pair?"
-              },
-              {
-                "speaker": "partner",
-                "text": "This pair costs 399 yuan."
-              },
-              {
-                "speaker": "you",
-                "text": "Thank you. I would like to think about it."
-              },
-              {
-                "speaker": "partner",
-                "text": "Of course. Take your time."
+                "say": "What size do you usually wear?"
               }
             ]
+          }
+        ],
+        "words": [
+          {
+            "title": "Topic vocabulary",
+            "items": [
+              "shoes",
+              "size",
+              "comfortable",
+              "try on",
+              "price"
+            ]
+          }
+        ],
+        "exampleConversation": [
+          {
+            "speaker": "you",
+            "text": "Hello, I need comfortable shoes for walking."
+          },
+          {
+            "speaker": "partner",
+            "text": "What size do you usually wear?"
+          },
+          {
+            "speaker": "you",
+            "text": "European size 39. Could I try on both shoes?"
+          },
+          {
+            "speaker": "partner",
+            "text": "Of course. How do they feel?"
+          },
+          {
+            "speaker": "you",
+            "text": "They are a little tight. Do you have one size larger?"
+          },
+          {
+            "speaker": "partner",
+            "text": "Yes, here is size 40."
+          },
+          {
+            "speaker": "you",
+            "text": "These are comfortable. How much is this pair?"
+          },
+          {
+            "speaker": "partner",
+            "text": "This pair costs 399 yuan."
+          },
+          {
+            "speaker": "you",
+            "text": "Thank you. I would like to think about it."
+          },
+          {
+            "speaker": "partner",
+            "text": "Of course. Take your time."
           }
         ]
       },
@@ -513,81 +504,72 @@
     {
       "id": "allergy-ja",
       "english": {
-        "topics": [
+        "thingsToSay": [
+          "I have a severe peanut allergy.",
+          "I cannot eat even a small amount.",
+          "Does this dish contain peanuts?",
+          "Do you use cooking utensils that have touched peanuts?",
+          "If you cannot confirm, I will not eat this dish."
+        ],
+        "likelyExchanges": [
           {
             "title": "Checking peanut allergy safety before ordering",
-            "thingsToSay": [
-              "I have a severe peanut allergy.",
-              "I cannot eat even a small amount.",
-              "Does this dish contain peanuts?",
-              "Do you use cooking utensils that have touched peanuts?",
-              "If you cannot confirm, I will not eat this dish."
-            ],
-            "likelyExchanges": [
-              {
-                "title": "Checking peanut allergy safety before ordering",
-                "lines": [
-                  {
-                    "speaker": "you",
-                    "text": [
-                      "Excuse me, I have a severe peanut allergy."
-                    ]
-                  },
-                  {
-                    "speaker": "partner",
-                    "text": [
-                      "Which dish would you like?"
-                    ]
-                  }
-                ]
-              }
-            ],
-            "words": [
-              {
-                "title": "Topic vocabulary",
-                "items": [
-                  "peanut",
-                  "allergy",
-                  "ingredients",
-                  "cooking utensils",
-                  "check"
-                ]
-              }
-            ],
-            "exampleConversation": [
+            "turns": [
               {
                 "speaker": "you",
-                "text": "Excuse me, I have a severe peanut allergy."
+                "say": "Excuse me, I have a severe peanut allergy."
               },
               {
                 "speaker": "partner",
-                "text": "Which dish would you like?"
-              },
-              {
-                "speaker": "you",
-                "text": "This dish. Could you check the ingredients?"
-              },
-              {
-                "speaker": "partner",
-                "text": "I will check with the kitchen."
-              },
-              {
-                "speaker": "you",
-                "text": "I cannot eat even a small amount. Do you use cooking utensils that have touched peanuts?"
-              },
-              {
-                "speaker": "partner",
-                "text": "We use shared cooking utensils, so I cannot confirm that there is no contact with peanuts."
-              },
-              {
-                "speaker": "you",
-                "text": "Then I will not eat this dish. Thank you for checking."
-              },
-              {
-                "speaker": "partner",
-                "text": "Understood. I will not place the order."
+                "say": "Which dish would you like?"
               }
             ]
+          }
+        ],
+        "words": [
+          {
+            "title": "Topic vocabulary",
+            "items": [
+              "peanut",
+              "allergy",
+              "ingredients",
+              "cooking utensils",
+              "check"
+            ]
+          }
+        ],
+        "exampleConversation": [
+          {
+            "speaker": "you",
+            "text": "Excuse me, I have a severe peanut allergy."
+          },
+          {
+            "speaker": "partner",
+            "text": "Which dish would you like?"
+          },
+          {
+            "speaker": "you",
+            "text": "This dish. Could you check the ingredients?"
+          },
+          {
+            "speaker": "partner",
+            "text": "I will check with the kitchen."
+          },
+          {
+            "speaker": "you",
+            "text": "I cannot eat even a small amount. Do you use cooking utensils that have touched peanuts?"
+          },
+          {
+            "speaker": "partner",
+            "text": "We use shared cooking utensils, so I cannot confirm that there is no contact with peanuts."
+          },
+          {
+            "speaker": "you",
+            "text": "Then I will not eat this dish. Thank you for checking."
+          },
+          {
+            "speaker": "partner",
+            "text": "Understood. I will not place the order."
           }
         ]
       },
@@ -845,81 +827,72 @@
     {
       "id": "tea-cs",
       "english": {
-        "topics": [
+        "thingsToSay": [
+          "A black tea without sugar, please.",
+          "Could I have lemon with it?",
+          "I will drink it here.",
+          "How much does it cost?",
+          "Can I pay by card?"
+        ],
+        "likelyExchanges": [
           {
             "title": "Ordering black tea without sugar",
-            "thingsToSay": [
-              "A black tea without sugar, please.",
-              "Could I have lemon with it?",
-              "I will drink it here.",
-              "How much does it cost?",
-              "Can I pay by card?"
-            ],
-            "likelyExchanges": [
-              {
-                "title": "Ordering black tea without sugar",
-                "lines": [
-                  {
-                    "speaker": "you",
-                    "text": [
-                      "Hello, a black tea without sugar, please."
-                    ]
-                  },
-                  {
-                    "speaker": "partner",
-                    "text": [
-                      "Would you like lemon with it?"
-                    ]
-                  }
-                ]
-              }
-            ],
-            "words": [
-              {
-                "title": "Topic vocabulary",
-                "items": [
-                  "tea",
-                  "sugar",
-                  "lemon",
-                  "card",
-                  "black"
-                ]
-              }
-            ],
-            "exampleConversation": [
+            "turns": [
               {
                 "speaker": "you",
-                "text": "Hello, a black tea without sugar, please."
+                "say": "Hello, a black tea without sugar, please."
               },
               {
                 "speaker": "partner",
-                "text": "Would you like lemon with it?"
-              },
-              {
-                "speaker": "you",
-                "text": "Yes, please. How much does it cost?"
-              },
-              {
-                "speaker": "partner",
-                "text": "Forty-five crowns. Will you drink it here or take it away?"
-              },
-              {
-                "speaker": "you",
-                "text": "I will drink it here. Can I pay by card?"
-              },
-              {
-                "speaker": "partner",
-                "text": "Yes. Please tap your card here."
-              },
-              {
-                "speaker": "you",
-                "text": "Thank you."
-              },
-              {
-                "speaker": "partner",
-                "text": "Here is your tea with lemon, without sugar."
+                "say": "Would you like lemon with it?"
               }
             ]
+          }
+        ],
+        "words": [
+          {
+            "title": "Topic vocabulary",
+            "items": [
+              "tea",
+              "sugar",
+              "lemon",
+              "card",
+              "black"
+            ]
+          }
+        ],
+        "exampleConversation": [
+          {
+            "speaker": "you",
+            "text": "Hello, a black tea without sugar, please."
+          },
+          {
+            "speaker": "partner",
+            "text": "Would you like lemon with it?"
+          },
+          {
+            "speaker": "you",
+            "text": "Yes, please. How much does it cost?"
+          },
+          {
+            "speaker": "partner",
+            "text": "Forty-five crowns. Will you drink it here or take it away?"
+          },
+          {
+            "speaker": "you",
+            "text": "I will drink it here. Can I pay by card?"
+          },
+          {
+            "speaker": "partner",
+            "text": "Yes. Please tap your card here."
+          },
+          {
+            "speaker": "you",
+            "text": "Thank you."
+          },
+          {
+            "speaker": "partner",
+            "text": "Here is your tea with lemon, without sugar."
           }
         ]
       },
@@ -1107,81 +1080,72 @@
     {
       "id": "lost-bag-uk",
       "english": {
-        "topics": [
+        "thingsToSay": [
+          "I left a small blue bag on the train.",
+          "The train from Lviv to Kyiv arrived today at 14:30.",
+          "My passport is inside.",
+          "Where is the lost property office?",
+          "Where can I leave my phone number?"
+        ],
+        "likelyExchanges": [
           {
             "title": "Reporting a blue bag left on a train",
-            "thingsToSay": [
-              "I left a small blue bag on the train.",
-              "The train from Lviv to Kyiv arrived today at 14:30.",
-              "My passport is inside.",
-              "Where is the lost property office?",
-              "Where can I leave my phone number?"
-            ],
-            "likelyExchanges": [
-              {
-                "title": "Reporting a blue bag left on a train",
-                "lines": [
-                  {
-                    "speaker": "you",
-                    "text": [
-                      "Excuse me, I left a bag on the train."
-                    ]
-                  },
-                  {
-                    "speaker": "partner",
-                    "text": [
-                      "Which train?"
-                    ]
-                  }
-                ]
-              }
-            ],
-            "words": [
-              {
-                "title": "Topic vocabulary",
-                "items": [
-                  "bag",
-                  "blue",
-                  "train",
-                  "passport",
-                  "phone number"
-                ]
-              }
-            ],
-            "exampleConversation": [
+            "turns": [
               {
                 "speaker": "you",
-                "text": "Excuse me, I left a bag on the train."
+                "say": "Excuse me, I left a bag on the train."
               },
               {
                 "speaker": "partner",
-                "text": "Which train?"
-              },
-              {
-                "speaker": "you",
-                "text": "The train from Lviv to Kyiv. It arrived today at 14:30."
-              },
-              {
-                "speaker": "partner",
-                "text": "What does the bag look like?"
-              },
-              {
-                "speaker": "you",
-                "text": "It is small and blue. My passport is inside."
-              },
-              {
-                "speaker": "partner",
-                "text": "Please go to the lost property office. They will check whether the bag has been found."
-              },
-              {
-                "speaker": "you",
-                "text": "Where is it, and where can I leave my phone number?"
-              },
-              {
-                "speaker": "partner",
-                "text": "The office is next to the ticket office. You can leave your number there."
+                "say": "Which train?"
               }
             ]
+          }
+        ],
+        "words": [
+          {
+            "title": "Topic vocabulary",
+            "items": [
+              "bag",
+              "blue",
+              "train",
+              "passport",
+              "phone number"
+            ]
+          }
+        ],
+        "exampleConversation": [
+          {
+            "speaker": "you",
+            "text": "Excuse me, I left a bag on the train."
+          },
+          {
+            "speaker": "partner",
+            "text": "Which train?"
+          },
+          {
+            "speaker": "you",
+            "text": "The train from Lviv to Kyiv. It arrived today at 14:30."
+          },
+          {
+            "speaker": "partner",
+            "text": "What does the bag look like?"
+          },
+          {
+            "speaker": "you",
+            "text": "It is small and blue. My passport is inside."
+          },
+          {
+            "speaker": "partner",
+            "text": "Please go to the lost property office. They will check whether the bag has been found."
+          },
+          {
+            "speaker": "you",
+            "text": "Where is it, and where can I leave my phone number?"
+          },
+          {
+            "speaker": "partner",
+            "text": "The office is next to the ticket office. You can leave your number there."
           }
         ]
       },
@@ -1369,89 +1333,80 @@
     {
       "id": "pottery-es",
       "english": {
-        "topics": [
+        "thingsToSay": [
+          "I would like to book one place in Saturday's pottery class.",
+          "I have never done pottery before.",
+          "I would like to make a small bowl by hand, without a wheel.",
+          "Are clay and firing included in the price?",
+          "When can I collect the finished bowl?"
+        ],
+        "likelyExchanges": [
           {
             "title": "Booking a beginner hand-building pottery class",
-            "thingsToSay": [
-              "I would like to book one place in Saturday's pottery class.",
-              "I have never done pottery before.",
-              "I would like to make a small bowl by hand, without a wheel.",
-              "Are clay and firing included in the price?",
-              "When can I collect the finished bowl?"
-            ],
-            "likelyExchanges": [
-              {
-                "title": "Booking a beginner hand-building pottery class",
-                "lines": [
-                  {
-                    "speaker": "you",
-                    "text": [
-                      "Hello, I would like to book one place in Saturday's pottery class. I have never done pottery before."
-                    ]
-                  },
-                  {
-                    "speaker": "partner",
-                    "text": [
-                      "The beginner class is from ten to twelve and costs 40 euros."
-                    ]
-                  }
-                ]
-              }
-            ],
-            "words": [
-              {
-                "title": "Topic vocabulary",
-                "items": [
-                  "clay",
-                  "firing",
-                  "bowl",
-                  "pottery wheel",
-                  "book"
-                ]
-              }
-            ],
-            "exampleConversation": [
+            "turns": [
               {
                 "speaker": "you",
-                "text": "Hello, I would like to book one place in Saturday's pottery class. I have never done pottery before."
+                "say": "Hello, I would like to book one place in Saturday's pottery class. I have never done pottery before."
               },
               {
                 "speaker": "partner",
-                "text": "The beginner class is from ten to twelve and costs 40 euros."
-              },
-              {
-                "speaker": "you",
-                "text": "I have two hours available. I would like to make a small bowl by hand, without a wheel."
-              },
-              {
-                "speaker": "partner",
-                "text": "That is fine. In this class we work by hand."
-              },
-              {
-                "speaker": "you",
-                "text": "Are clay and firing included in the price?"
-              },
-              {
-                "speaker": "partner",
-                "text": "Yes, both are included."
-              },
-              {
-                "speaker": "you",
-                "text": "When can I collect the finished bowl?"
-              },
-              {
-                "speaker": "partner",
-                "text": "In two weeks. It cannot be collected on the same day."
-              },
-              {
-                "speaker": "you",
-                "text": "That works for me. Please book one place for Saturday at ten."
-              },
-              {
-                "speaker": "partner",
-                "text": "Of course. What is your name?"
+                "say": "The beginner class is from ten to twelve and costs 40 euros."
               }
             ]
+          }
+        ],
+        "words": [
+          {
+            "title": "Topic vocabulary",
+            "items": [
+              "clay",
+              "firing",
+              "bowl",
+              "pottery wheel",
+              "book"
+            ]
+          }
+        ],
+        "exampleConversation": [
+          {
+            "speaker": "you",
+            "text": "Hello, I would like to book one place in Saturday's pottery class. I have never done pottery before."
+          },
+          {
+            "speaker": "partner",
+            "text": "The beginner class is from ten to twelve and costs 40 euros."
+          },
+          {
+            "speaker": "you",
+            "text": "I have two hours available. I would like to make a small bowl by hand, without a wheel."
+          },
+          {
+            "speaker": "partner",
+            "text": "That is fine. In this class we work by hand."
+          },
+          {
+            "speaker": "you",
+            "text": "Are clay and firing included in the price?"
+          },
+          {
+            "speaker": "partner",
+            "text": "Yes, both are included."
+          },
+          {
+            "speaker": "you",
+            "text": "When can I collect the finished bowl?"
+          },
+          {
+            "speaker": "partner",
+            "text": "In two weeks. It cannot be collected on the same day."
+          },
+          {
+            "speaker": "you",
+            "text": "That works for me. Please book one place for Saturday at ten."
+          },
+          {
+            "speaker": "partner",
+            "text": "Of course. What is your name?"
           }
         ]
       },

@@ -337,6 +337,68 @@ describe("category chapter sheet", () => {
     expect(rows[1].closest("[data-reorder-region]")).toBe(rows[0].closest("[data-reorder-region]"));
     expect(rows[2].closest("[data-reorder-region]").dataset.reorderRegion).toBe("exchange:exchange-first:1");
   });
+
+  it("renders consecutive same-speaker turns as separate turn groups, never as alternatives", () => {
+    const turn = (key, translation, speaker, turnIndex, position = 0) => phrase(key, key, translation, {
+      groupId: "group-first", section: "likelyExchanges", exchangeId: "exchange-first", turnIndex, position, speaker,
+    });
+    const entries = [
+      turn("ask", "Is there a table?", "you", 0),
+      turn("wait", "One moment", "partner", 1),
+      turn("ready", "This way", "partner", 2),
+      turn("follow", "Follow me", "partner", 2, 1),
+    ];
+    const root = sheetBody(chapterFor(entries, groups, "category:exchanges"));
+
+    const turns = [...root.querySelectorAll('[data-exchange-id="exchange-first"] .chapter-turn')];
+    expect(turns.map((group) => [
+      group.dataset.speaker, group.dataset.turnIndex, group.getAttribute("role"), group.getAttribute("aria-label"),
+      group.dataset.reorderRegion, [...group.querySelectorAll(".card-row-wrapper")].map((row) => row.dataset.entryKey),
+    ])).toEqual([
+      ["you", "0", "group", "You", "exchange:exchange-first:0", ["ask"]],
+      ["partner", "1", "group", "Partner", "exchange:exchange-first:1", ["wait"]],
+      ["partner", "2", "group", "Partner, 2 alternatives", "exchange:exchange-first:2", ["ready", "follow"]],
+    ]);
+    // Only the explicit alternative inside the last turn is an option; the two partner turns are not.
+    expect([...root.querySelectorAll(".card-option-separator")]
+      .map((separator) => separator.closest(".card-row-wrapper").dataset.entryKey)).toEqual(["follow"]);
+    expect(deckGroups(landing(entries, groups).querySelector('.chapter-card[data-category="exchanges"]')))
+      .toEqual([["Ordering", [["An invitation", "exchange:exchange-first", "3 lines"]]]]);
+  });
+
+  it("renders consecutive same-speaker conversation lines as separate lines", () => {
+    const speakers = ["you", "you", "partner", "partner"];
+    const entries = speakers.map((speaker, index) => phrase(`line-${index}`, `line-${index}`, `Line ${index}`, {
+      groupId: "group-first", section: "exampleConversation", position: index, speaker,
+    }));
+    const root = sheetBody(chapterFor(entries, groups, "category:conversation"));
+
+    const rows = [...root.querySelectorAll('[data-reorder-region="exampleConversation:group-first"] .card-row-wrapper')];
+    expect(rows.map((row) => [row.dataset.entryKey, row.dataset.speaker]))
+      .toEqual(speakers.map((speaker, index) => [`line-${index}`, speaker]));
+    expect(root.querySelector(".card-option-separator")).toBeNull();
+    expect([...landing(entries, groups).querySelectorAll(".deck-card--conversation .deck-card-line")]
+      .map((line) => line.dataset.speaker)).toEqual(["you", "you", "partner"]);
+  });
+
+  it("renders all 18 Words of a topic with three families", () => {
+    const families = ["Food", "Drinks", "Table"].map((title, position) => ({ id: `family-${position}`, title, position }));
+    const wordy = [{ id: "g-wordy", deckId: deck.id, title: "At the table", position: 0, exchanges: [], wordFamilies: families }];
+    const keys = (family) => Array.from({ length: 6 }, (_, position) => `${family.id}-word-${position}`);
+    const entries = families.flatMap((family) => keys(family).map((key, position) =>
+      placed(key, "g-wordy", family.id, `${family.title} ${position}`, position)));
+    expect(entries).toHaveLength(18);
+    const root = sheetBody(chapterFor(entries, wordy, "category:words"));
+
+    expect([...root.querySelectorAll(".chapter-group[data-family-id]")].map((section) => [
+      section.dataset.familyId, section.querySelector(".chapter-group-title").textContent,
+      [...section.querySelectorAll(`[data-reorder-region="family:${section.dataset.familyId}"] .card-row-wrapper`)].map((row) => row.dataset.entryKey),
+    ])).toEqual(families.map((family) => [family.id, family.title, keys(family)]));
+    expect(root.querySelectorAll(".card-row-wrapper")).toHaveLength(18);
+    expect(root.querySelector(".chapter-empty")).toBeNull();
+    expect(deckGroups(landing(entries, wordy).querySelector('.chapter-card[data-category="words"]')))
+      .toEqual([["At the table", families.map((family) => [family.title, `family:${family.id}`, "6 words"])]]);
+  });
 });
 
 describe("chapter menu", () => {

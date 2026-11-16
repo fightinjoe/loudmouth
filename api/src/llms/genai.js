@@ -1,4 +1,4 @@
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI, ThinkingLevel } = require('@google/genai');
 
 const GENAI_MODEL = 'gemini-3.5-flash-lite';
 const GENAI_FLASH_MODEL = 'gemini-3.8-flash';
@@ -27,12 +27,14 @@ function usageFromMetadata(meta = {}) {
     outputTokens: (meta.candidatesTokenCount ?? 0) + (meta.thoughtsTokenCount ?? 0),
   };
 }
-function buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema, systemInstruction) {
+function buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema, systemInstruction, reasoning) {
   return {
     maxOutputTokens,
     responseMimeType: 'application/json',
     systemInstruction,
     ...(responseJsonSchema ? { responseJsonSchema } : {}),
+    // Only callers that ask for minimal reasoning set a level; others keep the model default.
+    ...(reasoning === 'minimal' ? { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } } : {}),
     ...(signal ? { abortSignal: signal } : {}),
   };
 }
@@ -40,9 +42,9 @@ function buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema, syst
 /**
  * @param {string} model
  * @param {{ instructions: string, input: string }} prompt
- * @param {{ maxOutputTokens?: number, signal?: AbortSignal, responseJsonSchema?: object }} options
+ * @param {{ maxOutputTokens?: number, signal?: AbortSignal, responseJsonSchema?: object, reasoning?: 'minimal' }} options
  */
-async function callGenAIModel(model, prompt, { maxOutputTokens = 1024, signal, responseJsonSchema } = {}) {
+async function callGenAIModel(model, prompt, { maxOutputTokens = 1024, signal, responseJsonSchema, reasoning } = {}) {
   const ai = getClient();
   const result = await ai.models.generateContent({
     model,
@@ -52,6 +54,7 @@ async function callGenAIModel(model, prompt, { maxOutputTokens = 1024, signal, r
       signal,
       responseJsonSchema,
       prompt.instructions,
+      reasoning,
     ),
   });
 

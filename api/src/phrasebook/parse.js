@@ -130,15 +130,20 @@ const isBoundedString = value => typeof value === 'string' && value.trim() !== '
 const isBoundedTitle = value => isBoundedString(value) && value.length <= MAX_CHECKLIST_ITEM_LENGTH;
 const hasOnlyFields = (value, allowed) => isObject(value) && Object.keys(value).every(field => allowed.includes(field));
 
-/** Keeps alternating or repeated turns; returns the kept turns and a flag for each repeated speaker. */
+/**
+ * Keeps alternating or repeated turns; returns the kept turns and a flag for each repeated speaker. An
+ * exchange turn (`options`) is `say` plus optional `or` alternatives, read as one ordered response array.
+ */
 function readTurns(lines, section, options, dropped, exchangeIndex) {
   const kept = [];
   for (const line of lines) {
-    const usable = hasOnlyFields(line, ['speaker', 'text']) && (line.speaker === 'you' || line.speaker === 'partner');
-    if (usable && options && Array.isArray(line.text)) {
-      const text = line.text.filter(isBoundedString);
+    const usable = hasOnlyFields(line, options ? ['speaker', 'say', 'or'] : ['speaker', 'text'])
+      && (line.speaker === 'you' || line.speaker === 'partner');
+    if (usable && options && (line.or === undefined || Array.isArray(line.or))) {
+      const responses = [line.say, ...(line.or ?? [])];
+      const text = responses.filter(isBoundedString);
       // A turn with no usable response is one dropped entry; otherwise each invalid response is.
-      const drops = text.length > 0 ? line.text.length - text.length : 1;
+      const drops = text.length > 0 ? responses.length - text.length : 1;
       for (let index = 0; index < drops; index++) dropped(section, 'invalid-entry');
       if (text.length > 0) kept.push({ speaker: line.speaker, text });
     } else if (usable && !options && isBoundedString(line.text)) {
@@ -168,11 +173,11 @@ function readLikelyExchanges(value) {
   const dropped = (section, reason) => flags.push({ code: 'content-dropped', section, reason });
   const kept = [];
   for (const exchange of value) {
-    if (!hasOnlyFields(exchange, ['title', 'lines']) || !isBoundedTitle(exchange.title) || !Array.isArray(exchange.lines)) {
+    if (!hasOnlyFields(exchange, ['title', 'turns']) || !isBoundedTitle(exchange.title) || !Array.isArray(exchange.turns)) {
       dropped('likelyExchanges', 'invalid-entry');
       continue;
     }
-    const { lines, repeats } = readTurns(exchange.lines, 'likelyExchanges', true, dropped, kept.length);
+    const { lines, repeats } = readTurns(exchange.turns, 'likelyExchanges', true, dropped, kept.length);
     if (lines.length < 2) {
       dropped('likelyExchanges', 'too-few-turns');
       continue;
@@ -230,37 +235,27 @@ function readExampleConversation(value) {
 }
 
 /**
- * Reads English replies item by item. Throws only when a reply cannot be used at all: invalid JSON, a wrong
- * envelope, topic count, topic fields or title. Otherwise each section is its repaired content with flags, or
- * null when it is unusable (missing, wrong type, or below its minimum after drops) and needs another attempt.
- * Counts have minimums only: overruns are kept and flagged during assembly (PHRASEBOOK_COUNT_LIMITS).
+ * Reads one English reply (one untitled topic; code owns the title) item by item. Throws only when the reply
+ * cannot be used at all: invalid JSON or a wrong set of top-level fields. Otherwise each section is its
+ * repaired content with flags, or null when it is unusable (missing, wrong type, or below its minimum after
+ * drops) and needs another attempt. Counts have minimums only here: overruns are kept and flagged during
+ * assembly (PHRASEBOOK_COUNT_LIMITS); the response schema sent to the provider is what caps them.
  */
-function readGenerationReply(raw, checklist) {
-  if (!Array.isArray(checklist) || checklist.length < MIN_CHECKLIST_ITEMS || checklist.length > MAX_CHECKLIST_ITEMS
-    || checklist.some(title => typeof title !== 'string' || !title.trim() || title.length > MAX_CHECKLIST_ITEM_LENGTH)) {
-    throw new Error('checklist must contain 1 to 8 bounded, nonblank topic titles');
+function readGenerationReply(raw, title) {
+  if (typeof title !== 'string' || !title.trim() || title.length > MAX_CHECKLIST_ITEM_LENGTH) {
+    throw new Error('title must be a bounded, nonblank topic title');
   }
   const parsed = parseModelJson(raw);
-  assertExactFields(parsed, ['topics'], 'response');
-  if (!Array.isArray(parsed.topics) || parsed.topics.length !== checklist.length) {
-    throw new Error('"topics" count must match checklist count');
-  }
-  return parsed.topics.map((topic, topicIndex) => {
-    const prefix = `topics[${topicIndex}]`;
-    assertExactFields(topic, ['title', ...GENERATION_SECTIONS], prefix);
-    if (topic.title !== checklist[topicIndex]) {
-      throw new Error(`${prefix}.title must exactly match checklist[${topicIndex}]`);
-    }
-    return {
-      title: topic.title,
-      sections: {
-        thingsToSay: readThingsToSay(topic.thingsToSay),
-        likelyExchanges: readLikelyExchanges(topic.likelyExchanges),
-        words: readWords(topic.words),
-        exampleConversation: readExampleConversation(topic.exampleConversation),
-      },
-    };
-  });
+  assertExactFields(parsed, GENERATION_SECTIONS, 'response');
+  return {
+    title,
+    sections: {
+      thingsToSay: readThingsToSay(parsed.thingsToSay),
+      likelyExchanges: readLikelyExchanges(parsed.likelyExchanges),
+      words: readWords(parsed.words),
+      exampleConversation: readExampleConversation(parsed.exampleConversation),
+    },
+  };
 }
 
 /** Sections no attempt could use; another attempt can fill them. */
@@ -283,10 +278,13 @@ function combineGenerationAttempts(attempts) {
   return { topic, flags };
 }
 
-/** One attempt per topic: the repaired topics and, per topic, their flags (without group indexes). */
-function validateGenerationResponse(raw, checklist) {
-  const combined = readGenerationReply(raw, checklist).map(topic => combineGenerationAttempts([topic]));
-  return { topics: combined.map(entry => entry.topic), flags: combined.map(entry => entry.flags) };
+/**
+ * One attempt for one topic: the repaired topic, its flags (without group indexes), and failure level 1 when
+ * anything was repaired. Evaluation tools use it; the route combines attempts itself.
+ */
+function validateGenerationResponse(raw, title) {
+  const { topic, flags } = combineGenerationAttempts([readGenerationReply(raw, title)]);
+  return { topic, flags, failureLevel: flags.length > 0 ? 1 : 0 };
 }
 
 // One shared traversal defines translation indexes and assembly indexes.

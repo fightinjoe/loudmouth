@@ -15,7 +15,9 @@ const {
   validateTranslationResponse,
 } = require('../../src/phrasebook/parse');
 const {
+  buildGenerationResponseJsonSchema,
   buildTranslationResponseJsonSchema,
+  generationTasks,
   PHRASEBOOK_GENERATION_MAX_TOKENS,
   PHRASEBOOK_TRANSLATION_MAX_TOKENS,
 } = require('../../src/phrasebook');
@@ -317,6 +319,7 @@ async function evaluateCall(state, handler, meta, {
   prompt,
   validator,
   responseJsonSchema,
+  reasoning,
   formatMarker,
 }) {
   const canary = meta.kind === 'baseline' ? null : createSyntheticCanary();
@@ -341,6 +344,7 @@ async function evaluateCall(state, handler, meta, {
     maxOutputTokens: effectiveTokenLimit(handler, stage),
     timeoutMs: handler.timeoutMs || DEFAULT_MODEL_TIMEOUT_MS,
     responseJsonSchema: !!responseJsonSchema,
+    reasoning: reasoning ?? null,
   };
   const startedAt = performance.now();
   let reply;
@@ -351,6 +355,7 @@ async function evaluateCall(state, handler, meta, {
       {
         maxOutputTokens: requestOptions.maxOutputTokens,
         ...(responseJsonSchema ? { responseJsonSchema } : {}),
+        ...(reasoning ? { reasoning } : {}),
       },
       requestOptions.timeoutMs,
     );
@@ -456,16 +461,18 @@ async function evaluateGeneration(state, handler, meta, body, formatMarker) {
   if (!request) return { value: null };
   const topics = [];
   let failureLevel = 0;
-  // Exercise the production singleton contract, preserving duplicate-title indexes.
-  for (const title of request.checklist) {
+  // Exercise the production per-topic contract, preserving duplicate-title indexes.
+  for (const task of generationTasks(request)) {
     const result = await evaluateCall(state, handler, meta, {
       stage: 'phrasebook-generation',
-      prompt: buildPhrasebookGenerationPrompt({ ...request, checklist: [title] }),
-      validator: (raw) => validateGenerationResponse(raw, [title]),
+      prompt: buildPhrasebookGenerationPrompt(task),
+      validator: (raw) => validateGenerationResponse(raw, task.topic),
+      responseJsonSchema: buildGenerationResponseJsonSchema(),
+      reasoning: 'minimal',
       formatMarker,
     });
     if (!result.value) return { value: null };
-    topics.push(result.value.topics[0]);
+    topics.push(result.value.topic);
     failureLevel = Math.max(failureLevel, result.value.failureLevel);
   }
   return { value: { topics, failureLevel } };

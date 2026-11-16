@@ -126,6 +126,16 @@ test('v4 phrasebook evidence stays in its topic across options and examples, wit
     evidence.groups[0].words[0].items[0].sources[0].ref.occurrenceId = uuid(occurrence);
     assert.equal(validatePhrasebookResponse(evidence).groups[0].words[0].items[0].sources[0].ref.occurrenceId,uuid(occurrence));
   }
+  // Consecutive turns by one speaker and Words above the flag limit are valid wire content.
+  for (const relax of [
+    value => { value.groups[0].exampleConversation[1].speaker = 'you'; },
+    value => { value.groups[0].likelyExchanges[0].lines[1].speaker = 'partner'; },
+    value => { value.groups[0].words[0].items = Array(24).fill(value.groups[0].words[0].items[1]); },
+  ]) {
+    const relaxed = structuredClone(response);
+    relax(relaxed);
+    assert.equal(validatePhrasebookResponse(relaxed).schemaVersion,4);
+  }
   for (const mutate of [
     value => { value.schemaVersion = 3; },
     value => { value.groups[0].essentials = []; },

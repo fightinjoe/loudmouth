@@ -22,13 +22,16 @@ function withReadingRules(template, language) {
 }
 
 /**
- * @param {{ seed: string, language: string, ability: string, answers: object, checklist: string[] }} task
+ * Builds the model request for one topic. `otherTopics` names the phrasebook's
+ * other chapters so the model leaves their material to them.
+ *
+ * @param {{ seed: string, language: string, ability: string, answers: object, topic: string, otherTopics: string[] }} task
  * @returns {{ instructions: string, input: string }}
  */
-function buildPhrasebookGenerationPrompt({ seed, language, ability, answers, checklist }) {
+function buildPhrasebookGenerationPrompt({ seed, language, ability, answers, topic, otherTopics }) {
   return {
     instructions: GENERATION_TEMPLATE,
-    input: JSON.stringify({ seed, language, ability, answers, checklist }),
+    input: JSON.stringify({ seed, language, ability, answers, topic, otherTopics }),
   };
 }
 

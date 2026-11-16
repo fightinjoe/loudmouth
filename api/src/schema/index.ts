@@ -134,7 +134,7 @@ export const PHRASEBOOK_COUNT_LIMITS: Readonly<Record<PhrasebookCountSection, nu
   exchangeTurns: 6,
   responses: 3,
   exampleConversation: 12,
-  words: 10,
+  words: 18,
 });
 
 /** `exchangeIndex` locates `exchangeTurns` and `responses`; `lineIndex` locates `responses`. */

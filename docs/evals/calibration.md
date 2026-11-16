@@ -3,7 +3,7 @@ kind: guide
 status: current
 summary: "Offline calibration preparation in evals/calibration: inspect the request plan and materialize native Prompt Romp inputs without dispatch."
 sources: [evals/calibration/prepare.mjs, evals/calibration/adapter.mjs]
-verified: 2026-11-12
+verified: 2026-11-14
 ---
 
 # Current calibration preparation
@@ -19,7 +19,7 @@ bun evals/pipelines/cli.mjs validate
 bun evals/pipelines/cli.mjs calibration --plan --json
 ```
 
-The plan uses the current authored phrasebook v4 fixtures and production A/B request builders. C detection and known-location repair use the optional offline review contracts. B is pinned to authored English rather than live A output; known-location C repair is oracle-assisted, not an end-to-end detector-gated repair measurement. Fixture expectations are not linguistic certification. See [evaluation guidance](index.md) for scope and reporting boundaries.
+The plan uses the current authored phrasebook v4 fixtures and production A/B request builders; A and B requests each carry their production response schema. C detection and known-location repair use the optional offline review contracts. B is pinned to authored English rather than live A output; known-location C repair is oracle-assisted, not an end-to-end detector-gated repair measurement. Fixture expectations are not linguistic certification. See [evaluation guidance](index.md) for scope and reporting boundaries.
 
 ## Materialize native inputs without dispatch
 

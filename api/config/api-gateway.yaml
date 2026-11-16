@@ -607,7 +607,7 @@ definitions:
         type: array
         minItems: 2
         maxItems: 4
-        description: Speakers alternate; either speaker may start. Continuation semantics are not validated.
+        description: Either speaker may start. Speakers usually alternate, but consecutive turns by one speaker are valid. Continuation semantics are not validated.
         items:
           $ref: '#/definitions/PhrasebookExchangeTurn'
 
@@ -645,7 +645,6 @@ definitions:
       items:
         type: array
         minItems: 2
-        maxItems: 10
         items:
           $ref: '#/definitions/PhrasebookWord'
 
@@ -676,15 +675,14 @@ definitions:
       words:
         type: array
         minItems: 0
-        maxItems: 5
-        description: Titled families with at most ten Words in total, enforced by the shared validator. Optional evidence references any phrase occurrence within this group.
+        description: Titled families with no maximum; more than 18 Words in total is kept and flagged count-overrun by the shared validator. Optional evidence references any phrase occurrence within this group.
         items:
           $ref: '#/definitions/PhrasebookWordFamily'
       exampleConversation:
         type: array
         minItems: 2
         maxItems: 10
-        description: Linear conversation with alternating speakers; either speaker may start.
+        description: Linear conversation; either speaker may start. Speakers usually alternate, but consecutive lines by one speaker are valid.
         items:
           $ref: '#/definitions/PhrasebookExampleLine'
 
