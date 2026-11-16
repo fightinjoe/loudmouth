@@ -24,7 +24,8 @@ const PATH_EXTENSIONS = new Set(['.md', '.html', '.js', '.mjs', '.ts', '.json', 
 const INDEX = 'docs/index.md';
 
 const git = (...args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' });
-const files = git('ls-files', '-co', '--exclude-standard').split('\n').filter(f => f && existsSync(join(ROOT, f)));
+// During a merge conflict ls-files lists an unmerged path once per stage; count each path once.
+const files = [...new Set(git('ls-files', '-co', '--exclude-standard').split('\n'))].filter(f => f && existsSync(join(ROOT, f)));
 const read = f => readFileSync(join(ROOT, f), 'utf8');
 const exists = f => existsSync(join(ROOT, f));
 const isIgnored = f => { try { execFileSync('git', ['check-ignore', '-q', f], { cwd: ROOT, stdio: 'ignore' }); return true; } catch { return false; } };
