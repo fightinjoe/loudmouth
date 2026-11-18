@@ -10,13 +10,11 @@ statuses: [open, in-progress, blocked, done]
 
 The first public launch: everything that must be done before Catchphrase is open to the public. Every row gates the launch; work that can ship after it goes to the [backlog](backlog.md). Production deployment state is owned by [API operations](../api/operations.md#production). Naming, sections and the release notes written at the end follow [launch milestones](../wiki.md#launch-milestones).
 
-**Broken by the API protection baseline (noted 2026-11-17).** It has a row below and detail in [audit findings](antsy-aphid/api-protection.md#audit-findings-on-the-merged-code); fix it first, because it blocks everyday work rather than only the launch.
-
-- **Web CI fails.** `web/app/vite.config.js` rejects a production build without the six online-generation inputs, and `.github/workflows/web-app-ci.yml` sets none, so `npm run test:e2e` cannot build. `npm run test:storybook` fails 8 of its 28 journeys with "Online generation is not configured", because the stories run the real `web/app/src/js/phrasebook-api.ts`. Unit tests and typecheck pass. Row: [Client › Web](#web), "Make web CI pass with the build gate".
+**Broken by the API protection baseline (noted 2026-11-17).** Both breakages are fixed in the repository. Local development has a working path under admission (row done in [API + Server › Admission control](#admission-control)). The web CI fix waits for its first workflow run (row: [Client › Web](#web), "Make web CI pass with the build gate"; detail in [audit findings](antsy-aphid/api-protection.md#audit-findings-on-the-merged-code)).
 
 | Section | Open | In progress | Blocked | Done |
 |---|---|---|---|---|
-| Client › Web | 11 | 0 | 0 | 0 |
+| Client › Web | 10 | 1 | 0 | 0 |
 | Client › iOS | 11 | 0 | 0 | 1 |
 | API + Server › Admission control | 17 | 4 | 0 | 1 |
 | API + Server › Robustness | 4 | 3 | 0 | 0 |
@@ -27,7 +25,7 @@ The first public launch: everything that must be done before Catchphrase is open
 | Product + legal › Business model | 5 | 1 | 0 | 1 |
 | Product + legal › Privacy | 5 | 0 | 0 | 0 |
 | Product + legal › Name | 3 | 0 | 0 | 0 |
-| **Total** | **69** | **8** | **0** | **7** |
+| **Total** | **68** | **9** | **0** | **7** |
 
 ## Client
 
@@ -35,7 +33,7 @@ The first public launch: everything that must be done before Catchphrase is open
 
 | Date | Status | Description | Details |
 |---|---|---|---|
-| 2026-11-17 | open | Make web CI pass with the build gate: synthetic online-generation inputs for the e2e build and stubbed identity in the Storybook journeys | [details](antsy-aphid/api-protection.md) |
+| 2026-11-17 | in-progress | Make web CI pass with the build gate: synthetic online-generation inputs for the e2e build and stubbed identity in the Storybook journeys | [details](antsy-aphid/api-protection.md) |
 | 2026-11-17 | open | Set the six online-generation build inputs in the Vercel project before the protected build reaches `prod` | [details](antsy-aphid/api-protection.md) |
 | 2026-11-17 | open | Load the Firebase SDK on the first generation request instead of bundling it in the entry chunk | [details](antsy-aphid/api-protection.md) |
 | 2026-11-17 | open | Fix web failure handling: gateway-generated 401, 403 and 504 read as connection loss, silent title and image failures, no allowance warning on 5xx, Try again enabled during Retry-After | [details](antsy-aphid/api-protection.md) |

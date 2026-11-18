@@ -10,7 +10,7 @@ export interface TransportRequest {
 }
 export const requests: TransportRequest[] = [];
 export type ResponseFactory = (body: unknown) => unknown;
-const PREFIX = '/__storybook_api__';
+export const API_PREFIX = '/__storybook_api__';
 const endpoints: readonly Endpoint[] = ['/context', '/phrasebook-title', '/phrasebook', '/phrasebook-image', '/phrase-breakdown'];
 let outcomes: Partial<Record<Endpoint, Outcome>> = {};
 const factories = new Map<Endpoint, ResponseFactory>();
@@ -157,8 +157,8 @@ export function installTransport(): void {
       const rawUrl = input instanceof Request ? input.url : String(input);
       const url = new URL(rawUrl, window.location.href);
       if (url.origin !== window.location.origin) throw new Error(`Storybook blocked external fetch: ${url.origin}${url.pathname}`);
-      if (!url.pathname.startsWith(PREFIX)) return originalFetch(input, init);
-      const path = url.pathname.slice(PREFIX.length);
+      if (!url.pathname.startsWith(API_PREFIX)) return originalFetch(input, init);
+      const path = url.pathname.slice(API_PREFIX.length);
       if (!endpoints.includes(path as Endpoint) || url.search || url.hash) throw new Error(`Unexpected Storybook API operation: ${url.pathname}`);
       const request = new Request(input instanceof Request ? input : url, init);
       if (request.method !== 'POST') throw new Error(`Storybook API requires POST: ${path}`);

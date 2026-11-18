@@ -54,6 +54,16 @@ export default defineConfig({
   // dev server) matches what ships and catches build-only issues.
   webServer: {
     command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
+    // The build gate needs the six online-generation inputs. These reserved
+    // .invalid values override any real registration; no spec generates.
+    env: {
+      VITE_API_URL: 'https://api.e2e.invalid',
+      VITE_FIREBASE_API_KEY: 'e2e-synthetic-key',
+      VITE_FIREBASE_AUTH_DOMAIN: 'e2e.invalid',
+      VITE_FIREBASE_PROJECT_ID: 'e2e-synthetic',
+      VITE_FIREBASE_APP_ID: 'e2e-synthetic-app',
+      VITE_RECAPTCHA_ENTERPRISE_SITE_KEY: 'e2e-synthetic-site-key',
+    },
     url: BASE_URL,
     reuseExistingServer: false,
     timeout: 120_000,

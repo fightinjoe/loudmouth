@@ -31,9 +31,9 @@ Run from `web/app`, serially (they share generated schema output). These are the
 | Components with stories | `npm run test:storybook` |
 | Build or PWA config | `npm run build` |
 
-`npm run build` needs the six [online generation inputs](../web/development.md#online-generation-configuration) and fails without them; `npm run test:e2e` builds first, so it needs them too. Synthetic non-local values are enough for a build check.
+`npm run build` needs the six [online generation inputs](../web/development.md#online-generation-configuration) and fails without them; synthetic non-local values are enough for a build check. The two browser suites need none: `npm run test:e2e` supplies synthetic inputs to its own [build](../web/development.md#build), and `npm run test:storybook` replaces API configuration and identity with [stand-ins](../web/development.md#component-workbench-storybook).
 
-CI runs the same set ([`web-app-ci.yml`](../../.github/workflows/web-app-ci.yml)) but does not set those inputs yet, so its browser steps fail on this code ([todo](../todo/antsy-aphid/api-protection.md#audit-findings-on-the-merged-code)). For a visible UI change, also run the app (`npm run dev` here and in `api/src`, using the server rule in `AGENTS.md`) and exercise the changed interaction in a browser.
+CI runs the same set ([`web-app-ci.yml`](../../.github/workflows/web-app-ci.yml)). For a visible UI change, also run the app (`npm run dev` here and in `api/src`, using the server rule in `AGENTS.md`) and exercise the changed interaction in a browser.
 
 ## Keep the wiki current
 
