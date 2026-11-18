@@ -1,0 +1,20 @@
+// Supply environment-specific public registration values through build settings or -xcconfig.
+// No registered app, project, hostname, or secret is inferred from this checkout.
+LOUDMOUTH_API_URL =
+LOUDMOUTH_FIREBASE_API_KEY =
+LOUDMOUTH_FIREBASE_PROJECT_ID =
+LOUDMOUTH_FIREBASE_APP_ID =
+LOUDMOUTH_FIREBASE_SENDER_ID =
+LOUDMOUTH_FIREBASE_BUNDLE_ID =
+LOUDMOUTH_APP_CHECK_DEBUG = NO
+
+INFOPLIST_KEY_LoudmouthAPIURL = $(LOUDMOUTH_API_URL)
+INFOPLIST_KEY_LoudmouthFirebaseAPIKey = $(LOUDMOUTH_FIREBASE_API_KEY)
+INFOPLIST_KEY_LoudmouthFirebaseProjectID = $(LOUDMOUTH_FIREBASE_PROJECT_ID)
+INFOPLIST_KEY_LoudmouthFirebaseAppID = $(LOUDMOUTH_FIREBASE_APP_ID)
+INFOPLIST_KEY_LoudmouthFirebaseSenderID = $(LOUDMOUTH_FIREBASE_SENDER_ID)
+INFOPLIST_KEY_LoudmouthFirebaseBundleID = $(LOUDMOUTH_FIREBASE_BUNDLE_ID)
+INFOPLIST_KEY_LoudmouthProtectionEnvironment = $(LOUDMOUTH_PROTECTION_ENV)
+INFOPLIST_KEY_LoudmouthAppCheckDebug = $(LOUDMOUTH_APP_CHECK_DEBUG)
+INFOPLIST_KEY_FirebaseAppCheckTokenAutoRefreshEnabled = NO
+INFOPLIST_KEY_FirebaseDataCollectionDefaultEnabled = NO

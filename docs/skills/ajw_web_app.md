@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: Rules, references and verification for any work under web/app.
 sources: [web/app/package.json, .github/workflows/web-app-ci.yml]
-verified: 2026-11-13
+verified: 2026-11-17
 ---
 
 # Web app work
@@ -31,7 +31,9 @@ Run from `web/app`, serially (they share generated schema output). These are the
 | Components with stories | `npm run test:storybook` |
 | Build or PWA config | `npm run build` |
 
-CI runs the same set ([`web-app-ci.yml`](../../.github/workflows/web-app-ci.yml)). For a visible UI change, also run the app (`npm run dev` here and in `api/src`, using the server rule in `AGENTS.md`) and exercise the changed interaction in a browser.
+`npm run build` needs the six [online generation inputs](../web/development.md#online-generation-configuration) and fails without them; `npm run test:e2e` builds first, so it needs them too. Synthetic non-local values are enough for a build check.
+
+CI runs the same set ([`web-app-ci.yml`](../../.github/workflows/web-app-ci.yml)) but does not set those inputs yet, so its browser steps fail on this code ([todo](../todo/antsy-aphid/api-protection.md#audit-findings-on-the-merged-code)). For a visible UI change, also run the app (`npm run dev` here and in `api/src`, using the server rule in `AGENTS.md`) and exercise the changed interaction in a browser.
 
 ## Keep the wiki current
 

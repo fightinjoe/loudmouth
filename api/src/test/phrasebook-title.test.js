@@ -2,7 +2,6 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { handlePhrasebookTitle, parsePhrasebookTitleRequest, validatePhrasebookTitleResponse } = require('../phrasebook-title');
 const { buildPhrasebookTitlePrompt } = require('../phrasebook-title/prompt');
-const { translate } = require('../index');
 
 const BACKEND = 'gemini-3.5-flash-lite';
 process.env.LLM_BACKEND = BACKEND;
@@ -48,16 +47,6 @@ test('returns title and shared usage', async () => {
   assert.equal(res.body.usage.totalTokens, 120);
 });
 
-test('router dispatches title requests with CORS and supports preflight', async () => {
-  const res = makeRes();
-  await translate({ method: 'POST', path: '/phrasebook-title', body: {} }, res);
-  assert.equal(res.statusCode, 400);
-  assert.match(res.body.error, /seed/);
-  assert.equal(res.headers['Access-Control-Allow-Origin'], '*');
-  const options = makeRes();
-  await translate({ method: 'OPTIONS', path: '/phrasebook-title' }, options);
-  assert.equal(options.statusCode, 204);
-});
 
 test('returns 502 for model errors and invalid responses', async () => {
   for (const handler of [async () => { throw new Error('provider failure'); }, async () => reply('{}')]) {

@@ -12,7 +12,7 @@ verified: 2026-11-15
 
 Analyze the active occurrence of one Phrase independently of phrasebook creation. The model chooses meaningful chunks, teaching explanations, dictionary Words and proposed Word equivalence. Code owns the trust boundary: storage IDs are withheld from the model; source alignment, UTF-16 offsets, evidence, cards, target selection and final response validation are deterministic.
 
-This stateless endpoint makes one server-selected model call and returns a complete analysis, not partial required content. Analysis does not save anything. Source snapshots are exact historical content; refs are advisory navigation hints, not authority to reinterpret text or translation. See the [API overview](../api-design.md) for shared routing, backend selection, trust and usage conventions, and [shared cards](../card-schema.md#content-types) for Card/Candidate types. Structural validity and exact spans do not establish accurate teaching or pronunciation.
+This endpoint keeps no content between calls. It makes one server-selected model call and returns a complete analysis, not partial required content. Analysis does not save anything. Source snapshots are exact historical content; refs are advisory navigation hints, not authority to reinterpret text or translation. See the [API overview](../api-design.md) for shared routing, backend selection, trust and usage conventions, and [shared cards](../card-schema.md#content-types) for Card/Candidate types. Structural validity and exact spans do not establish accurate teaching or pronunciation.
 
 ## Request and response
 
@@ -141,13 +141,13 @@ These IDs name logical checkpoints, not an additional log emitted for every row.
 ## Execution limits and recovery
 
 - One server-selected provider call has a 4,096-output-token ceiling and default 15-second deadline; an alternate adapter uses its configured timeout.
-- There is no application-level retry, including malformed required output or missing optional evidence. Optional evidence recovery never requests another model call.
+- There is no application-level or SDK transport retry, including malformed required output or missing optional evidence. Optional evidence recovery never requests another model call.
 - Invalid input returns `400`; provider failure, timeout, malformed JSON and invalid required analysis return `502`. Configuration/programming failures may return `500` under shared handling.
-- The handler does not wire request-disconnect cancellation. A web close can abort fetch and suppress stale UI updates without cancelling an already committed save; server work and client persistence have distinct lifetimes.
+- The optional handler signal carries the router's disconnect and admission-deadline cancellation to provider work ([API protection](../api-design.md#api-protection)). Cancellation prevents new attempts but does not prove remote billing stopped. A web close can abort fetch and suppress stale UI updates without cancelling an already committed save; server work and client persistence have distinct lifetimes.
+- Provider input and reply sizes follow the [shared provider bounds](../api-design.md#provider-work-bounds); oversize fails with `502`, without truncation or another call.
 
 ## Known implementation gaps
 
-- Request-disconnect cancellation is not wired in this handler.
 - Successful usage `failureLevel` is currently derived from whether `flags` is nonempty; it does not individually report every pronunciation normalization or safe equivalence fallback. Such shaping must not be described as an emitted warning when none is recorded.
 
 ## Implementation references

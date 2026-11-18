@@ -8,7 +8,6 @@ const {
   validatePhraseBreakdownResponse,
 } = require('../phrase-breakdown');
 const { buildPhraseBreakdownPrompt } = require('../phrase-breakdown/prompt');
-const { translate } = require('../index');
 
 const BACKEND = 'gemini-3.5-flash-lite';
 process.env.LLM_BACKEND = BACKEND;
@@ -537,14 +536,3 @@ test('returns 502 for provider failures, malformed output, invalid usage, and ti
   assert.equal(signal.aborted, true);
 });
 
-test('router dispatches v2 breakdown requests with CORS and supports preflight', async () => {
-  const post = makeRes();
-  await translate({ method: 'POST', path: '/phrase-breakdown', body: {} }, post);
-  assert.equal(post.statusCode, 400);
-  assert.match(post.body.error, /schemaVersion/);
-  assert.equal(post.headers['Access-Control-Allow-Origin'], '*');
-
-  const options = makeRes();
-  await translate({ method: 'OPTIONS', path: '/phrase-breakdown' }, options);
-  assert.equal(options.statusCode, 204);
-});

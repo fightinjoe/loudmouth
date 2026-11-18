@@ -15,11 +15,13 @@
     "@anthropic-ai/sdk": "^0.39.0",
     "@google-cloud/functions-framework": "^5.0.5",
     "@google/genai": "^1.50.1",
+    "firebase-admin": "^14.5.0",
     "openai": "^4.85.0",
     "sharp": "0.35.5",
     "wanakana": "^5.3.1"
   },
   "devDependencies": {
+    "firebase-tools": "15.34.2",
     "typescript": "5.9.3"
   },
   "engines": {

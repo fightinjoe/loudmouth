@@ -190,3 +190,17 @@ test('handler returns the decoded image or a sanitized upstream failure', async 
   assert.equal(failure.statusCode, 502);
   assert.deepEqual(failure.body, { error: 'Phrasebook illustration failed' });
 });
+
+test('router deadline returns a controlled failure to a still-connected image client', async () => {
+  const controller = new AbortController();
+  const req = Object.assign(new EventEmitter(), { body: request });
+  const res = response();
+  const pending = handlePhrasebookImage(req, res, {
+    signal: controller.signal,
+    fetchImpl: async () => new Promise(() => {}),
+  });
+  controller.abort(new Error('Request deadline exceeded'));
+  await pending;
+  assert.equal(res.statusCode, 502);
+  assert.equal(res.writableEnded, true);
+});

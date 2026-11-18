@@ -43,7 +43,7 @@ function validatePhrasebookTitleResponse(raw) {
 async function performPhrasebookTitle(
   parsedRequest,
   registry,
-  { timeoutMs = PHRASEBOOK_TITLE_TIMEOUT_MS } = {},
+  { timeoutMs = PHRASEBOOK_TITLE_TIMEOUT_MS, signal } = {},
 ) {
   const { seed } = parsedRequest;
   const backendName = getBackendName();
@@ -59,7 +59,7 @@ async function performPhrasebookTitle(
   let reply;
   try {
     reply = await callWithTimeout(
-      handler, prompt, { maxOutputTokens: PHRASEBOOK_TITLE_MAX_TOKENS }, effectiveTimeoutMs, PhrasebookTitleTimeoutError,
+      handler, prompt, { maxOutputTokens: PHRASEBOOK_TITLE_MAX_TOKENS, signal }, effectiveTimeoutMs, PhrasebookTitleTimeoutError,
     );
   } catch (err) {
     if (err instanceof PhrasebookTitleTimeoutError) {

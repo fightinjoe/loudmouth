@@ -1,0 +1,7 @@
+# Run only with explicit operator authorization, from api/:
+# gcloud builds submit --project="$GCP_PROJECT_ID" --ignore-file=config/monitor.gcloudignore --config=config/monitor-cloudbuild.yaml --substitutions="_IMAGE=$MONITOR_IMAGE_TAG" .
+# Resolve the pushed digest and pass that immutable image as MONITOR_IMAGE to provisioning.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: [build, --file, config/monitor.Dockerfile, --tag, '${_IMAGE}', .]
+images: ['${_IMAGE}']

@@ -177,9 +177,7 @@ struct CardListView: View {
                 if let deck { DeckSettingsView(deck: deck) }
             }
             .sheet(isPresented: $showTranslation) {
-                if let deck {
-                    TranslationView(deck: deck)
-                }
+                OnlineGenerationUnavailableView()
             }
             .tint(Theme.accent)
 

@@ -1,0 +1,9 @@
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+src/node_modules
+src/schema/dist
+tmp
+evals

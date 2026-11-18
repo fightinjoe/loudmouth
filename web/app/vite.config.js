@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { getApiConfiguration } from './src/js/api-config'
 
 function parsePort(value, name, fallback) {
   const candidate = value ?? String(fallback)
@@ -14,8 +15,10 @@ function parsePort(value, name, fallback) {
   return port
 }
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  // Every deployable build, including staging mode, must use safe explicit inputs.
+  if (command === 'build') getApiConfiguration(env, true)
 
   return {
     optimizeDeps: {

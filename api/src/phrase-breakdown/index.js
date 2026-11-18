@@ -339,7 +339,7 @@ function validatePhraseBreakdownResponse(raw, requestValue) {
 async function performPhraseBreakdown(
   parsedRequest,
   registry,
-  { timeoutMs = PHRASE_BREAKDOWN_TIMEOUT_MS } = {},
+  { timeoutMs = PHRASE_BREAKDOWN_TIMEOUT_MS, signal } = {},
 ) {
   const backendName = getBackendName();
   const handler = registry[backendName];
@@ -353,7 +353,7 @@ async function performPhraseBreakdown(
     reply = await callWithTimeout(
       handler,
       prompt,
-      { maxOutputTokens: PHRASE_BREAKDOWN_MAX_TOKENS },
+      { maxOutputTokens: PHRASE_BREAKDOWN_MAX_TOKENS, signal },
       effectiveTimeoutMs,
       PhraseBreakdownTimeoutError,
     );
@@ -364,8 +364,6 @@ async function performPhraseBreakdown(
       failureLevel: 2,
       route: 'phrase-breakdown',
       llm: backendName,
-      error: error.message,
-      stack: error.stack,
     });
     const wrapped = new Error('LLM request failed');
     wrapped.status = 502;
@@ -386,8 +384,6 @@ async function performPhraseBreakdown(
       failureLevel: 2,
       route: 'phrase-breakdown',
       llm: backendName,
-      raw: reply && reply.text,
-      error: error.message,
     });
     const wrapped = new Error('Invalid response from LLM');
     wrapped.status = 502;

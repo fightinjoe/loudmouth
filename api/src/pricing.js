@@ -58,7 +58,9 @@ function buildUsageReport(model, usage = {}, durationMs = 0) {
     inputTokens,
     outputTokens,
     totalTokens: inputTokens + outputTokens,
-    costUsd: computeCostUsd(model, { inputTokens, outputTokens }),
+    costUsd: Number.isFinite(usage.inputTokens) && usage.inputTokens >= 0
+      && Number.isFinite(usage.outputTokens) && usage.outputTokens >= 0
+      ? computeCostUsd(model, usage) : null,
     durationMs: Number.isFinite(durationMs) && durationMs > 0 ? Math.round(durationMs) : 0,
   };
 }

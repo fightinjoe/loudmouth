@@ -1,4 +1,6 @@
 const { GoogleGenAI, ThinkingLevel } = require('@google/genai');
+const { serializeInput, checkResponse } = require('./bounds');
+const { recordProviderReply, recordProviderFailure } = require('../protection/work');
 
 const GENAI_MODEL = 'gemini-3.5-flash-lite';
 const GENAI_FLASH_MODEL = 'gemini-3.8-flash';
@@ -16,6 +18,7 @@ function getClient() {
       vertexai: true,
       project,
       location,
+      httpOptions: { retryOptions: { attempts: 1 } },
     });
   }
   return client;
@@ -23,8 +26,9 @@ function getClient() {
 
 function usageFromMetadata(meta = {}) {
   return {
-    inputTokens: meta.promptTokenCount ?? 0,
-    outputTokens: (meta.candidatesTokenCount ?? 0) + (meta.thoughtsTokenCount ?? 0),
+    inputTokens: meta.promptTokenCount,
+    outputTokens: Number.isFinite(meta.candidatesTokenCount)
+      ? meta.candidatesTokenCount + (meta.thoughtsTokenCount ?? 0) : undefined,
   };
 }
 function buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema, systemInstruction, reasoning) {
@@ -46,7 +50,7 @@ function buildGenerationConfig(maxOutputTokens, signal, responseJsonSchema, syst
  */
 async function callGenAIModel(model, prompt, { maxOutputTokens = 1024, signal, responseJsonSchema, reasoning } = {}) {
   const ai = getClient();
-  const result = await ai.models.generateContent({
+  const request = {
     model,
     contents: prompt.input,
     config: buildGenerationConfig(
@@ -56,19 +60,29 @@ async function callGenAIModel(model, prompt, { maxOutputTokens = 1024, signal, r
       prompt.instructions,
       reasoning,
     ),
+  };
+  // Bound the serialized Vertex wire shape, including SDK content wrappers.
+  serializeInput({
+    model,
+    contents: [{ role: 'user', parts: [{ text: prompt.input }] }],
+    systemInstruction: { parts: [{ text: prompt.instructions }] },
+    generationConfig: { maxOutputTokens, responseMimeType: 'application/json',
+      ...(responseJsonSchema ? { responseJsonSchema } : {}) },
   });
+  const result = await ai.models.generateContent(request).catch(error => {
+    recordProviderFailure(error);
+    throw error;
+  });
+  const reply = { model, usage: usageFromMetadata(result.usageMetadata) };
+  recordProviderReply(reply);
+  checkResponse(result);
 
   const text = result.text;
   if (!text) {
     throw new Error('Google Gen AI returned a response with no text content');
   }
 
-  const meta = result.usageMetadata || {};
-  return {
-    text,
-    model,
-    usage: usageFromMetadata(meta),
-  };
+  return { ...reply, text };
 }
 
 function callGenAI(prompt, options) {

@@ -3,7 +3,7 @@ kind: spec
 status: current
 summary: "POST /phrasebook-title contract: independent single-call English UI naming from the seed."
 sources: [api/src/phrasebook-title/index.js, api/src/phrasebook-title/prompt.js, api/src/phrasebook-title/prompt.txt, api/src/llms/timeout.js]
-verified: 2026-11-13
+verified: 2026-11-15
 ---
 
 # POST /phrasebook-title
@@ -59,7 +59,7 @@ These eight IDs are logical documentation/reporting checkpoints, not extra calls
 
 ## Execution limits and recovery
 
-One independent, single-turn model call uses a dedicated prompt and a 256-token output ceiling. The timeout is 15 seconds by default or the adapter's timeout (60 seconds for `g-flash`, `claude`, and `chatgpt`). There is no application-level retry. Timeout aborts the helper's signal, but the handler does not wire request-disconnect cancellation. Client abort and stale-result suppression remain client operations, not proof that paid provider work has stopped.
+One independent, single-turn model call uses a dedicated prompt and a 256-token output ceiling. The timeout is 15 seconds by default or the adapter's timeout (60 seconds for `g-flash`, `claude`, and `chatgpt`). There is no application-level or SDK transport retry. The optional handler signal carries the router's disconnect and admission-deadline cancellation to the provider ([API protection](../api-design.md#api-protection)). Client abort and stale-result suppression are not proof that remote billing stopped; unresolved work retains its admission liability. Provider input and reply sizes follow the [shared provider bounds](../api-design.md#provider-work-bounds); oversize fails with 502, without truncation or retry.
 
 ## Implementation references
 

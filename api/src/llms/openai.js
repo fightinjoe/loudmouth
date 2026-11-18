@@ -1,4 +1,6 @@
 const OpenAI = require('openai');
+const { serializeInput, checkResponse } = require('./bounds');
+const { recordProviderReply, recordProviderFailure } = require('../protection/work');
 
 const OPENAI_MODEL = 'gpt-5.6-luna';
 
@@ -10,7 +12,7 @@ function getClient() {
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY environment variable is not set');
     }
-    client = new OpenAI({ apiKey });
+    client = new OpenAI({ apiKey, maxRetries: 0 });
   }
   return client;
 }
@@ -22,14 +24,25 @@ function getClient() {
 async function callOpenAI(prompt, { maxOutputTokens = 1024, signal } = {}) {
   const openai = getClient();
 
-  const completion = await openai.chat.completions.create({
+  const request = {
     model: OPENAI_MODEL,
     max_completion_tokens: maxOutputTokens,
     messages: [
       { role: 'developer', content: prompt.instructions },
       { role: 'user', content: prompt.input },
     ],
-  }, { signal });
+  };
+  serializeInput(request);
+  const completion = await openai.chat.completions.create(request, { signal }).catch(error => {
+    recordProviderFailure(error);
+    throw error;
+  });
+  const usage = completion?.usage || {};
+  const reply = { model: OPENAI_MODEL, usage: {
+    inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens,
+  } };
+  recordProviderReply(reply);
+  checkResponse(completion);
 
   const text = completion?.choices?.[0]?.message?.content;
 
@@ -37,15 +50,7 @@ async function callOpenAI(prompt, { maxOutputTokens = 1024, signal } = {}) {
     throw new Error('OpenAI returned a response with no text content');
   }
 
-  const usage = completion?.usage || {};
-  return {
-    text,
-    model: OPENAI_MODEL,
-    usage: {
-      inputTokens: usage.prompt_tokens ?? 0,
-      outputTokens: usage.completion_tokens ?? 0,
-    },
-  };
+  return { ...reply, text };
 }
 
 // GPT-5.6 Luna can exceed the shared 15-second service budget while producing

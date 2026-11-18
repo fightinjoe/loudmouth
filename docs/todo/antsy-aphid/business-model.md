@@ -3,7 +3,7 @@ kind: record
 status: current
 summary: "Brainstorm the business model: who pays, for what, and whether it covers per-phrasebook model cost."
 sources: [scripts/cost-report.mjs, api/src/pricing.js]
-verified: 2026-11-14
+verified: 2026-11-17
 ---
 
 # Brainstorm the business model

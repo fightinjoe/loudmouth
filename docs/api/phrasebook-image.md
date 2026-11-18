@@ -2,8 +2,8 @@
 kind: spec
 status: current
 summary: "POST /phrasebook-image contract: one nonblocking 16:9 PNG cover via OpenRouter, with PNG acceptance bounds."
-sources: [api/src/phrasebook-image/index.js]
-verified: 2026-11-13
+sources: [api/src/phrasebook-image/index.js, api/src/protection/work.js]
+verified: 2026-11-15
 ---
 
 # POST /phrasebook-image
@@ -62,6 +62,8 @@ These eight IDs are logical documentation/reporting checkpoints, not extra calls
 ## Execution limits and recovery
 
 One provider invocation has a 120-second deadline covering the whole operation, including body reading, JSON/base64 decoding, and PNG inspection. Disconnect aborts work. There is no automatic retry, redirect, provider/model fallback, or background-removal stage. Client retry/binding and stale-response behavior remains separate from this operation's outcome.
+
+The handler accepts `{signal, fetchImpl}` for protected routing and offline tests. The router injects an attempt-tracked fetch (`trackedFetch` in `api/src/protection/work.js`); charge metadata is captured immediately after the bounded JSON decode, before image-count, base64 or PNG validation can fail. A missing cost retains the full admitted reserve. Cancellation prevents additional work, but a local abort does not prove the remote operation ended. Image admission requires a verified fixed `IMAGE_RESERVE_MICROS` allowance that already includes its margin; without it the route is rejected with 503 while priced text endpoints keep working ([API protection](../api-design.md#api-protection)).
 
 PNG validation establishes decodability, dimensions and visibility, not relevance, watercolor style or composition. The prompt's close-up framing and 3–5% margin target are guidance, not enforced guarantees: small visually inspected samples still had uneven margins. Pale painted washes also make pixel-based margin estimates approximate. No broad visual-quality or latency guarantee is established; saved images are not regenerated when prompt guidance changes.
 

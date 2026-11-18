@@ -1,0 +1,2 @@
+#include "Protection.xcconfig"
+LOUDMOUTH_PROTECTION_ENV = production

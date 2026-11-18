@@ -4,7 +4,6 @@ info:
   description: Routes language-learning requests to a Cloud Run service with a server-selected LLM backend
   version: "3.0"
 
-host: "translation-api-gateway-2qqw247r.uc.gateway.dev"
 schemes:
   - https
 
@@ -16,15 +15,31 @@ x-google-backend:
   # Max permitted is 600.0.
   deadline: 270.0
 
+securityDefinitions:
+  firebase:
+    type: oauth2
+    flow: implicit
+    authorizationUrl: ""
+    x-google-issuer: "https://securetoken.google.com/YOUR_FIREBASE_PROJECT_ID"
+    x-google-jwks_uri: "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
+    x-google-audiences: "YOUR_FIREBASE_PROJECT_ID"
+
+# Default closed; every preflight is an explicit exception.
+security:
+  - firebase: []
+
 paths:
   /phrasebook-title:
     options:
+      security: []
       summary: CORS preflight
       operationId: phrasebookTitleOptions
       responses:
         204:
           description: CORS preflight response
     post:
+      security:
+        - firebase: []
       summary: Distill a seed into a short English phrasebook title
       operationId: phrasebookTitle
       consumes: [application/json]
@@ -59,6 +74,7 @@ paths:
 
   /phrase-breakdown:
     options:
+      security: []
       summary: CORS preflight
       operationId: phraseBreakdownOptions
       parameters: []
@@ -66,6 +82,8 @@ paths:
         204:
           description: CORS preflight response
     post:
+      security:
+        - firebase: []
       summary: Explain a saved phrase occurrence as contextual chunks and dictionary Words
       operationId: phraseBreakdown
       consumes: [application/json]
@@ -88,6 +106,7 @@ paths:
 
   /context:
     options:
+      security: []
       summary: CORS preflight
       operationId: contextOptions
       parameters: []
@@ -95,6 +114,8 @@ paths:
         204:
           description: CORS preflight response
     post:
+      security:
+        - firebase: []
       summary: Generate clarifying questions, a conversation checklist, and a seed-based illustration prompt
       operationId: context
       consumes: [application/json]
@@ -129,6 +150,7 @@ paths:
 
   /phrasebook:
     options:
+      security: []
       summary: CORS preflight
       operationId: phrasebookOptions
       parameters: []
@@ -136,6 +158,8 @@ paths:
         204:
           description: CORS preflight response
     post:
+      security:
+        - firebase: []
       summary: Generate a bespoke phrasebook from selected context
       operationId: phrasebook
       consumes: [application/json]
@@ -183,12 +207,15 @@ paths:
 
   /phrasebook-image:
     options:
+      security: []
       summary: CORS preflight
       operationId: phrasebookImageOptions
       responses:
         204:
           description: CORS preflight response
     post:
+      security:
+        - firebase: []
       summary: Generate a contextual watercolor PNG
       operationId: phrasebookImage
       consumes: [application/json]

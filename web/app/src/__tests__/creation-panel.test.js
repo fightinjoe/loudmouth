@@ -462,6 +462,20 @@ describe("openCreationPanel — language selection", () => {
 });
 
 describe("openCreationPanel — input and context", () => {
+  it.each([
+    "Your generation allowance or active-request limit has been reached. Please wait 120 seconds before trying again.",
+    "This browser could not be verified or is not supported. Allow verification scripts, then try again. Saved content is still available.",
+    "The connection was lost. Generation may already have consumed your allowance. Check your library before choosing to try again.",
+  ])("renders protected failure guidance without replaying context: %s", async (message) => {
+    getContext.mockRejectedValueOnce(new Error(message));
+    const sheet = openCreationPanel(appElement, { lang: "es", ability: "none" }, () => {});
+    typeAndSubmitTopic("dinner with family");
+    await vi.waitFor(() => expect(appElement.querySelector('[role="alert"]')?.textContent).toContain(message));
+    await Promise.resolve();
+    expect(getContext).toHaveBeenCalledOnce();
+    expect(commitPhrasebook).not.toHaveBeenCalled();
+    sheet.close();
+  });
   it("enables topic submission only for input", () => {
     openCreationPanel(appElement, { lang: "es", ability: "none" }, () => {});
     const submit = appElement.querySelector('[data-action="creation/submit-topic"]');

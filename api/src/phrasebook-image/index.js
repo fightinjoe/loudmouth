@@ -1,6 +1,8 @@
 'use strict';
 
 const sharp = require('sharp');
+const { readBoundedJson } = require('../llms/bounds');
+const { recordImageResponse } = require('../protection/work');
 const log = require('../log');
 
 const IMAGE_MODEL = 'black-forest-labs/flux.2-klein-4b';
@@ -54,27 +56,16 @@ async function boundedWork(work, parentSignal, timeoutMs) {
 }
 
 async function readJson(response) {
-  if (!response.ok) throw new Error('Image provider request failed');
-  const maxBytes = MAX_BASE64_LENGTH + 64 * 1024;
-  const length = response.headers.get('content-length');
-  if (length !== null && Number(length) > maxBytes) throw new Error('Image provider response is too large');
-  if (!response.body) throw new Error('Image provider returned an empty response');
-  const reader = response.body.getReader();
-  const chunks = [];
-  let size = 0;
+  let data;
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > maxBytes) throw new Error('Image provider response is too large');
-      chunks.push(value);
-    }
-    return JSON.parse(Buffer.concat(chunks, size).toString('utf8'));
-  } finally {
-    await reader.cancel().catch(() => {});
-    reader.releaseLock();
+    data = await readBoundedJson(response, MAX_BASE64_LENGTH + 64 * 1024);
+    recordImageResponse(response, data);
+  } catch (error) {
+    recordImageResponse(response, undefined, error);
+    throw error;
   }
+  if (!response.ok) throw new Error('Image provider request failed');
+  return data;
 }
 
 function decodePng(base64) {
@@ -145,17 +136,24 @@ async function performPhrasebookImage(body, { signal, fetchImpl = fetch } = {}) 
   }
 }
 
-async function handlePhrasebookImage(req, res) {
+async function handlePhrasebookImage(req, res, opts = {}) {
   const controller = new AbortController();
-  const disconnect = () => controller.abort(new Error('Client disconnected'));
+  let disconnected = false;
+  const disconnect = () => {
+    disconnected = true;
+    controller.abort(new Error('Client disconnected'));
+  };
   const close = () => { if (!res.writableEnded) disconnect(); };
+  const forward = () => controller.abort(opts.signal.reason || new Error('Request cancelled'));
+  if (opts.signal?.aborted) forward();
+  else opts.signal?.addEventListener('abort', forward, { once: true });
   req.once?.('aborted', disconnect);
   res.once?.('close', close);
   if (req.aborted || res.destroyed) disconnect();
   try {
-    const response = await performPhrasebookImage(req.body, { signal: controller.signal });
+    const response = await performPhrasebookImage(req.body, { ...opts, signal: controller.signal });
     log.info({ event: 'usage', route: 'phrasebook-image', ...response.usage, failureLevel: 0 });
-    if (!controller.signal.aborted) return res.status(200).json(response);
+    if (!disconnected && !res.destroyed) return res.status(200).json(response);
   } catch (error) {
     const status = error.status || 502;
     if (status === 400) {
@@ -163,8 +161,9 @@ async function handlePhrasebookImage(req, res) {
     } else {
       log.error({ event: 'request_failed', route: 'phrasebook-image', failureLevel: 2, status });
     }
-    if (!controller.signal.aborted) return res.status(status).json({ error: error.message });
+    if (!disconnected && !res.destroyed) return res.status(status).json({ error: error.message });
   } finally {
+    opts.signal?.removeEventListener('abort', forward);
     req.removeListener?.('aborted', disconnect);
     res.removeListener?.('close', close);
   }

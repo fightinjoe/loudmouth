@@ -1,4 +1,6 @@
 const Anthropic = require('@anthropic-ai/sdk');
+const { serializeInput, checkResponse } = require('./bounds');
+const { recordProviderReply, recordProviderFailure } = require('../protection/work');
 
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -10,7 +12,7 @@ function getClient() {
     if (!apiKey) {
       throw new Error('ANTHROPIC_API_KEY environment variable is not set');
     }
-    client = new Anthropic({ apiKey });
+    client = new Anthropic({ apiKey, maxRetries: 0 });
   }
   return client;
 }
@@ -22,13 +24,24 @@ function getClient() {
 async function callAnthropic(prompt, { maxOutputTokens = 1024, signal } = {}) {
   const anthropic = getClient();
 
-  const message = await anthropic.messages.create({
+  const request = {
     model: ANTHROPIC_MODEL,
     temperature: 0.2,
     max_tokens: maxOutputTokens,
     system: prompt.instructions,
     messages: [{ role: 'user', content: prompt.input }],
-  }, { signal });
+  };
+  serializeInput(request);
+  const message = await anthropic.messages.create(request, { signal }).catch(error => {
+    recordProviderFailure(error);
+    throw error;
+  });
+  const usage = message?.usage || {};
+  const reply = { model: ANTHROPIC_MODEL, usage: {
+    inputTokens: usage.input_tokens, outputTokens: usage.output_tokens,
+  } };
+  recordProviderReply(reply);
+  checkResponse(message);
 
   const text = message?.content?.[0]?.text;
 
@@ -36,15 +49,7 @@ async function callAnthropic(prompt, { maxOutputTokens = 1024, signal } = {}) {
     throw new Error('Anthropic returned a response with no text content');
   }
 
-  const usage = message?.usage || {};
-  return {
-    text,
-    model: ANTHROPIC_MODEL,
-    usage: {
-      inputTokens: usage.input_tokens ?? 0,
-      outputTokens: usage.output_tokens ?? 0,
-    },
-  };
+  return { ...reply, text };
 }
 // Claude Haiku 4.5 accepts at most 8,192 output tokens. Expose that
 // capability so route and evaluation callers never request more.

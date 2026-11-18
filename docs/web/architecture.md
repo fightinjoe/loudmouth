@@ -8,7 +8,7 @@ verified: 2026-11-15
 
 # Web app architecture
 
-> Client-side TypeScript PWA built with Vite, storing its library in IndexedDB via Dexie. The monorepo's stateless `api/` service supplies generated content; it stores no library.
+> Client-side TypeScript PWA built with Vite, storing its library in IndexedDB via Dexie. The monorepo's `api/` service supplies generated content; it stores no library.
 
 ## Sources of truth
 
@@ -36,9 +36,11 @@ Named state transitions coordinate panes through a typed host. Stable pane roots
 
 The web calls `/context`, `/phrasebook`, `/phrasebook-title`, `/phrasebook-image` and `/phrase-breakdown`; [API design](../api-design.md) owns those contracts and [design](../design.md#guided-creation) owns how creation sequences them. The shared `@catchphrase/card-schema` package (`api/src/schema/index.ts`) validates every server/client exchange.
 
+Every request carries the credentials the API's [protection](../api-design.md#api-protection) requires. `web/app/src/js/api-identity.ts` lazily initializes modular Firebase anonymous Auth and reCAPTCHA Enterprise App Check, on a generation action only; Firebase is never initialized just to display saved content. Concurrent first requests share one sign-in, and the SDK-persisted identity is reused. A caller waits at most 15 seconds for credentials, and one caller's abort or timeout does not cancel another caller's shared sign-in. `web/app/src/js/phrasebook-api.ts` sends the ID token as `Authorization: Bearer` and the App Check token as `X-Firebase-AppCheck` on every POST and raises a structured `ApiError` with status, code and retry guidance. It never automatically replays a paid POST. A 401 or 403 invalidates token acquisition for the next explicit action, not the identity, and a quota error never signs the caller out. An ambiguous network failure warns that allowance may already have been consumed; the title fallback and nonfatal covers are unchanged. Missing configuration or failed verification never blocks the local library from rendering. The explicit build inputs that replace a hosted gateway default are in [development](development.md#online-generation-configuration).
+
 The [card schema](../card-schema.md) owns the schema versions, the Dexie database and its tables ([library records](../card-schema.md#library-records-and-ownership)), atomic commits ([atomic lifecycle](../card-schema.md#atomic-lifecycle)), namespace isolation and backup ([namespace isolation](../card-schema.md#namespace-isolation-and-backup)), and the tab-scoped analysis cache ([contextual presentation](../card-schema.md#contextual-presentation)). Storage names are defined in `web/app/src/js/storage-config.ts`.
 
-iOS Safari may evict local storage. There are no accounts, cloud sync, or server-held backups.
+iOS Safari may evict local storage. The anonymous anti-abuse identity is not a library account: there is no cloud sync or server-held backup.
 
 ## Constraints and deployment
 

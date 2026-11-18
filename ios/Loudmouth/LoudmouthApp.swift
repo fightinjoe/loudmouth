@@ -16,6 +16,11 @@ struct LoudmouthApp: App {
         return try! ModelContainer(for: schema, configurations: [config])
     }()
 
+    init() {
+        // Missing registration never prevents access to the local library.
+        APIIdentity.configureAtStartup()
+    }
+
     var body: some Scene {
         WindowGroup {
             DeckListView()

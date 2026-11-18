@@ -2,8 +2,8 @@
 kind: guide
 status: current
 summary: Web app development — setup, local API, build, Storybook, deployment, and the module map.
-sources: [.nvmrc, web/app/package.json, web/app/vite.config.js, web/app/src/panes, web/app/src/components, web/app/src/stories/support]
-verified: 2026-11-13
+sources: [.nvmrc, web/app/package.json, web/app/vite.config.js, web/app/.env.local.example, web/app/src/js/api-config.ts, web/app/src/panes, web/app/src/components, web/app/src/stories/support]
+verified: 2026-11-15
 ---
 
 # Web app development
@@ -38,12 +38,27 @@ Web source edits use Vite's normal hot reload. Shared-schema edits in `api/src/s
 
 A stale validator can reject a successful `/phrasebook-image` response and show “Illustration unavailable.” Failed saved illustrations do not automatically restart paid generation; refreshing dependencies fixes new creation flows, not already-saved failed states.
 
+## Online generation configuration
+
+There is no hosted gateway fallback. Saved reading, Review, stars, the library and backups work without online configuration; generation reports a controlled configuration error instead. Online generation needs six inputs, validated by `getApiConfiguration` in `web/app/src/js/api-config.ts`:
+
+| Input | Source |
+|---|---|
+| `VITE_API_URL` | The intended protected gateway, or the local development API |
+| `VITE_FIREBASE_API_KEY` | Registered Firebase web app public API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | Registered Firebase auth domain |
+| `VITE_FIREBASE_PROJECT_ID` | The environment's Firebase/GCP project |
+| `VITE_FIREBASE_APP_ID` | The exact allowlisted web app ID |
+| `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY` | Registered reCAPTCHA Enterprise score-based site key |
+
+Anonymous Auth, App Check and the browser's domain must be registered in that environment. Public Firebase configuration is not a credential. Never commit debug tokens. The client does not connect Firebase emulators or enable a debug provider by itself. How the client uses these inputs is in [architecture](architecture.md#service-boundary-and-local-library).
+
 ## Testing against a local API
 
-By default the app calls the deployed Cloud API Gateway. To test against a locally running API instead:
+Copy the example and fill in the values of the registered nonproduction Firebase web app:
 
 ```bash
-cp .env.local.example .env.local   # sets VITE_API_URL=http://localhost:8080
+cp .env.local.example .env.local   # sets VITE_API_URL=http://localhost:8080; Firebase values are blank
 ```
 
 Then run both dev servers in separate terminals, starting from the repository root. Agents use the [start web server](../skills/ajw_start_web_server.md) and [start API server](../skills/ajw_start_api_server.md) skills instead, which place tmux panes and check readiness.
@@ -53,7 +68,7 @@ cd api/src && npm run dev     # serves the API on http://localhost:8080
 cd web/app && npm run dev     # picks up VITE_API_URL from .env.local
 ```
 
-`.env.local` is gitignored (`*.local`); Vite restarts pick up changes to it automatically. Remove or edit the file to switch back to the deployed API.
+`.env.local` is gitignored (`*.local`); Vite restarts pick up changes to it automatically. The local API still verifies ID tokens and App Check ([API local development](../api/operations.md#local-development)); a local URL is not a bypass.
 
 Parallel feature worktrees get their own web, API and Playwright ports; see [add_worktree](../skills/add_worktree.md). Their servers are not started on creation; the same skills start them with the worktree's ports.
 
@@ -66,6 +81,8 @@ npm run build
 Output goes to `dist/`. Includes a service worker for offline use. Fonts load from Google Fonts via `index.html`, not from bundled files or the service-worker precache. Without network access or a browser-cached font, system fallbacks render.
 
 The build automatically compiles the shared schema, runs strict TypeScript checking, and bundles the web app. Keep the repository's `api/src/schema/` directory available when building the web package: its local package dependency is linked using the checked-in `.npmrc` (`install-links=false`). No separately checked-in compiled schema is needed.
+
+Every build, staging mode included, requires the six [online generation inputs](#online-generation-configuration) and fails without them (`web/app/vite.config.js`). It also rejects HTTP or local API URLs, local auth domains, `demo-` projects, emulator hosts and debug-token environment settings. Starting the development server does not require online configuration. Do not invent registration values to make a build pass: a successful build is not verification evidence.
 
 Unit tests run with `npm test`. On Node 25+, `vitest.config.js` starts test workers with `--no-experimental-webstorage` so happy-dom owns the isolated browser storage instead of Node's unrelated native Web Storage implementation.
 
@@ -100,7 +117,7 @@ Storybook uses `.storybook/vite.config.ts`, not the app's PWA build configuratio
 
 ## Deployment
 
-- **Web:** Vercel's Git integration builds and publishes production (`https://loudmouth-gilt.vercel.app`) from the `prod` branch; release with `git push origin main:prod` (fast-forward only) after any API change the web depends on is live. A local build is `npm ci` and `npm run build` in `web/app/`. Set `VITE_API_URL` to the intended API before building if overriding the default gateway; Vite embeds it at build time.
+- **Web:** Vercel's Git integration builds and publishes production (`https://loudmouth-gilt.vercel.app`) from the `prod` branch; release with `git push origin main:prod` (fast-forward only) after any API change the web depends on is live. A local build is `npm ci` and `npm run build` in `web/app/`. Supply the six registered [online generation inputs](#online-generation-configuration) to the build environment first; Vite embeds these public values at build time. Whether the protected build is live is in [production state](../api/operations.md#production).
 - **API via `api/deploy.sh`:** run the existing deployment script from `api/`. No manual local compilation is required. Google's Node buildpack runs the `gcp-build` hook in `api/src/package.json`, compiling `schema/dist/` before pruning development dependencies. Do not disable this hook with an empty `GOOGLE_NODE_RUN_SCRIPTS`. See [API deployment documentation](../api/operations.md#deployment-reference) for credentials and configuration.
 - **Custom API deployment:** run `npm ci && npm run schema:build` in `api/src/` during the build stage and include `schema/dist/` in the deployed artifact. Compile before pruning development dependencies. Raw Functions Framework or Node startup bypasses `predev` and requires this compiled output; production startup deliberately does not require the TypeScript compiler.
 
@@ -148,7 +165,7 @@ Cross-pane communication uses named state transitions. Stable pane roots use del
 
 Standalone Storybook entries also expose **Phrasebook**, **Language**, **Textarea**, **BreakdownPhrase**, and **BreakdownCard**, rather than requiring a full library or dialog scene. `book.ts` and `language.ts` supply the actual navigation tiles; `creation-text-area.ts` owns the shared situation-field markup, auto-growth, the submit and clear controls, Enter-to-submit and disposable input listeners. The creation controller retains request invalidation and submission. Breakdown specimens reuse `renderSource` and `renderExplanations` directly; their standalone save controls log actions, while `PhraseBreakdown` and interaction stories exercise actual persistence. **Components/ChapterCard**, **Components/ChapterSheet**, and **PhrasebookTitle** render the phrasebook view's landing cards, sheet states, and title layer from the production renderers.
 
-`src/js/phrasebook-api.ts` validates creation responses against `@catchphrase/card-schema`. `phrasebook-illustration.ts` manages independent cover work; `phrase-breakdown.ts` validates and caches disposable analysis. `ability.ts` and `lang.ts` define the client enums reused by storage validation. Preferences remain separate from durable library content.
+`src/js/phrasebook-api.ts` validates creation responses against `@catchphrase/card-schema` and attaches the credentials that `api-identity.ts` obtains; `api-config.ts` validates the build inputs ([service boundary](architecture.md#service-boundary-and-local-library)). `phrasebook-illustration.ts` manages independent cover work; `phrase-breakdown.ts` validates and caches disposable analysis. `ability.ts` and `lang.ts` define the client enums reused by storage validation. Preferences remain separate from durable library content.
 
 ### Phrasebook view
 

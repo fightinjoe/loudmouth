@@ -57,6 +57,8 @@ Ability is saved as phrasebook metadata and remembered per language only after g
 
 Speculation hides generation behind checklist interaction but does not guarantee lower latency: English generation uses bounded per-topic concurrency, and the response waits for every translation, including topics later discarded. Usage includes all generated topics, so the meaningful measures are **Create**-to-usable-phrasebook time and cost per saved phrasebook. Durable transaction and cancellation boundaries remain authoritative in [the shared card schema](card-schema.md#atomic-lifecycle). Production state is in [API operations](api/operations.md#production).
 
+Verification and quota failures ([API protection](api-design.md#api-protection)) leave saved reading and Review available, and the client never automatically replays a paid POST: the learner chooses to try again ([web service boundary](web/architecture.md#service-boundary-and-local-library)).
+
 ## Phrasebook view
 
 The design record is `explorations/phrasebook-organization/PHRASEBOOK_ORGANIZATION.html` (iteration 6, "Organized by category"). A web phrasebook opens on a vertically scrolling **landing** of category cards; each category opens in a **chapter sheet** that gathers that category from every topic. This supersedes the iteration 5 topic decks, which gave each topic its own landing card and tabbed sheet.

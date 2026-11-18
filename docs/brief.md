@@ -50,7 +50,7 @@ Web Phrase cards support on-demand semantic breakdowns in the details layer. Ope
 
 - In-the-moment capture as a separate mode; it is not part of the prep-first core experience.
 - Fixed lessons, long-term cross-topic study, scoring, streaks, or gamification.
-- User accounts, cloud sync, OCR/camera input, URL import, and manual blank-form authoring.
+- Visible user accounts, account linking, cloud library sync, OCR/camera input, URL import, and manual blank-form authoring.
 - Whole-phrasebook regeneration, undo, and user editing of card content.
 - Spaced repetition until a useful signal exists without introducing scoring.
 
@@ -66,8 +66,9 @@ Web Phrase cards support on-demand semantic breakdowns in the details layer. Ope
 ## Platform and architecture
 
 - **Clients:** mobile-first PWA and native iOS app in one monorepo. The web app is strict TypeScript and shares runtime validation with the JavaScript API through `@catchphrase/card-schema`. Production state is in [API operations](api/operations.md#production).
-- **Storage:** the library lives only in the browser (IndexedDB); there are no accounts, sync or server-held library. Tables, versions and lifecycle are in the [card schema](card-schema.md).
-- **API:** a stateless Cloud Run service in `api/`. Guided creation uses `/context` → `/phrasebook`, with independent `/phrasebook-title` naming and nonblocking `/phrasebook-image` covers; `/phrase-breakdown` analyzes an existing Phrase on demand. Missing or failed cover art leaves text usable. Contracts are indexed in the [API design](api-design.md).
+- **Storage:** the library lives only in the browser (IndexedDB); there is no cloud library sync or server-held phrasebook. Tables, versions and lifecycle are in the [card schema](card-schema.md). A Firebase SDK-persisted anonymous technical identity supports abuse controls without a visible sign-in; the separate backend-only Firestore ledger stores quota and reservation state, not library content.
+- **API:** a Cloud Run service in `api/`. Guided creation uses `/context` → `/phrasebook`, with independent `/phrasebook-title` naming and nonblocking `/phrasebook-image` covers; `/phrase-breakdown` analyzes an existing Phrase on demand. Missing or failed cover art leaves text usable. Contracts are indexed in the [API design](api-design.md).
+- **Protection:** Firebase anonymous Auth and App Check (reCAPTCHA Enterprise on web; strict App Attest on iOS, with no DeviceCheck fallback), gateway JWT checks, private backend invocation and atomic Firestore admission against daily and monthly ceilings, global and per-caller concurrency, and a weighted daily allowance per caller. The limits bound estimated model admission, not the whole cloud invoice. Standard anonymous Auth has no automatic account cleanup. The model is specified in the [API design](api-design.md#api-protection); it is in the repository and not yet deployed ([production state](api/operations.md#production)).
 - **LLMs:** server-owned; clients cannot select models. Defaults live in `api/src/llm-config.js`; selectors are described in [API operations](api/operations.md#server-owned-model-selection).
 - **Creation ability:** `none | basics | conversational`, remembered per language in this browser only after successful generation and library import. Unknown ability is asked during clarification. Updating a remembered ability is deferred.
 - **Audio:** Web Speech API on mobile browsers. iOS Safari is the primary target; desktop audio is unsupported.

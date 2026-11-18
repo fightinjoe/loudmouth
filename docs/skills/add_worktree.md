@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: Create a port-isolated sibling worktree with its own feature branch, worktree.md intent notes, dependencies and an OMP tmux window; dev servers start separately.
 sources: [scripts/worktree/add_worktree.py, .gitignore, web/app/vite.config.js, web/app/playwright.config.js]
-verified: 2026-11-12
+verified: 2026-11-17
 ---
 
 # Add a worktree
@@ -93,7 +93,7 @@ Relay the `create` output: directory, branch, base commit, the three ports, the 
 
 Start servers with [`/ajw_start_web_server`](ajw_start_web_server.md) and [`/ajw_start_api_server`](ajw_start_api_server.md); they read this worktree's ports, place panes in its window and check readiness. `npm run test:e2e` in `<worktree>/web/app` runs Playwright.
 
-Playwright (`web/app/playwright.config.js`) previews on `PLAYWRIGHT_PORT` from the process environment, else from `.env.local`, else 4173, and never reuses an existing server. Do not run simultaneous builds or E2E runs in one worktree: they share its `dist` and report directories.
+Playwright (`web/app/playwright.config.js`) previews on `PLAYWRIGHT_PORT` from the process environment, else from `.env.local`, else 4173, and never reuses an existing server. Do not run simultaneous builds or E2E runs in one worktree: they share its `dist` and report directories. The preview is a production build, so it fails with the `.env.local` this skill writes: `web/app/vite.config.js` requires the six [online generation inputs](../web/development.md#online-generation-configuration) and rejects a local API URL. Pass synthetic non-local values in the process environment for a build or E2E run.
 
 Use the `http://tiny:XYZ0` web origin from remote machines (or `http://localhost:XYZ0` locally); the web app contacts `http://tiny:XYZ1`. Ports isolate browser IndexedDB, localStorage, and service-worker scope. Do not reuse the main checkout's browser origin for feature testing. HTTP worktree origins work because the app's IDs come from `crypto.getRandomValues` (`web/app/src/js/utils.ts`), not the secure-context-only `crypto.randomUUID`.
 

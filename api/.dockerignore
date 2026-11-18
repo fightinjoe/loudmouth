@@ -1,0 +1,8 @@
+.env
+.env.*
+**/node_modules
+src/schema/dist
+tmp
+evals
+.git
+**/.DS_Store

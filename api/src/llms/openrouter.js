@@ -1,4 +1,6 @@
 'use strict';
+const { serializeInput, readBoundedJson } = require('./bounds');
+const { recordProviderReply, isTerminalRejection } = require('../protection/work');
 
 const DEEPSEEK_MODEL = 'deepseek/deepseek-v4.1-flash';
 // Last-resort cap: OpenRouter retries failed or timed-out providers, but a slow, still-streaming one only loses later traffic.
@@ -31,7 +33,7 @@ async function callDeepSeek(prompt, { maxOutputTokens = 6000, signal, responseJs
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     signal: requestSignal,
-    body: JSON.stringify({
+    body: serializeInput({
       model: DEEPSEEK_MODEL,
       messages: [
         { role: 'system', content: prompt.instructions },
@@ -48,10 +50,12 @@ async function callDeepSeek(prompt, { maxOutputTokens = 6000, signal, responseJs
   });
   let data;
   try {
-    data = await response.json();
+    data = await readBoundedJson(response);
   } catch (cause) {
     const error = new Error('OpenRouter returned invalid JSON', { cause });
-    error.status = response.status;
+    error.status = cause.providerTerminal && !response.ok ? response.status : 502;
+    error.providerTerminal = response.ok
+      ? cause.providerTerminal === true : isTerminalRejection(response.status);
     throw error;
   }
   const usage = data?.usage;
@@ -67,9 +71,13 @@ async function callDeepSeek(prompt, { maxOutputTokens = 6000, signal, responseJs
   };
   const choice = data?.choices?.[0];
   const text = choice?.message?.content;
+  const upstreamError = data?.error || choice?.error;
+  const terminal = response.ok && !upstreamError && choice?.finish_reason !== 'error'
+    || isTerminalRejection(response.status)
+    || (response.ok && isTerminalRejection(upstreamError?.code));
+  recordProviderReply(reply, { terminal });
   if (!response.ok || data?.error || choice?.error || choice?.finish_reason !== 'stop'
     || typeof text !== 'string' || !text.trim()) {
-    const upstreamError = data?.error || choice?.error;
     const error = new Error(!response.ok || upstreamError
       ? 'OpenRouter request failed'
       : 'OpenRouter returned an empty, truncated, or incomplete completion');
@@ -78,6 +86,7 @@ async function callDeepSeek(prompt, { maxOutputTokens = 6000, signal, responseJs
     // A completed request whose text is unusable (for example cut off at max_tokens) is a bad reply, not a provider failure.
     if (response.ok && !upstreamError) error.incomplete = true;
     error.reply = reply;
+    error.providerTerminal = terminal;
     throw error;
   }
   return { ...reply, text };

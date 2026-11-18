@@ -3,14 +3,14 @@ kind: spec
 status: current
 summary: "POST /context contract: clarifying questions, conversation checklist and seed-based image prompt from one model call."
 sources: [api/src/context/index.js, api/src/context/prompt.js, api/src/context/prompt.txt, api/src/ability.js, api/src/llms/timeout.js]
-verified: 2026-11-13
+verified: 2026-11-15
 ---
 
 # POST /context
 
 ## Purpose and boundaries
 
-Sets up situation preparation: one model call turns a situation, activity, or topic seed and target language into clarifying questions, a conversation checklist, and an English seed-based `imagePrompt`. The API is stateless and retains no setup session. The model decides which unknown facts and conversations matter; code owns request limits, ability sanitization, structure, normalization, and usage. Latency is the primary operational metric; under 10 seconds end to end is a target, not a provider-independent guarantee.
+Sets up situation preparation: one model call turns a situation, activity, or topic seed and target language into clarifying questions, a conversation checklist, and an English seed-based `imagePrompt`. The API retains no setup session or content. The model decides which unknown facts and conversations matter; code owns request limits, ability sanitization, structure, normalization, and usage. Latency is the primary operational metric; under 10 seconds end to end is a target, not a provider-independent guarantee.
 
 The client collects answers, independently requests a title and cover, and later calls [`/phrasebook`](phrasebook.md). Detailed interaction and cancellation behavior belongs to [guided creation](../design.md#guided-creation); persistence belongs to [the shared card schema](../card-schema.md#atomic-lifecycle). See the [API overview](../api-design.md) for shared routing, trust, backend selection, and outcome conventions.
 
@@ -71,7 +71,7 @@ These eight IDs are logical documentation/reporting checkpoints, not extra calls
 
 ## Execution limits and recovery
 
-One single-turn model call runs per request, with a 2,000-token output ceiling and JSON output (`responseMimeType: application/json` on Google backends). The timeout is 15 seconds on the default backend, or the adapter's timeout: 60 seconds on `g-flash`, `claude`, and `chatgpt`. There is no application-level retry. Timeout aborts the helper's signal, but this handler does not wire request-disconnect cancellation. Client cancellation/stale-response suppression is a separate boundary, described in [guided creation](../design.md#guided-creation).
+One single-turn model call runs per request, with a 2,000-token output ceiling and JSON output (`responseMimeType: application/json` on Google backends). The timeout is 15 seconds on the default backend, or the adapter's timeout: 60 seconds on `g-flash`, `claude`, and `chatgpt`. There is no application-level or SDK transport retry. The handler accepts an optional cancellation signal, which the router connects to client disconnect and the admission deadline ([API protection](../api-design.md#api-protection)). Cancellation aborts outstanding work and prevents new attempts, but does not prove remote billing stopped. Provider input and reply sizes follow the [shared provider bounds](../api-design.md#provider-work-bounds); oversize fails with 502 without truncation or another provider call. Client cancellation/stale-response suppression is a separate boundary, described in [guided creation](../design.md#guided-creation).
 
 ## Implementation references
 

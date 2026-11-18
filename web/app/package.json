@@ -38,7 +38,8 @@
   },
   "dependencies": {
     "@catchphrase/card-schema": "file:../../api/src/schema",
-    "dexie": "^4.3.0"
+    "dexie": "^4.3.0",
+    "firebase": "13.2.0"
   },
   "allowScripts": {
     "esbuild@0.28.2": true,

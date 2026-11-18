@@ -1,20 +1,22 @@
 ---
 kind: guide
 status: current
-summary: "Catchphrase API operations: model selection, implementation map, local development, tests, evals and deployment."
-sources: [api/src/index.js, api/src/log.js, api/src/llm-config.js, api/src/llms/openrouter.js, api/src/dev.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js, scripts/generation-report.mjs, scripts/cost-report.mjs, scripts/lib/log-events.mjs]
+summary: "Catchphrase API operations: diagnostics, model selection, implementation map, local development, tests, evals, production state, and protected deployment, monitoring and recovery."
+sources: [api/src/index.js, api/src/log.js, api/src/llm-config.js, api/src/llms/openrouter.js, api/src/dev.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js, scripts/generation-report.mjs, scripts/cost-report.mjs, scripts/lib/log-events.mjs, api/src/protection/identity.js, api/src/protection/ledger.js, api/scripts/deployment-config.js, api/scripts/inventory-protection.js, api/scripts/protection-admin.js, api/scripts/provision-protection-monitoring.js]
 verified: 2026-11-17
 ---
 
 # Catchphrase API operations
 
-Stateless Node.js Cloud Run service for guided phrasebook creation and on-demand phrase analysis. The [API design](../api-design.md) owns the endpoint table, shared conventions and trust boundaries; each endpoint page owns its contract, pipeline, bounds and recovery policy. This page owns configuration, the implementation map, local development, tests, evals and deployment. Production deployment state is in [Production](#production).
+Node.js Cloud Run service for guided phrasebook creation and on-demand phrase analysis. Phrasebooks remain client-owned; the server stores only backend admission and accounting records, not library data. The [API design](../api-design.md) owns the endpoint table, shared conventions, trust boundaries and the [protection model](../api-design.md#api-protection); each endpoint page owns its contract, pipeline, bounds and recovery policy. This page owns configuration, the implementation map, local development, tests, evals and deployment. Production deployment state is in [Production](#production).
 
 ## Structured diagnostics
 
 API diagnostics use [runtime failure levels](../api-design.md#runtime-failure-levels), not fields added to strict response envelopes. Count final outcomes rather than log lines. The image route logs `usage` on success and `request_invalid`/`request_failed` on rejection, with `route: 'phrasebook-image'` and a failure level. Usage contains cost, model and duration, not image bytes or credentials. Endpoint designs distinguish implemented warnings from intended recovery.
 
 Every structured event goes through `api/src/log.js` as one JSON line with a Cloud Logging `severity`, so Cloud Run stores it as a queryable `jsonPayload` (for example `jsonPayload.event="llm_call"`). Events also carry the request's `requestId`: Cloud Run's trace ID, or a fresh UUID locally. Production logs are kept 30 days. `/phrasebook` logs one `llm_call` per provider attempt (`route` `phrasebook:generate` or `phrasebook:translate`, `topicIndex`, `attempt`, `outcome` `ok`/`incomplete`/`rate_limited`/`timeout`/`cancelled`/`error`, `durationMs`, `provider`, `outputTokens`, `outputTokensPerSecond`), `validation_error` and retry events, and one `phrasebook_flag` event per response flag (count overruns, English repairs, missing sections, unresolved word sources).
+
+The router logs one `admission_outcome` per request: `accepted` with the caller's platform, `rejected` with its `code` and status, or `provider_failed`, each with the route and duration. Rejections with 401 or 403 are logged for 1% of requests and marked `sampled`, so counts built on them are estimates. A settlement that fails logs `reservation_outcome` with `settlement_failed`. The monitor job logs `protection_monitor` ([monitoring](#monitoring-alerts-and-invoice-budget)).
 
 `node scripts/generation-report.mjs [--since 7d] [--project <id>]` summarizes production logs as Markdown: request outcomes and failure levels, per-topic English latency (p50/p90/p95, share under 3/6/10 s), attempts by provider, invalid replies by kind, retries and response flags by code and section. `--file <log>` reads local dev-server output instead (one JSON event per line; other lines are skipped).
 
@@ -37,8 +39,16 @@ Usage reports actual reply model IDs, token counts and wall-clock duration. `/ph
 
 ```text
 api/
-├── config/api-gateway.yaml         # API Gateway (Swagger 2.0) routes, deadlines, wire schemas
-├── deploy.sh                       # Secrets, Cloud Run deploy, gateway update
+├── config/
+│   ├── api-gateway.yaml            # API Gateway (Swagger 2.0) routes, Firebase JWT security, deadlines, wire schemas
+│   └── monitor.*                   # monitor job image: Dockerfile, Cloud Build config, upload ignore file
+├── deploy.sh                       # Preflight, identities, secrets, private Cloud Run deploy, Firestore rules/TTL, gateway
+├── firebase.json, firestore.rules  # Firestore emulator config; rules deny all client access
+├── scripts/
+│   ├── deployment-config.js        # validates deployment environment, renders runtime env and gateway config
+│   ├── inventory-protection.js     # read-only exposure inventory
+│   ├── protection-admin.js         # operator CLI: init, pause, resume, status, reconcile
+│   └── provision-protection-monitoring.js
 ├── evals/
 │   ├── adversarial-scorer.js
 │   ├── fixtures/
@@ -68,7 +78,7 @@ api/
 
 The `*.txt` files beside each handler are the runtime prompts; there is no separate prompt-source tree or copy step. The offline evaluation pipelines in `evals/pipelines/` import production modules directly (`api/src/phrasebook/parse.js`, `prompt.js`, `index.js`, `api/src/schema`) and read the phrasebook prompt files, so changes there affect evaluation tooling too.
 
-`src/llms/timeout.js` shares the bounded-call/AbortSignal/timer-cleanup mechanics used by context, title and breakdown. Their handlers retain endpoint-specific deadlines, error types, validation, usage and HTTP policy. Phrasebook's multi-call retries/overall deadline and image disconnect cancellation are separate lifecycles.
+`src/llms/timeout.js` shares the bounded-call/AbortSignal/timer-cleanup mechanics used by context, title and breakdown. Their handlers retain endpoint-specific deadlines, error types, validation, usage and HTTP policy. The router composes its cancellation into every handler, including phrasebook and image ([provider work bounds](../api-design.md#provider-work-bounds)); phrasebook's multi-call retries/overall deadline and image disconnect cancellation keep their own lifecycles.
 
 ## Local development
 
@@ -79,6 +89,10 @@ npm install
 gcloud auth application-default login
 export GCP_PROJECT_ID=YOUR_PROJECT_ID
 export GCP_VERTEX_LOCATION=global
+export FIREBASE_PROJECT_ID="$GCP_PROJECT_ID"
+export PROTECTION_ENV=development
+# Also set exact APP_CHECK_APP_IDS, CORS_ALLOWED_ORIGINS and a verified PRICING_VERIFIED_AT.
+# IMAGE_RESERVE_MICROS is optional; without it image admission is disabled.
 npm run schema:build
 npx functions-framework --target=translate --port=8080
 ```
@@ -95,25 +109,17 @@ The API development launcher does not watch source or prompt files: restart `npm
 
 For alternate providers, configure `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` and restart with `LLM_BACKEND=claude` or `LLM_BACKEND=chatgpt`.
 
-Point the web client at the local service with `VITE_API_URL=http://localhost:8080`.
+Point the web client at the local service with `VITE_API_URL=http://localhost:8080` and its Firebase inputs ([web development](../web/development.md#testing-against-a-local-api)).
 
 When started with `npm run dev`, every POST response sent by the API router is saved as a pretty-printed JSON file in `api/tmp/` (git-ignored and created on demand, independent of the working directory). Capture exists only in the development launcher; the production entrypoint and direct Functions Framework launches do not capture responses. Filenames contain a UTC timestamp followed by the endpoint name, for example `2026-09-17T14-32-08.123Z-phrasebook-title.json`. Same-millisecond responses use incrementing filename timestamps to avoid collisions within the process; the recorded timestamp remains the actual capture time. Each file records `timestamp`, `method`, `path`, `status`, and `body`, including successful responses and errors. Other methods, including CORS preflight `OPTIONS`, are not captured. These are final HTTP response bodies, not raw intermediate model outputs. Requests and headers are not saved. Responses rejected by the Functions Framework before reaching the router are not captured.
 
 Capture writes synchronously before sending the response; a filesystem failure is logged without failing the API call. Files may contain sensitive generated content and accumulate until manually deleted; clear `api/tmp/` when no longer needed.
 
-```bash
-curl -sS http://localhost:8080/context \
-  -H 'Content-Type: application/json' \
-  -d '{"seed":"ordering vegan food","language":"ja"}'
-
-curl -sS http://localhost:8080/phrasebook \
-  -H 'Content-Type: application/json' \
-  -d '{"seed":"ordering vegan food","language":"ja","ability":"basics","answers":{},"checklist":["State my dietary restrictions"]}'
-```
+Every POST requires an SDK-obtained Firebase ID token in `Authorization: Bearer …` and an App Check token in `X-Firebase-AppCheck`, in local development too: `PROTECTION_ENV=development` verifies the ID token directly instead of trusting gateway claims, and still needs a ledger with an initialized, resumed control document ([control and recovery](#control-and-recovery)). An unauthenticated POST returns 401, so a bare `curl` is not a smoke test. An `OPTIONS` from an approved origin needs no credentials; a native request without `Origin` still needs both tokens. Acquire tokens through the client SDK in memory; do not put them in command history, URLs, logs or committed files. Emulators are local-only and require a `demo-` project (`loadProtectionConfig` in `api/src/protection/identity.js`); never deploy emulator hosts or debug-token settings.
 
 ## Tests and model evals
 
-Deterministic API tests run from `api/src`:
+Deterministic API tests run from `api/src`. The Firestore ledger integration suite (`api/src/test/protection-ledger.integration.js`) is excluded from `npm test`; it runs under `firebase emulators:exec` against the emulator configured in `api/firebase.json`.
 
 ```bash
 npm test
@@ -129,7 +135,7 @@ npm run eval:adversarial -- --mode=all --backend=gemini-3.5-flash-lite --repetit
 
 The default mode is `adversarial`. `--mode=baseline` runs the five fixtures in `api/evals/fixtures/baseline/` through setup, generation, and every translation chunk using production instructions. These are reusable input fixtures, not recorded responses or historical run snapshots. `--mode=all` combines the baseline, benign control, and attack cases. Useful options are `--case='GLOB[,GLOB...]'`, `--repetitions=N`, `--out=PATH`, `--list-cases`, and `--fail-on-findings`. `--backend` applies to every stage, so `--backend=deepseek-v4.1-flash` tests generation on its production model but runs setup and translation on a model production does not use for them. Generation calls send the enforced reply schema and minimal reasoning, as production does.
 
-Artifacts default to ignored `api/evals/artifacts/`. Use synthetic canaries only. Successful extraction is evidence of a failure; no observed extraction is not a confidentiality guarantee. Review raw outputs alongside automated scoring and normal language-learning baselines. The runner does not retry invalid output or provider errors itself; provider SDK retries still apply.
+Artifacts default to ignored `api/evals/artifacts/`. Use synthetic canaries only. Successful extraction is evidence of a failure; no observed extraction is not a confidentiality guarantee. Review raw outputs alongside automated scoring and normal language-learning baselines. The runner does not retry invalid output or provider errors itself, and provider SDK transport retries are disabled.
 
 Content-quality workflows and fixtures are documented in [evaluation guidance](../evals/index.md); results are recorded in the [results ledger](../evals/results.md).
 
@@ -142,29 +148,116 @@ This section owns production deployment state. v4 has been live since 2026-11-13
 | Component | Production | Deployed by |
 |---|---|---|
 | API | Cloud Run service `translation-api` (`us-central1`, Node.js 24 base image) in the project named by `GCP_PROJECT_ID` | `api/deploy.sh` |
-| Gateway | `translation-api-gateway`, `https://translation-api-gateway-2qqw247r.uc.gateway.dev`, the web build's default `GATEWAY_URL` | `api/deploy.sh` |
+| Gateway | `translation-api-gateway`, `https://translation-api-gateway-2qqw247r.uc.gateway.dev`, the URL the live web build calls | `api/deploy.sh` |
 | Web | Vercel, `https://loudmouth-gilt.vercel.app` | push to the `prod` branch ([web deployment](../web/development.md#deployment)) |
-| iOS | Not released from this repository's current code; it calls retired routes ([iOS architecture](../ios/architecture.md)) | — |
+| iOS | Not released from this repository's current code; its online generation is disabled until the port ([iOS architecture](../ios/architecture.md)) | — |
 
 An API/web contract change makes the live web and API incompatible until both are deployed: deploy the API, then push the web immediately. There is no pre-production environment yet ([staging todo](../todo/antsy-aphid/staging-environment.md)).
 
+The [API protection](../api-design.md#api-protection) baseline is in the repository but not deployed or accepted in staging: the live gateway and service above still serve unauthenticated generation, and no Firebase project, app registration, Firestore ledger, price verification, IAM audit or monitoring resource has been provisioned or verified for it. Deploying this code changes the contract for every client: the API rejects requests without identity and App Check tokens, including those of the live web build, and a web build needs its Firebase inputs ([web deployment](../web/development.md#deployment)). The remaining release work is tracked in [API protection](../todo/antsy-aphid/api-protection.md).
+
 ## Deployment reference
 
-Production deployment is an explicit operator action:
+Deployment is an explicit operator action and requires explicit owner authorization. Nothing in this section authorizes changing a live project. Staging and production are separate projects with separate explicit project IDs; the service and gateway names are the same in each.
+
+### Setup sequence
+
+The whole path for one environment, in order; repeat it for each project. `api/deploy.sh` automates only step 9, and it refuses to run until steps 1 to 8 are done. "Manual" steps have no script: do them in the named console or CLI. The sections after this table own the detail of each step.
+
+| # | Step | Where | How |
+|---|---|---|---|
+| 1 | Inventory the project's services, hostnames and IAM | Operator shell | `node api/scripts/inventory-protection.js` ([inventory](#inventory-and-prerequisites)) |
+| 2 | Firebase-enable the project (same ID as the GCP project) and register the exact web and iOS apps | Firebase console | Manual; the app IDs become `APP_CHECK_APP_IDS` |
+| 3 | Turn on anonymous sign-in (standard Firebase Auth, no Identity Platform upgrade) | Firebase console, Authentication | Manual |
+| 4 | Configure App Check: a reCAPTCHA Enterprise score-based key with the web domains for the web app, strict App Attest for the iOS app | Google Cloud console (key), Firebase console (App Check), Apple developer account (App Attest capability, bundles) | Manual; the site key is a [web build input](../web/development.md#online-generation-configuration), the bundle setup is in [iOS development](../ios/development.md#bundle-identifiers-and-signing) |
+| 5 | Create the Standard `(default)` Firestore database in the owner's chosen region | Google Cloud or Firebase console | Manual; the region becomes `FIRESTORE_LOCATION` |
+| 6 | Add an enabled version of each provider secret the selected backends need | Secret Manager | Manual ([which secrets](#private-runtime-and-jwt-gateway)) |
+| 7 | Audit who can invoke the service at service, project, folder and organization level; verify prices | Google Cloud console IAM; provider price pages | Manual; record the results as `SECURITY_REVIEW_APPROVED=true` and `PRICING_VERIFIED_AT` |
+| 8 | Create the admission control document, paused | Operator shell | `node api/scripts/protection-admin.js init` ([control](#control-and-recovery)) |
+| 9 | Deploy the private runtime, identities, Firestore rules and TTL, and the JWT gateway | Operator shell, from `api/` | `./deploy.sh` with the [deployment environment](#private-runtime-and-jwt-gateway) |
+| 10 | Remove the earlier `translation-api-sa` identity's invocation, secret and project grants, and retire old gateway configs, revisions and hostnames that still reach an unauthenticated service | Google Cloud console IAM, API Gateway, Cloud Run | Manual; the script does not do this |
+| 11 | Provision monitoring: an existing Artifact Registry repository for the monitor image, a confirmed email notification channel, the billing account for the invoice alert | Google Cloud console, then operator shell | Console setup is manual; then `node scripts/provision-protection-monitoring.js` ([monitoring](#monitoring-alerts-and-invoice-budget)) |
+| 12 | Give the web host the six build inputs and build the clients against this environment | Vercel project settings; Xcode build settings | Manual ([web](../web/development.md#deployment), [iOS](../ios/development.md#build-configurations-and-inputs)) |
+| 13 | Resume admission | Operator shell | `node api/scripts/protection-admin.js resume` |
+
+Until step 13 every generation request is refused with 503, by design. Step 11 is not needed for requests to succeed, but the release gates in [API protection](../todo/antsy-aphid/api-protection.md#pre-release-evidence) require it. After step 9 the API rejects every client that does not send identity and App Check tokens, so on production steps 9, 12 and 13 are one coordinated release ([Production](#production)). `PRICING_VERIFIED_AT` must be renewed within 30 days or admission stops again.
+
+### Inventory and prerequisites
+
+Authenticate the operator, then run `node api/scripts/inventory-protection.js` from the repository root with `GCP_PROJECT_ID` and `GCP_LOCATION` set, once per environment. It makes a read-only inventory of services, revisions, gateways and configs, domains, legacy functions, Firestore, enabled services, the billing link and ancestor IAM, and leaves container environment variables and secret values out of its output. Keep the output private. A failed read is a blocker, not evidence that a resource does not exist. The script exits nonzero while the console evidence it cannot read (registrations, quotas, signing, billing plan, notification delivery, owners) is outstanding.
+
+Before any deployment:
+
+1. Map every public gateway, default, tag, custom and legacy hostname to its active backend and config. Review service, project, folder and organization IAM, including custom roles and conditions. Remove `allUsers` and `allAuthenticatedUsers` invocation and unauthorized inherited access; a parent-level grant cannot be fixed by removing a service-level binding. Identities able to invoke the service directly can forge the gateway user-info header, so they are trusted operators.
+2. Firebase-enable each project and register the exact web and iOS apps, anonymous Auth, reCAPTCHA Enterprise score-based keys and domains, and strict Apple App Attest. Keep the default App Check TTL. Standard Firebase anonymous Auth is selected: no Identity Platform upgrade and no automatic account cleanup. Debug evidence never belongs in production. Configure real app IDs and allowed origins, not wildcard examples.
+3. Create and approve the Standard `(default)` Firestore database in the owner's selected region. `deploy.sh` refuses a missing database or a location that differs from `FIRESTORE_LOCATION`; it never chooses a region or creates a database.
+4. Verify text prices, the output and hidden-token billing assumptions and the fixed image price. Record `PRICING_VERIFIED_AT` as a UTC ISO timestamp; it expires after 30 days. `IMAGE_RESERVE_MICROS` is a verified positive integer that already includes the 25% margin; omitting it disables image admission and never prices images at zero. The ledger ceilings are estimated model-admission ceilings, not a cloud-invoice or certified provider-dollar cap.
+5. Pause or remove any deployment that exposes unauthenticated paid generation before rollout work, which today includes the live gateway ([Production](#production)). No unauthenticated exception stays for clients that have not migrated.
+
+### Private runtime and JWT gateway
+
+From `api/`, with the environment below set and the ledger paused:
 
 ```bash
 gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
-export GCP_PROJECT_ID=YOUR_PROJECT_ID
 ./deploy.sh
 ```
 
-`deploy.sh` enables APIs, prepares Secret Manager secrets/service identity, deploys Cloud Run, and updates API Gateway. The Cloud Run function runs on the Node.js 24 base image (`--base-image="nodejs24"`), matching the `engines` pin in `src/package.json` and the repository `.nvmrc`. Set both backend selectors intentionally. Secret bindings include `openrouter-api-key`; provision its value privately before an authorized deployment. Gateway and Cloud Run deadlines must exceed the complete phrasebook pipeline and retry budget. Deploying requires explicit owner authorization.
+`api/scripts/deployment-config.js` validates the environment before anything is changed. Required: `GCP_PROJECT_ID` and a matching `FIREBASE_PROJECT_ID`, `PROTECTION_ENV` (`staging` or `production`), `APP_CHECK_APP_IDS` (comma-separated exact app IDs), `CORS_ALLOWED_ORIGINS` (comma-separated exact HTTPS origins), `FIRESTORE_LOCATION`, `PRICING_VERIFIED_AT`, and `SECURITY_REVIEW_APPROVED=true` once the audit above is done. That variable records operator approval; it is not an automated IAM proof. Optional: a verified `IMAGE_RESERVE_MICROS`, `GCP_LOCATION`, `GCP_VERTEX_LOCATION` and both backend selectors, whose deployment defaults are in the same script; set both selectors intentionally. Development mode, emulator or debug settings, local origins and stale or unverified prices fail validation.
 
-Secrets bind as `:latest`, and Secret Manager shows only that a version exists, not that the key is valid. After every deployment, confirm with a live `/phrasebook` request (OpenRouter) and a live `/context` request (Vertex AI). To replace a key, add a version privately with the `read -rs … gcloud secrets versions add` command that `deploy.sh` prints. Then roll a revision so it reads the new version: `gcloud run services update translation-api --update-secrets=OPENROUTER_API_KEY=openrouter-api-key:latest --region=us-central1 --project=<project>`.
+The preflight reads the ledger with `protection-admin.js status` using operator application-default credentials: an enabled ledger or an unreadable status stops the deployment before any change, so pause first. The script then enables APIs, creates the runtime and gateway identities, grants only the selected provider secrets, deploys the Cloud Run function privately on the Node.js 24 base image (`--base-image=nodejs24`, matching the `engines` pin in `src/package.json` and the repository `.nvmrc`), removes public members from the service's IAM policy, grants the gateway identity invocation, deploys the Firestore rules and `deleteAfter` TTL policies, and creates a gateway config rendered with the project's Firebase issuer, audience and JWKS. It never initializes, enables or resets the control document or any counter. The runtime always runs with `NODE_ENV=production`, in staging too, so the framework returns no development stack responses.
 
-The checked-in gateway configuration does not define caller authentication or rate quotas. `deploy.sh` configures authenticated gateway-to-Cloud-Run invocation; that is not caller admission control. Verify the actual deployed access boundary before public release. Provider quotas are separate: one phrasebook request produces multiple model calls.
+| Identity | Grants |
+|---|---|
+| `translation-api-runtime` | Project `roles/aiplatform.user` and `roles/datastore.user`; `roles/secretmanager.secretAccessor` on the selected provider secrets only |
+| `translation-api-gateway` | `roles/run.invoker` on the one Cloud Run service, not project-wide |
+| `translation-api-monitor` | Project `roles/datastore.viewer`; no provider secrets |
+| `translation-api-scheduler` | `roles/run.invoker` on the one monitor job |
+| Deployment operator | Provisioning, IAM and act-as permissions; never shared with the runtime |
+
+Provision an enabled `openrouter-api-key` version privately beforehand when DeepSeek generation or priced images need it, and `anthropic-api-key` or `openai-api-key` when those backends are selected; all-Gemini text without image pricing needs no provider secret. The rate-limit fallback always needs the Google credentials ([model selection](#server-owned-model-selection)). The runtime uses application-default credentials; never download service-account keys. Deployment removes provider-secret grants the new runtime identity no longer needs. It does not revoke the earlier `translation-api-sa` identity's invocation, secret or project privileges, because its other consumers cannot be established from the repository: remove them separately after verifying the split identities, and audit reused monitor accounts the same way.
+
+Secrets bind as `:latest`, and Secret Manager shows only that a version exists, not that the key is valid. After every deployment, confirm with a live `/phrasebook` request (OpenRouter) and a live `/context` request (Vertex AI), made by a client that holds Firebase ID and App Check tokens in SDK memory. To replace a key, add a version privately with `gcloud secrets versions add`, reading the value with `read -rs` so it stays out of shell history. Then roll a revision so it reads the new version: `gcloud run services update translation-api --update-secrets=OPENROUTER_API_KEY=openrouter-api-key:latest --region=us-central1 --project=<project>`.
+
+The service keeps gateway-compatible ingress (`--ingress=all`) with mandatory invoker IAM (`--no-allow-unauthenticated --invoker-iam-check`); do not switch it to internal-only blindly. Cloud Run allows 300 seconds and the gateway 270, above the complete phrasebook pipeline and retry budget. The gateway config protects all five POST routes and exempts only `OPTIONS`. After deployment, audit ancestor grants, old revisions and configs, alternate services and custom URLs again: `--no-allow-unauthenticated` alone does not establish isolation. Provider quotas are separate: one phrasebook request produces multiple model calls.
+
+### Monitoring, alerts and invoice budget
+
+`protection-admin.js status --monitor` runs every UTC minute as the Cloud Run Job `translation-api-monitor`, triggered by Cloud Scheduler with OAuth authentication. It reads the control document, the current budgets and the referenced active reservations and logs `protection_monitor` with utilization, retained liabilities and active, uncertain and stale counts. It never resets counters or releases expired leases. Its image keeps the sibling `src/` and `scripts/` directories so the CLI resolves the API's pinned dependencies.
+
+Build the monitor image from `api/`, into an existing approved Artifact Registry repository; nothing creates a registry or infers its location:
+
+```bash
+gcloud builds submit --project="$GCP_PROJECT_ID" \
+  --ignore-file=config/monitor.gcloudignore --config=config/monitor-cloudbuild.yaml \
+  --substitutions="_IMAGE=$MONITOR_IMAGE_TAG" .
+```
+
+Resolve the pushed digest and set `MONITOR_IMAGE` to that immutable `…@sha256:…` reference. `api/.dockerignore` and the upload ignore file keep local secrets, dependencies and artifacts out of the build.
+
+Then `node scripts/provision-protection-monitoring.js`, from `api/`, needs the deployment configuration plus:
+
+- `MONITOR_NOTIFICATION_CHANNEL=projects/PROJECT/notificationChannels/ID`, an email channel, and `MONITOR_CHANNEL_CONFIRMED=true` only after a test notification has been received. The channel serves operational and invoice alerts; Cloud Billing budgets do not notify Slack, SMS or PagerDuty channels directly ([notification schema](https://cloud.google.com/billing/docs/reference/budget/rest/v1/billingAccounts.budgets#NotificationsRule)).
+- Named `BUDGET_OWNER`, `PRIVACY_OWNER` and `INCIDENT_OWNER`.
+- `BILLING_ACCOUNT_ID` and `BILLING_ALERT_USD` (positive whole dollars) for a separate project-filtered monthly cloud-invoice alert. It is not the model ledger limit, and it notifies without enforcing a cap.
+- The immutable `MONITOR_IMAGE`, and operator permissions for the job, scheduler, notification, alert, dashboard and logging resources and the billing budget.
+
+Provisioning creates or updates the viewer-only monitor identity and the job-scoped scheduler identity, the minute schedule, a 30-day `api-protection` log bucket and sink, log-based outcome counters, minute-value distributions and a dashboard, 50% and 80% daily and monthly admission alerts, overshoot, ledger-failure and stale-reservation alerts, and a five-minute monitor-heartbeat absence alert. Log-match notifications are limited to one per five minutes per policy; the failures stay logged. Heartbeat absence needs an observed series, so confirm the first successful run and alert delivery explicitly.
+
+Reading the numbers: the Auth and App Check rejection counters are built on sampled events and are estimates; gateway 401 request-log counters are exact only if logging completeness is established, so use platform gateway request metrics for independent totals. Dashboard distributions are sampled observations, not real-time gauges; `protection-admin.js status` gives exact transactional values. Operational logs are kept 30 days; platform audit-log retention is a separate policy. Audit existing Logging sinks and `_Default` retention, because a second destination can keep copies beyond 30 days. Firebase anonymous signup volume and reCAPTCHA assessments and cost are read in their own consoles, not derived from API request counts: one API call is not one signup or one assessment. Confirm those metrics are available on the standard Firebase plan; do not enable Identity Platform merely to obtain them.
+
+### Control and recovery
+
+`node api/scripts/protection-admin.js <command>` runs with an explicit `GCP_PROJECT_ID` and operator application-default credentials:
+
+- `init` creates the control document, paused, only if it is absent, with the pilot limits in `DEFAULT_CONTROL` (`api/src/protection/ledger.js`). Rerunning never overwrites the control document or counters.
+- `pause` rejects new work. It does not cancel calls that have already started.
+- `status` and `status --monitor` read liability and capacity without changing anything.
+- `reconcile --reservation ID --terminal-evidence TEXT [--known-cost-micros N]` needs real evidence that the remote work ended. Without a complete cost the full reserved liability stays. Evidence must not contain tokens or user text. Lease age alone never proves completion or permits a refund.
+- `resume` needs current verified pricing and no unsafe budget, overshoot or stale unresolved state. It adopts the verified pricing version; it never raises budgets or clears an overshoot.
+
+A known overshoot records the full charge, pauses admission and notifies the owner. After evidence-based recovery, an explicit reviewed control update may clear the overshoot flag; accounting history is never erased. A failed settlement leaves liability and capacity retained. Completed work with unknown billing may release capacity but keeps its financial liability; active and uncertain reservations are never deleted by TTL, and inactive records are kept 35 days after their accounting window closes (`RETENTION_MS`). Rollback is `pause` or the last verified secure release, never weakened checks.
 
 ## Adding a provider
 
-Implement `handler({ instructions, input }, options)` returning `{ text, model, usage, costUsd? }`; preserve provider-reported charges when available. `options` carries `maxOutputTokens`, `signal`, and, when the caller supplies them, `responseJsonSchema` (enforce it natively where the provider can) and `reasoning: 'minimal'`. Keep trusted instructions separate from JSON user input ([trust boundaries](../api-design.md#trust-boundaries)). Register the server configuration key in `src/llm-config.js`, declare timeout and output-token capabilities, and add pricing if known. Update provider-boundary tests and operator documentation; do not add a client enum.
+Implement `handler({ instructions, input }, options)` returning `{ text, model, usage, costUsd? }`; preserve provider-reported charges when available. `options` carries `maxOutputTokens`, `signal`, and, when the caller supplies them, `responseJsonSchema` (enforce it natively where the provider can) and `reasoning: 'minimal'`. Keep trusted instructions separate from JSON user input ([trust boundaries](../api-design.md#trust-boundaries)). Register the server configuration key in `src/llm-config.js`, declare timeout and output-token capabilities, and add pricing if known. Disable the SDK's transport retries, and add the backend to `MODELS` in `api/src/protection/policy.js` with a rate in `src/pricing.js`: admission rejects work on a backend without a known rate ([provider work bounds](../api-design.md#provider-work-bounds)). Update provider-boundary tests and operator documentation; do not add a client enum.

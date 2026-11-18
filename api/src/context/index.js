@@ -152,7 +152,7 @@ function validateContextResponse(raw) {
 async function performContext(
   parsedRequest,
   registry,
-  { timeoutMs = CONTEXT_TIMEOUT_MS } = {},
+  { timeoutMs = CONTEXT_TIMEOUT_MS, signal } = {},
 ) {
   const { seed, language, ability } = parsedRequest;
   const backendName = getBackendName();
@@ -168,7 +168,7 @@ async function performContext(
   let reply;
   try {
     reply = await callWithTimeout(
-      handler, prompt, { maxOutputTokens: CONTEXT_MAX_TOKENS }, effectiveTimeoutMs, ContextTimeoutError,
+      handler, prompt, { maxOutputTokens: CONTEXT_MAX_TOKENS, signal }, effectiveTimeoutMs, ContextTimeoutError,
     );
   } catch (err) {
     if (err instanceof ContextTimeoutError) {

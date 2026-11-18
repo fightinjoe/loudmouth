@@ -95,14 +95,12 @@ struct DeckListView: View {
         }
         .ignoresSafeArea()
         // Action panes (action layer) reachable from the navigation pane:
-        // import cards, and the Generate cards flow (auto-opened for new decks).
+        // import cards, and the generation migration notice.
         .sheet(isPresented: $viewModel.showAddCards) {
             AddCardsView()
         }
         .sheet(isPresented: $viewModel.showGenerateCards) {
-            GenerateCardsView { deck in
-                selectDeck(deck)
-            }
+            OnlineGenerationUnavailableView()
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.hidden)
         }
