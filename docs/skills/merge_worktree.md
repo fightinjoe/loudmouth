@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: Squash a clean feature worktree into local main with a message from worktree.md, verify the result, then remove the worktree and branch; never pushes.
 sources: [scripts/worktree/add_worktree.py, scripts/check-docs.mjs]
-verified: 2026-11-14
+verified: 2026-11-17
 ---
 
 # Merge and retire a worktree

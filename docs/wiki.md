@@ -3,7 +3,7 @@ kind: rules
 status: current
 summary: How the wiki is organized, page header fields, ledgers, todo lifecycle, launch milestones and release notes, and maintenance operations.
 sources: [scripts/check-docs.mjs, scripts/todo.mjs, scripts/lib/frontmatter.mjs]
-verified: 2026-11-14
+verified: 2026-11-17
 ---
 
 # Wiki conventions

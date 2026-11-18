@@ -586,8 +586,7 @@ definitions:
       responses:
         type: array
         minItems: 1
-        maxItems: 3
-        description: Explicit alternative responses for this speaker turn.
+        description: Explicit alternative responses for this speaker turn. No maximum; more than 3 is kept and flagged count-overrun (section responses).
         items:
           $ref: '#/definitions/PhrasebookPhrase'
 
@@ -606,8 +605,7 @@ definitions:
       lines:
         type: array
         minItems: 2
-        maxItems: 4
-        description: Either speaker may start. Speakers usually alternate, but consecutive turns by one speaker are valid. Continuation semantics are not validated.
+        description: Either speaker may start. Consecutive turns by one speaker are valid and flagged speaker-repeated. No maximum; more than 6 turns is kept and flagged count-overrun (section exchangeTurns). Continuation semantics are not validated.
         items:
           $ref: '#/definitions/PhrasebookExchangeTurn'
 
@@ -662,14 +660,14 @@ definitions:
         maxLength: 120
       thingsToSay:
         type: array
-        minItems: 1
-        maxItems: 8
+        minItems: 0
+        description: Empty only with a section-missing flag for this group. No maximum; more than 8 is kept and flagged count-overrun.
         items:
           $ref: '#/definitions/PhrasebookPhrase'
       likelyExchanges:
         type: array
-        minItems: 1
-        maxItems: 4
+        minItems: 0
+        description: Empty only with a section-missing flag for this group. No maximum; more than 4 is kept and flagged count-overrun.
         items:
           $ref: '#/definitions/PhrasebookExchange'
       words:
@@ -680,32 +678,55 @@ definitions:
           $ref: '#/definitions/PhrasebookWordFamily'
       exampleConversation:
         type: array
-        minItems: 2
-        maxItems: 10
-        description: Linear conversation; either speaker may start. Speakers usually alternate, but consecutive lines by one speaker are valid.
+        minItems: 0
+        description: Linear conversation; either speaker may start. Empty only with a section-missing flag, otherwise at least 2 lines. Consecutive lines by one speaker are valid and flagged speaker-repeated. No maximum; more than 12 is kept and flagged count-overrun.
         items:
           $ref: '#/definitions/PhrasebookExampleLine'
 
   PhrasebookFlag:
     type: object
-    required: [code, groupIndex, wordIndex, reason]
+    required: [code, groupIndex]
     additionalProperties: false
+    description: >-
+      A recovery in an accepted response; the shared validator checks each flag against the content.
+      Fields by code: vocab-source-missing has wordIndex and reason unresolved; count-overrun has section, received
+      and limit, plus exchangeIndex for exchangeTurns and exchangeIndex and lineIndex for responses;
+      content-dropped has section and reason invalid-entry, too-few-turns or single-word-family;
+      word-family-merged has section words and familyIndex; speaker-repeated has section likelyExchanges (with
+      exchangeIndex) or exampleConversation, and lineIndex; section-missing has section and marks an empty section.
     properties:
       code:
         type: string
-        enum: [vocab-source-missing]
+        enum: [vocab-source-missing, count-overrun, content-dropped, word-family-merged, speaker-repeated, section-missing]
       groupIndex:
         type: integer
         minimum: 0
         maximum: 7
+      section:
+        type: string
+        enum: [thingsToSay, likelyExchanges, exchangeTurns, responses, words, exampleConversation]
+      reason:
+        type: string
+        enum: [unresolved, invalid-entry, too-few-turns, single-word-family]
       wordIndex:
         type: integer
         minimum: 0
-        maximum: 9
         description: Index into the group's flattened family/item Word order.
-      reason:
-        type: string
-        enum: [unresolved]
+      received:
+        type: integer
+        minimum: 0
+      limit:
+        type: integer
+        minimum: 0
+      exchangeIndex:
+        type: integer
+        minimum: 0
+      lineIndex:
+        type: integer
+        minimum: 0
+      familyIndex:
+        type: integer
+        minimum: 0
 
   PhrasebookResponse:
     type: object
@@ -727,8 +748,7 @@ definitions:
           $ref: '#/definitions/PhrasebookGroup'
       flags:
         type: array
-        maxItems: 80
-        uniqueItems: true
+        description: Content drops and family merges can repeat; other flags appear once.
         items:
           $ref: '#/definitions/PhrasebookFlag'
       usage:

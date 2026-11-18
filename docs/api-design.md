@@ -3,7 +3,7 @@ kind: spec
 status: current
 summary: Catchphrase API architecture, endpoint table, shared contract conventions, failure levels and trust boundaries.
 sources: [api/src/index.js, api/src/llm-config.js, api/src/pricing.js, api/src/schema/index.ts, api/config/api-gateway.yaml]
-verified: 2026-11-15
+verified: 2026-11-17
 ---
 
 # Catchphrase API design

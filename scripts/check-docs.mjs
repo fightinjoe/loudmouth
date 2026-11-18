@@ -324,7 +324,9 @@ for (const f of files.filter(f => /^\.agents\/commands\/[^/]+\.md$/.test(f))) {
 
 // ---------- 8. staleness (warning) ----------
 const dirty = new Set(git('status', '--porcelain').split('\n').filter(Boolean).map(l => l.slice(3).split(' -> ').pop()));
-const today = new Date().toISOString().slice(0, 10);
+// Local calendar date, like the commit dates (`%cs`) below and the `verified` dates agents write.
+const now = new Date();
+const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 // One pass over history: newest commit date per path.
 const lastChange = new Map();
 let commitDate = '';
