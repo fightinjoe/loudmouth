@@ -3,7 +3,7 @@ kind: guide
 status: current
 summary: Web app development — setup, local API, build, Storybook, deployment, and the module map.
 sources: [.nvmrc, web/app/package.json, web/app/vite.config.js, web/app/.env.local.example, web/app/src/js/api-config.ts, web/app/src/panes, web/app/src/components, web/app/src/stories/support]
-verified: 2026-11-15
+verified: 2026-11-17
 ---
 
 # Web app development
@@ -40,7 +40,7 @@ A stale validator can reject a successful `/phrasebook-image` response and show 
 
 ## Online generation configuration
 
-There is no hosted gateway fallback. Saved reading, Review, stars, the library and backups work without online configuration; generation reports a controlled configuration error instead. Online generation needs six inputs, validated by `getApiConfiguration` in `web/app/src/js/api-config.ts`:
+There is no hosted gateway fallback. Saved reading, Review, stars, the library and backups work without online configuration; generation reports a controlled configuration error instead. `getApiConfiguration` in `web/app/src/js/api-config.ts` validates the inputs and accepts two shapes: all six below, or, on the development server only, `VITE_API_URL` alone pointing at a local API ([testing against a local API](#testing-against-a-local-api)). Setting some but not all of the five Firebase inputs is an error.
 
 | Input | Source |
 |---|---|
@@ -55,11 +55,13 @@ Anonymous Auth, App Check and the browser's domain must be registered in that en
 
 ## Testing against a local API
 
-Copy the example and fill in the values of the registered nonproduction Firebase web app:
+Copy the example:
 
 ```bash
 cp .env.local.example .env.local   # sets VITE_API_URL=http://localhost:8080; Firebase values are blank
 ```
+
+With the Firebase values blank, `npm run dev` sends requests without credentials, and no Firebase code runs. The API must then run in local mode (`PROTECTION_ENV=local`); the whole procedure is in [API local development](../api/operations.md#local-mode). This shape is refused when the API URL is not a local host, and `import.meta.env.PROD` rules it out of every build, which also requires all six inputs. To exercise real verification instead, fill in the five values of the registered nonproduction Firebase web app and run the API in its `development` mode.
 
 Then run both dev servers in separate terminals, starting from the repository root. Agents use the [start web server](../skills/ajw_start_web_server.md) and [start API server](../skills/ajw_start_api_server.md) skills instead, which place tmux panes and check readiness.
 
@@ -68,7 +70,7 @@ cd api/src && npm run dev     # serves the API on http://localhost:8080
 cd web/app && npm run dev     # picks up VITE_API_URL from .env.local
 ```
 
-`.env.local` is gitignored (`*.local`); Vite restarts pick up changes to it automatically. The local API still verifies ID tokens and App Check ([API local development](../api/operations.md#local-development)); a local URL is not a bypass.
+`.env.local` is gitignored (`*.local`); Vite restarts pick up changes to it automatically. A local URL alone is not a bypass: whether a request needs credentials is the API's decision, and an API in `development` mode answers a request without them with 401.
 
 Parallel feature worktrees get their own web, API and Playwright ports; see [add_worktree](../skills/add_worktree.md). Their servers are not started on creation; the same skills start them with the worktree's ports.
 

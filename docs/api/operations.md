@@ -2,7 +2,7 @@
 kind: guide
 status: current
 summary: "Catchphrase API operations: diagnostics, model selection, implementation map, local development, tests, evals, production state, and protected deployment, monitoring and recovery."
-sources: [api/src/index.js, api/src/log.js, api/src/llm-config.js, api/src/llms/openrouter.js, api/src/dev.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js, scripts/generation-report.mjs, scripts/cost-report.mjs, scripts/lib/log-events.mjs, api/src/protection/identity.js, api/src/protection/ledger.js, api/scripts/deployment-config.js, api/scripts/inventory-protection.js, api/scripts/protection-admin.js, api/scripts/provision-protection-monitoring.js]
+sources: [api/src/index.js, api/src/log.js, api/src/llm-config.js, api/src/llms/openrouter.js, api/src/dev.js, api/dev/local-protection.js, api/src/package.json, api/deploy.sh, api/config/api-gateway.yaml, api/evals/scripts/eval-adversarial.js, scripts/generation-report.mjs, scripts/cost-report.mjs, scripts/lib/log-events.mjs, api/src/protection/identity.js, api/src/protection/ledger.js, api/scripts/deployment-config.js, api/scripts/inventory-protection.js, api/scripts/protection-admin.js, api/scripts/provision-protection-monitoring.js]
 verified: 2026-11-17
 ---
 
@@ -39,10 +39,13 @@ Usage reports actual reply model IDs, token counts and wall-clock duration. `/ph
 
 ```text
 api/
+├── .env.example                    # variables `npm run dev` reads; copy to the ignored .env
 ├── config/
 │   ├── api-gateway.yaml            # API Gateway (Swagger 2.0) routes, Firebase JWT security, deadlines, wire schemas
 │   └── monitor.*                   # monitor job image: Dockerfile, Cloud Build config, upload ignore file
 ├── deploy.sh                       # Preflight, identities, secrets, private Cloud Run deploy, Firestore rules/TTL, gateway
+├── dev/
+│   └── local-protection.js         # PROTECTION_ENV=local admission for the dev launcher; outside src, never deployed
 ├── firebase.json, firestore.rules  # Firestore emulator config; rules deny all client access
 ├── scripts/
 │   ├── deployment-config.js        # validates deployment environment, renders runtime env and gateway config
@@ -60,7 +63,7 @@ api/
 │       └── eval-phrase-breakdown.js
 └── src/
     ├── index.js                    # Cloud Function `translate`: CORS, methods, route dispatch
-    ├── dev.js                      # `npm run dev` launcher: env files, response capture
+    ├── dev.js                      # `npm run dev` launcher: env files, protection mode, response capture
     ├── ability.js                  # shared ability enum and sanitizer
     ├── reading.js                  # shared pure reading/romanization helpers
     ├── llm-config.js               # backend selectors and registry
@@ -82,7 +85,40 @@ The `*.txt` files beside each handler are the runtime prompts; there is no separ
 
 ## Local development
 
-From `api/src`:
+`npm run dev` in `api/src` is the development launcher (`api/src/dev.js`). `PROTECTION_ENV` in `api/.env` selects how it admits requests:
+
+| `PROTECTION_ENV` | Needs | Checks |
+|---|---|---|
+| `local` | Provider credentials only | No identity, App Check or ledger. Only requests from [local origins](#local-mode) are served, and each request keeps its provider attempt, output and deadline bounds |
+| `development` | A registered nonproduction Firebase project, SDK tokens and a resumed ledger | Everything the deployed service checks, verifying the ID token itself instead of trusting gateway claims |
+
+With the variable unset, or a `development` configuration that `loadProtectionConfig` rejects, the launcher prints what to set and exits instead of serving 503 to every request.
+
+### Local mode
+
+The procedure for a new checkout, from the repository root. It needs no Firebase project, tokens, Firestore or Java.
+
+1. Install both packages: `npm ci` in `api/src` and in `web/app`.
+2. `cp api/.env.example api/.env`, then fill in `GCP_PROJECT_ID` (a project with Vertex AI enabled) and `OPENROUTER_API_KEY`. The example already sets `PROTECTION_ENV=local`.
+3. `gcloud auth application-default login`, once per machine, for the Google adapters.
+4. `cp web/app/.env.local.example web/app/.env.local` and leave its Firebase values blank ([web development](../web/development.md#testing-against-a-local-api)).
+5. Start both servers, each in its own terminal: `npm run dev` in `api/src` (port 8080) and `npm run dev` in `web/app` (port 8000). Agents use the [start API server](../skills/ajw_start_api_server.md) and [start web server](../skills/ajw_start_web_server.md) skills.
+6. Open `http://localhost:8000` and create a phrasebook. A request that never reaches a provider checks the path for free: `curl -i -X OPTIONS http://localhost:8080/context` returns 204.
+
+A feature worktree gets its ports from [add worktree](../skills/add_worktree.md) and a copy of the main checkout's `api/.env`, so the main checkout's `PROTECTION_ENV` decides the mode of new worktrees.
+
+In this mode the launcher builds the router with `localProtection` from `api/dev/local-protection.js`: every caller is the single identity `local`, nothing is reserved or settled, pricing verification and `IMAGE_RESERVE_MICROS` are not needed, and the work plan from `buildWorkPlan` still limits attempts, output tokens and the deadline. The server listens on every interface, so any device that can reach the port can spend the provider credentials; use it on a trusted network. A browser request is accepted only from a local origin (`isLocalOrigin`: loopback, a single-label or `.local` host name, or a private IPv4 address, on any port), so a public web page cannot call it; a request without `Origin`, such as `curl`, is accepted.
+
+Local mode cannot be enabled on a deployed service:
+
+- The module is outside `api/src`, the only tree `api/deploy.sh` uploads (`--source=./src`) and the monitor image copies, so no deployed artifact contains it.
+- The deployed entrypoint (`api/src/index.js`) never selects it: `loadProtectionConfig` accepts only `development`, `staging` and `production`, and answers 503 for any other value.
+- `api/scripts/deployment-config.js` accepts only `staging` and `production` and writes the runtime `PROTECTION_ENV` itself.
+- `localProtection` throws when `K_SERVICE` is set (Cloud Run) or `NODE_ENV` is `production`.
+
+### Verified development mode
+
+Use this to exercise identity, App Check and the ledger locally. From `api/src`:
 
 ```bash
 npm install
@@ -97,7 +133,13 @@ npm run schema:build
 npx functions-framework --target=translate --port=8080
 ```
 
-Alternatively, populate `api/.env` and use `npm run dev`. Google adapters use Vertex AI and require application-default credentials. `GCP_VERTEX_LOCATION` defaults to `global`; use `global`, `us`, or `eu`, not a regional model endpoint such as `us-central1`. `GCP_LOCATION` remains the separate Cloud Run and API Gateway deployment region.
+Alternatively, put the same variables in `api/.env` and use `npm run dev`. The web client then needs its five Firebase inputs as well ([web development](../web/development.md#online-generation-configuration)).
+
+Every POST requires an SDK-obtained Firebase ID token in `Authorization: Bearer …` and an App Check token in `X-Firebase-AppCheck`: the router verifies the ID token directly instead of trusting gateway claims, and still needs a ledger with an initialized, resumed control document ([control and recovery](#control-and-recovery)). An unauthenticated POST returns 401, so a bare `curl` is not a smoke test. An `OPTIONS` from an approved origin needs no credentials; a native request without `Origin` still needs both tokens. Acquire tokens through the client SDK in memory; do not put them in command history, URLs, logs or committed files. Emulators are local-only and require a `demo-` project (`loadProtectionConfig` in `api/src/protection/identity.js`); never deploy emulator hosts or debug-token settings.
+
+### Launcher and credentials
+
+Google adapters use Vertex AI and require application-default credentials. `GCP_VERTEX_LOCATION` defaults to `global`; use `global`, `us`, or `eu`, not a regional model endpoint such as `us-central1`. `GCP_LOCATION` remains the separate Cloud Run and API Gateway deployment region.
 
 Supply `OPENROUTER_API_KEY` privately in `api/.env` for English generation and cover images. Do not put keys in Vite variables, prompts, committed files, command history, or chat. Missing image credentials fail cover work nonfatally; they must not prevent saving valid text.
 
@@ -109,13 +151,11 @@ The API development launcher does not watch source or prompt files: restart `npm
 
 For alternate providers, configure `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` and restart with `LLM_BACKEND=claude` or `LLM_BACKEND=chatgpt`.
 
-Point the web client at the local service with `VITE_API_URL=http://localhost:8080` and its Firebase inputs ([web development](../web/development.md#testing-against-a-local-api)).
+Point the web client at the local service with `VITE_API_URL` ([web development](../web/development.md#testing-against-a-local-api)).
 
 When started with `npm run dev`, every POST response sent by the API router is saved as a pretty-printed JSON file in `api/tmp/` (git-ignored and created on demand, independent of the working directory). Capture exists only in the development launcher; the production entrypoint and direct Functions Framework launches do not capture responses. Filenames contain a UTC timestamp followed by the endpoint name, for example `2026-09-17T14-32-08.123Z-phrasebook-title.json`. Same-millisecond responses use incrementing filename timestamps to avoid collisions within the process; the recorded timestamp remains the actual capture time. Each file records `timestamp`, `method`, `path`, `status`, and `body`, including successful responses and errors. Other methods, including CORS preflight `OPTIONS`, are not captured. These are final HTTP response bodies, not raw intermediate model outputs. Requests and headers are not saved. Responses rejected by the Functions Framework before reaching the router are not captured.
 
 Capture writes synchronously before sending the response; a filesystem failure is logged without failing the API call. Files may contain sensitive generated content and accumulate until manually deleted; clear `api/tmp/` when no longer needed.
-
-Every POST requires an SDK-obtained Firebase ID token in `Authorization: Bearer …` and an App Check token in `X-Firebase-AppCheck`, in local development too: `PROTECTION_ENV=development` verifies the ID token directly instead of trusting gateway claims, and still needs a ledger with an initialized, resumed control document ([control and recovery](#control-and-recovery)). An unauthenticated POST returns 401, so a bare `curl` is not a smoke test. An `OPTIONS` from an approved origin needs no credentials; a native request without `Origin` still needs both tokens. Acquire tokens through the client SDK in memory; do not put them in command history, URLs, logs or committed files. Emulators are local-only and require a `demo-` project (`loadProtectionConfig` in `api/src/protection/identity.js`); never deploy emulator hosts or debug-token settings.
 
 ## Tests and model evals
 

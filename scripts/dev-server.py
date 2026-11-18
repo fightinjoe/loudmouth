@@ -132,7 +132,7 @@ def lan_addresses() -> list[str]:
 def api_warning(root: Path) -> str | None:
     url = read_env(root / "web/app/.env.local", "VITE_API_URL")
     if url is None:
-        return "VITE_API_URL is unset: the web app calls the deployed API Gateway."
+        return "VITE_API_URL is unset in web/app/.env.local: generation is unavailable (there is no hosted fallback)."
     parsed = urlparse(url)
     if parsed.port is None:
         return None

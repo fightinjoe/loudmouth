@@ -75,6 +75,27 @@ function validatePort(value, source) {
   }
 }
 
+// Chooses the handler once at startup and refuses a configuration that would answer every request with 503.
+function selectTranslate(api) {
+  if (process.env.PROTECTION_ENV === 'local') {
+    // Kept outside api/src so that no deployed artifact contains it.
+    const { localProtection } = require('../dev/local-protection');
+    const translate = api.createTranslate(localProtection());
+    console.warn('PROTECTION_ENV=local: identity, App Check and the ledger are skipped. '
+      + 'Anyone who can reach this port can spend the provider credentials.');
+    return translate;
+  }
+  try {
+    require('./protection/identity').loadProtectionConfig();
+  } catch {
+    console.error('The API is not configured for admission, so every request would be answered with 503. '
+      + 'Set PROTECTION_ENV=local in api/.env to develop without Firebase, or complete the '
+      + 'PROTECTION_ENV=development variables: docs/api/operations.md#local-development');
+    process.exit(1);
+  }
+  return api.translate;
+}
+
 if (process.argv[2] === ENV_LOADED_FLAG) {
   process.argv.splice(2, 1);
 
@@ -87,7 +108,7 @@ if (process.argv[2] === ENV_LOADED_FLAG) {
 
   process.env.FUNCTION_TARGET ??= 'translate';
   const api = require('./index');
-  const translate = api.translate;
+  const translate = selectTranslate(api);
   api.translate = (req, res) => {
     captureResponse(req, res);
     return translate(req, res);

@@ -15,8 +15,8 @@ function record(value: unknown): value is Record<string,unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 async function post(path: string, body: unknown, signal?: AbortSignal): Promise<unknown> {
-  const { apiUrl } = getApiConfiguration(import.meta.env, import.meta.env.PROD);
-  const credentials = await getApiCredentials(signal);
+  const { apiUrl, identity } = getApiConfiguration(import.meta.env, import.meta.env.PROD);
+  const credentials = identity ? await getApiCredentials(signal) : null;
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   let res: Response;
   try {
@@ -24,8 +24,10 @@ async function post(path: string, body: unknown, signal?: AbortSignal): Promise<
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${credentials.identityToken}`,
-        'X-Firebase-AppCheck': credentials.appCheckToken,
+        ...(credentials && {
+          Authorization: `Bearer ${credentials.identityToken}`,
+          'X-Firebase-AppCheck': credentials.appCheckToken,
+        }),
       },
       body: JSON.stringify(body), signal,
     });

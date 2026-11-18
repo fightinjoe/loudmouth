@@ -50,13 +50,14 @@ function unavailable() {
   });
 }
 
-function buildWorkPlan(path, parsedRequest) {
-  const pricing = getPricingStatus();
+// The overrides exist for the local development launcher, which reserves nothing; the router passes none.
+function buildWorkPlan(path, parsedRequest, {
+  pricing = getPricingStatus(), imageReserveMicros = Number(process.env.IMAGE_RESERVE_MICROS),
+} = {}) {
   if (!pricing.valid) throw unavailable();
   if (path === '/phrasebook-image') {
-    const reserveMicros = Number(process.env.IMAGE_RESERVE_MICROS);
-    if (!Number.isSafeInteger(reserveMicros) || reserveMicros <= 0) throw unavailable();
-    return { weight: 8, reserveMicros, maxAttempts: 1, deadlineMs: 120000,
+    if (!Number.isSafeInteger(imageReserveMicros) || imageReserveMicros <= 0) throw unavailable();
+    return { weight: 8, reserveMicros: imageReserveMicros, maxAttempts: 1, deadlineMs: 120000,
       pricingVersion: pricing.pricingVersion, backendLimits: {}, image: true };
   }
   const backend = getBackendName();

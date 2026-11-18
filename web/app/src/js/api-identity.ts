@@ -13,16 +13,17 @@ let refreshNext = false;
 let appCheckInstance: AppCheck | undefined;
 
 async function initializeIdentity(): Promise<Identity> {
-  const config = getApiConfiguration(import.meta.env, import.meta.env.PROD);
+  const { identity } = getApiConfiguration(import.meta.env, import.meta.env.PROD);
+  if (!identity) throw new Error('This configuration sends no credentials.');
   const runtime: object = globalThis;
   if (import.meta.env.PROD && 'FIREBASE_APPCHECK_DEBUG_TOKEN' in runtime && runtime.FIREBASE_APPCHECK_DEBUG_TOKEN) {
     throw new Error('Debug app verification is disabled in production. Saved content is still available.');
   }
   const app = getApps().find(candidate => candidate.name === 'protected-api') ??
-    initializeApp(config.firebase, 'protected-api');
+    initializeApp(identity.firebase, 'protected-api');
   // Retry auth initialization without creating a second App Check instance.
   appCheckInstance ??= initializeAppCheck(app, {
-    provider: new ReCaptchaEnterpriseProvider(config.siteKey),
+    provider: new ReCaptchaEnterpriseProvider(identity.siteKey),
     isTokenAutoRefreshEnabled: true,
   });
   const auth = getAuth(app);

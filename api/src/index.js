@@ -22,7 +22,8 @@ const HANDLERS = {
   '/phrasebook-image': handlePhrasebookImage,
 };
 
-// Injection is an in-process test seam, never selected by headers or environment.
+// Injection is an in-process seam for tests and the development launcher (dev.js);
+// this module never selects it from headers or environment.
 function createTranslate(dependencies = {}) {
   let ledger;
   const registry = wrapRegistry(dependencies.registry || LLM_REGISTRY);

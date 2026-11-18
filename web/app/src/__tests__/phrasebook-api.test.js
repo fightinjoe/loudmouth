@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generatePhrasebook, generatePhrasebookImage, getPhraseBreakdown, getContext, ApiError } from '../js/phrasebook-api';
 import { getApiCredentials, invalidateApiCredentials } from '../js/api-identity';
+import { getApiConfiguration } from '../js/api-config';
 
 vi.mock('../js/api-config', () => ({
-  getApiConfiguration: () => ({apiUrl: 'https://api.example.test'}),
+  getApiConfiguration: vi.fn(() => ({apiUrl: 'https://api.example.test', identity: {}})),
 }));
 vi.mock('../js/api-identity', () => ({
   getApiCredentials: vi.fn(),
@@ -116,6 +117,14 @@ describe('protected request behavior', () => {
     expect(fetch.mock.calls[0][1].headers).toMatchObject({
       Authorization:'Bearer fresh-identity','X-Firebase-AppCheck':'fresh-app',
     });
+  });
+  it('sends no credentials and starts no verification when a local API needs none', async () => {
+    getApiConfiguration.mockReturnValueOnce({apiUrl:'http://localhost:8080', identity:null});
+    serve({title:'Dinner'});
+    await expect(getContext({seed:'dinner',language:'es'})).rejects.toThrow(); // deliberately invalid context response
+    expect(getApiCredentials).not.toHaveBeenCalled();
+    expect(fetch.mock.calls[0][0]).toBe('http://localhost:8080/context');
+    expect(fetch.mock.calls[0][1].headers).toEqual({'Content-Type':'application/json'});
   });
   it('never sends a POST after cancellation during credential acquisition', async () => {
     let complete;

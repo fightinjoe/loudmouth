@@ -10,16 +10,15 @@ statuses: [open, in-progress, blocked, done]
 
 The first public launch: everything that must be done before Catchphrase is open to the public. Every row gates the launch; work that can ship after it goes to the [backlog](backlog.md). Production deployment state is owned by [API operations](../api/operations.md#production). Naming, sections and the release notes written at the end follow [launch milestones](../wiki.md#launch-milestones).
 
-**Broken by the API protection baseline (noted 2026-11-17).** Both have rows below and detail in [audit findings](antsy-aphid/api-protection.md#audit-findings-on-the-merged-code); fix them first, because they block everyday work rather than only the launch.
+**Broken by the API protection baseline (noted 2026-11-17).** It has a row below and detail in [audit findings](antsy-aphid/api-protection.md#audit-findings-on-the-merged-code); fix it first, because it blocks everyday work rather than only the launch.
 
 - **Web CI fails.** `web/app/vite.config.js` rejects a production build without the six online-generation inputs, and `.github/workflows/web-app-ci.yml` sets none, so `npm run test:e2e` cannot build. `npm run test:storybook` fails 8 of its 28 journeys with "Online generation is not configured", because the stories run the real `web/app/src/js/phrasebook-api.ts`. Unit tests and typecheck pass. Row: [Client › Web](#web), "Make web CI pass with the build gate".
-- **Local development cannot generate.** The API answers every request, including `OPTIONS`, with 503 unless it has a real Firebase project, real ID and App Check tokens and an initialized, resumed admission ledger; there is no local bypass, and the web app has no hosted fallback when its own inputs are unset. A fresh checkout or worktree can browse a saved library but cannot create a phrasebook. Row: [API + Server › Admission control](#admission-control), "Give local development a working path under admission".
 
 | Section | Open | In progress | Blocked | Done |
 |---|---|---|---|---|
 | Client › Web | 11 | 0 | 0 | 0 |
 | Client › iOS | 11 | 0 | 0 | 1 |
-| API + Server › Admission control | 18 | 4 | 0 | 0 |
+| API + Server › Admission control | 17 | 4 | 0 | 1 |
 | API + Server › Robustness | 4 | 3 | 0 | 0 |
 | API + Server › Staging environment | 3 | 0 | 0 | 0 |
 | API + Server › Monitoring | 6 | 0 | 0 | 0 |
@@ -28,7 +27,7 @@ The first public launch: everything that must be done before Catchphrase is open
 | Product + legal › Business model | 5 | 1 | 0 | 1 |
 | Product + legal › Privacy | 5 | 0 | 0 | 0 |
 | Product + legal › Name | 3 | 0 | 0 | 0 |
-| **Total** | **70** | **8** | **0** | **6** |
+| **Total** | **69** | **8** | **0** | **7** |
 
 ## Client
 
@@ -74,7 +73,6 @@ The first public launch: everything that must be done before Catchphrase is open
 | 2026-11-17 | open | Operator recovery: show reservation IDs in `status` and settlement logs, add a command that clears overshoot, and guard `reconcile` against running reservations | [details](antsy-aphid/api-protection.md) |
 | 2026-11-17 | open | Detect and release a reservation that commits after the 4.5-second admission timeout | [details](antsy-aphid/api-protection.md) |
 | 2026-11-17 | open | Keep CPU allocated for post-response settlement in `api/deploy.sh`, or settle before responding | [details](antsy-aphid/api-protection.md) |
-| 2026-11-17 | open | Give local development a working path under admission: without a Firebase project every request, including OPTIONS, returns 503 | [details](antsy-aphid/api-protection.md) |
 | 2026-11-17 | open | Add an npm script for the Firestore emulator ledger suite, re-run it on the merged code, and run the API tests in CI | [details](antsy-aphid/api-protection.md) |
 | 2026-11-17 | open | Audit housekeeping: pin `firebase-admin`, move the monitor image to Node 24, remove the unused module-level ledger functions, decide `allowScripts` for the Firebase packages | [details](antsy-aphid/api-protection.md) |
 | 2026-11-17 | open | Review the pilot limits against the creation flow: shared dollar ceilings, global and per-caller concurrency, route weights and the per-caller daily allowance | [details](antsy-aphid/api-protection.md) |
@@ -93,6 +91,7 @@ The first public launch: everything that must be done before Catchphrase is open
 | 2026-11-15 | in-progress | Global concurrency and spend limits | [details](antsy-aphid/api-protection.md) |
 | 2026-11-15 | in-progress | App attestation | [details](antsy-aphid/api-protection.md) |
 | 2026-11-12 | open | Verify what the deployed gateway and Cloud Run service expose | [details](antsy-aphid/api-protection.md) |
+| 2026-11-17 | done | ~~Give local development a working path under admission: without a Firebase project every request, including OPTIONS, returns 503~~ | [details](antsy-aphid/api-protection.md) |
 
 ### Robustness
 

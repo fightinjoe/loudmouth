@@ -22,8 +22,17 @@ describe('protected web configuration', () => {
   ])('rejects unsafe release settings %j', unsafe => {
     expect(() => getApiConfiguration({...env,...unsafe},true)).toThrow(/Production/);
   });
-  it('permits explicit local API development but requires all identity inputs', () => {
-    expect(getApiConfiguration({...env,VITE_API_URL:'http://localhost:8080/'},false).apiUrl).toBe('http://localhost:8080');
+  it('permits a local API with the identity inputs of a registered development app', () => {
+    const config = getApiConfiguration({...env,VITE_API_URL:'http://localhost:8080/'},false);
+    expect(config.apiUrl).toBe('http://localhost:8080');
+    expect(config.identity.siteKey).toBe('test-site-key');
+  });
+  it('sends no credentials from a development server that has only a local API URL', () => {
+    expect(getApiConfiguration({VITE_API_URL:'http://tiny:5751'},false)).toEqual({apiUrl:'http://tiny:5751',identity:null});
+  });
+  it('never drops credentials in a production build or for a non-local API', () => {
+    expect(() => getApiConfiguration({VITE_API_URL:'http://tiny:5751'},true)).toThrow(/not configured/);
+    expect(() => getApiConfiguration({VITE_API_URL:'https://api.example.test'},false)).toThrow(/not configured/);
   });
   it.each(['https://user:pass@api.example.test','https://api.example.test?token=unsafe','javascript:alert(1)'])('rejects unsafe URL %s', VITE_API_URL => {
     expect(() => getApiConfiguration({...env,VITE_API_URL},true)).toThrow(/invalid API URL/);

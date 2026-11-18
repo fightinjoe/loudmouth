@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: Start the local API dev server for the current checkout or a worktree in a placed tmux pane, verify it is listening and report its URLs.
 sources: [scripts/dev-server.py, scripts/tmux-server.sh, api/src/dev.js]
-verified: 2026-11-12
+verified: 2026-11-17
 ---
 
 # Start the API server
@@ -25,10 +25,10 @@ Run it from the repository root of the checkout to serve, or pass `--checkout` w
 3. Otherwise opens a pane with `scripts/tmux-server.sh` in the window of a tmux pane that belongs to the checkout (normally its OMP pane), else in your own window: below the bottom-right pane, or as a new right-hand column. It runs `npm run dev` in `api/src`, which builds the shared schema (`predev`) and loads `api/.env` then `api/.env.local` ([API operations](../api/operations.md#local-development)).
 4. Waits until a process from this checkout listens on the port, then prints the localhost, `tiny` and LAN URLs.
 
-Exit 0 means ready. Exit 1 prints the pane's last lines: fix the cause (missing `node_modules`: run `npm ci` in `api/src`, or `add_worktree.py install` for a worktree; missing credentials: `api/.env`) and rerun. Exit 2 means there is no tmux pane to use: run `npm run dev` in `api/src` as a named background service and tell the user how to stop it.
+Exit 0 means ready. Exit 1 prints the pane's last lines: fix the cause and rerun. Missing `node_modules`: run `npm ci` in `api/src`, or `add_worktree.py install` for a worktree. "The API is not configured for admission": `api/.env` lacks `PROTECTION_ENV`; tell the user to set `PROTECTION_ENV=local` there ([local development](../api/operations.md#local-development)), and do not edit their credentials file yourself. Missing provider credentials: `api/.env`. Exit 2 means there is no tmux pane to use: run `npm run dev` in `api/src` as a named background service and tell the user how to stop it.
 
 ## Then
 
-- Listening is not a working request path. Do not make paid model calls to check it unless the user authorizes them.
+- Startup validates the protection configuration, but listening does not prove a provider call works. `curl -i -X OPTIONS http://localhost:<port>/context` returning 204 checks the request path for free. Do not make paid model calls to check it unless the user authorizes them.
 - The API does not watch files: after changing API source, prompts or the shared schema, stop it with Ctrl-C in its pane and run this skill again.
 - Report the URLs and that Ctrl-C in the pane stops the server. `/finalize_worktree` stops worktree servers.
