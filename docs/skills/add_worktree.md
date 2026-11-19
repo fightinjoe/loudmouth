@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: Create a port-isolated sibling worktree with its own feature branch, worktree.md intent notes, dependencies and an OMP tmux window; dev servers start separately.
 sources: [scripts/worktree/add_worktree.py, .gitignore, web/app/vite.config.js, web/app/playwright.config.js]
-verified: 2026-11-17
+verified: 2026-11-19
 ---
 
 # Add a worktree

@@ -3,7 +3,7 @@ kind: guide
 status: current
 summary: Web app development — setup, local API, build, Storybook, deployment, and the module map.
 sources: [.nvmrc, web/app/package.json, web/app/vite.config.js, web/app/.env.local.example, web/app/src/js/api-config.ts, web/app/src/panes, web/app/src/components, web/app/src/stories/support]
-verified: 2026-11-17
+verified: 2026-11-19
 ---
 
 # Web app development

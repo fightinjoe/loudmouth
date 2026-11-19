@@ -2,7 +2,7 @@
 kind: record
 status: current
 summary: "Protect the public API for anonymous callers: the baseline is in the repository; provisioning, protected staging acceptance, native acceptance and the coordinated release remain."
-verified: 2026-11-17
+verified: 2026-11-19
 ---
 
 # Protect the API for anonymous users
@@ -111,7 +111,7 @@ A read-only audit of the baseline after it was merged with `main` (2026-11-15, o
 
 Web:
 
-- **CI.** Fixed in the repository on 2026-11-17, not yet seen in a workflow run. The production build still rejects missing online-generation inputs, which made `npm run test:e2e` fail to build and 8 of the 28 Storybook journeys fail with "Online generation is not configured". The end-to-end build now gets synthetic inputs from `web/app/playwright.config.js` ([build](../../web/development.md#build)), and the journeys use stand-ins for API configuration and identity ([workbench](../../web/development.md#component-workbench-storybook)); both suites passed locally with no registration values. `.github/workflows/web-app-ci.yml` needed no change. Done when both browser steps pass in a `web-app CI` run.
+- **CI.** Fixed. The production build still rejects missing online-generation inputs, which made `npm run test:e2e` fail to build and 8 of the 28 Storybook journeys fail with "Online generation is not configured". The end-to-end build now gets synthetic inputs from `web/app/playwright.config.js` ([build](../../web/development.md#build)), and the journeys use stand-ins for API configuration and identity ([workbench](../../web/development.md#component-workbench-storybook)). `.github/workflows/web-app-ci.yml` needed no change. The first `web-app CI` run with the fix ([44540220004](https://github.com/fightinjoe/loudmouth/actions/runs/44540220004), 2026-11-19, commit `73f7689`) passed every step, including 18 end-to-end tests and 28 Storybook journeys.
 - **Hosting.** No hosting configuration is in the repository, so the six inputs must exist in the Vercel project before the protected build reaches `prod`, or that build fails. The old gateway fallback for `VITE_API_URL` is gone.
 - **SDK loading.** `web/app/src/js/api-identity.ts` imports Firebase statically; only initialization is lazy, so the SDK and the reCAPTCHA loader ship in the entry bundle (about 493 KB on 2026-11-15). Done when Firebase loads on the first generation request and local library use downloads none of it.
 - **Failure handling.**
