@@ -3,7 +3,7 @@ kind: skill
 status: current
 summary: Rules, references and verification for any work under web/app.
 sources: [web/app/package.json, .github/workflows/web-app-ci.yml]
-verified: 2026-11-19
+verified: 2026-11-20
 ---
 
 # Web app work
@@ -33,7 +33,7 @@ Run from `web/app`, serially (they share generated schema output). These are the
 
 `npm run build` needs the six [online generation inputs](../web/development.md#online-generation-configuration) and fails without them; synthetic non-local values are enough for a build check. The two browser suites need none: `npm run test:e2e` supplies synthetic inputs to its own [build](../web/development.md#build), and `npm run test:storybook` replaces API configuration and identity with [stand-ins](../web/development.md#component-workbench-storybook).
 
-CI runs the same set ([`web-app-ci.yml`](../../.github/workflows/web-app-ci.yml)). For a visible UI change, also run the app (`npm run dev` here and in `api/src`, using the server rule in `AGENTS.md`) and exercise the changed interaction in a browser.
+CI runs the same set ([`web-app-ci.yml`](../../.github/workflows/web-app-ci.yml); triggers, steps and their reasons in [CI](../tooling/ci.md#web-app-ci)). For a visible UI change, also run the app (`npm run dev` here and in `api/src`, using the server rule in `AGENTS.md`) and exercise the changed interaction in a browser.
 
 ## Keep the wiki current
 

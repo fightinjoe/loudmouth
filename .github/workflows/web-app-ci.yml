@@ -1,3 +1,4 @@
+# What each step does and why: docs/tooling/ci.md
 name: web-app CI
 
 on:
@@ -6,6 +7,9 @@ on:
     paths: ['web/app/**', 'api/src/schema/**', '.nvmrc', '.github/workflows/web-app-ci.yml']
   pull_request:
     paths: ['web/app/**', 'api/src/schema/**', '.nvmrc', '.github/workflows/web-app-ci.yml']
+
+permissions:
+  contents: read
 
 defaults:
   run:
@@ -35,11 +39,3 @@ jobs:
 
       - run: npm run test:e2e
       - run: npm run test:storybook
-
-      - name: Upload Playwright report on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-report
-          path: web/app/playwright-report
-          retention-days: 7

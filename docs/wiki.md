@@ -3,7 +3,7 @@ kind: rules
 status: current
 summary: How the wiki is organized, page header fields, ledgers, todo lifecycle, launch milestones and release notes, and maintenance operations.
 sources: [scripts/check-docs.mjs, scripts/todo.mjs, scripts/lib/frontmatter.mjs]
-verified: 2026-11-17
+verified: 2026-11-20
 ---
 
 # Wiki conventions
@@ -29,7 +29,7 @@ Three layers, after the [LLM wiki pattern](https://gist.github.com/karpathy/442a
 | `docs/explorations/` | Status ledger and method for the HTML studies in `explorations/`. |
 | `docs/skills/` | Skill procedures. Thin shells in `.agents/skills/` point here. |
 | `docs/proposals/` | Future-looking designs. Nothing here is implemented. |
-| `docs/tooling/` | Workstation and agent-tool setup. |
+| `docs/tooling/` | Workstation, agent-tool and CI setup. |
 
 File and folder names are lowercase kebab-case. Skill pages use the skill name, for example `docs/skills/add_worktree.md`. No Markdown lives outside `docs/` except `AGENTS.md`, `README.md`, skill shells and command aliases.
 

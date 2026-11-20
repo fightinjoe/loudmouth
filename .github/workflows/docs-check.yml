@@ -1,9 +1,13 @@
+# What each step does and why: docs/tooling/ci.md
 name: docs check
 
 on:
   push:
     branches: [main]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   check-docs:
